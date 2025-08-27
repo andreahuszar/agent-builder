@@ -31,6 +31,42 @@ npm run preview
 - `npm run test:visual:update` - Update visual test baseline screenshots
 - `npm run test:visual:ui` - Open Playwright UI mode for interactive testing
 
+## Development Workflow & Testing Strategy
+
+### Mandatory Testing Checkpoints
+**ALWAYS run `npm run test:visual` before claiming any task is complete:**
+
+1. **After ANY component changes** → Run tests BEFORE checking browser
+2. **After CSS/Tailwind changes** → Tests catch framework breaks  
+3. **Before saying "done"** → Tests are the final verification
+4. **After dependency updates** → Especially CSS-related packages
+
+### The Golden Rule: Test → Fix → Update
+```
+1. Run tests first: npm run test:visual
+2. If tests fail:
+   - Expected change? → Update baselines: npm run test:visual:update
+   - Unexpected? → Fix the issue, then re-test
+3. Never skip tests thinking "it looks fine in browser"
+```
+
+### When to Update Baselines
+**ONLY update snapshots (`npm run test:visual:update`) when:**
+- ✅ The visual change was intentional (new design)
+- ✅ You've verified the change looks correct in browser
+- ✅ The change is part of the requested task
+
+**NEVER update snapshots when:**
+- ❌ Tests fail unexpectedly
+- ❌ You haven't checked the actual UI
+- ❌ You're "just trying to make tests pass"
+
+### Workflow Integration
+Consider the task incomplete until:
+1. Code changes done
+2. Visual tests pass OR baselines intentionally updated
+3. Browser verification matches test results
+
 ## Architecture
 
 ### Technology Stack
@@ -60,135 +96,87 @@ npm run preview
 
 ### Key Design Patterns
 
-1. **Navigation Structure**:
-   - Fixed left sidebar (16px wide) with icon navigation
-   - Top navigation bar with pill-style tabs for main views
-   - User profile menu in top-right corner
+1. **Navigation Structure** (Two-tier hierarchy):
+   - **Left sidebar (64px)**: Primary module icons (Invoice Processing, Transactions, Statements, etc.)
+   - **Top bar pills**: Secondary navigation - changes based on active sidebar module
+   - **Parent→Child flow**: Sidebar icon selection → reveals module-specific pill tabs
+   - **Example**: Invoice Processing (sidebar) → Workspace/Invoices/Purchase Orders (pills)
+   - Active states: purple-900 (sidebar), purple-600 (pills)
 
 2. **Styling Approach**:
    - Purple gradient theme for navigation
    - Tailwind CSS with custom configuration
    - CSS variables for theming support
    - Radix UI for accessible components
+   - Barlow font from Google Fonts
 
 3. **Component Organization**:
-   - Client components marked with 'use client'
+   - Client components marked with 'use client' (navigation for interactivity)
    - Server components by default
    - UI primitives in separate /ui directory
 
+## Design System
+
+The project uses a centralized Xelix brand color system defined in `tailwind.config.ts`.
+
+### Usage Guidelines:
+- **ALWAYS** use colors from the centralized Xelix palette
+- Use semantic color aliases (brand.primary, brand.secondary) for brand-specific usage
+- **NEVER** hardcode RGB/hex values directly in components
+- Extend the color system in `tailwind.config.ts` when new colors are needed
+- Prefer existing color shades over creating new ones
+
+### Color Architecture:
+- **Brand Colors**: Complete Xelix color palettes (purple, gray, blue, green, orange, red, pink)
+- **Semantic Aliases**: `brand.primary` (purple-900), `brand.secondary` (purple-600), `brand.accent` (pink-500)
+- **CSS Variables**: Maps to Xelix colors for theming support
+- **Gradient Utilities**: Pre-defined brand gradients (`bg-brand-gradient`)
+
+### Available Color Tokens:
+- **Primary Brand**: Purple scale (50-950) with purple-900 (#5a1899) as main
+- **Neutral**: Gray scale (50-950) from Xelix palette
+- **Semantic**: 
+  - Success: Green scale
+  - Error: Red scale
+  - Warning: Orange scale
+  - Info: Blue scale
+  - Accent: Pink scale
+- **Navigation Gradient**: `bg-brand-gradient` for sidebar
+
+### Example Usage:
+```tsx
+// ✅ GOOD - Using centralized colors
+<button className="bg-purple-900 text-white">
+<div className="bg-brand-gradient">
+<p className="text-gray-600">
+
+// ❌ BAD - Hardcoding colors
+<button className="bg-[#5a1899]">
+<div className="bg-[linear-gradient(...)]">
+```
+
 ## Visual Testing with Playwright
 
-The project uses Playwright for visual regression testing to ensure UI consistency. **Visual testing is critical** - code can look correct but styling frameworks might not be working, leading to broken UIs.
+**Key Principle**: Visual tests catch CSS framework failures that code inspection misses. Always verify actual rendering, not just HTML classes.
 
-### Critical Learning: Visual Reality vs Code Correctness
-
-**Key Insight**: HTML classes can exist in the DOM but if CSS frameworks aren't working, the UI will appear broken. Always validate visually, not just through code inspection.
-
-**Example**: During development, we encountered an issue where:
-- ✅ HTML contained correct Tailwind classes (`bg-purple-600`, `rounded-full`, etc.)
-- ✅ Components were properly structured and exported
-- ❌ **But Tailwind CSS v4 wasn't compatible with our setup**, so no styles applied
-- ❌ UI appeared completely broken despite "correct" code
-
-**Solution**: Downgraded to Tailwind v3 with proper PostCSS configuration.
-
-### When to Use Visual Tests Immediately
-
-**Run visual tests FIRST when:**
-- User reports "styling looks wrong" or "UI doesn't match design"
-- After CSS framework updates (Tailwind, etc.)
-- When classes exist in HTML but visual output is unexpected
-- Suspecting CSS framework configuration issues
-
-**Regular testing (`npm run test:visual`) when:**
-- After making any CSS/styling changes
-- Before committing UI changes
-- After dependency updates that might affect styling
-- When debugging visual issues across browsers
-
-**Update baselines (`npm run test:visual:update`) when:**
-- Intentionally changing UI design (document why)
-- After fixing confirmed styling framework issues
-- Adding new visual test cases
-- After major refactoring affecting layout
-
-### CSS Framework Validation
-
-**Common Issues to Test For:**
-- Tailwind CSS version compatibility (v3 vs v4 configuration differences)
-- PostCSS configuration correctness
-- CSS imports and build pipeline functioning
-- Custom color classes and gradients working
-
-**Quick CSS Framework Check:**
+### Commands
 ```bash
-# 1. First check if basic Tailwind classes work
-# Look for simple classes like bg-red-500, text-white in browser dev tools
-# 2. If classes aren't applying styles, check:
-npm ls tailwindcss  # Version check
-# 3. Verify PostCSS config matches Tailwind version
-# 4. Run visual tests to see actual output vs expected
-npm run test:visual:update
+npm run test:visual         # Compare against baseline
+npm run test:visual:update  # Update baseline screenshots  
+npm run test:visual:ui      # Interactive debugging
 ```
 
-### Component-Level Testing Strategy
+### When to Run Visual Tests First
+- User reports "UI looks broken" despite correct code
+- After updating Tailwind config or CSS frameworks
+- When styles don't apply despite correct classes
 
-**Test Organization:**
-- **Individual Components**: Navigation, MainApp, UserMenu in isolation
-- **Component States**: Active/inactive buttons, open/closed dropdowns
-- **Integration**: How components work together in layouts  
-- **Responsive**: Multiple viewport sizes
-- **Framework Validation**: Ensure CSS frameworks function correctly
+### Test Coverage
+- `tests/visual.spec.ts` - Main suite with component snapshots
+- `tests/css-framework.spec.ts` - Validates Tailwind/CSS working
+- Tests: components, responsive views, interactive states
 
-### Troubleshooting Visual Issues
+## Current Limitations
 
-**When user reports visual problems:**
-
-1. **Visual First**: Run `npm run test:visual:update` to see current state
-2. **Framework Check**: Verify CSS framework (Tailwind) is working
-3. **Browser Reality**: Check what browser actually renders, not just HTML
-4. **Dependency Audit**: Check if recent updates broke CSS pipeline
-5. **Incremental Testing**: Test components individually to isolate issues
-
-### Running Tests
-```bash
-# Run visual tests (compares against baseline)
-npm run test:visual
-
-# Update baseline screenshots after intentional changes
-npm run test:visual:update
-
-# Interactive UI mode for debugging failures
-npm run test:visual:ui
-
-# Quick screenshot capture for manual review
-node capture-screenshot.js
-
-# Test specific components (when implemented)
-npm run test:visual -- --grep "Navigation"
-```
-
-### Test Files and Structure
-- `tests/visual.spec.ts` - Main visual regression test suite
-- `tests/visual.spec.ts-snapshots/` - Baseline screenshots (version controlled)  
-- `tests/components/` - Component-specific visual tests (planned)
-- `playwright.config.ts` - Playwright configuration with multiple viewports
-- `capture-screenshot.js` - Quick utility for manual screenshots
-
-### Visual Testing Best Practices
-
-1. **Trust Visual Feedback**: If users say UI looks wrong, investigate visually first
-2. **Test Foundations**: Validate CSS frameworks before testing components
-3. **Component Isolation**: Test individual components to isolate issues quickly
-4. **Document Changes**: When updating snapshots, document what changed and why
-5. **Multiple Viewports**: Test responsive behavior across screen sizes
-6. **State Coverage**: Test interactive states (hover, active, open dropdowns)
-
-## Important Notes
-
-- The application uses Next.js App Router for routing
-- Navigation components are client-side for interactivity
-- Mock user data is currently hardcoded in UserMenu component
-- The left navigation currently links to placeholder routes (#)
-- Visual tests ensure UI consistency across changes
-- Barlow font is loaded from Google Fonts for consistent typography
+- Mock user data is hardcoded in UserMenu component
+- Left navigation sidebar links to placeholder routes (#)

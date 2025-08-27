@@ -22,9 +22,9 @@ const UserMenu = () => {
   // Mock user data for now
   const user: User = {
     id: '1',
-    username: 'dariusz',
-    email: 'dariusz@example.com',
-    isAdmin: true,
+    username: 'Caroline',
+    email: 'caroline@example.com',
+    isAdmin: false,
   };
 
   const initial = user.username.charAt(0).toUpperCase();
@@ -41,7 +41,7 @@ const UserMenu = () => {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <button
-          className={`flex h-8 w-8 items-center justify-center rounded-full text-white font-semibold text-sm transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+          className={`flex h-9 w-9 items-center justify-center rounded-full text-white font-medium text-base transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 ${
             user.isAdmin 
               ? 'bg-gradient-to-br from-pink-500 to-pink-700 hover:from-pink-600 hover:to-pink-800 focus:ring-pink-500' 
               : 'bg-gradient-to-br from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 focus:ring-purple-500'
@@ -63,7 +63,7 @@ const UserMenu = () => {
           <>
             <DropdownMenuItem 
               onClick={handleAdminDashboard}
-              className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50"
+              className="cursor-pointer hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
             >
               <Shield className="mr-2 h-4 w-4" />
               <span>Admin Dashboard</span>
@@ -73,7 +73,7 @@ const UserMenu = () => {
         )}
         <DropdownMenuItem 
           onClick={handleLogout}
-          className="cursor-pointer hover:bg-gray-50 focus:bg-gray-50"
+          className="cursor-pointer hover:bg-gray-100 hover:text-gray-900 focus:bg-gray-100 focus:text-gray-900"
         >
           <LogOut className="mr-2 h-4 w-4" />
           <span>Log out</span>

@@ -5,47 +5,66 @@
 @layer base {
   :root {
     --radius: 0.5rem;
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
+    
+    /* Backgrounds */
+    --background: 0 0% 100%;  /* white */
+    --foreground: 0 0% 13%;   /* Xelix black #222222 */
+    
+    /* Cards & Popovers */
     --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
+    --card-foreground: 0 0% 13%;
     --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 271 91% 65%;
+    --popover-foreground: 0 0% 13%;
+    
+    /* Brand Colors */
+    --primary: 271 65% 36%;           /* Xelix purple-900 #5a1899 */
     --primary-foreground: 0 0% 100%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 271 91% 65%;
+    --secondary: 250 89% 58%;         /* Xelix purple-600 #9133f4 */
+    --secondary-foreground: 0 0% 100%;
+    
+    /* Semantic Colors */
+    --muted: 0 0% 97%;                /* Xelix gray-50 #f7f7f7 */
+    --muted-foreground: 0 0% 35%;     /* Xelix gray-900 #585858 */
+    --accent: 316 82% 58%;            /* Xelix pink-500 #eb3fc7 */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 89% 54%;         /* Xelix red-500 #fa3939 */
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Borders & Inputs */
+    --border: 0 0% 89%;               /* Xelix gray-200 #e3e3e3 */
+    --input: 0 0% 89%;                /* Xelix gray-200 #e3e3e3 */
+    --ring: 271 65% 36%;              /* Xelix purple-900 #5a1899 */
   }
   
   .dark {
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 4.9%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 4.9%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 271 91% 65%;
+    /* Backgrounds */
+    --background: 0 0% 13%;           /* Xelix black #222222 */
+    --foreground: 0 0% 97%;           /* Xelix gray-50 #f7f7f7 */
+    
+    /* Cards & Popovers */
+    --card: 0 0% 20%;                 /* Xelix gray-950 #333333 */
+    --card-foreground: 0 0% 97%;
+    --popover: 0 0% 20%;
+    --popover-foreground: 0 0% 97%;
+    
+    /* Brand Colors */
+    --primary: 271 65% 36%;           /* Xelix purple-900 #5a1899 */
     --primary-foreground: 0 0% 100%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 17.5%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 17.5%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 271 91% 65%;
+    --secondary: 250 89% 58%;         /* Xelix purple-600 #9133f4 */
+    --secondary-foreground: 0 0% 100%;
+    
+    /* Semantic Colors */
+    --muted: 0 0% 20%;                /* Xelix gray-950 #333333 */
+    --muted-foreground: 0 0% 67%;     /* Xelix gray-500 #aaaaaa */
+    --accent: 316 82% 58%;            /* Xelix pink-500 #eb3fc7 */
+    --accent-foreground: 0 0% 100%;
+    --destructive: 0 89% 54%;         /* Xelix red-500 #fa3939 */
+    --destructive-foreground: 0 0% 100%;
+    
+    /* Borders & Inputs */
+    --border: 0 0% 35%;               /* Xelix gray-900 #585858 */
+    --input: 0 0% 35%;                /* Xelix gray-900 #585858 */
+    --ring: 271 65% 36%;              /* Xelix purple-900 #5a1899 */
   }
 }
 

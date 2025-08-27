@@ -16,7 +16,7 @@ export default function MainApp({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 flex">
+    <div className="min-h-screen bg-gray-50/60 flex">
       {/* Navigation Sidebar */}
       <Navigation />
       
@@ -25,7 +25,7 @@ export default function MainApp({ children }: { children: React.ReactNode }) {
         {/* Header */}
         <div className="bg-white/90 backdrop-blur-md border-b border-gray-200 shadow-sm">
           <div className="w-full px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center h-14">
+            <div className="flex items-center h-16">
               {/* Navigation Pills */}
               <nav className="flex-1 flex justify-start" aria-label="Tabs">
                 <div className="flex space-x-2">
@@ -34,8 +34,8 @@ export default function MainApp({ children }: { children: React.ReactNode }) {
                     className={`${
                       currentView === 'workspace'
                         ? 'bg-purple-900 text-white'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    } px-3 py-1.5 rounded-full text-sm font-medium transition-colors`}
+                        : 'text-gray-900 hover:text-gray-950 hover:bg-gray-100'
+                    } px-3 py-1.5 rounded-lg text-base font-medium transition-colors`}
                   >
                     Workspace
                   </button>
@@ -44,8 +44,8 @@ export default function MainApp({ children }: { children: React.ReactNode }) {
                     className={`${
                       currentView === 'invoices'
                         ? 'bg-purple-900 text-white'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    } px-3 py-1.5 rounded-full text-sm font-medium transition-colors`}
+                        : 'text-gray-900 hover:text-gray-950 hover:bg-gray-100'
+                    } px-3 py-1.5 rounded-lg text-base font-medium transition-colors`}
                   >
                     Invoices
                   </button>
@@ -54,8 +54,8 @@ export default function MainApp({ children }: { children: React.ReactNode }) {
                     className={`${
                       currentView === 'purchase-orders'
                         ? 'bg-purple-900 text-white'
-                        : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
-                    } px-3 py-1.5 rounded-full text-sm font-medium transition-colors`}
+                        : 'text-gray-900 hover:text-gray-950 hover:bg-gray-100'
+                    } px-3 py-1.5 rounded-lg text-base font-medium transition-colors`}
                   >
                     Purchase Orders
                   </button>
@@ -76,8 +76,8 @@ export default function MainApp({ children }: { children: React.ReactNode }) {
             <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
               <div className="mb-6">
                 <div className="mb-2">
-                  <h1 className="text-2xl font-bold text-gray-900">Invoice Processing Workspace</h1>
-                  <p className="text-sm text-gray-600">Centralized workspace for intelligent invoice processing and workflow management</p>
+                  <h1 className="text-2xl font-bold text-gray-950">Invoice Processing Workspace</h1>
+                  <p className="text-sm text-gray-800">Centralized workspace for intelligent invoice processing and workflow management</p>
                 </div>
               </div>
             </div>
@@ -85,16 +85,16 @@ export default function MainApp({ children }: { children: React.ReactNode }) {
           {currentView === 'invoices' && (
             <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
               <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">Invoices</h1>
-                <p className="text-sm text-gray-600">Manage and process your invoices</p>
+                <h1 className="text-2xl font-bold text-gray-950">Invoices</h1>
+                <p className="text-sm text-gray-800">Manage and process your invoices</p>
               </div>
             </div>
           )}
           {currentView === 'purchase-orders' && (
             <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
               <div className="mb-6">
-                <h1 className="text-2xl font-bold text-gray-900">Purchase Orders</h1>
-                <p className="text-sm text-gray-600">View and manage purchase orders</p>
+                <h1 className="text-2xl font-bold text-gray-950">Purchase Orders</h1>
+                <p className="text-sm text-gray-800">View and manage purchase orders</p>
               </div>
             </div>
           )}

@@ -21,8 +21,8 @@ const TopNavigation = () => {
           className={`${
             isActive('/')
               ? 'bg-purple-600 text-white'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-          } px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200`}
+              : 'text-gray-900 hover:text-gray-950 hover:bg-gray-100'
+          } px-3 py-1.5 rounded-lg text-base font-medium transition-all duration-200`}
         >
           Workspace
         </Link>
@@ -31,8 +31,8 @@ const TopNavigation = () => {
           className={`${
             isActive('/invoices')
               ? 'bg-purple-600 text-white'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-          } px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200`}
+              : 'text-gray-900 hover:text-gray-950 hover:bg-gray-100'
+          } px-3 py-1.5 rounded-lg text-base font-medium transition-all duration-200`}
         >
           Invoices
         </Link>
@@ -41,8 +41,8 @@ const TopNavigation = () => {
           className={`${
             isActive('/purchase-orders')
               ? 'bg-purple-600 text-white'
-              : 'text-gray-500 hover:text-gray-700 hover:bg-gray-100'
-          } px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200`}
+              : 'text-gray-900 hover:text-gray-950 hover:bg-gray-100'
+          } px-3 py-1.5 rounded-lg text-base font-medium transition-all duration-200`}
         >
           Purchase Orders
         </Link>
