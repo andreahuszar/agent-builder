@@ -4,10 +4,10 @@ import React, { useState } from 'react';
 import Navigation from './Navigation';
 import UserMenu from './UserMenu';
 
-type ViewMode = 'workspace' | 'invoices' | 'purchase-orders';
+type ViewMode = 'dashboard' | 'invoices' | 'purchase-orders';
 
 export default function MainApp({ children }: { children: React.ReactNode }) {
-  const [currentView, setCurrentView] = useState<ViewMode>('workspace');
+  const [currentView, setCurrentView] = useState<ViewMode>('dashboard');
 
   const handleViewChange = (view: ViewMode) => {
     setCurrentView(view);
@@ -30,14 +30,14 @@ export default function MainApp({ children }: { children: React.ReactNode }) {
               <nav className="flex-1 flex justify-start" aria-label="Tabs">
                 <div className="flex space-x-2">
                   <button
-                    onClick={() => handleViewChange('workspace')}
+                    onClick={() => handleViewChange('dashboard')}
                     className={`${
-                      currentView === 'workspace'
+                      currentView === 'dashboard'
                         ? 'bg-purple-900 text-white'
                         : 'text-gray-900 hover:text-gray-950 hover:bg-gray-100'
                     } px-3 py-1.5 rounded-lg text-base font-medium transition-colors`}
                   >
-                    Workspace
+                    Dashboard
                   </button>
                   <button
                     onClick={() => handleViewChange('invoices')}
@@ -72,11 +72,11 @@ export default function MainApp({ children }: { children: React.ReactNode }) {
         
         {/* Main Content */}
         <div className="flex-1 pb-8">
-          {currentView === 'workspace' && (
+          {currentView === 'dashboard' && (
             <div className="w-full px-4 sm:px-6 lg:px-8 py-4">
               <div className="mb-6">
                 <div className="mb-2">
-                  <h1 className="text-2xl font-bold text-gray-950">Invoice Processing Workspace</h1>
+                  <h1 className="text-2xl font-bold text-gray-950">Invoice Processing Dashboard</h1>
                   <p className="text-sm text-gray-800">Centralized workspace for intelligent invoice processing and workflow management</p>
                 </div>
               </div>

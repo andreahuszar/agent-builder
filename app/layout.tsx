@@ -9,7 +9,7 @@ const barlow = Barlow({
 });
 
 export const metadata: Metadata = {
-  title: "Invoice Processing Workspace",
+  title: "Invoice Processing Dashboard",
   description: "Centralized workspace for intelligent invoice processing and workflow management",
 };
 
