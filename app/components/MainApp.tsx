@@ -2,13 +2,19 @@
 
 import React, { useState } from 'react';
 import Navigation from './Navigation';
-import UserMenu from './UserMenu';
-import { TAB_ITEMS, TabViewMode } from '@/app/constants/navigation';
+import TopBar from './TopBar';
+import { MODULE_PILLS } from '@/app/constants/navigation';
 
 export default function MainApp() {
-  const [currentView, setCurrentView] = useState<TabViewMode>('dashboard');
+  // Track which module is active (default to invoice-processing)
+  const [activeModule] = useState<string>('invoice-processing');
+  // TODO: Pass setActiveModule to Navigation component when implementing module switching
+  const [currentView, setCurrentView] = useState<string>('dashboard');
 
-  const handleViewChange = (view: TabViewMode) => {
+  // Get pills for the active module
+  const currentPills = MODULE_PILLS[activeModule] || MODULE_PILLS['invoice-processing'];
+
+  const handleViewChange = (view: string) => {
     setCurrentView(view);
     // Update URL without navigation
     window.history.pushState({}, '', `#${view}`);
@@ -21,37 +27,12 @@ export default function MainApp() {
       
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col">
-        {/* Header */}
-        <div className="border-b border-gray-200 bg-white/90 shadow-sm backdrop-blur-md">
-          <div className="w-full px-4 sm:px-6 lg:px-8">
-            <div className="flex h-16 items-center">
-              {/* Navigation Pills */}
-              <nav className="flex flex-1 justify-start" aria-label="Tabs">
-                <div className="flex space-x-2">
-                  {TAB_ITEMS.map((tab) => (
-                    <button
-                      key={tab.id}
-                      onClick={() => handleViewChange(tab.id)}
-                      className={`${
-                        currentView === tab.id
-                          ? 'bg-purple-900 text-white'
-                          : 'text-gray-900 hover:bg-gray-100 hover:text-gray-950'
-                      } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
-                      aria-current={currentView === tab.id ? 'page' : undefined}
-                    >
-                      {tab.label}
-                    </button>
-                  ))}
-                </div>
-              </nav>
-              
-              {/* User Menu */}
-              <div className="flex items-center">
-                <UserMenu />
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Top Bar with Navigation Pills */}
+        <TopBar
+          pills={currentPills}
+          activeView={currentView}
+          onViewChange={handleViewChange}
+        />
         
         {/* Main Content */}
         <div className="flex-1 pb-8">

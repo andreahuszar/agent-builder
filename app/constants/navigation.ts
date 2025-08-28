@@ -71,7 +71,7 @@ export const SETTINGS_NAV_ITEM: NavItem = {
 export type TabViewMode = 'dashboard' | 'invoices' | 'purchase-orders';
 
 export interface TabItem {
-  id: TabViewMode;
+  id: string;
   label: string;
   href: string;
 }
@@ -93,3 +93,44 @@ export const TAB_ITEMS: TabItem[] = [
     href: '/purchase-orders',
   },
 ];
+
+// Module-specific pill configurations
+export const MODULE_PILLS: Record<string, TabItem[]> = {
+  'invoice-processing': [
+    { id: 'dashboard', label: 'Dashboard', href: '/' },
+    { id: 'invoices', label: 'Invoices', href: '/invoices' },
+    { id: 'purchase-orders', label: 'Purchase Orders', href: '/purchase-orders' },
+  ],
+  'transactions': [
+    { id: 'all', label: 'All Transactions', href: '/transactions' },
+    { id: 'pending', label: 'Pending', href: '/transactions/pending' },
+    { id: 'completed', label: 'Completed', href: '/transactions/completed' },
+  ],
+  'statements': [
+    { id: 'monthly', label: 'Monthly Statements', href: '/statements/monthly' },
+    { id: 'quarterly', label: 'Quarterly', href: '/statements/quarterly' },
+    { id: 'annual', label: 'Annual', href: '/statements/annual' },
+  ],
+  'vendors': [
+    { id: 'all', label: 'All Vendors', href: '/vendors' },
+    { id: 'active', label: 'Active', href: '/vendors/active' },
+    { id: 'pending', label: 'Pending Approval', href: '/vendors/pending' },
+    { id: 'archived', label: 'Archived', href: '/vendors/archived' },
+  ],
+  'reports': [
+    { id: 'overview', label: 'Overview', href: '/reports' },
+    { id: 'analytics', label: 'Analytics', href: '/reports/analytics' },
+    { id: 'exports', label: 'Exports', href: '/reports/exports' },
+  ],
+  'helpdesk': [
+    { id: 'inbox', label: 'Inbox', href: '/helpdesk' },
+    { id: 'open', label: 'Open Tickets', href: '/helpdesk/open' },
+    { id: 'resolved', label: 'Resolved', href: '/helpdesk/resolved' },
+  ],
+  'settings': [
+    { id: 'general', label: 'General', href: '/settings' },
+    { id: 'users', label: 'Users', href: '/settings/users' },
+    { id: 'integrations', label: 'Integrations', href: '/settings/integrations' },
+    { id: 'billing', label: 'Billing', href: '/settings/billing' },
+  ],
+};
