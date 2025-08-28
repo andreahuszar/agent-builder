@@ -8,26 +8,26 @@ test.describe('CSS Framework Validation', () => {
       
       // Test that basic Tailwind classes work
       // Check if purple colors are actually applied
-      const workspaceButton = page.locator('button:has-text("Workspace")');
-      await expect(workspaceButton).toBeVisible();
+      const dashboardButton = page.locator('button:has-text("Dashboard")');
+      await expect(dashboardButton).toBeVisible();
       
       // Get computed styles to verify Tailwind is working
-      const bgColor = await workspaceButton.evaluate((el) => {
+      const bgColor = await dashboardButton.evaluate((el) => {
         return window.getComputedStyle(el).backgroundColor;
       });
       
-      // bg-purple-900 should result in rgb(90, 24, 153) - Xelix purple-900
-      expect(bgColor).toContain('rgb(90, 24, 153)'); // Xelix purple-900
+      // bg-purple-900 should result in rgb(90, 24, 153) - active nav pill color
+      expect(bgColor).toContain('rgb(90, 24, 153)'); // purple-900
     });
 
     test('gradient backgrounds are rendered correctly', async ({ page }) => {
       await page.goto('/');
       
       // Check that the linear gradient on sidebar is actually rendered
-      const sidebar = page.locator('div[class*="min-w-16"][class*="flex-shrink-0"]').first();
-      await expect(sidebar).toBeVisible();
+      const navigation = page.locator('nav#main-navigation');
+      await expect(navigation).toBeVisible();
       
-      const bgImage = await sidebar.evaluate((el) => {
+      const bgImage = await navigation.evaluate((el) => {
         return window.getComputedStyle(el).backgroundImage;
       });
       
@@ -83,15 +83,15 @@ test.describe('CSS Framework Validation', () => {
       await page.goto('/');
       
       // Test rounded-full class on navigation pills
-      const workspaceButton = page.locator('button:has-text("Workspace")');
-      await expect(workspaceButton).toBeVisible();
+      const dashboardButton = page.locator('button:has-text("Dashboard")');
+      await expect(dashboardButton).toBeVisible();
       
-      const borderRadius = await workspaceButton.evaluate((el) => {
+      const borderRadius = await dashboardButton.evaluate((el) => {
         return window.getComputedStyle(el).borderRadius;
       });
       
-      // rounded-full should result in 9999px border radius
-      expect(borderRadius).toBe('9999px');
+      // rounded-lg should result in 8px border radius
+      expect(borderRadius).toBe('8px');
     });
 
     test('flexbox classes work correctly', async ({ page }) => {
@@ -112,7 +112,7 @@ test.describe('CSS Framework Validation', () => {
       await page.goto('/');
       
       // Test text sizing and font weights
-      const mainHeading = page.locator('h1:has-text("Invoice Processing Workspace")');
+      const mainHeading = page.locator('h1:has-text("Invoice Processing Dashboard")');
       await expect(mainHeading).toBeVisible();
       
       const fontSize = await mainHeading.evaluate((el) => {
@@ -134,7 +134,7 @@ test.describe('CSS Framework Validation', () => {
       await page.goto('/');
       
       // Test our custom purple colors work
-      const activeButton = page.locator('button[class*="bg-purple-600"]');
+      const activeButton = page.locator('button[class*="bg-purple-900"]').first();
       await expect(activeButton).toBeVisible();
       
       // Take screenshot to visually verify purple colors
@@ -144,11 +144,11 @@ test.describe('CSS Framework Validation', () => {
     test('gradient theme is properly applied', async ({ page }) => {
       await page.goto('/');
       
-      const sidebar = page.locator('div[class*="min-w-16"][class*="flex-shrink-0"]').first();
-      await expect(sidebar).toBeVisible();
+      const navigation = page.locator('nav#main-navigation');
+      await expect(navigation).toBeVisible();
       
       // Visual test for gradient theme
-      await expect(sidebar).toHaveScreenshot('gradient-theme-test.png');
+      await expect(navigation).toHaveScreenshot('gradient-theme-test.png');
     });
   });
 
@@ -171,7 +171,7 @@ test.describe('CSS Framework Validation', () => {
       await page.goto('/');
       
       // Wait for initial render
-      await page.waitForSelector('h1:has-text("Invoice Processing Workspace")');
+      await page.waitForSelector('h1:has-text("Invoice Processing Dashboard")');
       
       // Check that CSS is loaded by verifying styles are applied
       const hasStyles = await page.evaluate(() => {

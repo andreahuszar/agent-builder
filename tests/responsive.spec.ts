@@ -94,6 +94,36 @@ test.describe('Responsive Visual Tests', () => {
         ViewportHelpers.STANDARD_VIEWPORTS
       );
     });
+
+    test('helpdesk content across viewports', async ({ page }) => {
+      await page.goto('/helpdesk');
+      
+      const { component, viewport } = createTestHelpers(page);
+      await component.waitForPageLoad();
+      
+      const mainContent = await component.getMainContent();
+      
+      await viewport.testResponsiveComponent(
+        mainContent,
+        'main-content-helpdesk',
+        ViewportHelpers.STANDARD_VIEWPORTS
+      );
+    });
+
+    test('settings content across viewports', async ({ page }) => {
+      await page.goto('/settings');
+      
+      const { component, viewport } = createTestHelpers(page);
+      await component.waitForPageLoad();
+      
+      const mainContent = await component.getMainContent();
+      
+      await viewport.testResponsiveComponent(
+        mainContent,
+        'main-content-settings',
+        ViewportHelpers.STANDARD_VIEWPORTS
+      );
+    });
   });
 
   test.describe('User Menu Responsive Behavior', () => {
@@ -181,8 +211,8 @@ test.describe('Responsive Visual Tests', () => {
           animations: 'disabled'
         });
         
-        // Return to workspace
-        await navigation.navigateTo('Workspace');
+        // Return to dashboard
+        await navigation.navigateTo('Dashboard');
       }
     });
   });

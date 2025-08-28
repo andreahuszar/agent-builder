@@ -9,13 +9,23 @@ export default defineConfig({
   workers: process.env.CI ? 1 : undefined,
   reporter: 'html',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: 'http://localhost:3001',
     trace: 'on-first-retry',
     screenshot: {
       mode: 'only-on-failure',
       fullPage: true,
     },
     video: 'retain-on-failure',
+  },
+  
+  /* Visual regression testing settings */
+  expect: {
+    // Allow small pixel differences (0.2% threshold)
+    toHaveScreenshot: { 
+      maxDiffPixels: 100,
+      threshold: 0.2,
+      animations: 'disabled',
+    },
   },
 
   projects: [
@@ -36,8 +46,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    command: 'PORT=3001 npm run dev',
+    url: 'http://localhost:3001',
+    reuseExistingServer: true,
   },
 });

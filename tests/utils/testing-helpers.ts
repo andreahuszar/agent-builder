@@ -12,7 +12,7 @@ export class NavigationHelpers {
    * Get the left sidebar navigation element
    */
   async getSidebar(): Promise<Locator> {
-    const sidebar = this.page.locator('div[class*="min-w-16"][class*="flex-shrink-0"]').first();
+    const sidebar = this.page.locator('nav#main-navigation');
     await expect(sidebar).toBeVisible();
     return sidebar;
   }
@@ -38,13 +38,13 @@ export class NavigationHelpers {
   /**
    * Navigate to a specific view using the top navigation pills
    */
-  async navigateTo(view: 'Workspace' | 'Invoices' | 'Purchase Orders'): Promise<void> {
+  async navigateTo(view: 'Dashboard' | 'Invoices' | 'Purchase Orders'): Promise<void> {
     const button = this.page.locator(`button:has-text("${view}")`);
     await button.click();
     
     // Wait for the view to load based on expected heading
     const expectedHeadings = {
-      'Workspace': 'Invoice Processing Workspace',
+      'Dashboard': 'Invoice Processing Dashboard',
       'Invoices': 'Invoices', 
       'Purchase Orders': 'Purchase Orders'
     };
@@ -55,9 +55,9 @@ export class NavigationHelpers {
   /**
    * Verify which navigation pill is currently active
    */
-  async verifyActivePill(expectedActive: 'Workspace' | 'Invoices' | 'Purchase Orders'): Promise<void> {
+  async verifyActivePill(expectedActive: 'Dashboard' | 'Invoices' | 'Purchase Orders'): Promise<void> {
     const activeButton = this.page.locator(`button:has-text("${expectedActive}")`);
-    await expect(activeButton).toHaveClass(/bg-purple-600/);
+    await expect(activeButton).toHaveClass(/bg-purple-900/);
   }
 
   /**
@@ -69,6 +69,34 @@ export class NavigationHelpers {
     await expect(item).toBeVisible();
     return item;
   }
+
+  /**
+   * Test keyboard shortcut navigation
+   */
+  async testKeyboardShortcut(shortcutNumber: string): Promise<void> {
+    const isMac = await this.page.evaluate(() => navigator.platform.toUpperCase().indexOf('MAC') >= 0);
+    const modKey = isMac ? 'Meta' : 'Control';
+    await this.page.keyboard.press(`${modKey}+${shortcutNumber}`);
+    await this.page.waitForTimeout(100);
+  }
+
+  /**
+   * Check if a tooltip is visible for an element
+   */
+  async checkTooltipVisible(element: Locator, expectedText?: string): Promise<boolean> {
+    await element.hover();
+    await this.page.waitForTimeout(100);
+    
+    const tooltip = this.page.locator('div[role="tooltip"]').first();
+    const isVisible = await tooltip.isVisible();
+    
+    if (isVisible && expectedText) {
+      const text = await tooltip.textContent();
+      return text?.includes(expectedText) ?? false;
+    }
+    
+    return isVisible;
+  }
 }
 
 export class UserMenuHelpers {
@@ -78,7 +106,7 @@ export class UserMenuHelpers {
    * Get the user menu button
    */
   async getUserButton(): Promise<Locator> {
-    const button = this.page.locator('button[title="dariusz"]');
+    const button = this.page.locator('button[title="Caroline"]');
     await expect(button).toBeVisible();
     return button;
   }
@@ -89,7 +117,7 @@ export class UserMenuHelpers {
   async openUserMenu(): Promise<void> {
     const button = await this.getUserButton();
     await button.click();
-    await this.page.waitForSelector('text=dariusz@example.com');
+    await this.page.waitForSelector('text=caroline@xelix.com');
   }
 
   /**
@@ -103,7 +131,7 @@ export class UserMenuHelpers {
    * Verify the user menu is closed
    */
   async verifyMenuClosed(): Promise<void> {
-    const dropdown = this.page.locator('text=dariusz@example.com');
+    const dropdown = this.page.locator('text=caroline@xelix.com');
     await expect(dropdown).not.toBeVisible();
   }
 
@@ -111,7 +139,7 @@ export class UserMenuHelpers {
    * Verify the user menu is open
    */
   async verifyMenuOpen(): Promise<void> {
-    const dropdown = this.page.locator('text=dariusz@example.com');
+    const dropdown = this.page.locator('text=caroline@xelix.com');
     await expect(dropdown).toBeVisible();
   }
 }
@@ -157,15 +185,15 @@ export class CSSValidationHelpers {
    */
   async verifyTailwindWorking(): Promise<boolean> {
     // Check a simple Tailwind class is applied
-    const workspaceButton = this.page.locator('button:has-text("Workspace")');
-    await expect(workspaceButton).toBeVisible();
+    const dashboardButton = this.page.locator('button:has-text("Dashboard")');
+    await expect(dashboardButton).toBeVisible();
     
-    const bgColor = await workspaceButton.evaluate((el) => {
+    const bgColor = await dashboardButton.evaluate((el) => {
       return window.getComputedStyle(el).backgroundColor;
     });
     
-    // bg-purple-600 should be applied
-    return bgColor.includes('rgb(147, 51, 234)');
+    // bg-purple-900 should be applied
+    return bgColor.includes('rgb(90, 24, 153)');
   }
 
   /**
@@ -255,6 +283,92 @@ export class ViewportHelpers {
   ] as const;
 }
 
+export class AccessibilityHelpers {
+  constructor(private page: Page) {}
+
+  /**
+   * Check if skip links are present
+   */
+  async verifySkipLinks(): Promise<void> {
+    const skipToMain = this.page.locator('a[href="#main-content"]');
+    await expect(skipToMain).toHaveCount(1);
+    
+    const skipToNav = this.page.locator('a[href="#main-navigation"]');
+    await expect(skipToNav).toHaveCount(1);
+  }
+
+  /**
+   * Check ARIA attributes on navigation
+   */
+  async verifyNavigationAria(): Promise<void> {
+    const mainNav = this.page.locator('nav#main-navigation');
+    await expect(mainNav).toHaveAttribute('role', 'navigation');
+    await expect(mainNav).toHaveAttribute('aria-label', 'Main navigation');
+  }
+
+  /**
+   * Check if element has proper ARIA label
+   */
+  async verifyAriaLabel(element: Locator, expectedLabel: string): Promise<void> {
+    const ariaLabel = await element.getAttribute('aria-label');
+    expect(ariaLabel).toContain(expectedLabel);
+  }
+
+  /**
+   * Test keyboard navigation
+   */
+  async testTabNavigation(): Promise<void> {
+    await this.page.keyboard.press('Tab');
+    const focusedElement = await this.page.evaluate(() => document.activeElement?.tagName);
+    expect(focusedElement).toBeTruthy();
+  }
+}
+
+export class AnimationHelpers {
+  constructor(private page: Page) {}
+
+  /**
+   * Wait for and verify red flash animation on disabled items
+   */
+  async verifyRedFlashAnimation(element: Locator): Promise<void> {
+    await element.click();
+    
+    // Should have red flash immediately
+    await expect(element).toHaveClass(/bg-red-500\/20/);
+    
+    // Wait for animation to complete
+    await this.page.waitForTimeout(900);
+    
+    // Should no longer have red background
+    await expect(element).not.toHaveClass(/bg-red-500\/20/);
+  }
+
+  /**
+   * Test sidebar expansion animation
+   */
+  async testSidebarExpansion(): Promise<void> {
+    const sidebar = this.page.locator('div.w-16').first();
+    const navigation = this.page.locator('nav#main-navigation');
+    
+    // Initially collapsed
+    await expect(navigation).toHaveClass(/w-16/);
+    
+    // Hover to expand
+    await sidebar.hover();
+    await this.page.waitForTimeout(350);
+    
+    // Should be expanded
+    await expect(navigation).toHaveClass(/w-64/);
+    
+    // Move mouse away
+    await this.page.mouse.move(500, 300);
+    await this.page.waitForTimeout(100);
+    
+    // Should collapse
+    await expect(navigation).toHaveClass(/w-16/);
+  }
+}
+
 /**
  * Factory function to create all helper classes for a page
  */
@@ -264,7 +378,9 @@ export function createTestHelpers(page: Page) {
     userMenu: new UserMenuHelpers(page),
     component: new ComponentHelpers(page),
     css: new CSSValidationHelpers(page),
-    viewport: new ViewportHelpers(page)
+    viewport: new ViewportHelpers(page),
+    accessibility: new AccessibilityHelpers(page),
+    animation: new AnimationHelpers(page)
   };
 }
 
@@ -299,8 +415,8 @@ export const CommonTestPatterns = {
     await navigation.navigateTo('Purchase Orders');
     await navigation.verifyActivePill('Purchase Orders');
     
-    await navigation.navigateTo('Workspace');
-    await navigation.verifyActivePill('Workspace');
+    await navigation.navigateTo('Dashboard');
+    await navigation.verifyActivePill('Dashboard');
   },
 
   /**
