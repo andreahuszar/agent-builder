@@ -16,8 +16,8 @@ test.describe('CSS Framework Validation', () => {
         return window.getComputedStyle(el).backgroundColor;
       });
       
-      // bg-purple-900 should result in rgb(88, 28, 135) or similar darker purple
-      expect(bgColor).toContain('rgb(88, 28, 135)'); // Tailwind purple-900
+      // bg-purple-900 should result in rgb(90, 24, 153) - Xelix purple-900
+      expect(bgColor).toContain('rgb(90, 24, 153)'); // Xelix purple-900
     });
 
     test('gradient backgrounds are rendered correctly', async ({ page }) => {

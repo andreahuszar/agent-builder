@@ -44,6 +44,14 @@ next-env.d.ts
 /playwright-report/
 /test-results/
 
+# debug and development test files
+/test-debug/
+*.debug.png
+*.test.js
+capture-*.js
+test-*.js
+sidebar-*.png
+
 # temporary files
 current-state.png
 
