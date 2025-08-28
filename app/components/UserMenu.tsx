@@ -47,8 +47,12 @@ const UserMenu = () => {
               : 'bg-gradient-to-br from-purple-600 to-purple-800 hover:from-purple-700 hover:to-purple-900 focus:ring-purple-500'
           }`}
           title={user.username}
+          aria-label={`User menu for ${user.username}`}
+          aria-expanded="false"
+          aria-haspopup="menu"
         >
           {initial}
+          <span className="sr-only">{user.username}</span>
         </button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-56 bg-white">

@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { memo } from 'react';
 import NavigationPills from './NavigationPills';
 import UserMenu from './UserMenu';
 import { TabItem } from '@/app/constants/navigation';
@@ -11,7 +11,7 @@ interface TopBarProps {
   onViewChange: (view: string) => void;
 }
 
-const TopBar: React.FC<TopBarProps> = ({
+const TopBar: React.FC<TopBarProps> = memo(({
   pills,
   activeView,
   onViewChange,
@@ -35,6 +35,8 @@ const TopBar: React.FC<TopBarProps> = ({
       </div>
     </div>
   );
-};
+});
+
+TopBar.displayName = 'TopBar';
 
 export default TopBar;

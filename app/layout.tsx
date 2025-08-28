@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Barlow } from "next/font/google";
 import "./globals.css";
+import SkipLinks from "@/app/components/SkipLinks";
+import { WebVitals } from "@/app/components/WebVitals";
 
 const barlow = Barlow({
   weight: ['400', '500', '600', '700'],
@@ -21,6 +23,8 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body className={`${barlow.className} antialiased`}>
+        <WebVitals />
+        <SkipLinks />
         {children}
       </body>
     </html>

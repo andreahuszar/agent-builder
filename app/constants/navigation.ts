@@ -16,6 +16,7 @@ export interface NavItem {
   icon: LucideIcon;
   href: string;
   isActive?: boolean;
+  isDisabled?: boolean;
 }
 
 // Main Navigation Items
@@ -32,24 +33,28 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Transactions',
     icon: ArrowLeftRight,
     href: '/transactions',
+    isDisabled: true,
   },
   {
     id: 'statements',
     label: 'Statements',
     icon: FileCheck,
     href: '/statements',
+    isDisabled: true,
   },
   {
     id: 'vendors',
     label: 'Vendors',
     icon: Building,
     href: '/vendors',
+    isDisabled: true,
   },
   {
     id: 'reports',
     label: 'Reports',
     icon: TrendingUp,
     href: '/reports',
+    isDisabled: true,
   },
   {
     id: 'helpdesk',
@@ -124,13 +129,9 @@ export const MODULE_PILLS: Record<string, TabItem[]> = {
   ],
   'helpdesk': [
     { id: 'inbox', label: 'Inbox', href: '/helpdesk' },
-    { id: 'open', label: 'Open Tickets', href: '/helpdesk/open' },
-    { id: 'resolved', label: 'Resolved', href: '/helpdesk/resolved' },
+    { id: 'kanban', label: 'Kanban', href: '/helpdesk/kanban' },
   ],
   'settings': [
-    { id: 'general', label: 'General', href: '/settings' },
-    { id: 'users', label: 'Users', href: '/settings/users' },
-    { id: 'integrations', label: 'Integrations', href: '/settings/integrations' },
-    { id: 'billing', label: 'Billing', href: '/settings/billing' },
+    { id: 'automation', label: 'Automation', href: '/settings' },
   ],
 };

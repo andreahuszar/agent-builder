@@ -144,8 +144,7 @@ export class ComponentHelpers {
    */
   async takeComponentScreenshot(locator: Locator, filename: string): Promise<void> {
     await expect(locator).toHaveScreenshot(filename, {
-      animations: 'disabled',
-      clip: undefined // Let Playwright determine the bounds
+      animations: 'disabled'
     });
   }
 }
