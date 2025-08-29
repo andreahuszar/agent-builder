@@ -4,7 +4,32 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Invoice Processing Workspace - A Next.js application with a clean navigation structure for invoice and purchase order management. Built with TypeScript, Tailwind CSS, and Radix UI components.
+**End-to-End Invoice Processing Application** - A comprehensive Next.js application for managing the complete invoice lifecycle, from document scanning to payment processing. Features AI-powered invoice extraction via computer vision, structured data storage, automated workflows, and intelligent document processing. Built with TypeScript, Tailwind CSS, PostgreSQL, and integrated with both OpenAI and Anthropic AI services.
+
+## ⚠️ IMPORTANT: Already Implemented Services
+
+**DO NOT recreate or duplicate these services - they are FULLY IMPLEMENTED and ready to use:**
+
+### ✅ Database (PostgreSQL + Prisma)
+- Complete database setup with models for Invoice, PurchaseOrder, User
+- Local development with Docker
+- Automatic migrations on Railway deployment
+- Use existing Prisma client at `@/lib/db`
+
+### ✅ OpenAI Integration (GPT-4 Turbo)
+- Full service layer at `/lib/openai`
+- API routes at `/api/openai/*`
+- React hooks: `useOpenAI`, `useChat`
+- Configured for GPT-4 Turbo model
+
+### ✅ Anthropic Integration (Claude 3.5 + Vision)
+- Complete Vision support for invoice scanning
+- Service layer at `/lib/anthropic`
+- API routes at `/api/anthropic/*`
+- React hooks: `useAnthropic`, `useAnthropicVision`
+- Invoice extraction ready at `/api/anthropic/extract-invoice`
+
+**When implementing new features, USE these existing services rather than creating new ones.**
 
 ## Development Setup
 
@@ -12,24 +37,199 @@ Invoice Processing Workspace - A Next.js application with a clean navigation str
 # Install dependencies
 npm install
 
-# Run development server
-npm run dev
+# Start local PostgreSQL database
+npm run db:dev
+
+# Run development server (uses port 3001 locally)
+PORT=3001 npm run dev
+
+# Open Prisma Studio to view/edit database
+npm run db:studio
 
 # Build for production
 npm run build
-
-# Run production build
-npm run preview
 ```
 
 ## Key Commands
 
-- `npm run dev` - Start development server (default port 3000)
+### Application
+- `PORT=3001 npm run dev` - Start development server on port 3001
 - `npm run build` - Build for production
 - `npm run lint` - Run ESLint
 - `npm run test:visual` - Run Playwright visual regression tests
 - `npm run test:visual:update` - Update visual test baseline screenshots
 - `npm run test:visual:ui` - Open Playwright UI mode for interactive testing
+
+### Database
+- `npm run db:dev` - Start PostgreSQL in Docker
+- `npm run db:down` - Stop PostgreSQL container
+- `npm run db:studio` - Open Prisma Studio GUI (port 5555)
+- `npm run db:migrate:dev` - Create and apply migrations (development)
+- `npm run db:migrate:deploy` - Apply migrations (production)
+- `npm run db:push` - Push schema changes without migration
+- `npm run db:seed` - Seed database with sample data
+
+## Technology Stack
+
+### Core
+- **Framework**: Next.js 15 with App Router
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS with custom Xelix purple theme
+- **UI Components**: Radix UI primitives
+- **Icons**: Lucide React
+
+### Database
+- **Database**: PostgreSQL
+- **ORM**: Prisma
+- **Local Development**: Docker Compose
+- **Connection Pooling**: Built-in with Prisma
+
+### AI Services
+- **OpenAI**: GPT-4 Turbo for text processing
+- **Anthropic**: Claude 3.5 Sonnet with Vision for invoice extraction
+- **Image Processing**: Support for JPEG, PNG, GIF, WebP
+
+### Deployment
+- **Platform**: Railway
+- **CI/CD**: Automatic deployment on push to main
+- **Database**: Railway PostgreSQL service
+
+## Database Schema
+
+```prisma
+// Main models ready for use:
+
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique
+  vendorName    String
+  amount        Decimal
+  currency      String   @default("USD")
+  status        String   @default("pending")
+  dueDate       DateTime
+  // ... full schema in prisma/schema.prisma
+}
+
+model PurchaseOrder {
+  id          String   @id @default(cuid())
+  poNumber    String   @unique
+  vendorName  String
+  totalAmount Decimal
+  status      String   @default("draft")
+  // ... full schema in prisma/schema.prisma
+}
+```
+
+## Project Structure
+
+```
+/app
+  /api               # API Routes
+    /anthropic       # Anthropic AI endpoints
+      /chat          # Claude chat endpoint
+      /vision        # Image analysis endpoint
+      /extract-invoice # Invoice extraction endpoint
+    /openai          # OpenAI endpoints
+      /chat          # GPT-4 chat endpoint
+      /validate      # API key validation
+    /test-db         # Database connection test
+  /components        # Reusable components
+    /ai              # AI-specific components
+      ApiKeyInput.tsx # OpenAI key management
+      AnthropicApiKeyInput.tsx # Anthropic key management
+      InvoiceScanner.tsx # Vision-based invoice scanner
+      ChatInterface.tsx # AI chat interface
+    /ui              # UI primitives (tooltip, dropdown-menu, etc.)
+    Navigation.tsx   # Left sidebar navigation
+    UserMenu.tsx     # User profile dropdown
+  /hooks             # Custom React hooks
+    useOpenAI.ts     # OpenAI integration hook
+    useAnthropic.ts  # Anthropic integration hook
+    useAnthropicVision.ts # Vision processing hook
+    useChat.ts       # Chat functionality hook
+  /invoices          # Invoices page
+  /purchase-orders   # Purchase orders page
+  /settings          # Settings page with AI configuration
+  
+/lib
+  /anthropic         # Anthropic service layer
+    client.ts        # Anthropic client initialization
+    service.ts       # Service methods including Vision
+    types.ts         # TypeScript types
+    config.ts        # Model configuration
+  /openai            # OpenAI service layer
+    client.ts        # OpenAI client initialization
+    service.ts       # Service methods
+    types.ts         # TypeScript types
+    config.ts        # Model configuration
+  /db                # Database layer
+    prisma.ts        # Prisma client singleton
+    index.ts         # Database exports
+    
+/prisma
+  schema.prisma      # Database schema
+  /migrations        # Database migrations
+  seed.ts            # Database seeding script
+  
+/public              # Static assets
+/tests               # Test suites
+  visual.spec.ts     # Visual regression tests
+```
+
+## AI Services Integration
+
+### OpenAI (GPT-4 Turbo)
+```typescript
+// Already implemented - just use it!
+import { useOpenAI } from '@/app/hooks/useOpenAI';
+
+const { sendMessage } = useOpenAI();
+const response = await sendMessage(messages);
+```
+
+### Anthropic Vision (Invoice Extraction)
+```typescript
+// Already implemented - just use it!
+import { useAnthropicVision } from '@/app/hooks/useAnthropicVision';
+
+const { extractInvoice } = useAnthropicVision();
+const invoiceData = await extractInvoice(file);
+// Returns structured data with vendor, items, totals, etc.
+```
+
+### Available API Endpoints
+- `POST /api/anthropic/extract-invoice` - Extract invoice data from image
+- `POST /api/anthropic/vision` - General image analysis
+- `POST /api/anthropic/chat` - Chat with Claude
+- `POST /api/openai/chat` - Chat with GPT-4
+- `GET /api/test-db` - Test database connection
+
+## Railway Deployment
+
+### Environment Variables (Set in Railway)
+```env
+# Database (automatically set by Railway)
+DATABASE_URL=${{xelix-postgres.DATABASE_PRIVATE_URL}}
+
+# AI Services (add your keys)
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+```
+
+### Deployment Process
+1. Push to main branch on GitHub
+2. Railway automatically:
+   - Pulls latest code
+   - Runs `npm install` and `prisma generate`
+   - Builds with `next build`
+   - Runs database migrations
+   - Starts the application
+
+### Database Migrations
+Migrations run automatically on deployment via the start command:
+```json
+"start": "npx prisma migrate deploy && next start"
+```
 
 ## Development Workflow & Testing Strategy
 
@@ -41,365 +241,109 @@ npm run preview
 3. **Before saying "done"** → Tests are the final verification
 4. **After dependency updates** → Especially CSS-related packages
 
-### The Golden Rule: Test → Fix → Update
-```
-1. Run tests first: npm run test:visual
-2. If tests fail:
-   - Expected change? → Update baselines: npm run test:visual:update
-   - Unexpected? → Fix the issue, then re-test
-3. Never skip tests thinking "it looks fine in browser"
-```
+### Working with Existing Services
 
-### When to Update Baselines
-**ONLY update snapshots (`npm run test:visual:update`) when:**
-- ✅ The visual change was intentional (new design)
-- ✅ You've verified the change looks correct in browser
-- ✅ The change is part of the requested task
-
-**NEVER update snapshots when:**
-- ❌ Tests fail unexpectedly
-- ❌ You haven't checked the actual UI
-- ❌ You're "just trying to make tests pass"
-
-### Workflow Integration
-Consider the task incomplete until:
-1. Code changes done
-2. Visual tests pass OR baselines intentionally updated
-3. Browser verification matches test results
-
-## Architecture
-
-### Technology Stack
-- **Framework**: Next.js 15 with App Router
-- **Language**: TypeScript
-- **Styling**: Tailwind CSS with custom purple theme
-- **UI Components**: Radix UI primitives
-- **Icons**: Lucide React
-
-### Project Structure
-```
-/app
-  /components       # Reusable components
-    /ui            # UI primitives (tooltip, dropdown-menu, etc.)
-    Navigation.tsx # Left sidebar navigation with tooltips
-    NavigationPills.tsx # Reusable navigation pills component
-    TopNavigation.tsx # Top navigation pills (deprecated)
-    UserMenu.tsx   # User profile dropdown
-    WebVitals.tsx  # Performance monitoring component
-    AppLayout.tsx  # Module layout wrapper
-  /hooks           # Custom React hooks
-    useKeyboardNavigation.ts # Cross-platform keyboard shortcuts
-  /utils           # Utility functions
-    accessibility.ts # ARIA helpers and screen reader utils
-    performance.ts # Performance monitoring utilities
-  /constants       # Application constants
-    navigation.ts  # Navigation configuration
-  /invoices        # Invoices page
-  /purchase-orders # Purchase orders page
-  /helpdesk        # Helpdesk module page
-  /settings        # Settings page
-  layout.tsx       # Root layout with navigation
-  page.tsx         # Home/Workspace page
-  globals.css      # Global styles and CSS variables
-/lib
-  utils.ts         # Utility functions (cn for className merging)
-/plans            # Future improvement documentation
-  *.md            # Detailed improvement plans
-/public            # Static assets
-/tests
-  /utils          # Testing utilities
-    testing-helpers.ts # Reusable test patterns
-```
-
-### Key Design Patterns
-
-1. **Navigation Structure** (Two-tier hierarchy):
-   - **Left sidebar (64px)**: Primary module icons (Invoice Processing, Transactions, Statements, etc.)
-   - **Top bar pills**: Secondary navigation - changes based on active sidebar module
-   - **Parent→Child flow**: Sidebar icon selection → reveals module-specific pill tabs
-   - **Example**: Invoice Processing (sidebar) → Workspace/Invoices/Purchase Orders (pills)
-   - Active states: purple-900 (sidebar), purple-600 (pills)
-
-2. **Styling Approach**:
-   - Purple gradient theme for navigation
-   - Tailwind CSS with custom configuration
-   - CSS variables for theming support
-   - Radix UI for accessible components
-   - Barlow font from Google Fonts
-
-3. **Component Organization**:
-   - Client components marked with 'use client' (navigation for interactivity)
-   - Server components by default
-   - UI primitives in separate /ui directory
-
-4. **DRY Principle (Don't Repeat Yourself)**:
-   
-   **Extract reusable components and utilities to avoid duplication:**
-   
-   ```tsx
-   // ❌ BAD - Repeated code
-   // File: invoices/page.tsx
-   <nav className="flex gap-2">
-     <button className="px-4 py-2 bg-purple-600">Tab 1</button>
-     <button className="px-4 py-2 bg-gray-200">Tab 2</button>
-   </nav>
-   
-   // File: purchase-orders/page.tsx  
-   <nav className="flex gap-2">
-     <button className="px-4 py-2 bg-purple-600">Tab A</button>
-     <button className="px-4 py-2 bg-gray-200">Tab B</button>
-   </nav>
-   
-   // ✅ GOOD - Reusable component
-   // File: components/NavigationPills.tsx
-   export const NavigationPills = ({ items, activeView, onViewChange }) => (
-     <nav className="flex gap-2">
-       {items.map(item => (
-         <button 
-           className={activeView === item.id ? 'bg-purple-600' : 'bg-gray-200'}
-           onClick={() => onViewChange(item.id)}
-         >
-           {item.label}
-         </button>
-       ))}
-     </nav>
-   );
-   ```
-   
-   **Key DRY practices in this codebase:**
-   - **Shared constants**: Navigation items, colors, dimensions in `/app/constants/`
-   - **Utility functions**: `cn()` for className merging, accessibility helpers
-   - **Reusable hooks**: `useKeyboardNavigation` for consistent keyboard shortcuts
-   - **Component composition**: `AppLayout` wrapper for module pages
-   - **Style utilities**: Tailwind classes and CSS variables instead of inline styles
-   - **Type definitions**: Shared interfaces to ensure consistency
+When adding new features:
+1. **Check if service exists** - Database, OpenAI, and Anthropic are ready
+2. **Use existing hooks** - Don't create new API integrations
+3. **Follow patterns** - Look at existing implementations
+4. **Test locally** - Use `PORT=3001 npm run dev`
+5. **Check database** - Use `npm run db:studio` to view data
 
 ## Design System
 
 The project uses a centralized Xelix brand color system defined in `tailwind.config.ts`.
 
-### Usage Guidelines:
+### Key Colors
+- **Primary**: Purple-900 (#5a1899)
+- **Secondary**: Purple-600
+- **Navigation Gradient**: `bg-brand-gradient`
+
+### Usage Guidelines
 - **ALWAYS** use colors from the centralized Xelix palette
-- Use semantic color aliases (brand.primary, brand.secondary) for brand-specific usage
 - **NEVER** hardcode RGB/hex values directly in components
-- Extend the color system in `tailwind.config.ts` when new colors are needed
-- Prefer existing color shades over creating new ones
-
-### Color Architecture:
-- **Brand Colors**: Complete Xelix color palettes (purple, gray, blue, green, orange, red, pink)
-- **Semantic Aliases**: `brand.primary` (purple-900), `brand.secondary` (purple-600), `brand.accent` (pink-500)
-- **CSS Variables**: Maps to Xelix colors for theming support
-- **Gradient Utilities**: Pre-defined brand gradients (`bg-brand-gradient`)
-
-### Available Color Tokens:
-- **Primary Brand**: Purple scale (50-950) with purple-900 (#5a1899) as main
-- **Neutral**: Gray scale (50-950) from Xelix palette
-- **Semantic**: 
-  - Success: Green scale
-  - Error: Red scale
-  - Warning: Orange scale
-  - Info: Blue scale
-  - Accent: Pink scale
-- **Navigation Gradient**: `bg-brand-gradient` for sidebar
-
-### Example Usage:
-```tsx
-// ✅ GOOD - Using centralized colors
-<button className="bg-purple-900 text-white">
-<div className="bg-brand-gradient">
-<p className="text-gray-600">
-
-// ❌ BAD - Hardcoding colors
-<button className="bg-[#5a1899]">
-<div className="bg-[linear-gradient(...)]">
-```
+- Extend the color system in `tailwind.config.ts` when needed
 
 ## Performance Standards
 
-### Component Performance Requirements
+### Targets
+- **Bundle Size**: First load JS < 200KB (currently ~150KB)
+- **Web Vitals**: LCP < 2.5s, FID < 100ms, CLS < 0.1
+- **Database Queries**: Use Prisma's query optimization
+- **Image Processing**: Max 10MB, automatic format validation
 
-**ALL new components MUST implement performance optimizations:**
-
-1. **Memoization**: Use `React.memo()` for components that re-render frequently
-   ```tsx
-   // ✅ GOOD - Memoized component
-   export default memo(MyComponent);
-   
-   // For custom comparison
-   export default memo(MyComponent, (prev, next) => {
-     return prev.id === next.id; // Only re-render on id change
-   });
-   ```
-
-2. **Event Handler Optimization**: Debounce/throttle expensive operations
-   ```tsx
-   import { debounce, throttle } from '@/app/utils/performance';
-   
-   const handleSearch = debounce((term: string) => {
-     // Search logic
-   }, 300);
-   ```
-
-3. **Lazy Loading**: Use dynamic imports for heavy components
-   ```tsx
-   const HeavyComponent = dynamic(() => import('./HeavyComponent'), {
-     loading: () => <Skeleton />,
-   });
-   ```
-
-### Performance Targets
-- **Bundle Size**: First load JS < 200KB
-- **Web Vitals**: 
-  - LCP < 2.5s
-  - FID < 100ms
-  - CLS < 0.1
-- **Component Render**: < 16ms (60fps)
-
-### Performance Monitoring
-- Web Vitals are automatically tracked via `WebVitals` component
-- Use `measureRenderTime()` for debugging slow components
-- Monitor with: `npm run build && npx next-bundle-analyzer`
+### Optimizations
+- React.memo for frequently re-rendering components
+- Debounce/throttle for search and input handlers
+- Lazy loading for heavy components
+- Server-side API routes for security
 
 ## Accessibility Standards
 
 ### WCAG 2.1 AA Compliance
-
-**ALL components MUST meet accessibility requirements:**
-
-1. **ARIA Attributes** (Required)
-   ```tsx
-   // Navigation example
-   <nav role="navigation" aria-label="Main navigation">
-     <button aria-current={isActive ? 'page' : undefined}>
-   ```
-
-2. **Keyboard Navigation**
-   - All interactive elements keyboard accessible
-   - Implement focus management
-   - Support standard shortcuts (Tab, Enter, Escape, Arrow keys)
-   - Platform-specific modifiers (Cmd on Mac, Ctrl on Windows/Linux)
-
-3. **Screen Reader Support**
-   ```tsx
-   import { announceToScreenReader } from '@/app/utils/accessibility';
-   
-   // Announce dynamic changes
-   announceToScreenReader('Navigation menu expanded');
-   ```
-
-4. **Skip Links** (Required for navigation-heavy pages)
-   ```tsx
-   <a href="#main-content" className="sr-only focus:not-sr-only">
-     Skip to main content
-   </a>
-   ```
-
-### Accessibility Checklist
-- [ ] Semantic HTML elements used
-- [ ] ARIA labels for all interactive elements
-- [ ] Keyboard navigation fully functional
-- [ ] Focus indicators visible
-- [ ] Screen reader announcements for state changes
-- [ ] Color contrast ratio ≥ 4.5:1 for text
-- [ ] Alt text for all images
-- [ ] Error messages associated with form fields
-
-### Testing Accessibility
-```bash
-# Manual testing
-- Navigate with keyboard only
-- Test with screen reader (VoiceOver/NVDA)
-- Check color contrast with browser DevTools
-
-# Automated testing
-- Playwright accessibility tests
-- axe-core integration
-```
-
-## Visual Testing with Playwright
-
-**Key Principle**: Visual tests catch CSS framework failures that code inspection misses. Always verify actual rendering, not just HTML classes.
-
-### Commands
-```bash
-npm run test:visual         # Compare against baseline
-npm run test:visual:update  # Update baseline screenshots  
-npm run test:visual:ui      # Interactive debugging
-```
-
-### When to Run Visual Tests First
-- User reports "UI looks broken" despite correct code
-- After updating Tailwind config or CSS frameworks
-- When styles don't apply despite correct classes
-
-### Test Coverage
-- `tests/visual.spec.ts` - Main suite with component snapshots
-- `tests/css-framework.spec.ts` - Validates Tailwind/CSS working
-- Tests: components, responsive views, interactive states
-   - GitHub Actions workflow
-   - Automated testing and deployment
-   - Version management
-
-## OpenAI Integration
-
-The project includes OpenAI GPT-4 Turbo integration for AI-powered features. Configure via Settings page or use the `useOpenAI` and `useChat` hooks in any component. See `OPENAI_SETUP.md` for details.
-
-## Deployment
-
-### Automatic Production Deployment
-This project is configured with Railway for continuous deployment. When you push changes to the GitHub repository, Railway automatically:
-1. Detects the new commits
-2. Builds the Next.js application
-3. Deploys to production environment
-4. Makes it available at the production URL
-
-**Important**: Any push to the main branch triggers an automatic production deployment via Railway.
-
-## AI Integrations
-
-### OpenAI Integration
-- GPT-4 Turbo model support for intelligent processing
-- Chat interface for testing and interaction
-- API key validation and secure storage
-- Server-side only API routes for security
-- See OPENAI_SETUP.md for configuration details
-
-### Anthropic Integration (Claude + Vision)
-- **Claude Models**: Opus, Sonnet, and Haiku variants
-- **Vision Capabilities**: Invoice scanning and data extraction from images
-- **Supported Formats**: JPEG, PNG, GIF, WebP (up to 10MB)
-- **Invoice Extraction**: Automatic extraction of vendor, items, totals, dates
-- **Batch Processing**: Analyze multiple images in one request
-- **React Hooks**: useAnthropic and useAnthropicVision for easy integration
-- **Security**: Server-side API routes, environment variable configuration
-- See ANTHROPIC_SETUP.md for complete setup guide
+- Semantic HTML elements
+- ARIA labels for all interactive elements
+- Keyboard navigation (Tab, Enter, Escape, Arrow keys)
+- Platform-specific modifiers (Cmd on Mac, Ctrl on Windows/Linux)
+- Screen reader announcements for dynamic changes
+- Color contrast ratio ≥ 4.5:1
 
 ## Current Status
 
-### Implemented Features ✅
-- **Two-tier navigation system** with sidebar modules and top pills
-- **Modular navigation components** (NavigationPills reusable component)
-- **Comprehensive accessibility** (WCAG 2.1 AA compliant)
-  - ARIA attributes and semantic HTML
-  - Cross-platform keyboard navigation (Cmd/Ctrl+1-7)
-  - Screen reader announcements
-  - Skip links for navigation
-- **Performance optimizations**
-  - React.memo for major components
-  - Web Vitals monitoring
-  - Bundle size < 150KB (target: < 200KB)
-  - Debounce/throttle utilities
-- **Visual feedback**
-  - Tooltips with keyboard shortcuts for all nav items
-  - Red flash animation for disabled items
-  - Smooth hover transitions
-- **Module pages**
-  - Invoice Processing (Workspace, Invoices, Purchase Orders)
-  - Helpdesk (Inbox, Kanban)
-  - Settings (Automation)
+### ✅ Implemented Features
+- **Complete Database Layer** with PostgreSQL and Prisma ORM
+- **AI Services Integration** with OpenAI and Anthropic
+- **Invoice Vision Processing** for automatic data extraction
+- **Two-tier Navigation System** with sidebar and top pills
+- **Comprehensive Accessibility** (WCAG 2.1 AA compliant)
+- **Performance Optimizations** with monitoring
+- **Railway Deployment** with automatic CI/CD
+- **Local Development Setup** with Docker
 
-### Current Limitations
-- Mock user data is hardcoded in UserMenu component
-- Some navigation items marked as disabled (placeholder functionality)
-- No backend API integration (static data only)
-- No real authentication system
+### 🚧 Current Limitations
+- Mock user data hardcoded in UserMenu component
+- No authentication system yet
+- Some navigation items marked as disabled (placeholder)
+- Invoice processing workflow not fully automated
+- No email integration for invoice ingestion
+
+### 📋 Database Models Ready for Use
+- `Invoice` - Full invoice data structure
+- `PurchaseOrder` - PO management
+- `User` - User accounts (schema ready)
+- `TestMigration` - Database testing
+
+## Important Notes for Development
+
+1. **Database is ready** - Use Prisma client at `@/lib/db`
+2. **AI services are integrated** - Use existing hooks and services
+3. **Vision extraction works** - Test with any invoice image
+4. **Local dev uses port 3001** - Always use `PORT=3001 npm run dev`
+5. **Railway handles deployment** - Just push to main branch
+6. **Don't duplicate services** - Check `/lib` and `/app/api` first
+
+## Quick Start for New Features
+
+```bash
+# 1. Start database
+npm run db:dev
+
+# 2. Start dev server
+PORT=3001 npm run dev
+
+# 3. View database
+npm run db:studio
+
+# 4. Test your changes
+npm run test:visual
+
+# 5. Deploy
+git push origin main  # Railway auto-deploys
+```
+
+## Support Documentation
+
+- `OPENAI_SETUP.md` - OpenAI configuration guide
+- `ANTHROPIC_SETUP.md` - Anthropic and Vision setup
+- `DATABASE_SETUP.md` - Database configuration
+- `RAILWAY_ENV_SETUP.md` - Railway deployment guide
