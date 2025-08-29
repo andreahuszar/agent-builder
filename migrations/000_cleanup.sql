@@ -1,5 +1,14 @@
 -- Clean up existing database tables
 -- This script removes old tables to prepare for the new document management system
+-- WARNING: This will DROP all data! Add safety check for production.
+
+-- Safety check: Uncomment for production to prevent accidental data loss
+-- DO $$
+-- BEGIN
+--   IF EXISTS (SELECT 1 FROM invoice_headers LIMIT 1) THEN
+--     RAISE EXCEPTION 'Database contains data. Run cleanup manually if intended.';
+--   END IF;
+-- END $$;
 
 -- Drop existing tables (if they exist)
 DROP TABLE IF EXISTS invoices CASCADE;
