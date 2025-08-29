@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { Upload, FileText, Loader2, Check, AlertCircle, X, Camera } from 'lucide-react';
 import { useAnthropicVision } from '@/app/hooks/useAnthropicVision';
 import type { InvoiceExtractionResult } from '@/lib/anthropic';
@@ -15,7 +15,17 @@ export function InvoiceScanner({ onExtracted, onSave }: InvoiceScannerProps) {
   const [preview, setPreview] = useState<string | null>(null);
   const [extractedData, setExtractedData] = useState<InvoiceExtractionResult | null>(null);
   const [editMode, setEditMode] = useState(false);
+  const [isFileInputReady, setIsFileInputReady] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Ensure the file input is ready after mount
+  useEffect(() => {
+    // Small delay to ensure DOM is ready
+    const timer = setTimeout(() => {
+      setIsFileInputReady(true);
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
 
   const { loading, error, progress, extractInvoice, validateImageFile } = useAnthropicVision({
     onSuccess: (data) => {
@@ -29,23 +39,44 @@ export function InvoiceScanner({ onExtracted, onSave }: InvoiceScannerProps) {
 
   const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFile = e.target.files?.[0];
-    if (!selectedFile) return;
+    if (!selectedFile) {
+      console.log('No file selected');
+      return;
+    }
+
+    console.log('File selected:', selectedFile.name, selectedFile.type, selectedFile.size);
 
     const validation = validateImageFile(selectedFile);
     if (!validation.valid) {
       alert(validation.error);
+      // Reset the input so the same file can be selected again
+      if (fileInputRef.current) {
+        fileInputRef.current.value = '';
+      }
       return;
     }
 
+    // Set file and clear previous data
     setFile(selectedFile);
     setExtractedData(null);
+    setPreview(null); // Clear old preview first
 
     // Create preview
     const reader = new FileReader();
-    reader.onload = (e) => {
-      setPreview(e.target?.result as string);
+    reader.onload = (readerEvent) => {
+      const result = readerEvent.target?.result as string;
+      if (result) {
+        setPreview(result);
+        console.log('Preview created successfully');
+      }
+    };
+    reader.onerror = () => {
+      console.error('Error reading file');
+      alert('Error reading file. Please try again.');
     };
     reader.readAsDataURL(selectedFile);
+    
+    // Don't reset the input value here - only reset on clear or after error
   }, [validateImageFile]);
 
   const handleDrop = useCallback((e: React.DragEvent<HTMLDivElement>) => {
@@ -101,6 +132,8 @@ export function InvoiceScanner({ onExtracted, onSave }: InvoiceScannerProps) {
     setFile(null);
     setPreview(null);
     setExtractedData(null);
+    setEditMode(false);
+    // Ensure input is reset
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -124,15 +157,52 @@ export function InvoiceScanner({ onExtracted, onSave }: InvoiceScannerProps) {
           </p>
           <div className="flex gap-2 justify-center">
             <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Ensure input is ready and trigger click
+                if (fileInputRef.current && isFileInputReady) {
+                  // Reset value first to allow re-selecting the same file
+                  fileInputRef.current.value = '';
+                  // Small delay to ensure reset is processed
+                  setTimeout(() => {
+                    fileInputRef.current?.click();
+                  }, 10);
+                } else {
+                  console.warn('File input not ready');
+                }
+              }}
+              disabled={!isFileInputReady}
+              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FileText className="inline-block mr-2 h-4 w-4" />
               Select File
             </button>
             <button
-              onClick={() => fileInputRef.current?.click()}
-              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors"
+              type="button"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // For camera capture on mobile devices
+                if (fileInputRef.current && isFileInputReady) {
+                  // Reset value first
+                  fileInputRef.current.value = '';
+                  fileInputRef.current.setAttribute('capture', 'environment');
+                  // Small delay to ensure attribute is set
+                  setTimeout(() => {
+                    fileInputRef.current?.click();
+                    // Remove capture attribute after triggering
+                    setTimeout(() => {
+                      fileInputRef.current?.removeAttribute('capture');
+                    }, 100);
+                  }, 10);
+                } else {
+                  console.warn('File input not ready for camera');
+                }
+              }}
+              disabled={!isFileInputReady}
+              className="px-4 py-2 bg-gray-600 text-white rounded-md hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <Camera className="inline-block mr-2 h-4 w-4" />
               Take Photo
@@ -144,6 +214,7 @@ export function InvoiceScanner({ onExtracted, onSave }: InvoiceScannerProps) {
             accept="image/jpeg,image/png,image/gif,image/webp"
             onChange={handleFileSelect}
             className="hidden"
+            multiple={false}
           />
         </div>
       )}

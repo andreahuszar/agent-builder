@@ -100,8 +100,8 @@ const Navigation = memo(({ activeModule = 'invoice-processing', onModuleChange }
               alt="Xelix" 
               width={32} 
               height={32} 
-              className="shrink-0" 
-              priority
+              className="shrink-0"
+              unoptimized
             />
           </Link>
         </div>

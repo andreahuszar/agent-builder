@@ -261,14 +261,18 @@ export class AnthropicService {
     try {
       const client = apiKey ? createAnthropicClient(apiKey) : getAnthropicClient();
       
+      // Use a minimal request to validate the key
+      // This will fail with 401 if the key is invalid
       await client.messages.create({
         model: anthropicConfig.fastModel,
-        messages: [{ role: 'user', content: 'Hi' }],
-        max_tokens: 10,
+        messages: [{ role: 'user', content: 'test' }],
+        max_tokens: 1,
+        metadata: { user_id: 'validation-check' }
       });
       
       return true;
-    } catch {
+    } catch (error: any) {
+      console.error('Anthropic API key validation error:', error.message);
       return false;
     }
   }

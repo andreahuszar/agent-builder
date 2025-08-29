@@ -42,26 +42,16 @@ export function useOpenAI(options: UseOpenAIOptions = {}) {
   }, [options]);
 
   const checkConfiguration = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-
     try {
       const response = await fetch('/api/openai/validate');
       const data = await response.json();
       
-      if (response.ok) {
-        options.onSuccess?.(data);
-        return data;
-      }
-      
-      throw new Error(data.error || 'Failed to check configuration');
+      // Don't set error state for configuration checks
+      // Just return the data whether configured or not
+      return data;
     } catch (err: any) {
-      const errorMessage = err.message || 'Failed to check configuration';
-      setError(errorMessage);
-      options.onError?.(errorMessage);
-      throw err;
-    } finally {
-      setLoading(false);
+      // Return not configured state instead of throwing
+      return { configured: false, errors: ['Failed to check configuration'] };
     }
   }, [options]);
 

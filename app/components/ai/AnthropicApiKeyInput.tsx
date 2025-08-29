@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Key, Check, X, Loader2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { Key, Check, X, Loader2, RefreshCw } from 'lucide-react';
 import { useAnthropic } from '@/app/hooks/useAnthropic';
 
 interface AnthropicApiKeyInputProps {
@@ -13,19 +13,44 @@ export function AnthropicApiKeyInput({ onValidated }: AnthropicApiKeyInputProps)
   const [showKey, setShowKey] = useState(false);
   const [isValid, setIsValid] = useState<boolean | null>(null);
   const [savedKey, setSavedKey] = useState<string | null>(null);
+  const [isInitialCheckDone, setIsInitialCheckDone] = useState(false);
+  const hasCheckedRef = useRef(false);
 
   const { loading, error, validateApiKey } = useAnthropic();
 
-  // Load saved key from localStorage on mount
+  // Load saved key from localStorage on mount - ONLY ONCE
   useEffect(() => {
-    const saved = localStorage.getItem('anthropic_api_key');
-    if (saved) {
-      setSavedKey(saved);
-      setApiKey(saved);
-      // Auto-validate saved key
-      handleValidate(saved);
-    }
-  }, []);
+    // Prevent multiple checks
+    if (hasCheckedRef.current) return;
+    hasCheckedRef.current = true;
+    
+    const checkSavedKey = async () => {
+      const saved = localStorage.getItem('anthropic_api_key');
+      if (saved) {
+        setSavedKey(saved);
+        setApiKey(saved);
+        // Auto-validate saved key ONCE
+        try {
+          const result = await validateApiKey(saved);
+          setIsValid(result.valid);
+          onValidated?.(result.valid);
+          
+          if (!result.valid) {
+            // Clear invalid saved key
+            localStorage.removeItem('anthropic_api_key');
+            setSavedKey(null);
+            setApiKey('');
+          }
+        } catch {
+          setIsValid(false);
+          onValidated?.(false);
+        }
+      }
+      setIsInitialCheckDone(true);
+    };
+    
+    checkSavedKey();
+  }, []); // Empty dependency array - run only once on mount
 
   const handleValidate = async (keyToValidate?: string) => {
     const key = keyToValidate || apiKey;
@@ -54,6 +79,26 @@ export function AnthropicApiKeyInput({ onValidated }: AnthropicApiKeyInputProps)
     localStorage.removeItem('anthropic_api_key');
     onValidated?.(false);
   };
+
+  const handleManualRefresh = async () => {
+    if (!apiKey) return;
+    await handleValidate(apiKey);
+  };
+
+  // Show loading state only during the very first check
+  if (!isInitialCheckDone && !hasCheckedRef.current) {
+    return (
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Key className="h-5 w-5 text-gray-500" />
+          <label className="text-sm font-medium text-gray-700">
+            Anthropic API Key
+          </label>
+        </div>
+        <div className="h-10 animate-pulse bg-gray-200 rounded-md"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -119,19 +164,33 @@ export function AnthropicApiKeyInput({ onValidated }: AnthropicApiKeyInputProps)
       </div>
       
       {/* Status message */}
-      {isValid !== null && (
-        <div className={`flex items-center gap-2 text-sm ${isValid ? 'text-green-600' : 'text-red-600'}`}>
-          {isValid ? (
-            <>
-              <Check className="h-4 w-4" />
-              API key validated successfully
-            </>
-          ) : (
-            <>
-              <X className="h-4 w-4" />
-              {error || 'Invalid API key'}
-            </>
-          )}
+      {isInitialCheckDone && isValid !== null && (
+        <div className="space-y-2">
+          <div className={`flex items-center justify-between text-sm ${isValid ? 'text-green-600' : 'text-red-600'}`}>
+            <div className="flex items-center gap-2">
+              {isValid ? (
+                <>
+                  <Check className="h-4 w-4" />
+                  API key validated successfully
+                </>
+              ) : (
+                <>
+                  <X className="h-4 w-4" />
+                  {error || 'Invalid API key'}
+                </>
+              )}
+            </div>
+            {savedKey && (
+              <button
+                onClick={handleManualRefresh}
+                disabled={loading}
+                className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 disabled:text-gray-400"
+              >
+                <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+                {loading ? 'Checking...' : 'Recheck'}
+              </button>
+            )}
+          </div>
         </div>
       )}
       
