@@ -8,10 +8,13 @@ export interface TextContent {
 export interface ImageContent {
   type: 'image';
   source: {
-    type: 'base64' | 'url';
+    type: 'base64';
     media_type: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
-    data?: string; // base64 encoded image data
-    url?: string; // URL to the image
+    data: string; // base64 encoded image data (required for base64 type)
+  } | {
+    type: 'url';
+    media_type: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+    url: string; // URL to the image (required for url type)
   };
 }
 

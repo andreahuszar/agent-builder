@@ -21,14 +21,14 @@ export class AnthropicService {
       
       const response = await client.messages.create({
         model: request.model || anthropicConfig.defaultModel,
-        messages: request.messages || [],
+        messages: request.messages as any || [],
         max_tokens: request.max_tokens || anthropicConfig.defaultMaxTokens,
         temperature: request.temperature ?? anthropicConfig.defaultTemperature,
         system: request.system,
         top_p: request.top_p,
         top_k: request.top_k,
         stop_sequences: request.stop_sequences,
-      });
+      } as any);
       
       return response as AnthropicResponse;
     } catch (error: any) {
@@ -39,18 +39,18 @@ export class AnthropicService {
   /**
    * Stream a message response from Claude
    */
-  static async createMessageStream(request: Partial<AnthropicRequest>): Promise<AsyncIterable<any>> {
+  static async createMessageStream(request: Partial<AnthropicRequest>): Promise<any> {
     try {
       const client = getAnthropicClient();
       
       const stream = await client.messages.create({
         model: request.model || anthropicConfig.defaultModel,
-        messages: request.messages || [],
+        messages: request.messages as any || [],
         max_tokens: request.max_tokens || anthropicConfig.defaultMaxTokens,
         temperature: request.temperature ?? anthropicConfig.defaultTemperature,
         system: request.system,
         stream: true,
-      });
+      } as any);
       
       return stream;
     } catch (error: any) {
