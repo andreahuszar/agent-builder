@@ -355,6 +355,25 @@ This project is configured with Railway for continuous deployment. When you push
 
 **Important**: Any push to the main branch triggers an automatic production deployment via Railway.
 
+## AI Integrations
+
+### OpenAI Integration
+- GPT-4 Turbo model support for intelligent processing
+- Chat interface for testing and interaction
+- API key validation and secure storage
+- Server-side only API routes for security
+- See OPENAI_SETUP.md for configuration details
+
+### Anthropic Integration (Claude + Vision)
+- **Claude Models**: Opus, Sonnet, and Haiku variants
+- **Vision Capabilities**: Invoice scanning and data extraction from images
+- **Supported Formats**: JPEG, PNG, GIF, WebP (up to 10MB)
+- **Invoice Extraction**: Automatic extraction of vendor, items, totals, dates
+- **Batch Processing**: Analyze multiple images in one request
+- **React Hooks**: useAnthropic and useAnthropicVision for easy integration
+- **Security**: Server-side API routes, environment variable configuration
+- See ANTHROPIC_SETUP.md for complete setup guide
+
 ## Current Status
 
 ### Implemented Features ✅

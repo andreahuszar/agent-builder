@@ -3,8 +3,11 @@
 import { useState } from 'react';
 import AppLayout from '@/app/components/AppLayout';
 import { ApiKeyInput } from '@/app/components/ai/ApiKeyInput';
+import { AnthropicApiKeyInput } from '@/app/components/ai/AnthropicApiKeyInput';
 import { AIStatus } from '@/app/components/ai/AIStatus';
 import { ChatInterface } from '@/app/components/ai/ChatInterface';
+import { InvoiceScanner } from '@/app/components/ai/InvoiceScanner';
+import { Brain, FileText, Sparkles } from 'lucide-react';
 
 interface SettingsContentProps {
   currentView?: string;
@@ -12,51 +15,114 @@ interface SettingsContentProps {
 }
 
 function SettingsContent({}: SettingsContentProps) {
-  const [showChat, setShowChat] = useState(false);
-  const [apiKeyValid, setApiKeyValid] = useState(false);
+  const [showOpenAIChat, setShowOpenAIChat] = useState(false);
+  const [showAnthropicFeatures, setShowAnthropicFeatures] = useState(false);
+  const [activeAIProvider, setActiveAIProvider] = useState<'openai' | 'anthropic' | null>(null);
 
   return (
     <div className="w-full p-4 sm:px-6 lg:px-8">
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-950">Automation Settings</h1>
-        <p className="mt-1 text-sm text-gray-800">Configure automated workflows and rules</p>
+        <p className="mt-1 text-sm text-gray-800">Configure automated workflows and AI integrations</p>
       </div>
       
       {/* Settings sections */}
       <div className="space-y-6">
-        {/* OpenAI Configuration Section */}
+        {/* AI Provider Configuration */}
         <div className="rounded-lg border border-gray-200 bg-white p-6">
-          <h2 className="mb-4 text-lg font-semibold text-gray-900">AI Configuration</h2>
-          <p className="mb-4 text-sm text-gray-600">Connect to OpenAI for intelligent invoice processing</p>
+          <h2 className="mb-4 text-lg font-semibold text-gray-900 flex items-center gap-2">
+            <Brain className="h-5 w-5" />
+            AI Provider Configuration
+          </h2>
+          <p className="mb-4 text-sm text-gray-600">
+            Choose and configure your preferred AI provider for invoice processing
+          </p>
           
-          <div className="space-y-6">
-            {/* Status Indicator */}
-            <AIStatus showDetails={true} />
-            
-            {/* API Key Input */}
-            <div className="max-w-md">
-              <ApiKeyInput 
-                onValidated={(valid) => {
-                  setApiKeyValid(valid);
-                  if (valid) {
-                    setShowChat(true);
-                  }
-                }}
-              />
-            </div>
-            
-            {/* Test Chat Interface */}
-            {showChat && (
-              <div className="mt-6">
-                <h3 className="mb-3 text-sm font-medium text-gray-900">Test AI Assistant</h3>
-                <ChatInterface
-                  systemPrompt="You are a helpful AI assistant for invoice processing. Help users understand how to process invoices, extract data, and automate workflows."
-                  placeholder="Ask about invoice processing..."
-                  height="h-64"
+          {/* Provider Tabs */}
+          <div className="border-b border-gray-200 mb-6">
+            <nav className="-mb-px flex space-x-8">
+              <button
+                onClick={() => setActiveAIProvider('openai')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeAIProvider === 'openai'
+                    ? 'border-purple-600 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <Sparkles className="inline-block mr-2 h-4 w-4" />
+                OpenAI (GPT-4)
+              </button>
+              <button
+                onClick={() => setActiveAIProvider('anthropic')}
+                className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                  activeAIProvider === 'anthropic'
+                    ? 'border-purple-600 text-purple-600'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                }`}
+              >
+                <FileText className="inline-block mr-2 h-4 w-4" />
+                Anthropic (Claude + Vision)
+              </button>
+            </nav>
+          </div>
+          
+          {/* OpenAI Configuration */}
+          {activeAIProvider === 'openai' && (
+            <div className="space-y-6">
+              <AIStatus showDetails={true} />
+              <div className="max-w-md">
+                <ApiKeyInput 
+                  onValidated={(valid) => {
+                    if (valid) {
+                      setShowOpenAIChat(true);
+                    }
+                  }}
                 />
               </div>
-            )}
-          </div>
+              {showOpenAIChat && (
+                <div className="mt-6">
+                  <h3 className="mb-3 text-sm font-medium text-gray-900">Test OpenAI Chat</h3>
+                  <ChatInterface
+                    systemPrompt="You are a helpful AI assistant for invoice processing. Help users understand how to process invoices, extract data, and automate workflows."
+                    placeholder="Ask about invoice processing..."
+                    height="h-64"
+                  />
+                </div>
+              )}
+            </div>
+          )}
+          
+          {/* Anthropic Configuration */}
+          {activeAIProvider === 'anthropic' && (
+            <div className="space-y-6">
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <p className="text-sm text-blue-800">
+                  <strong>Claude Vision enabled!</strong> You can now scan and extract invoice data from images.
+                </p>
+              </div>
+              <div className="max-w-md">
+                <AnthropicApiKeyInput 
+                  onValidated={(valid) => {
+                    setShowAnthropicFeatures(valid);
+                  }}
+                />
+              </div>
+              {showAnthropicFeatures && (
+                <div className="mt-6">
+                  <h3 className="mb-3 text-sm font-medium text-gray-900">Invoice Scanner (Vision)</h3>
+                  <InvoiceScanner 
+                    onExtracted={(data) => {
+                      console.log('Extracted invoice data:', data);
+                    }}
+                    onSave={(data) => {
+                      console.log('Saving invoice data:', data);
+                      alert('Invoice data extracted successfully!');
+                    }}
+                  />
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <div className="rounded-lg border border-gray-200 bg-white p-6">
           <h2 className="mb-4 text-lg font-semibold text-gray-900">Workflow Automation</h2>
