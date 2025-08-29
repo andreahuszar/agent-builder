@@ -340,6 +340,17 @@ npm run test:visual:ui      # Interactive debugging
    - Automated testing and deployment
    - Version management
 
+## Deployment
+
+### Automatic Production Deployment
+This project is configured with Railway for continuous deployment. When you push changes to the GitHub repository, Railway automatically:
+1. Detects the new commits
+2. Builds the Next.js application
+3. Deploys to production environment
+4. Makes it available at the production URL
+
+**Important**: Any push to the main branch triggers an automatic production deployment via Railway.
+
 ## Current Status
 
 ### Implemented Features ✅
