@@ -340,6 +340,10 @@ npm run test:visual:ui      # Interactive debugging
    - Automated testing and deployment
    - Version management
 
+## OpenAI Integration
+
+The project includes OpenAI GPT-4 Turbo integration for AI-powered features. Configure via Settings page or use the `useOpenAI` and `useChat` hooks in any component. See `OPENAI_SETUP.md` for details.
+
 ## Deployment
 
 ### Automatic Production Deployment

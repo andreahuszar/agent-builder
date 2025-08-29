@@ -1,0 +1,78 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// Test model for verifying database connection
+model TestMigration {
+  id        String   @id @default(cuid())
+  name      String
+  value     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("test_migrations")
+}
+
+// Invoice model - ready for future implementation
+model Invoice {
+  id            String   @id @default(cuid())
+  invoiceNumber String   @unique
+  vendorName    String
+  vendorEmail   String?
+  amount        Decimal  @db.Decimal(10, 2)
+  currency      String   @default("USD")
+  status        String   @default("pending")
+  dueDate       DateTime
+  description   String?
+  attachmentUrl String?
+  metadata      Json?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
+  @@index([vendorName])
+  @@index([dueDate])
+  @@map("invoices")
+}
+
+// Purchase Order model - ready for future implementation
+model PurchaseOrder {
+  id          String   @id @default(cuid())
+  poNumber    String   @unique
+  vendorName  String
+  vendorEmail String?
+  totalAmount Decimal  @db.Decimal(10, 2)
+  currency    String   @default("USD")
+  status      String   @default("draft")
+  orderDate   DateTime @default(now())
+  deliveryDate DateTime?
+  items       Json?    // Will store array of items
+  notes       String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([status])
+  @@index([vendorName])
+  @@map("purchase_orders")
+}
+
+// User model - for future authentication
+model User {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  name      String?
+  role      String   @default("user")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("users")
+}

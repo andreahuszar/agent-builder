@@ -57,3 +57,12 @@ current-state.png
 
 # claude code
 .claude/
+
+# Prisma
+/lib/generated/prisma
+
+# Database
+*.db
+*.db-journal
+docker-compose.override.yml
+postgres_data/
