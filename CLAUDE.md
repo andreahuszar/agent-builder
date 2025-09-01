@@ -272,6 +272,7 @@ The project uses a centralized Xelix brand color system defined in `tailwind.con
 - **ALWAYS** use colors from the centralized Xelix palette
 - **NEVER** hardcode RGB/hex values directly in components
 - Extend the color system in `tailwind.config.ts` when needed
+- **ALWAYS** double check more **substantial UI changes** through Playwright quick visual testing, don't rely e.g. on extrapolation of CSS, always confirm visually. Make sure that visually it matches the user requirements, plus use your own judgement as you are a professional UI/UX Designer at this stage (think visual taste, visual consistency with the rest of the project, accessibility, etc.).
 
 ## Performance Standards
 
