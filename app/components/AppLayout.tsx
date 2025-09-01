@@ -23,8 +23,8 @@ export default function AppLayout({ activeModule, children }: AppLayoutProps) {
 
   const handleViewChange = (view: string) => {
     setCurrentView(view);
-    // Update URL without navigation
-    window.history.pushState({}, '', `#${view}`);
+    // Update URL without navigation, preserving the current pathname
+    window.history.pushState({}, '', `${window.location.pathname}#${view}`);
   };
 
   const handleModuleChange = (moduleId: string) => {

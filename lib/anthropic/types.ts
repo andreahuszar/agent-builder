@@ -131,10 +131,11 @@ export interface BatchImageAnalysisRequest {
   model?: string;
 }
 
-// Supported Claude models (Updated December 2024)
+// Supported Claude models (Updated September 2025)
 export const CLAUDE_MODELS = {
-  // Latest Claude 3.5 models
-  SONNET_3_5: 'claude-3-5-sonnet-20241022', // Most capable current model
+  // Latest Claude 4 models
+  SONNET_4: 'claude-sonnet-4-20250514', // Latest Sonnet model
+  SONNET_3_5: 'claude-sonnet-4-20250514', // Alias for compatibility
   HAIKU_3_5: 'claude-3-5-haiku-20241022',   // Fast and efficient
   
   // Legacy models (some deprecated)
@@ -143,8 +144,8 @@ export const CLAUDE_MODELS = {
   HAIKU: 'claude-3-haiku-20240307',
   
   // Aliases for latest models
-  OPUS_LATEST: 'claude-3-5-sonnet-20241022', // Using Sonnet 3.5 as Opus replacement
-  SONNET_LATEST: 'claude-3-5-sonnet-20241022',
+  OPUS_LATEST: 'claude-sonnet-4-20250514', // Using latest Sonnet as Opus replacement
+  SONNET_LATEST: 'claude-sonnet-4-20250514',
   HAIKU_LATEST: 'claude-3-5-haiku-20241022',
 } as const;
 
