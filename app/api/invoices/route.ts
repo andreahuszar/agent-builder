@@ -6,15 +6,21 @@ export async function GET() {
     // Fetch invoices using raw SQL for better control
     const invoices = await prisma.$queryRaw`
       SELECT 
-        id,
-        invoice_number,
-        vendor_name_snapshot,
-        invoice_date,
-        due_date,
-        currency,
-        total
-      FROM invoice_headers
-      ORDER BY invoice_date DESC, created_at DESC
+        ih.id,
+        ih.invoice_number,
+        ih.vendor_name_snapshot,
+        ih.invoice_date,
+        ih.due_date,
+        ih.currency,
+        ih.total,
+        ih.status,
+        ih.match_status,
+        ih.assigned_to_user_id,
+        u.name as assigned_to_name,
+        u.email as assigned_to_email
+      FROM invoice_headers ih
+      LEFT JOIN users u ON ih.assigned_to_user_id = u.id
+      ORDER BY ih.invoice_date DESC, ih.created_at DESC
     `;
 
     return NextResponse.json({

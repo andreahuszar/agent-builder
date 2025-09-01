@@ -24,7 +24,8 @@ const migrations = [
   '070_sample_functions.sql',
   '080_critical_fixes.sql',
   '090_missing_indexes.sql',
-  '095_test_migrations_table.sql'
+  '095_test_migrations_table.sql',
+  '100_add_invoice_assigned_to.sql'
 ];
 
 /**

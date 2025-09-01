@@ -221,7 +221,7 @@ export function ApiKeyInput({ onValidated, className = '' }: ApiKeyInputProps) {
           className={`flex-1 py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white 
             ${loading || !apiKey.trim()
               ? 'bg-gray-400 cursor-not-allowed'
-              : 'bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500'
+              : 'bg-purple-900 hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500'
             }`}
         >
           {loading ? 'Validating...' : validated ? 'Re-validate' : 'Validate API Key'}

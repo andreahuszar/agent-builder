@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navigation from './Navigation';
 import TopBar from './TopBar';
 import { MODULE_PILLS } from '@/app/constants/navigation';
@@ -8,15 +8,15 @@ import { MODULE_PILLS } from '@/app/constants/navigation';
 interface AppLayoutProps {
   activeModule: string;
   children: React.ReactNode;
+  customTopBar?: React.ReactNode;
 }
 
-export default function AppLayout({ activeModule, children }: AppLayoutProps) {
+export default function AppLayout({ activeModule, children, customTopBar }: AppLayoutProps) {
   const [currentModule, setCurrentModule] = useState<string>(activeModule);
-  const [currentView, setCurrentView] = useState<string>(() => {
-    // Set initial view to the first pill of the module
-    const pills = MODULE_PILLS[activeModule];
-    return pills && pills.length > 0 ? pills[0].id : '';
-  });
+  // Initialize with default view first, then update from hash after mount
+  const pills = MODULE_PILLS[activeModule];
+  const defaultView = pills && pills.length > 0 ? pills[0].id : '';
+  const [currentView, setCurrentView] = useState<string>(defaultView);
 
   // Get pills for the active module
   const currentPills = MODULE_PILLS[currentModule] || [];
@@ -36,6 +36,32 @@ export default function AppLayout({ activeModule, children }: AppLayoutProps) {
     }
   };
 
+  // Check hash on mount and handle browser navigation (back/forward)
+  useEffect(() => {
+    // Check initial hash on mount
+    const hash = window.location.hash.substring(1);
+    if (hash) {
+      const pills = MODULE_PILLS[currentModule];
+      if (pills && pills.some(pill => pill.id === hash)) {
+        setCurrentView(hash);
+      }
+    }
+
+    // Handle hash changes
+    const handleHashChange = () => {
+      const hash = window.location.hash.substring(1);
+      if (hash) {
+        const pills = MODULE_PILLS[currentModule];
+        if (pills && pills.some(pill => pill.id === hash)) {
+          setCurrentView(hash);
+        }
+      }
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, [currentModule]);
+
   return (
     <div className="flex min-h-screen bg-gray-50/60">
       {/* Navigation Sidebar */}
@@ -46,16 +72,18 @@ export default function AppLayout({ activeModule, children }: AppLayoutProps) {
       
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col">
-        {/* Top Bar with Navigation Pills */}
-        <TopBar
-          pills={currentPills}
-          activeView={currentView}
-          onViewChange={handleViewChange}
-        />
+        {/* Top Bar with Navigation Pills or Custom Top Bar */}
+        {customTopBar ? customTopBar : (
+          <TopBar
+            pills={currentPills}
+            activeView={currentView}
+            onViewChange={handleViewChange}
+          />
+        )}
         
         {/* Main Content */}
         <main id="main-content" className="flex-1 pb-8">
-          {React.cloneElement(children as React.ReactElement<{ currentView?: string; currentModule?: string }>, { 
+          {customTopBar ? children : React.cloneElement(children as React.ReactElement<{ currentView?: string; currentModule?: string }>, { 
             currentView,
             currentModule 
           })}

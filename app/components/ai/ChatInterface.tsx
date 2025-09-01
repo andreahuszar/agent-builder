@@ -168,7 +168,7 @@ export function ChatInterface({
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="px-4 py-2 bg-purple-900 text-white rounded-md hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {loading ? (
               <Loader2 className="h-5 w-5 animate-spin" />

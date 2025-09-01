@@ -3,8 +3,8 @@
 import { useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload } from 'lucide-react';
-import { InvoiceTable } from '@/app/components/invoices/InvoiceTable';
-import { UploadDialog } from '@/app/components/invoices/UploadDialog';
+import { InvoiceTable } from './InvoiceTable';
+import { UploadDialog } from './UploadDialog';
 
 interface Invoice {
   id: string;
@@ -18,9 +18,10 @@ interface Invoice {
 
 interface InvoicesClientProps {
   initialInvoices: Invoice[];
+  renderAddButton?: (onClick: () => void) => React.ReactNode;
 }
 
-export default function InvoicesClient({ initialInvoices }: InvoicesClientProps) {
+export default function InvoicesClient({ initialInvoices, renderAddButton }: InvoicesClientProps) {
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const router = useRouter();
@@ -74,22 +75,8 @@ export default function InvoicesClient({ initialInvoices }: InvoicesClientProps)
 
   return (
     <>
-      <div className="mb-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-950">Invoices</h1>
-            <p className="mt-1 text-sm text-gray-800">Manage and process your invoices</p>
-          </div>
-          <button
-            onClick={() => setUploadDialogOpen(true)}
-            className="inline-flex items-center px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-          >
-            <Upload className="h-4 w-4 mr-2" />
-            Add Invoice
-          </button>
-        </div>
-      </div>
-
+      {renderAddButton && renderAddButton(() => setUploadDialogOpen(true))}
+      
       <InvoiceTable invoices={invoices} onDelete={handleDelete} />
 
       <UploadDialog 

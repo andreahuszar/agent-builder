@@ -264,14 +264,48 @@ When adding new features:
 The project uses a centralized Xelix brand color system defined in `tailwind.config.ts`.
 
 ### Key Colors
-- **Primary**: Purple-900 (#5a1899)
-- **Secondary**: Purple-600
+- **Primary Brand Color**: Purple-900 (#5a1899) - Use for all primary action buttons
+- **Secondary**: Purple-600 - Reserved for specific UI elements (e.g., UserMenu profile container)
 - **Navigation Gradient**: `bg-brand-gradient`
 
+### Brand Color Constants
+A centralized color constants file exists at `/app/constants/colors.ts` with:
+- `BRAND_COLORS` object containing primary button classes
+- Helper function `getBrandButtonClass()` for consistent button styling
+
 ### Usage Guidelines
+- **ALWAYS** use `bg-purple-900` (brand primary) for all primary action buttons
+- **ALWAYS** use `hover:bg-purple-800` for primary button hover states (lighter/brighter on hover)
+- **NEVER** use `bg-purple-600` for buttons (except UserMenu profile container)
 - **ALWAYS** use colors from the centralized Xelix palette
 - **NEVER** hardcode RGB/hex values directly in components
+- Consider using the brand color constants from `/app/constants/colors.ts` for consistency
 - Extend the color system in `tailwind.config.ts` when needed
+
+### Default Button Styling
+**Preferred default button classes:**
+```
+px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2
+```
+- **Padding**: `px-3 py-1.5` (compact size)
+- **Text size**: `text-sm` 
+- **Colors**: `bg-purple-900` with `hover:bg-purple-800`
+- **Focus states**: Include ring for accessibility
+- This compact size should be used as the default for all action buttons unless a specific context requires larger sizing
+
+### Default Text Color
+**Standard text color guidelines for maximum readability:**
+- **Primary text**: `text-gray-950` - **ALWAYS** use for all main content, headings, labels, and table data
+- **Muted text**: `text-gray-500` - Only for truly secondary information or disabled states
+- **Placeholder text**: `text-gray-400` - For input placeholders only
+- **Links**: Keep existing purple colors (`text-purple-600`) for interactive elements
+
+**Important**: 
+- **NEVER** use `text-gray-900`, `text-gray-800`, or lighter shades for primary content
+- Default to `text-gray-950` unless explicitly needed otherwise
+- This ensures maximum readability and contrast across the application
+- When in doubt, use `text-gray-950`
+
 - **ALWAYS** double check more **substantial UI changes** through Playwright quick visual testing, don't rely e.g. on extrapolation of CSS, always confirm visually. Make sure that visually it matches the user requirements, plus use your own judgement as you are a professional UI/UX Designer at this stage (think visual taste, visual consistency with the rest of the project, accessibility, etc.).
 
 ## Performance Standards

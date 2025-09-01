@@ -174,7 +174,7 @@ export function InvoiceScanner({ onExtracted, onSave }: InvoiceScannerProps) {
                 }
               }}
               disabled={!isFileInputReady}
-              className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="px-4 py-2 bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <FileText className="inline-block mr-2 h-4 w-4" />
               Select File
@@ -249,7 +249,7 @@ export function InvoiceScanner({ onExtracted, onSave }: InvoiceScannerProps) {
                 <div className="flex flex-col items-center justify-center h-full">
                   <button
                     onClick={handleExtract}
-                    className="px-6 py-3 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                    className="px-6 py-3 bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors"
                   >
                     <FileText className="inline-block mr-2 h-5 w-5" />
                     Extract Invoice Data

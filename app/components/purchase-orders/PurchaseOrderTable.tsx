@@ -9,27 +9,22 @@ import {
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
 
-interface Invoice {
+interface PurchaseOrder {
   id: string;
-  invoice_number: string;
-  vendor_name_snapshot: string;
-  invoice_date: string;
-  due_date: string;
-  currency: string;
-  total: number;
+  po_number: string;
+  vendor_name: string;
+  order_date: string;
   status: string;
-  match_status: string;
-  assigned_to_user_id?: string;
-  assigned_to_name?: string;
-  assigned_to_email?: string;
+  currency: string;
+  total_amount: number;
 }
 
-interface InvoiceTableProps {
-  invoices: Invoice[];
-  onDelete?: (invoiceId: string) => void;
+interface PurchaseOrderTableProps {
+  purchaseOrders: PurchaseOrder[];
+  onDelete?: (poId: string) => void;
 }
 
-export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
+export function PurchaseOrderTable({ purchaseOrders, onDelete }: PurchaseOrderTableProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -49,13 +44,14 @@ export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
     return formatter.format(amount);
   };
 
-  const getInvoiceStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string) => {
     const statusColors = {
       'draft': 'bg-gray-100 text-gray-800',
       'approved': 'bg-green-100 text-green-800',
-      'posted': 'bg-blue-100 text-blue-800',
-      'paid': 'bg-purple-100 text-purple-800',
-      'void': 'bg-red-100 text-red-800',
+      'sent': 'bg-blue-100 text-blue-800',
+      'received': 'bg-purple-100 text-purple-800',
+      'closed': 'bg-gray-100 text-gray-600',
+      'cancelled': 'bg-red-100 text-red-800',
     };
     
     const colorClass = statusColors[status as keyof typeof statusColors] || 'bg-gray-100 text-gray-800';
@@ -67,51 +63,12 @@ export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
     );
   };
 
-  const getMatchStatusBadge = (matchStatus: string) => {
-    const matchStatusColors = {
-      'not_matched': 'bg-gray-100 text-gray-800',
-      'matched': 'bg-green-100 text-green-800',
-      'within_tolerance': 'bg-yellow-100 text-yellow-800',
-      'exception': 'bg-red-100 text-red-800',
-    };
-    
-    const colorClass = matchStatusColors[matchStatus as keyof typeof matchStatusColors] || 'bg-gray-100 text-gray-800';
-    const displayText = matchStatus.split('_').map(word => 
-      word.charAt(0).toUpperCase() + word.slice(1)
-    ).join(' ');
-    
-    return (
-      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
-        {displayText}
-      </span>
-    );
-  };
-
-  const getAssignedToBadge = (assignedName?: string, assignedEmail?: string) => {
-    if (!assignedName) {
-      return <span className="text-gray-500 text-sm">Unassigned</span>;
-    }
-    
-    const initials = assignedName.split(' ').map(n => n[0]).join('').toUpperCase();
-    
-    return (
-      <div className="flex items-center">
-        <div className="h-7 w-7 rounded-full bg-purple-100 flex items-center justify-center mr-2">
-          <span className="text-xs font-medium text-purple-700">
-            {initials}
-          </span>
-        </div>
-        <span className="text-sm font-medium text-gray-950">{assignedName}</span>
-      </div>
-    );
-  };
-
-  if (invoices.length === 0) {
+  if (purchaseOrders.length === 0) {
     return (
       <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
         <FileText className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-        <h3 className="text-sm font-medium text-gray-950 mb-2">No invoices yet</h3>
-        <p className="text-sm text-gray-500">Upload one to get started.</p>
+        <h3 className="text-sm font-medium text-gray-950 mb-2">No purchase orders yet</h3>
+        <p className="text-sm text-gray-500">Create one to get started.</p>
       </div>
     );
   }
@@ -123,31 +80,22 @@ export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
           <thead>
             <tr>
               <th scope="col" className="px-6 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Status
-              </th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Invoice No.
+                PO Number
               </th>
               <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 Vendor
               </th>
               <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Invoice Date
+                Order Date
               </th>
               <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Due Date
-              </th>
-              <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-800">
-                Total
+                Status
               </th>
               <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 Currency
               </th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Match Status
-              </th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Assigned To
+              <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-800">
+                Total
               </th>
               <th scope="col" className="relative py-3.5 pl-3 pr-6">
                 <span className="sr-only">Actions</span>
@@ -155,39 +103,30 @@ export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {invoices.map((invoice) => (
-              <tr key={invoice.id} className="hover:bg-gray-50 transition-colors">
+            {purchaseOrders.map((po) => (
+              <tr key={po.id} className="hover:bg-gray-50 transition-colors">
                 <td className="whitespace-nowrap px-6 py-2.5 text-sm">
-                  {getInvoiceStatusBadge(invoice.status)}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-sm">
                   <Link 
-                    href={`/invoices/${invoice.id}`}
+                    href={`/purchase-orders/${po.id}`}
                     className="font-medium text-purple-600 hover:text-purple-700 hover:underline"
                   >
-                    {invoice.invoice_number}
+                    {po.po_number}
                   </Link>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-sm font-medium text-gray-950">
-                  {invoice.vendor_name_snapshot}
+                  {po.vendor_name || 'Unknown Vendor'}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-sm font-medium text-gray-950">
-                  {formatDate(invoice.invoice_date)}
+                  {formatDate(po.order_date)}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-sm">
+                  {getStatusBadge(po.status)}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-sm font-medium text-gray-950">
-                  {formatDate(invoice.due_date)}
+                  {po.currency}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-sm text-right font-medium text-gray-950">
-                  {formatCurrency(invoice.total, invoice.currency)}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-sm font-medium text-gray-950">
-                  {invoice.currency}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-sm">
-                  {getMatchStatusBadge(invoice.match_status)}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-sm">
-                  {getAssignedToBadge(invoice.assigned_to_name, invoice.assigned_to_email)}
+                  {formatCurrency(po.total_amount, po.currency)}
                 </td>
                 <td className="relative whitespace-nowrap py-2.5 pl-3 pr-6 text-right text-sm font-medium">
                   <DropdownMenu>
@@ -199,7 +138,7 @@ export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem
-                        onClick={() => onDelete && onDelete(invoice.id)}
+                        onClick={() => onDelete && onDelete(po.id)}
                         className="text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-600"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />

@@ -11,6 +11,10 @@ import {
   calculateRoundingDiff,
   isWithinRoundingTolerance 
 } from '@/lib/normalization';
+import { convertPdfToPng, validatePdfFile } from '@/lib/pdf-utils';
+
+// Force Node.js runtime for PDF processing
+export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
@@ -41,14 +45,54 @@ export async function POST(request: NextRequest) {
 
     // Read file content
     const fileBuffer = await readFile(sourceFile.storage_url);
-    const base64 = fileBuffer.toString('base64');
+    
+    // Handle PDF conversion to image
+    let base64: string;
+    let mediaType: string = sourceFile.media_type;
+    
+    if (sourceFile.media_type === 'application/pdf') {
+      try {
+        console.log('Converting PDF to PNG for processing...');
+        
+        // Validate PDF file
+        const validation = validatePdfFile(fileBuffer);
+        if (!validation.valid) {
+          return NextResponse.json(
+            { 
+              error: 'Invalid PDF file',
+              details: validation.error,
+            },
+            { status: 400 }
+          );
+        }
+        
+        // Convert PDF to PNG
+        const conversion = await convertPdfToPng(fileBuffer);
+        base64 = conversion.base64;
+        mediaType = conversion.mediaType;
+        
+        console.log(`PDF converted to PNG successfully (${conversion.pageCount} pages)`);
+      } catch (error: any) {
+        console.error('PDF conversion error:', error);
+        return NextResponse.json(
+          { 
+            error: 'Failed to convert PDF to image',
+            details: error.message,
+          },
+          { status: 500 }
+        );
+      }
+    } else {
+      // Handle image files directly
+      base64 = fileBuffer.toString('base64');
+    }
 
     // Extract invoice data using Anthropic Vision
     let extractedData: InvoiceExtractionResult;
     try {
       extractedData = await AnthropicService.extractInvoiceData(
         base64,
-        sourceFile.media_type as any
+        mediaType as any
       );
     } catch (error: any) {
       console.error('Extraction error:', error);

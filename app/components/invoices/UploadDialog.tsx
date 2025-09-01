@@ -133,12 +133,23 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 animate-in fade-in-0" />
         <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[500px] translate-x-[-50%] translate-y-[-50%] rounded-lg bg-white p-6 shadow-lg animate-in fade-in-0 zoom-in-95">
-          <Dialog.Title className="text-lg font-semibold text-gray-900 mb-2">
+          <Dialog.Title className="text-lg font-semibold text-gray-950 mb-2">
             Upload Invoice
           </Dialog.Title>
-          <Dialog.Description className="text-sm text-gray-600 mb-4">
+          <Dialog.Description className="text-sm text-gray-950 mb-4">
             Upload an invoice image or PDF to automatically extract and process the data.
           </Dialog.Description>
+
+          {/* What happens next section */}
+          <div className="bg-gray-50 rounded-lg p-4 mb-4">
+            <h3 className="text-sm font-semibold text-gray-950 mb-3">What happens next?</h3>
+            <ol className="space-y-2 text-sm text-gray-950">
+              <li>1. Your invoice will be processed using AI extraction</li>
+              <li>2. Invoice information will be automatically extracted including line items</li>
+              <li>3. You can review and edit the extracted information</li>
+              <li>4. Once approved, the invoice will be added to your system</li>
+            </ol>
+          </div>
           
           <Dialog.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
             <X className="h-4 w-4" />
@@ -159,7 +170,7 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
                 onDragLeave={handleDragLeave}
               >
                 <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
-                <p className="text-sm text-gray-600 mb-2">
+                <p className="text-sm text-gray-950 mb-2">
                   Drag and drop your invoice here, or click to select
                 </p>
                 <p className="text-xs text-gray-500 mb-4">
@@ -168,7 +179,7 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
+                  className="px-3 py-1.5 bg-purple-900 text-white text-sm rounded-md hover:bg-purple-800 transition-colors"
                 >
                   Select File
                 </button>
@@ -189,7 +200,7 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
                   <div className="flex items-center space-x-3">
                     <FileText className="h-8 w-8 text-purple-600" />
                     <div>
-                      <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                      <p className="text-sm font-medium text-gray-950">{file.name}</p>
                       <p className="text-xs text-gray-500">
                         {(file.size / 1024 / 1024).toFixed(2)} MB
                       </p>
@@ -209,7 +220,7 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
             {isLoading && (
               <div className="flex flex-col items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-purple-600 mb-4" />
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-gray-950">
                   {uploading ? 'Uploading invoice...' : 'Processing invoice data...'}
                 </p>
               </div>
@@ -230,14 +241,14 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
               <div className="flex justify-end space-x-3 pt-4 border-t">
                 <button
                   onClick={() => onOpenChange(false)}
-                  className="px-4 py-2 text-gray-700 hover:text-gray-900 transition-colors"
+                  className="px-3 py-1.5 text-sm text-gray-950 hover:text-gray-950 transition-colors"
                 >
                   Cancel
                 </button>
                 <button
                   onClick={handleUpload}
                   disabled={!file || isLoading}
-                  className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                  className="px-3 py-1.5 bg-purple-900 text-white text-sm rounded-md hover:bg-purple-800 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Upload & Process
                 </button>

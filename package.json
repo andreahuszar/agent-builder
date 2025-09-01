@@ -29,6 +29,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "clsx": "^2.1.1",
     "lucide-react": "^0.539.0",
+    "mupdf": "^1.26.4",
     "next": "15.4.6",
     "openai": "^5.16.0",
     "pg": "^8.16.3",
