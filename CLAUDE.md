@@ -57,6 +57,7 @@ npm run build
 - **Run locally**: `npm run db:migrate:sql`
 - **Deploy**: `npm run deploy` (runs automatically on Railway)
 - **Convention**: `XXX_description.sql` (e.g., `091_add_invoice_field.sql`)
+- **Full Guide**: See `MIGRATION_SAFETY_REPORT.md` for templates and detailed instructions
 
 ## Key Commands
 
