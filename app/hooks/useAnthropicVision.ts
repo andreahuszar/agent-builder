@@ -131,6 +131,13 @@ export function useAnthropicVision(options: UseAnthropicVisionOptions = {}) {
 
       if (!response.ok) {
         const errorData = await response.json();
+        
+        // Handle overloaded server error specifically
+        if (response.status === 503 || errorData.error?.includes('overloaded')) {
+          const retryMessage = 'The AI service is temporarily busy. Please wait a moment and try again.';
+          throw new Error(retryMessage);
+        }
+        
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
 

@@ -74,6 +74,18 @@ export async function POST(request: NextRequest) {
         { status: 429 }
       );
     }
+    
+    // Handle Anthropic overloaded error
+    if (error.message?.includes('529') || error.message?.includes('overloaded')) {
+      return NextResponse.json(
+        { 
+          error: 'Anthropic servers are temporarily overloaded. Please try again in a few moments.',
+          retryAfter: 30,
+          details: 'The AI service is experiencing high demand.'
+        },
+        { status: 503 }
+      );
+    }
 
     return NextResponse.json(
       { 
