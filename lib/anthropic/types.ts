@@ -80,21 +80,54 @@ export interface InvoiceTotal {
 }
 
 export interface InvoiceExtractionResult {
-  confidence: number;
-  vendor?: InvoiceVendor;
-  customer?: {
-    name: string;
-    address?: string;
-    email?: string;
+  invoice_headers: {
+    type?: 'invoice' | 'credit_memo' | 'debit_memo';
+    vendor_name_snapshot: string;
+    vendor_tax_id_snapshot?: string;
+    vendor_address_snapshot?: string;
+    invoice_number: string;
+    invoice_date: string;
+    due_date?: string;
+    currency: string;
+    payment_terms_text?: string;
+    po_numbers_cached?: string[];
+    subtotal: number;
+    tax_total?: number;
+    discount_total?: number;
+    total: number;
   };
-  invoice: {
+  invoice_lines?: Array<{
+    line_no: number;
+    description: string;
+    uom?: string;
+    qty: number;
+    unit_price: number;
+    net_amount: number;
+    tax_amount?: number;
+    line_total: number;
+    po_number_snapshot?: string;
+  }>;
+  customer?: {
+    name?: string;
+    address?: string;
+  };
+  warnings?: Array<{
+    code: string;
+    message: string;
+  }>;
+  confidence_overall?: number;
+  
+  // Legacy fields for backward compatibility
+  confidence?: number;
+  vendor?: InvoiceVendor;
+  invoice?: {
     number: string;
     date: string;
     dueDate?: string;
     poNumber?: string;
   };
-  items: InvoiceLineItem[];
-  totals: InvoiceTotal;
+  items?: InvoiceLineItem[];
+  totals?: InvoiceTotal;
   paymentTerms?: string;
   notes?: string;
   rawText?: string;

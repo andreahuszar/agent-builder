@@ -114,51 +114,63 @@ export class AnthropicService {
   ): Promise<InvoiceExtractionResult> {
     try {
       const extractionPrompt = `
-        Analyze this invoice image and extract all relevant information.
-        Return the data in the following JSON format:
+        You are an expert AP invoice extractor. Analyze this invoice image and extract all relevant information.
+        
+        Return STRICT JSON that matches this schema (omit fields you cannot read confidently; do not guess; numbers are JSON numbers):
+        
         {
-          "confidence": <0-1 confidence score>,
-          "vendor": {
-            "name": "<vendor name>",
-            "address": "<full address>",
-            "email": "<email>",
-            "phone": "<phone>",
-            "taxId": "<tax ID>"
+          "invoice_headers": {
+            "type": "invoice|credit_memo|debit_memo",
+            "vendor_name_snapshot": "string",
+            "vendor_tax_id_snapshot": "string",
+            "vendor_address_snapshot": "string", 
+            "invoice_number": "string",
+            "invoice_date": "YYYY-MM-DD",
+            "due_date": "YYYY-MM-DD",
+            "currency": "GBP|EUR|USD|other ISO code",
+            "payment_terms_text": "string",
+            "po_numbers_cached": ["string", "..."],
+            "subtotal": number,
+            "tax_total": number,
+            "discount_total": number,
+            "total": number
           },
-          "customer": {
-            "name": "<customer name>",
-            "address": "<full address>",
-            "email": "<email>"
-          },
-          "invoice": {
-            "number": "<invoice number>",
-            "date": "<YYYY-MM-DD>",
-            "dueDate": "<YYYY-MM-DD>",
-            "poNumber": "<PO number if present>"
-          },
-          "items": [
+          "invoice_lines": [
             {
-              "description": "<item description>",
-              "quantity": <number>,
-              "unitPrice": <number>,
-              "amount": <number>,
-              "tax": <number if applicable>
+              "line_no": number,
+              "description": "string",
+              "uom": "string",
+              "qty": number,
+              "unit_price": number,
+              "net_amount": number,
+              "tax_amount": number,
+              "line_total": number,
+              "po_number_snapshot": "string"
             }
           ],
-          "totals": {
-            "subtotal": <number>,
-            "tax": <number>,
-            "discount": <number if present>,
-            "total": <number>,
-            "currency": "<currency code>"
+          "customer": {
+            "name": "string",
+            "address": "string"
           },
-          "paymentTerms": "<payment terms>",
-          "notes": "<any additional notes>"
+          "warnings": [ 
+            { 
+              "code": "string", 
+              "message": "string" 
+            } 
+          ],
+          "confidence_overall": number
         }
         
-        Only include fields that are clearly visible in the invoice.
-        For missing fields, omit them from the response.
-        Be precise with numbers and dates.
+        Normalization rules:
+        - Dates: ISO 8601 format (YYYY-MM-DD)
+        - Currency: Map symbols to ISO codes (£→GBP, €→EUR, $→USD, ¥→JPY)
+        - Numbers: Use '.' as decimal separator, no thousands separators
+        - Keep negative signs for credit amounts
+        - line_no starts at 1 and increments
+        - uom defaults to "EA" if not specified
+        - Omit fields if unclear rather than guessing
+        
+        Return STRICT JSON only, no additional text.
       `;
       
       const response = await this.analyzeImage({
@@ -181,6 +193,44 @@ export class AnthropicService {
       
       // Add raw text for reference
       extractedData.rawText = responseText;
+      
+      // Map new format to legacy format for backward compatibility
+      if (extractedData.invoice_headers && !extractedData.invoice) {
+        extractedData.vendor = {
+          name: extractedData.invoice_headers.vendor_name_snapshot,
+          taxId: extractedData.invoice_headers.vendor_tax_id_snapshot || '',
+          address: extractedData.invoice_headers.vendor_address_snapshot || '',
+        };
+        
+        extractedData.invoice = {
+          number: extractedData.invoice_headers.invoice_number,
+          date: extractedData.invoice_headers.invoice_date,
+          dueDate: extractedData.invoice_headers.due_date,
+          poNumber: extractedData.invoice_headers.po_numbers_cached?.[0],
+        };
+        
+        extractedData.totals = {
+          subtotal: extractedData.invoice_headers.subtotal,
+          tax: extractedData.invoice_headers.tax_total || 0,
+          discount: extractedData.invoice_headers.discount_total || 0,
+          total: extractedData.invoice_headers.total,
+          currency: extractedData.invoice_headers.currency,
+        };
+        
+        extractedData.paymentTerms = extractedData.invoice_headers.payment_terms_text;
+        extractedData.confidence = extractedData.confidence_overall || 0.95;
+        
+        // Map invoice_lines to items for backward compatibility
+        if (extractedData.invoice_lines) {
+          extractedData.items = extractedData.invoice_lines.map(line => ({
+            description: line.description,
+            quantity: line.qty,
+            unitPrice: line.unit_price,
+            amount: line.net_amount,
+            tax: line.tax_amount,
+          }));
+        }
+      }
       
       return extractedData;
     } catch (error: any) {

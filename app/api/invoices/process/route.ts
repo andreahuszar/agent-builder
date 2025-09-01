@@ -3,6 +3,14 @@ import { readFile } from 'fs/promises';
 import prisma from '@/lib/db/prisma';
 import { AnthropicService } from '@/lib/anthropic';
 import type { InvoiceExtractionResult } from '@/lib/anthropic';
+import { 
+  normalizeCurrency, 
+  normalizeDate, 
+  normalizeNumber,
+  normalizePONumbers,
+  calculateRoundingDiff,
+  isWithinRoundingTolerance 
+} from '@/lib/normalization';
 
 export async function POST(request: NextRequest) {
   try {
@@ -53,55 +61,101 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if vendor exists or create a new one
+    // Enhanced vendor resolution - check tax_id first, then name
     let vendorId: string;
-    const vendorName = extractedData.vendor?.name || 'Unknown Vendor';
-    const vendorTaxId = extractedData.vendor?.taxId || 'UNKNOWN';
+    const vendorName = extractedData.invoice_headers?.vendor_name_snapshot || 
+                      extractedData.vendor?.name || 
+                      'Unknown Vendor';
+    const vendorTaxId = extractedData.invoice_headers?.vendor_tax_id_snapshot || 
+                       extractedData.vendor?.taxId || 
+                       null;
     
-    const existingVendors = await prisma.$queryRaw`
-      SELECT id FROM vendors 
-      WHERE name = ${vendorName}
-      LIMIT 1
-    ` as any[];
+    // First try to find by tax_id if available
+    let existingVendors: any[] = [];
+    if (vendorTaxId && vendorTaxId !== 'UNKNOWN') {
+      existingVendors = await prisma.$queryRaw`
+        SELECT id, payment_terms_id, default_currency 
+        FROM vendors 
+        WHERE tax_id = ${vendorTaxId}
+        LIMIT 1
+      ` as any[];
+    }
+    
+    // If not found by tax_id, try by name
+    if (existingVendors.length === 0) {
+      existingVendors = await prisma.$queryRaw`
+        SELECT id, payment_terms_id, default_currency 
+        FROM vendors 
+        WHERE name = ${vendorName}
+        LIMIT 1
+      ` as any[];
+    }
 
+    let vendorPaymentTermsId: string | null = null;
+    let vendorDefaultCurrency: string | null = null;
+    
     if (existingVendors && existingVendors.length > 0) {
       vendorId = existingVendors[0].id;
+      vendorPaymentTermsId = existingVendors[0].payment_terms_id;
+      vendorDefaultCurrency = existingVendors[0].default_currency;
     } else {
-      // Create new vendor
+      // Get default payment terms for new vendor
+      const defaultPaymentTerms = await prisma.$queryRaw`
+        SELECT id FROM payment_terms 
+        WHERE name = 'Net 30'
+        LIMIT 1
+      ` as any[];
+      
+      const defaultPaymentTermsId = defaultPaymentTerms[0]?.id || null;
+      const normalizedCurrency = normalizeCurrency(
+        extractedData.invoice_headers?.currency || 
+        extractedData.totals?.currency
+      );
+      
+      // Create new vendor with defaults
       const newVendor = await prisma.$queryRaw`
         INSERT INTO vendors (
           name,
           tax_id,
+          payment_terms_id,
+          default_currency,
           created_at,
           updated_at
         ) VALUES (
           ${vendorName},
-          ${vendorTaxId},
+          ${vendorTaxId || 'UNKNOWN'},
+          ${defaultPaymentTermsId}::uuid,
+          ${normalizedCurrency},
           NOW(),
           NOW()
         )
-        RETURNING id
+        RETURNING id, payment_terms_id, default_currency
       ` as any[];
       vendorId = newVendor[0].id;
+      vendorPaymentTermsId = newVendor[0].payment_terms_id;
+      vendorDefaultCurrency = newVendor[0].default_currency;
     }
 
-    // Get default payment terms (Net 30) - create if doesn't exist
-    let paymentTermsId: string;
-    const paymentTerms = await prisma.$queryRaw`
-      SELECT id FROM payment_terms 
-      WHERE name = 'Net 30'
-      LIMIT 1
-    ` as any[];
+    // Use vendor's default payment terms or fall back to Net 30
+    let paymentTermsId: string = vendorPaymentTermsId || '';
     
-    if (paymentTerms && paymentTerms.length > 0) {
-      paymentTermsId = paymentTerms[0].id;
-    } else {
-      const newPaymentTerms = await prisma.$queryRaw`
-        INSERT INTO payment_terms (name, days, created_at, updated_at)
-        VALUES ('Net 30', 30, NOW(), NOW())
-        RETURNING id
+    if (!paymentTermsId) {
+      const paymentTerms = await prisma.$queryRaw`
+        SELECT id FROM payment_terms 
+        WHERE name = 'Net 30'
+        LIMIT 1
       ` as any[];
-      paymentTermsId = newPaymentTerms[0].id;
+      
+      if (paymentTerms && paymentTerms.length > 0) {
+        paymentTermsId = paymentTerms[0].id;
+      } else {
+        const newPaymentTerms = await prisma.$queryRaw`
+          INSERT INTO payment_terms (name, net_days, created_at, updated_at)
+          VALUES ('Net 30', 30, NOW(), NOW())
+          RETURNING id
+        ` as any[];
+        paymentTermsId = newPaymentTerms[0].id;
+      }
     }
 
     // Get default org entity - create if doesn't exist
@@ -129,29 +183,76 @@ export async function POST(request: NextRequest) {
       phone: extractedData.vendor?.phone || '',
     };
 
-    // Check if invoice already exists for this vendor
+    // Prepare invoice data with normalization
+    const invoiceNumber = extractedData.invoice_headers?.invoice_number || 
+                         extractedData.invoice?.number || 
+                         'UNKNOWN';
+    
+    // Check if invoice already exists for this vendor (idempotency)
     const existingInvoice = await prisma.$queryRaw`
       SELECT id FROM invoice_headers 
       WHERE vendor_id = ${vendorId}::uuid 
-      AND invoice_number = ${extractedData.invoice.number}
+      AND invoice_number = ${invoiceNumber}
       LIMIT 1
     ` as any[];
 
     if (existingInvoice && existingInvoice.length > 0) {
+      // Update attachment to link to existing invoice
+      await prisma.$executeRaw`
+        UPDATE attachments
+        SET doc_id = ${existingInvoice[0].id}::uuid
+        WHERE doc_type = 'INV' AND doc_id = ${source_file_id}::uuid
+      `;
+      
       return NextResponse.json({
         success: true,
         invoice_id: existingInvoice[0].id,
-        invoice_number: extractedData.invoice.number,
+        invoice_number: invoiceNumber,
         vendor_name: vendorName,
         message: 'Invoice already exists',
         existing: true,
       });
     }
 
-    // Create invoice header
-    const invoiceDate = extractedData.invoice.date || new Date().toISOString().split('T')[0];
-    const dueDate = extractedData.invoice.dueDate || 
-      new Date(new Date(invoiceDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    // Prepare normalized invoice data
+    const invoiceDate = normalizeDate(
+      extractedData.invoice_headers?.invoice_date || 
+      extractedData.invoice?.date
+    ) || new Date().toISOString().split('T')[0];
+    
+    const dueDate = normalizeDate(
+      extractedData.invoice_headers?.due_date || 
+      extractedData.invoice?.dueDate
+    ) || new Date(new Date(invoiceDate).getTime() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+    
+    const currency = normalizeCurrency(
+      extractedData.invoice_headers?.currency || 
+      extractedData.totals?.currency
+    );
+    
+    // Collect PO numbers from header and lines
+    const headerPOs = extractedData.invoice_headers?.po_numbers_cached || [];
+    const linePOs = extractedData.invoice_lines?.map(line => line.po_number_snapshot).filter(Boolean) || 
+                   extractedData.items?.map(() => extractedData.invoice?.poNumber).filter(Boolean) || [];
+    const poNumbers = normalizePONumbers(headerPOs, linePOs);
+    
+    // Normalize totals
+    const subtotal = normalizeNumber(
+      extractedData.invoice_headers?.subtotal || 
+      extractedData.totals?.subtotal || 0
+    );
+    const taxTotal = normalizeNumber(
+      extractedData.invoice_headers?.tax_total || 
+      extractedData.totals?.tax || 0
+    );
+    const discountTotal = normalizeNumber(
+      extractedData.invoice_headers?.discount_total || 
+      extractedData.totals?.discount || 0
+    );
+    const total = normalizeNumber(
+      extractedData.invoice_headers?.total || 
+      extractedData.totals?.total || 0
+    );
 
     const invoiceHeaders = await prisma.$queryRaw`
       INSERT INTO invoice_headers (
@@ -180,44 +281,67 @@ export async function POST(request: NextRequest) {
         status,
         match_status,
         created_at,
-        updated_at
+        updated_at,
+        po_numbers_cached
       ) VALUES (
-        'invoice',
+        ${extractedData.invoice_headers?.type || 'invoice'}::invoice_type,
         ${vendorId}::uuid,
-        ${extractedData.invoice.number},
+        ${invoiceNumber},
         ${invoiceDate}::date,
         ${dueDate}::date,
-        ${extractedData.totals.currency || 'USD'},
-        ${extractedData.totals.currency || 'USD'},
+        ${currency},
+        ${currency},
         1.0,
-        ${extractedData.totals.subtotal || 0},
-        ${extractedData.totals.discount || 0},
-        ${extractedData.totals.tax || 0},
+        ${subtotal},
+        ${discountTotal},
+        ${taxTotal},
         0,
         0,
         0,
         0,
-        ${extractedData.totals.total || 0},
+        ${total},
         ${paymentTermsId}::uuid,
         ${billToId}::uuid,
         ${vendorName},
-        ${vendorTaxId},
+        ${vendorTaxId || 'UNKNOWN'},
         ${JSON.stringify(vendorAddressSnapshot)}::jsonb,
-        ${extractedData.paymentTerms || ''}::text,
+        ${extractedData.invoice_headers?.payment_terms_text || extractedData.paymentTerms || ''}::text,
         'draft',
         'not_matched',
         NOW(),
-        NOW()
+        NOW(),
+        ${poNumbers}::text[]
       )
       RETURNING id
     ` as any[];
 
     const invoiceId = invoiceHeaders[0].id;
 
-    // Create invoice lines
-    if (extractedData.items && extractedData.items.length > 0) {
-      for (let i = 0; i < extractedData.items.length; i++) {
-        const item = extractedData.items[i];
+    // Create invoice lines - handle both new and legacy formats
+    let linesTotal = 0;
+    const lines = extractedData.invoice_lines || 
+                 (extractedData.items?.map((item, i) => ({
+                   line_no: i + 1,
+                   description: item.description,
+                   qty: item.quantity || 1,
+                   uom: 'EA',
+                   unit_price: item.unitPrice || item.amount,
+                   net_amount: item.amount,
+                   tax_amount: item.tax || 0,
+                   line_total: item.amount + (item.tax || 0),
+                   po_number_snapshot: extractedData.invoice?.poNumber
+                 }))) || [];
+
+    if (lines.length > 0) {
+      for (const line of lines) {
+        const lineQty = normalizeNumber(line.qty || 1);
+        const lineUnitPrice = normalizeNumber(line.unit_price || 0);
+        const lineNetAmount = normalizeNumber(line.net_amount || lineQty * lineUnitPrice);
+        const lineTaxAmount = normalizeNumber(line.tax_amount || 0);
+        const lineTotal = normalizeNumber(line.line_total || lineNetAmount + lineTaxAmount);
+        
+        linesTotal += lineTotal;
+        
         await prisma.$executeRaw`
           INSERT INTO invoice_lines (
             invoice_id,
@@ -229,23 +353,41 @@ export async function POST(request: NextRequest) {
             net_amount,
             tax_amount,
             line_total,
+            po_number_snapshot,
             created_at,
             updated_at
           ) VALUES (
             ${invoiceId}::uuid,
-            ${i + 1},
-            ${item.description},
-            ${item.quantity || 1},
-            'EA',
-            ${item.unitPrice || item.amount},
-            ${item.amount},
-            ${item.tax || 0},
-            ${item.amount + (item.tax || 0)},
+            ${line.line_no},
+            ${line.description},
+            ${lineQty},
+            ${line.uom || 'EA'},
+            ${lineUnitPrice},
+            ${lineNetAmount},
+            ${lineTaxAmount},
+            ${lineTotal},
+            ${line.po_number_snapshot || null},
             NOW(),
             NOW()
           )
         `;
       }
+    }
+    
+    // Validate and update rounding difference
+    const roundingDiff = calculateRoundingDiff(total, linesTotal);
+    if (!isWithinRoundingTolerance(total, linesTotal, 0.02)) {
+      // Log warning but don't fail
+      console.warn(`Invoice ${invoiceNumber}: Header total (${total}) differs from lines total (${linesTotal}) by ${roundingDiff}`);
+    }
+    
+    // Update invoice with rounding difference
+    if (Math.abs(roundingDiff) > 0.001) {
+      await prisma.$executeRaw`
+        UPDATE invoice_headers 
+        SET rounding_diff = ${roundingDiff}
+        WHERE id = ${invoiceId}::uuid
+      `;
     }
 
     // Update attachments to link to the invoice
