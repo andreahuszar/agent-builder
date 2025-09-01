@@ -107,6 +107,143 @@ node scripts/migrate-sql-safe.js --rollback 080_critical_fixes.sql
 4. **Retry if failed**: Will retry failed migrations
 5. **Execution tracking**: Records timing and errors
 
+## 📝 Adding Schema Changes (Manual Process)
+
+### Step-by-Step Guide for Schema Changes
+
+#### 1. Create New Migration File
+Create a new SQL file in `/migrations` with the next sequential number:
+```bash
+# Naming convention: XXX_description.sql
+# Example: 091_add_invoice_reference.sql
+```
+
+#### 2. Write Idempotent SQL
+Always use IF EXISTS/IF NOT EXISTS to make migrations safe for re-runs:
+
+**Adding a Column:**
+```sql
+-- migrations/091_add_invoice_reference.sql
+ALTER TABLE invoice_headers 
+ADD COLUMN IF NOT EXISTS internal_reference VARCHAR(100);
+
+ALTER TABLE invoice_headers 
+ADD COLUMN IF NOT EXISTS processing_notes TEXT;
+
+-- Add index if needed
+CREATE INDEX IF NOT EXISTS idx_invoice_headers_internal_ref 
+ON invoice_headers(internal_reference);
+```
+
+**Creating a New Table:**
+```sql
+-- migrations/092_add_audit_log.sql
+CREATE TABLE IF NOT EXISTS audit_log (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    table_name VARCHAR(100) NOT NULL,
+    operation VARCHAR(20) NOT NULL,
+    user_id UUID REFERENCES users(id),
+    changed_data JSONB,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_log_table_operation 
+ON audit_log(table_name, operation);
+```
+
+**Adding Constraints:**
+```sql
+-- migrations/093_add_invoice_constraints.sql
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'check_invoice_amount_positive'
+    ) THEN
+        ALTER TABLE invoice_headers 
+        ADD CONSTRAINT check_invoice_amount_positive 
+        CHECK (total > 0);
+    END IF;
+END $$;
+```
+
+#### 3. Update Migration List
+Add your new migration to `scripts/migrate-sql-safe.js`:
+```javascript
+const migrations = [
+  '001_migration_tracking.sql',
+  '000_cleanup.sql',
+  // ... existing migrations ...
+  '090_missing_indexes.sql',
+  '091_add_invoice_reference.sql',  // <-- Add your new migration here
+];
+```
+
+#### 4. Test Locally
+```bash
+# Test the migration
+DATABASE_URL="postgresql://postgres:postgres@localhost:5432/xelix_invoice_dev" \
+npm run db:migrate:sql
+
+# Verify changes
+psql -h localhost -U postgres -d xelix_invoice_dev -c "\d invoice_headers"
+```
+
+#### 5. Deploy
+```bash
+# Commit your changes
+git add migrations/091_add_invoice_reference.sql scripts/migrate-sql-safe.js
+git commit -m "Add internal_reference field to invoice_headers"
+git push
+
+# Railway will automatically run migrations via release command
+```
+
+### Common Migration Templates
+
+**Drop Column (with safety check):**
+```sql
+ALTER TABLE invoice_headers 
+DROP COLUMN IF EXISTS deprecated_field;
+```
+
+**Rename Column:**
+```sql
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_name = 'invoice_headers' 
+        AND column_name = 'old_name'
+    ) THEN
+        ALTER TABLE invoice_headers 
+        RENAME COLUMN old_name TO new_name;
+    END IF;
+END $$;
+```
+
+**Add Foreign Key:**
+```sql
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'fk_invoice_category'
+    ) THEN
+        ALTER TABLE invoice_headers 
+        ADD CONSTRAINT fk_invoice_category 
+        FOREIGN KEY (category_id) REFERENCES categories(id);
+    END IF;
+END $$;
+```
+
+### Migration Naming Convention
+- `000-099`: Core schema setup
+- `100-199`: Feature additions
+- `200-299`: Data migrations
+- `300-399`: Performance optimizations
+- `900-999`: Hotfixes
+
 ### Monitoring Migrations
 ```sql
 -- View migration status

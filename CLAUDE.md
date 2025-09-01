@@ -50,6 +50,14 @@ npm run db:studio
 npm run build
 ```
 
+## Database Migrations
+- **System**: Manual SQL migrations with tracking (no auto-diffing)
+- **Location**: `/migrations/*.sql` files executed in order
+- **Add new**: Create SQL file, add to list in `scripts/migrate-sql-safe.js`
+- **Run locally**: `npm run db:migrate:sql`
+- **Deploy**: `npm run deploy` (runs automatically on Railway)
+- **Convention**: `XXX_description.sql` (e.g., `091_add_invoice_field.sql`)
+
 ## Key Commands
 
 ### Application
