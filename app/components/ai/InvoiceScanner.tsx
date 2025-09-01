@@ -340,18 +340,20 @@ export function InvoiceScanner({ onExtracted, onSave }: InvoiceScannerProps) {
             )}
 
             {/* Invoice Details */}
-            <div>
-              <h4 className="font-semibold mb-2">Invoice Details</h4>
-              <div className="grid grid-cols-2 gap-2 pl-4">
-                <div>Number: {extractedData.invoice.number}</div>
-                <div>Date: {extractedData.invoice.date}</div>
-                {extractedData.invoice.dueDate && <div>Due Date: {extractedData.invoice.dueDate}</div>}
-                {extractedData.invoice.poNumber && <div>PO Number: {extractedData.invoice.poNumber}</div>}
+            {extractedData.invoice && (
+              <div>
+                <h4 className="font-semibold mb-2">Invoice Details</h4>
+                <div className="grid grid-cols-2 gap-2 pl-4">
+                  <div>Number: {extractedData.invoice.number}</div>
+                  <div>Date: {extractedData.invoice.date}</div>
+                  {extractedData.invoice.dueDate && <div>Due Date: {extractedData.invoice.dueDate}</div>}
+                  {extractedData.invoice.poNumber && <div>PO Number: {extractedData.invoice.poNumber}</div>}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Line Items */}
-            {extractedData.items.length > 0 && (
+            {extractedData.items && extractedData.items.length > 0 && (
               <div>
                 <h4 className="font-semibold mb-2">Line Items</h4>
                 <div className="overflow-x-auto">
@@ -382,15 +384,17 @@ export function InvoiceScanner({ onExtracted, onSave }: InvoiceScannerProps) {
             )}
 
             {/* Totals */}
-            <div>
-              <h4 className="font-semibold mb-2">Totals</h4>
-              <div className="grid grid-cols-2 gap-2 pl-4">
-                <div>Subtotal: {extractedData.totals.currency} {extractedData.totals.subtotal.toFixed(2)}</div>
-                {extractedData.totals.tax && <div>Tax: {extractedData.totals.currency} {extractedData.totals.tax.toFixed(2)}</div>}
-                {extractedData.totals.discount && <div>Discount: {extractedData.totals.currency} {extractedData.totals.discount.toFixed(2)}</div>}
-                <div className="font-semibold">Total: {extractedData.totals.currency} {extractedData.totals.total.toFixed(2)}</div>
+            {extractedData.totals && (
+              <div>
+                <h4 className="font-semibold mb-2">Totals</h4>
+                <div className="grid grid-cols-2 gap-2 pl-4">
+                  <div>Subtotal: {extractedData.totals.currency} {extractedData.totals.subtotal?.toFixed(2)}</div>
+                  {extractedData.totals.tax && <div>Tax: {extractedData.totals.currency} {extractedData.totals.tax.toFixed(2)}</div>}
+                  {extractedData.totals.discount && <div>Discount: {extractedData.totals.currency} {extractedData.totals.discount.toFixed(2)}</div>}
+                  <div className="font-semibold">Total: {extractedData.totals.currency} {extractedData.totals.total?.toFixed(2)}</div>
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Payment Terms */}
             {extractedData.paymentTerms && (

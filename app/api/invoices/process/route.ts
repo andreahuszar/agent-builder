@@ -92,12 +92,10 @@ export async function POST(request: NextRequest) {
     }
 
     let vendorPaymentTermsId: string | null = null;
-    let vendorDefaultCurrency: string | null = null;
     
     if (existingVendors && existingVendors.length > 0) {
       vendorId = existingVendors[0].id;
       vendorPaymentTermsId = existingVendors[0].payment_terms_id;
-      vendorDefaultCurrency = existingVendors[0].default_currency;
     } else {
       // Get default payment terms for new vendor
       const defaultPaymentTerms = await prisma.$queryRaw`
@@ -133,7 +131,6 @@ export async function POST(request: NextRequest) {
       ` as any[];
       vendorId = newVendor[0].id;
       vendorPaymentTermsId = newVendor[0].payment_terms_id;
-      vendorDefaultCurrency = newVendor[0].default_currency;
     }
 
     // Use vendor's default payment terms or fall back to Net 30
@@ -410,10 +407,10 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       invoice_id: invoiceId,
-      invoice_number: extractedData.invoice.number,
+      invoice_number: invoiceNumber,
       vendor_name: vendorName,
-      total: extractedData.totals.total,
-      confidence: extractedData.confidence,
+      total: total,
+      confidence: extractedData.confidence_overall || extractedData.confidence || 0.95,
     });
   } catch (error: any) {
     console.error('Processing error:', error);
