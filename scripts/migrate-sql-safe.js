@@ -23,7 +23,8 @@ const migrations = [
   '060_seed_minimal.sql',
   '070_sample_functions.sql',
   '080_critical_fixes.sql',
-  '090_missing_indexes.sql'
+  '090_missing_indexes.sql',
+  '095_test_migrations_table.sql'
 ];
 
 /**
