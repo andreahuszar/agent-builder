@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
     
     // Handle PDF conversion to image
     let base64: string;
-    let mediaType: string = sourceFile.media_type;
+    const mediaType: string = sourceFile.media_type;
     
     if (sourceFile.media_type === 'application/pdf') {
       try {
