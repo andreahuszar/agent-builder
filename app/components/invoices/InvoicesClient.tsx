@@ -36,7 +36,9 @@ export default function InvoicesClient({ initialInvoices, renderAddButton, rende
 
   // Calculate pipeline stages when invoices change
   useEffect(() => {
-    const stages = calculatePipelineCounts(invoices);
+    // Filter out invoices with undefined status before calculating pipeline counts
+    const validInvoices = invoices.filter(inv => inv.status !== undefined);
+    const stages = calculatePipelineCounts(validInvoices as any);
     setPipelineStages(stages);
   }, [invoices]);
 
@@ -109,7 +111,7 @@ export default function InvoicesClient({ initialInvoices, renderAddButton, rende
       {/* Middle section with search and add button */}
       {renderMiddleSection && renderMiddleSection(() => setUploadDialogOpen(true))}
       
-      <InvoiceTable invoices={invoices} onDelete={handleDelete} />
+      <InvoiceTable invoices={invoices as any} onDelete={handleDelete} />
 
       <UploadDialog 
         open={uploadDialogOpen}

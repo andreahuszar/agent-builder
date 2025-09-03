@@ -11,7 +11,7 @@ import {
   calculateRoundingDiff,
   isWithinRoundingTolerance 
 } from '@/lib/normalization';
-import { convertPdfToPng, validatePdfFile } from '@/lib/pdf-utils';
+// import { convertPdfToPng, validatePdfFile } from '@/lib/pdf-utils';
 
 // Force Node.js runtime for PDF processing
 export const runtime = 'nodejs';
@@ -55,8 +55,10 @@ export async function POST(request: NextRequest) {
         console.log('Converting PDF to PNG for processing...');
         
         // Validate PDF file
-        const validation = validatePdfFile(fileBuffer);
-        if (!validation.valid) {
+        // TODO: Re-enable PDF validation when pdf-utils is available
+        // const validation = validatePdfFile(fileBuffer);
+        const validation = { isValid: true, error: null };
+        if (!validation.isValid) {
           return NextResponse.json(
             { 
               error: 'Invalid PDF file',
@@ -67,11 +69,14 @@ export async function POST(request: NextRequest) {
         }
         
         // Convert PDF to PNG
-        const conversion = await convertPdfToPng(fileBuffer);
-        base64 = conversion.base64;
-        mediaType = conversion.mediaType;
+        // TODO: Re-enable PDF conversion when pdf-utils is available
+        // const conversion = await convertPdfToPng(fileBuffer);
+        // For now, skip PDF processing
+        throw new Error('PDF processing temporarily unavailable');
+        // base64 = conversion.base64;
+        // mediaType = conversion.mediaType;
         
-        console.log(`PDF converted to PNG successfully (${conversion.pageCount} pages)`);
+        // console.log(`PDF converted to PNG successfully (${conversion.pageCount} pages)`);
       } catch (error: any) {
         console.error('PDF conversion error:', error);
         return NextResponse.json(

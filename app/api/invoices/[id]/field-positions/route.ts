@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import prisma from '@/lib/db/prisma';
-import { extractFieldPositions } from '@/lib/pdf-field-extractor';
+// import { extractFieldPositions } from '@/lib/pdf-field-extractor';
 
 export async function GET(
   request: NextRequest,
@@ -115,20 +115,24 @@ export async function GET(
     };
 
     // Extract field positions from the PDF
-    const fieldPositions = await extractFieldPositions(
-      fileBuffer,
-      attachment.media_type,
-      invoiceData
-    );
+    // TODO: Re-enable when mupdf is available
+    // const fieldPositions = await extractFieldPositions(
+    //   fileBuffer,
+    //   attachment.media_type,
+    //   invoiceData
+    // );
+    const fieldPositions: any[] = [];
 
     // Convert coordinates to match the PNG preview (3x zoom)
-    const { convertPdfToImageCoordinates } = await import('@/lib/pdf-field-extractor');
-    const convertedPositions = fieldPositions.map(field => ({
-      ...field,
-      positions: field.positions.map(quads => 
-        quads.map(quad => convertPdfToImageCoordinates(quad, 3))
-      )
-    }));
+    // TODO: Re-enable when mupdf is available
+    // const { convertPdfToImageCoordinates } = await import('@/lib/pdf-field-extractor');
+    // const convertedPositions = fieldPositions.map(field => ({
+    //   ...field,
+    //   positions: field.positions.map(quads => 
+    //     quads.map(quad => convertPdfToImageCoordinates(quad, 3))
+    //   )
+    // }));
+    const convertedPositions = fieldPositions;
 
     return NextResponse.json(
       { 

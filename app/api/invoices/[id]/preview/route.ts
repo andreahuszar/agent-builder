@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
 import prisma from '@/lib/db/prisma';
-import { convertPdfToPng } from '@/lib/pdf-utils';
+// import { convertPdfToPng } from '@/lib/pdf-utils';
 
 export async function GET(
   request: NextRequest,
@@ -61,17 +61,22 @@ export async function GET(
     let contentType: string;
 
     if (attachment.media_type === 'application/pdf') {
-      try {
-        const conversion = await convertPdfToPng(fileBuffer);
-        imageBuffer = Buffer.from(conversion.base64, 'base64');
-        contentType = 'image/png';
-      } catch (error) {
-        console.error('PDF conversion error:', error);
-        return NextResponse.json(
-          { error: 'Failed to convert PDF for preview' },
-          { status: 500 }
-        );
-      }
+      // TODO: Re-enable PDF conversion when pdf-utils is available
+      return NextResponse.json(
+        { error: 'PDF preview temporarily unavailable' },
+        { status: 503 }
+      );
+      // try {
+      //   const conversion = await convertPdfToPng(fileBuffer);
+      //   imageBuffer = Buffer.from(conversion.base64, 'base64');
+      //   contentType = 'image/png';
+      // } catch (error) {
+      //   console.error('PDF conversion error:', error);
+      //   return NextResponse.json(
+      //     { error: 'Failed to convert PDF for preview' },
+      //     { status: 500 }
+      //   );
+      // }
     } else if (attachment.media_type.startsWith('image/')) {
       // Serve image directly
       imageBuffer = fileBuffer;
@@ -89,7 +94,7 @@ export async function GET(
     headers.set('Content-Length', imageBuffer.length.toString());
     headers.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
 
-    return new NextResponse(imageBuffer, {
+    return new Response(new Uint8Array(imageBuffer), {
       status: 200,
       headers,
     });

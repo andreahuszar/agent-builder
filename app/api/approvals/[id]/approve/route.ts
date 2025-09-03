@@ -3,15 +3,15 @@ import prisma from '@/lib/db/prisma';
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const body = await request.json();
     const { userId, userName, comment } = body;
 
     // Update invoice status to approved
-    const invoice = await prisma.$executeRaw`
+    await prisma.$executeRaw`
       UPDATE invoice_headers 
       SET 
         status = 'approved',

@@ -78,7 +78,7 @@ export async function GET(
     // Cache for 1 hour
     headers.set('Cache-Control', 'public, max-age=3600');
 
-    return new NextResponse(fileBuffer, {
+    return new Response(new Uint8Array(fileBuffer), {
       status: 200,
       headers,
     });

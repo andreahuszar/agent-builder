@@ -10,7 +10,7 @@ export async function PATCH(
     const body = await request.json();
 
     // Update invoice header fields
-    const updatedInvoice = await prisma.$executeRaw`
+    await prisma.$executeRaw`
       UPDATE invoice_headers
       SET
         invoice_date = COALESCE(${body.invoice_date}::date, invoice_date),
@@ -51,7 +51,7 @@ export async function PATCH(
         created_at::text
       FROM invoice_headers
       WHERE id = ${id}::uuid
-    `;
+    ` as any[];
 
     return NextResponse.json(invoice[0]);
   } catch (error) {

@@ -423,7 +423,8 @@ export function EnhancedLineItemsTab({
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleEditLine(line.id!);
+                                // TODO: Implement handleEditLine
+                                console.log('Edit line:', line.id);
                               }}
                               className="p-1 text-gray-400 hover:text-purple-600 transition-colors"
                             >

@@ -5,8 +5,8 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const view = searchParams.get('view') || 'pending';
-    const userId = searchParams.get('userId');
-    const userRole = searchParams.get('role') || 'user';
+    // const userId = searchParams.get('userId');
+    // const userRole = searchParams.get('role') || 'user';
 
     let whereClause = '';
     
@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     // For now, we'll skip user filtering to avoid SQL injection risks
 
     // Build and execute query
-    let query = `
+    const query = `
       SELECT 
         ih.id,
         ih.invoice_number,

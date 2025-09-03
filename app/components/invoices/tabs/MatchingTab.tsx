@@ -76,9 +76,9 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
             id: `validation-${idx}`,
             field: validation.field,
             message: validation.message,
-            details: validation.details,
-            expectedValue: validation.expectedValue,
-            actualValue: validation.actualValue,
+            details: (validation as any).details,
+            expectedValue: (validation as any).expectedValue,
+            actualValue: (validation as any).actualValue,
             severity: validation.severity,
             category,
           });
@@ -154,9 +154,9 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
           id: `validation-${idx}`,
           field: validation.field,
           message: validation.message,
-          details: validation.details,
-          expectedValue: validation.expectedValue,
-          actualValue: validation.actualValue,
+          details: (validation as any).details,
+          expectedValue: (validation as any).expectedValue,
+          actualValue: (validation as any).actualValue,
           severity: validation.severity,
           category,
         });
@@ -324,7 +324,7 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
             <div className="flex-1">
               <h3 className="text-sm font-medium text-gray-950 mb-1">Non-PO Vendor</h3>
               <p className="text-sm text-gray-600">
-                This invoice is from a vendor that doesn't require Purchase Order or Goods Receipt matching. 
+                This invoice is from a vendor that doesn&apos;t require Purchase Order or Goods Receipt matching. 
                 The invoice will be processed based on configured approval workflows only.
               </p>
             </div>

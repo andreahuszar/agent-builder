@@ -10,7 +10,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import { ViewType, UserRole } from '@/app/approvals/ApprovalsClient';
+import { ViewType, UserRole } from '@/app/components/approvals/ApprovalsClient';
 
 interface Invoice {
   id: string;

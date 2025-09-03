@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import Link from 'next/link';
 import { 
   ChevronDown, 
   RefreshCw, 
@@ -457,7 +458,7 @@ export function HelpdeskInboxClient() {
                 </div>
                 {expandedSections.includes('items') && (
                   <div className="px-4 py-2 border-l-2 border-gray-100 ml-4">
-                    <a 
+                    <Link 
                       href="/invoices/11100001-1111-1111-1111-111111111111"
                       className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                     >
@@ -488,7 +489,7 @@ export function HelpdeskInboxClient() {
                           View Invoice Details →
                         </span>
                       </div>
-                    </a>
+                    </Link>
                   </div>
                 )}
               </div>
