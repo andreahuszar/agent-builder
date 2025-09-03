@@ -18,104 +18,136 @@ $$ LANGUAGE plpgsql;
 -- ================================================================
 
 -- Master Lookup Tables
+DROP TRIGGER IF EXISTS update_payment_terms_updated_at ON payment_terms;
 CREATE TRIGGER update_payment_terms_updated_at BEFORE UPDATE ON payment_terms
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_tolerance_profiles_updated_at ON tolerance_profiles;
 CREATE TRIGGER update_tolerance_profiles_updated_at BEFORE UPDATE ON tolerance_profiles
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_vendors_updated_at ON vendors;
 CREATE TRIGGER update_vendors_updated_at BEFORE UPDATE ON vendors
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_vendor_bank_accounts_updated_at ON vendor_bank_accounts;
 CREATE TRIGGER update_vendor_bank_accounts_updated_at BEFORE UPDATE ON vendor_bank_accounts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_items_updated_at ON items;
 CREATE TRIGGER update_items_updated_at BEFORE UPDATE ON items
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_tax_rates_updated_at ON tax_rates;
 CREATE TRIGGER update_tax_rates_updated_at BEFORE UPDATE ON tax_rates
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_org_entities_updated_at ON org_entities;
 CREATE TRIGGER update_org_entities_updated_at BEFORE UPDATE ON org_entities
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_ship_to_sites_updated_at ON ship_to_sites;
 CREATE TRIGGER update_ship_to_sites_updated_at BEFORE UPDATE ON ship_to_sites
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_cost_centers_updated_at ON cost_centers;
 CREATE TRIGGER update_cost_centers_updated_at BEFORE UPDATE ON cost_centers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_projects_updated_at ON projects;
 CREATE TRIGGER update_projects_updated_at BEFORE UPDATE ON projects
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_uom_conversions_updated_at ON uom_conversions;
 CREATE TRIGGER update_uom_conversions_updated_at BEFORE UPDATE ON uom_conversions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_users_updated_at ON users;
 CREATE TRIGGER update_users_updated_at BEFORE UPDATE ON users
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Purchase Orders
+DROP TRIGGER IF EXISTS update_po_headers_updated_at ON po_headers;
 CREATE TRIGGER update_po_headers_updated_at BEFORE UPDATE ON po_headers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_po_lines_updated_at ON po_lines;
 CREATE TRIGGER update_po_lines_updated_at BEFORE UPDATE ON po_lines
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Goods Receipts
+DROP TRIGGER IF EXISTS update_gr_headers_updated_at ON gr_headers;
 CREATE TRIGGER update_gr_headers_updated_at BEFORE UPDATE ON gr_headers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_gr_lines_updated_at ON gr_lines;
 CREATE TRIGGER update_gr_lines_updated_at BEFORE UPDATE ON gr_lines
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Service Entry Sheets
+DROP TRIGGER IF EXISTS update_ses_headers_updated_at ON ses_headers;
 CREATE TRIGGER update_ses_headers_updated_at BEFORE UPDATE ON ses_headers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_ses_lines_updated_at ON ses_lines;
 CREATE TRIGGER update_ses_lines_updated_at BEFORE UPDATE ON ses_lines
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Invoices
+DROP TRIGGER IF EXISTS update_invoice_headers_updated_at ON invoice_headers;
 CREATE TRIGGER update_invoice_headers_updated_at BEFORE UPDATE ON invoice_headers
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_invoice_lines_updated_at ON invoice_lines;
 CREATE TRIGGER update_invoice_lines_updated_at BEFORE UPDATE ON invoice_lines
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_invoice_line_taxes_updated_at ON invoice_line_taxes;
 CREATE TRIGGER update_invoice_line_taxes_updated_at BEFORE UPDATE ON invoice_line_taxes
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_invoice_line_distributions_updated_at ON invoice_line_distributions;
 CREATE TRIGGER update_invoice_line_distributions_updated_at BEFORE UPDATE ON invoice_line_distributions
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_invoice_line_receipts_updated_at ON invoice_line_receipts;
 CREATE TRIGGER update_invoice_line_receipts_updated_at BEFORE UPDATE ON invoice_line_receipts
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
 -- Cross-cutting Operations
+DROP TRIGGER IF EXISTS update_attachments_updated_at ON attachments;
 CREATE TRIGGER update_attachments_updated_at BEFORE UPDATE ON attachments
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_source_files_updated_at ON source_files;
 CREATE TRIGGER update_source_files_updated_at BEFORE UPDATE ON source_files
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_approver_groups_updated_at ON approver_groups;
 CREATE TRIGGER update_approver_groups_updated_at BEFORE UPDATE ON approver_groups
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_approver_group_members_updated_at ON approver_group_members;
 CREATE TRIGGER update_approver_group_members_updated_at BEFORE UPDATE ON approver_group_members
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_approval_policies_updated_at ON approval_policies;
 CREATE TRIGGER update_approval_policies_updated_at BEFORE UPDATE ON approval_policies
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_approvals_updated_at ON approvals;
 CREATE TRIGGER update_approvals_updated_at BEFORE UPDATE ON approvals
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_external_refs_updated_at ON external_refs;
 CREATE TRIGGER update_external_refs_updated_at BEFORE UPDATE ON external_refs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_work_items_updated_at ON work_items;
 CREATE TRIGGER update_work_items_updated_at BEFORE UPDATE ON work_items
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+DROP TRIGGER IF EXISTS update_agent_runs_updated_at ON agent_runs;
 CREATE TRIGGER update_agent_runs_updated_at BEFORE UPDATE ON agent_runs
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 

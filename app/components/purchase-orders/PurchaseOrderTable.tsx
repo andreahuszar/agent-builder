@@ -22,9 +22,10 @@ interface PurchaseOrder {
 interface PurchaseOrderTableProps {
   purchaseOrders: PurchaseOrder[];
   onDelete?: (poId: string) => void;
+  onRowClick?: (po: PurchaseOrder) => void;
 }
 
-export function PurchaseOrderTable({ purchaseOrders, onDelete }: PurchaseOrderTableProps) {
+export function PurchaseOrderTable({ purchaseOrders, onDelete, onRowClick }: PurchaseOrderTableProps) {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -106,12 +107,12 @@ export function PurchaseOrderTable({ purchaseOrders, onDelete }: PurchaseOrderTa
             {purchaseOrders.map((po) => (
               <tr key={po.id} className="hover:bg-gray-50 transition-colors">
                 <td className="whitespace-nowrap px-6 py-2.5 text-sm">
-                  <Link 
-                    href={`/purchase-orders/${po.id}`}
-                    className="font-medium text-purple-600 hover:text-purple-700 hover:underline"
+                  <button
+                    onClick={() => onRowClick && onRowClick(po)}
+                    className="font-medium text-purple-600 hover:text-purple-700 hover:underline text-left"
                   >
                     {po.po_number}
-                  </Link>
+                  </button>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-sm font-medium text-gray-950">
                   {po.vendor_name || 'Unknown Vendor'}

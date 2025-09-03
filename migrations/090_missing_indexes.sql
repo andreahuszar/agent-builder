@@ -86,8 +86,9 @@ ON match_results(tolerance_profile_id);
 CREATE INDEX IF NOT EXISTS idx_approvals_assigned_to 
 ON approvals(assigned_to);
 
-CREATE INDEX IF NOT EXISTS idx_approvals_acted_by 
-ON approvals(acted_by);
+-- Note: acted_by column does not exist in approvals table
+-- CREATE INDEX IF NOT EXISTS idx_approvals_acted_by 
+-- ON approvals(acted_by);
 
 -- Work Items table
 CREATE INDEX IF NOT EXISTS idx_work_items_assigned_to 

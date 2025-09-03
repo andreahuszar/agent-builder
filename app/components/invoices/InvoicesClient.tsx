@@ -1,10 +1,12 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Upload } from 'lucide-react';
 import { InvoiceTable } from './InvoiceTable';
 import { UploadDialog } from './UploadDialog';
+import InvoicePipeline from './InvoicePipeline';
+import { calculatePipelineCounts, PipelineStage } from '@/app/utils/pipelineCalculations';
 
 interface Invoice {
   id: string;
@@ -14,17 +16,37 @@ interface Invoice {
   due_date: string;
   currency: string;
   total: number;
+  status?: string;
+  match_status?: string;
+  approval_status?: string;
 }
 
 interface InvoicesClientProps {
   initialInvoices: Invoice[];
   renderAddButton?: (onClick: () => void) => React.ReactNode;
+  renderMiddleSection?: (onClick: () => void) => React.ReactNode;
 }
 
-export default function InvoicesClient({ initialInvoices, renderAddButton }: InvoicesClientProps) {
+export default function InvoicesClient({ initialInvoices, renderAddButton, renderMiddleSection }: InvoicesClientProps) {
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
+  const [pipelineLoading, setPipelineLoading] = useState(false);
   const router = useRouter();
+
+  // Calculate pipeline stages when invoices change
+  useEffect(() => {
+    const stages = calculatePipelineCounts(invoices);
+    setPipelineStages(stages);
+  }, [invoices]);
+
+  // Handle pipeline stage click
+  const handleStageClick = useCallback((stageLabel: string) => {
+    // You can implement filtering or navigation based on stage
+    console.log(`Stage clicked: ${stageLabel}`);
+    // Example: Filter invoices by stage status
+    // Or navigate to a filtered view
+  }, []);
 
   const handleUploadComplete = useCallback((invoiceId: string) => {
     // Navigate to the invoice detail page
@@ -76,6 +98,16 @@ export default function InvoicesClient({ initialInvoices, renderAddButton }: Inv
   return (
     <>
       {renderAddButton && renderAddButton(() => setUploadDialogOpen(true))}
+      
+      {/* Invoice Pipeline Card */}
+      <InvoicePipeline 
+        stages={pipelineStages}
+        loading={pipelineLoading}
+        onStageClick={handleStageClick}
+      />
+      
+      {/* Middle section with search and add button */}
+      {renderMiddleSection && renderMiddleSection(() => setUploadDialogOpen(true))}
       
       <InvoiceTable invoices={invoices} onDelete={handleDelete} />
 

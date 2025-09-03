@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { PurchaseOrderTable } from './PurchaseOrderTable';
+import { PurchaseOrderDrawer } from './PurchaseOrderDrawer';
 
 interface PurchaseOrder {
   id: string;
@@ -24,6 +25,7 @@ export default function PurchaseOrdersClient({
 }: PurchaseOrdersClientProps) {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPurchaseOrders);
   const [loading, setLoading] = useState(false);
+  const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
 
   const fetchPurchaseOrders = async () => {
     setLoading(true);
@@ -48,6 +50,24 @@ export default function PurchaseOrdersClient({
   const handleDeletePurchaseOrder = async (poId: string) => {
     // TODO: Implement delete functionality
     console.log('Delete purchase order:', poId);
+  };
+
+  const handleRowClick = (po: PurchaseOrder) => {
+    setSelectedPO(po);
+  };
+
+  const handleApprove = async (id: string) => {
+    // TODO: Implement approve functionality
+    console.log('Approve PO:', id);
+    setSelectedPO(null);
+    fetchPurchaseOrders();
+  };
+
+  const handleCancel = async (id: string, reason: string) => {
+    // TODO: Implement cancel functionality
+    console.log('Cancel PO:', id, reason);
+    setSelectedPO(null);
+    fetchPurchaseOrders();
   };
 
   // Refresh purchase orders when component mounts
@@ -80,6 +100,18 @@ export default function PurchaseOrdersClient({
         <PurchaseOrderTable 
           purchaseOrders={purchaseOrders} 
           onDelete={handleDeletePurchaseOrder}
+          onRowClick={handleRowClick}
+        />
+      )}
+
+      {/* Purchase Order Drawer */}
+      {selectedPO && (
+        <PurchaseOrderDrawer
+          purchaseOrderId={selectedPO.id}
+          purchaseOrder={selectedPO}
+          onClose={() => setSelectedPO(null)}
+          onApprove={handleApprove}
+          onCancel={handleCancel}
         />
       )}
     </div>

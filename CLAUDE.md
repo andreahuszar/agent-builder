@@ -22,7 +22,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - React hooks: `useOpenAI`, `useChat`
 - Configured for GPT-4 Turbo model
 
-### ✅ Anthropic Integration (Claude 3.5 + Vision)
+### ✅ Anthropic Integration (Claude 4.0 Sonnet + Vision)
 - Complete Vision support for invoice scanning
 - Service layer at `/lib/anthropic`
 - API routes at `/api/anthropic/*`
@@ -115,6 +115,7 @@ model Invoice {
   amount        Decimal
   currency      String   @default("USD")
   status        String   @default("pending")
+  
   dueDate       DateTime
   // ... full schema in prisma/schema.prisma
 }

@@ -9,9 +9,10 @@ interface AppLayoutProps {
   activeModule: string;
   children: React.ReactNode;
   customTopBar?: React.ReactNode;
+  hideNavigation?: boolean;
 }
 
-export default function AppLayout({ activeModule, children, customTopBar }: AppLayoutProps) {
+export default function AppLayout({ activeModule, children, customTopBar, hideNavigation = false }: AppLayoutProps) {
   const [currentModule, setCurrentModule] = useState<string>(activeModule);
   // Initialize with default view first, then update from hash after mount
   const pills = MODULE_PILLS[activeModule];
@@ -65,10 +66,12 @@ export default function AppLayout({ activeModule, children, customTopBar }: AppL
   return (
     <div className="flex min-h-screen bg-gray-50/60">
       {/* Navigation Sidebar */}
-      <Navigation 
-        activeModule={currentModule}
-        onModuleChange={handleModuleChange}
-      />
+      {!hideNavigation && (
+        <Navigation 
+          activeModule={currentModule}
+          onModuleChange={handleModuleChange}
+        />
+      )}
       
       {/* Main Content Area */}
       <div className="flex flex-1 flex-col">
@@ -83,10 +86,14 @@ export default function AppLayout({ activeModule, children, customTopBar }: AppL
         
         {/* Main Content */}
         <main id="main-content" className="flex-1 pb-8">
-          {customTopBar ? children : React.cloneElement(children as React.ReactElement<{ currentView?: string; currentModule?: string }>, { 
-            currentView,
-            currentModule 
-          })}
+          {customTopBar ? children : 
+            React.isValidElement(children) && typeof children.type !== 'string' 
+              ? React.cloneElement(children as React.ReactElement<{ currentView?: string; currentModule?: string }>, { 
+                  currentView,
+                  currentModule 
+                })
+              : children
+          }
         </main>
       </div>
     </div>

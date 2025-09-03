@@ -146,9 +146,9 @@ export function DocumentPreview({ invoiceId, hasAttachment }: DocumentPreviewPro
       </div>
 
       {/* Document Display Area */}
-      <div className="flex-1 overflow-auto p-4 flex items-center justify-center">
+      <div className="flex-1 overflow-auto p-4 relative">
         {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-50">
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900 mx-auto mb-2"></div>
               <p className="text-sm text-gray-950">Loading preview...</p>
@@ -157,31 +157,44 @@ export function DocumentPreview({ invoiceId, hasAttachment }: DocumentPreviewPro
         )}
         
         {imageError ? (
-          <div className="text-center">
-            <p className="text-red-600 mb-2">Failed to load preview</p>
-            <button
-              onClick={handleDownload}
-              className="text-sm text-purple-600 hover:text-purple-700 underline"
-            >
-              Download original document
-            </button>
+          <div className="flex items-center justify-center h-full">
+            <div className="text-center">
+              <p className="text-red-600 mb-2">Failed to load preview</p>
+              <button
+                onClick={handleDownload}
+                className="text-sm text-purple-600 hover:text-purple-700 underline"
+              >
+                Download original document
+              </button>
+            </div>
           </div>
         ) : (
-          <img
-            ref={imageRef}
-            src={`/api/invoices/${invoiceId}/preview`}
-            alt="Invoice Document"
-            className="max-w-full h-auto shadow-lg transition-transform duration-200"
+          <div 
+            className="flex items-start justify-center min-h-full"
             style={{
-              transform: `scale(${zoom}) rotate(${rotation}deg)`,
-              transformOrigin: 'center',
+              paddingTop: zoom > 1 ? '20px' : '0',
+              paddingBottom: zoom > 1 ? '20px' : '0',
             }}
-            onLoad={() => setIsLoading(false)}
-            onError={() => {
-              setIsLoading(false);
-              setImageError(true);
-            }}
-          />
+          >
+            <img
+              ref={imageRef}
+              src={`/api/invoices/${invoiceId}/preview`}
+              alt="Invoice Document"
+              className="shadow-lg transition-transform duration-200"
+              style={{
+                transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                transformOrigin: 'center top',
+                maxWidth: zoom > 1 ? 'none' : '100%',
+                width: zoom > 1 ? 'auto' : '100%',
+                height: 'auto',
+              }}
+              onLoad={() => setIsLoading(false)}
+              onError={() => {
+                setIsLoading(false);
+                setImageError(true);
+              }}
+            />
+          </div>
         )}
       </div>
     </div>

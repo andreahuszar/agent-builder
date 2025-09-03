@@ -21,8 +21,6 @@ async function getPurchaseOrder(id: string) {
         ph.status,
         ph.created_at::text,
         v.name as vendor_name,
-        v.email as vendor_email,
-        v.address as vendor_address,
         pt.description as payment_terms,
         oe.name as bill_to_name,
         oe.address as bill_to_address
@@ -140,14 +138,6 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
             <div>
               <h3 className="text-sm font-semibold text-gray-950 mb-2">Vendor</h3>
               <p className="text-sm text-gray-950">{purchaseOrder.vendor_name}</p>
-              {purchaseOrder.vendor_email && (
-                <p className="text-sm text-gray-500">{purchaseOrder.vendor_email}</p>
-              )}
-              {purchaseOrder.vendor_address && (
-                <p className="text-sm text-gray-500 mt-1">
-                  {JSON.stringify(purchaseOrder.vendor_address)}
-                </p>
-              )}
             </div>
 
             {/* Order Information */}

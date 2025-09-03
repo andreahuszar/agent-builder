@@ -1,0 +1,467 @@
+'use client';
+
+import React, { useState } from 'react';
+import { 
+  Check, 
+  X, 
+  AlertTriangle,
+  Eye,
+  EyeOff,
+  Package,
+  Edit2,
+  Save
+} from 'lucide-react';
+import * as Tooltip from '@radix-ui/react-tooltip';
+
+interface LineItem {
+  id?: string;
+  line_no: number;
+  description: string;
+  qty: number;
+  uom: string;
+  unit_price: number;
+  net_amount: number;
+  line_total: number;
+}
+
+interface EnhancedLineItemsTabV2Props {
+  invoiceId: string;
+  lines: LineItem[];
+  currency: string;
+  matchResults?: any[];
+  selectedLineId?: string | null;
+  onLineSelect?: (lineId: string | null) => void;
+  onLinesUpdate?: (lines: LineItem[]) => void;
+  poComparisonData?: any;
+}
+
+export function EnhancedLineItemsTabV2({
+  invoiceId,
+  lines,
+  currency,
+  matchResults = [],
+  selectedLineId,
+  onLineSelect,
+  onLinesUpdate,
+  poComparisonData,
+}: EnhancedLineItemsTabV2Props) {
+  const [showComparison, setShowComparison] = useState(false);
+  const [editingLineId, setEditingLineId] = useState<string | null>(null);
+
+  const formatCurrency = (amount: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: currency || 'USD',
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    }).format(amount);
+  };
+
+  const formatCompactCurrency = (amount: number) => {
+    if (amount >= 1000000) {
+      return `$${(amount / 1000000).toFixed(1)}M`;
+    } else if (amount >= 1000) {
+      return `$${(amount / 1000).toFixed(0)}K`;
+    }
+    return formatCurrency(amount);
+  };
+
+  const getComparisonForLine = (lineId: string) => {
+    if (!poComparisonData?.lineComparison) return null;
+    return poComparisonData.lineComparison.find((lc: any) => lc.invoice?.id === lineId);
+  };
+
+  const getMatchIndicator = (invoiceValue: any, poValue: any, tolerance: number = 0.01) => {
+    if (poValue === undefined || poValue === null) return null;
+    
+    const diff = Math.abs(invoiceValue - poValue);
+    const isMatched = diff <= tolerance;
+    
+    return isMatched ? (
+      <Check className="h-4 w-4 text-green-600 ml-1" />
+    ) : (
+      <AlertTriangle className="h-4 w-4 text-amber-600 ml-1" />
+    );
+  };
+
+  const getStatusBadge = (comparison: any, isUninvoiced: boolean = false) => {
+    if (isUninvoiced) {
+      return (
+        <div className="flex flex-col gap-0.5">
+          <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded inline-flex items-center gap-1 w-fit">
+            <X className="h-3 w-3" />
+            Not Invoiced
+          </span>
+        </div>
+      );
+    }
+    
+    if (!comparison) {
+      return (
+        <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">
+          Unmatched
+        </span>
+      );
+    }
+
+    if (comparison.status === 'matched') {
+      return (
+        <div className="flex flex-col gap-0.5">
+          <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded inline-flex items-center gap-1 w-fit">
+            <Check className="h-3 w-3" />
+            Matched
+          </span>
+          {comparison.po && (
+            <span className="text-[10px] text-gray-500">PO Line #{comparison.po.line_no}</span>
+          )}
+        </div>
+      );
+    }
+
+    if (comparison.hasVariance) {
+      return (
+        <div className="flex flex-col gap-0.5">
+          <span className="px-2 py-1 text-xs font-medium bg-red-100 text-red-700 rounded-full inline-flex items-center gap-1 w-fit">
+            <AlertTriangle className="h-3 w-3" />
+            Variance
+          </span>
+          {comparison.po && (
+            <span className="text-[10px] text-gray-500">PO Line #{comparison.po.line_no}</span>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <span className="px-2 py-1 text-xs font-medium bg-gray-100 text-gray-700 rounded">
+        Unmatched
+      </span>
+    );
+  };
+
+  // Always calculate totals from line items for accuracy
+  const subtotal = lines.reduce((sum, line) => sum + line.net_amount, 0);
+  const taxAmount = lines.reduce((sum, line) => sum + (line.line_total - line.net_amount), 0);
+  const total = lines.reduce((sum, line) => sum + line.line_total, 0);
+
+  if (!showComparison) {
+    // Simple view without comparison
+    return (
+      <div className="h-full flex flex-col bg-white">
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-3">
+            <Package className="h-5 w-5 text-purple-600" />
+            <h3 className="text-sm font-semibold text-gray-950">LINE ITEMS</h3>
+          </div>
+          {poComparisonData?.poData && (
+            <div className="flex items-center gap-2">
+              <span className="text-xs text-gray-600">Comparing with PO</span>
+              <button
+                onClick={() => setShowComparison(true)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-purple-300 rounded-full text-xs font-medium text-purple-700 hover:bg-purple-50 transition-colors"
+              >
+                <EyeOff className="h-3.5 w-3.5" />
+                <span>Show Comparison</span>
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Line Items */}
+        <div className="flex-1 overflow-auto">
+          {lines.map((line) => {
+            const comparison = getComparisonForLine(line.id || '');
+            
+            return (
+              <div
+                key={line.id || line.line_no}
+                className="px-4 py-3 border-b border-gray-100 hover:bg-gray-50"
+                onClick={() => onLineSelect?.(line.id || null)}
+              >
+                <div className="flex items-start gap-4">
+                  <div className="pt-1">
+                    {getStatusBadge(comparison)}
+                  </div>
+                  
+                  <div className="flex-1">
+                    <h4 className="text-sm font-medium text-gray-950">{line.description}</h4>
+                    <div className="flex items-center gap-4 mt-1 text-xs text-gray-600">
+                      <span>{line.qty} {line.uom}</span>
+                      <span>× {formatCompactCurrency(line.unit_price)}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="text-right">
+                    <div className="text-sm font-semibold text-gray-950">
+                      {formatCurrency(line.line_total)}
+                    </div>
+                  </div>
+                  
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingLineId(line.id || null);
+                    }}
+                    className="p-1 text-gray-400 hover:text-purple-600"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
+          <div className="space-y-1">
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Subtotal</span>
+              <span className="font-medium text-gray-950">{formatCurrency(subtotal)}</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Tax (8.0%)</span>
+              <span className="font-medium text-gray-950">{formatCurrency(taxAmount)}</span>
+            </div>
+            <div className="flex justify-between text-sm font-semibold pt-1 border-t">
+              <span className="text-gray-950">Total</span>
+              <span className="text-gray-950">{formatCurrency(total)}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Comparison view - table format
+  return (
+    <div className="h-full flex flex-col bg-white">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
+        <div className="flex items-center gap-3">
+          <Package className="h-5 w-5 text-purple-600" />
+          <h3 className="text-sm font-semibold text-gray-950">LINE ITEMS</h3>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-gray-600">Comparing with PO</span>
+          <button
+            onClick={() => setShowComparison(false)}
+            className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white rounded-full text-xs font-medium hover:bg-purple-700 transition-colors"
+          >
+            <Eye className="h-3.5 w-3.5" />
+            <span className="font-medium">{poComparisonData?.poData?.po_number}</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Table Header */}
+      <div className="px-4 py-2 bg-gray-100 border-b">
+        <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-700">
+          <div className="col-span-2">Status</div>
+          <div className="col-span-3">Description</div>
+          <div className="col-span-2 text-center">Qty</div>
+          <div className="col-span-2 text-right">Unit Price</div>
+          <div className="col-span-2 text-right">Total</div>
+          <div className="col-span-1"></div>
+        </div>
+      </div>
+
+      {/* Line Items with Comparison */}
+      <div className="flex-1 overflow-auto">
+        {/* Invoice Lines with PO Matches */}
+        {lines.map((line) => {
+          const comparison = getComparisonForLine(line.id || '');
+          const po = comparison?.po;
+          
+          return (
+            <div
+              key={line.id || line.line_no}
+              className="px-4 py-3 border-b border-gray-100 hover:bg-gray-50"
+            >
+              <div className="grid grid-cols-12 gap-2 items-center">
+                {/* Status */}
+                <div className="col-span-2">
+                  {getStatusBadge(comparison)}
+                </div>
+                
+                {/* Description */}
+                <div className="col-span-3">
+                  <div className="text-sm font-medium text-gray-950">{line.description}</div>
+                  {po && po.description !== line.description && (
+                    <div className="text-xs text-purple-600 font-medium mt-0.5">PO: {po.description}</div>
+                  )}
+                </div>
+                
+                {/* Quantity */}
+                <div className="col-span-2 text-center">
+                  <div className="flex items-center justify-center">
+                    <span className="text-sm font-medium text-gray-950">
+                      {line.qty} {line.uom}
+                    </span>
+                    {po && getMatchIndicator(line.qty, po.qty_ordered)}
+                  </div>
+                  {po && Math.abs(line.qty - po.qty_ordered) > 0.01 && (
+                    <div className="text-xs mt-0.5">
+                      <span className="text-purple-600 font-medium">PO: {po.qty_ordered}</span> <span className="text-red-600 font-medium">({line.qty > po.qty_ordered ? '+' : ''}{line.qty - po.qty_ordered})</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Unit Price */}
+                <div className="col-span-2 text-right">
+                  <div className="flex items-center justify-end">
+                    <span className="text-sm font-medium text-gray-950">
+                      {formatCurrency(line.unit_price)}
+                    </span>
+                    {po && getMatchIndicator(line.unit_price, po.unit_price)}
+                  </div>
+                  {po && Math.abs(line.unit_price - po.unit_price) > 0.01 && (
+                    <div className="text-xs mt-0.5">
+                      <span className="text-purple-600 font-medium">PO: {formatCurrency(po.unit_price)}</span> <span className="text-red-600 font-medium">({line.unit_price > po.unit_price ? '+' : ''}{formatCurrency(line.unit_price - po.unit_price)})</span>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Total */}
+                <div className="col-span-2 text-right">
+                  <div className="text-sm font-semibold text-gray-950">
+                    {formatCurrency(line.line_total)}
+                  </div>
+                  {po && (
+                    <div className="text-xs text-purple-600 font-medium mt-0.5">
+                      PO: {formatCurrency(po.qty_ordered * po.unit_price)}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Actions */}
+                <div className="col-span-1 text-right">
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setEditingLineId(line.id || null);
+                    }}
+                    className="p-1 text-gray-400 hover:text-purple-600"
+                  >
+                    <Edit2 className="h-4 w-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        
+        {/* Uninvoiced PO Lines */}
+        {poComparisonData?.unmatchedPoLines && poComparisonData.unmatchedPoLines.length > 0 && (
+          <>
+            <div className="px-4 py-2 bg-red-50 border-y border-red-200">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-red-600" />
+                <span className="text-sm font-medium text-red-900">Uninvoiced PO Items</span>
+              </div>
+            </div>
+            {poComparisonData.unmatchedPoLines.map((item: any) => {
+              const po = item.po;
+              return (
+                <div
+                  key={po.id}
+                  className="px-4 py-3 border-b border-gray-100 bg-red-50/20 hover:bg-red-50/30"
+                >
+                  <div className="grid grid-cols-12 gap-2 items-center">
+                    {/* Status */}
+                    <div className="col-span-2">
+                      {getStatusBadge(null, true)}
+                      <span className="text-[10px] text-gray-500 mt-1 block">PO Line #{po.line_no}</span>
+                    </div>
+                    
+                    {/* Description */}
+                    <div className="col-span-3">
+                      <div className="text-sm text-gray-700 line-through">Not in invoice</div>
+                      <div className="text-xs text-gray-800 mt-0.5">PO: {po.description}</div>
+                    </div>
+                    
+                    {/* Quantity */}
+                    <div className="col-span-2 text-center">
+                      <div className="text-sm text-gray-700">--</div>
+                      <div className="text-xs text-gray-800 mt-0.5">
+                        PO: {po.qty_ordered} {po.uom}
+                      </div>
+                    </div>
+                    
+                    {/* Unit Price */}
+                    <div className="col-span-2 text-right">
+                      <div className="text-sm text-gray-700">--</div>
+                      <div className="text-xs text-gray-800 mt-0.5">
+                        PO: {formatCurrency(po.unit_price)}
+                      </div>
+                    </div>
+                    
+                    {/* Total */}
+                    <div className="col-span-2 text-right">
+                      <div className="text-sm text-gray-700">--</div>
+                      <div className="text-xs text-red-600 font-medium mt-0.5">
+                        PO: {formatCurrency(po.qty_ordered * po.unit_price)}
+                      </div>
+                    </div>
+                    
+                    {/* Actions */}
+                    <div className="col-span-1 text-right">
+                      {/* Empty for uninvoiced items */}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
+        <div className="space-y-1">
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Subtotal</span>
+            <span className="font-medium text-gray-950">{formatCurrency(subtotal)}</span>
+          </div>
+          <div className="flex justify-between text-sm">
+            <span className="text-gray-600">Tax (8.0%)</span>
+            <span className="font-medium text-gray-950">{formatCurrency(taxAmount)}</span>
+          </div>
+          <div className="flex justify-between text-sm font-semibold pt-1 border-t">
+            <span className="text-gray-950">Invoice Total</span>
+            <span className="text-gray-950">{formatCurrency(total)}</span>
+          </div>
+          {poComparisonData?.poData && (
+            <>
+              <div className="flex justify-between text-sm font-semibold">
+                <span className="text-gray-950">PO Total</span>
+                <span className="text-gray-950">
+                  {formatCurrency(poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                    sum + (line.qty_ordered * line.unit_price), 0) || 0)}
+                </span>
+              </div>
+              <div className="flex justify-between text-sm font-semibold pt-1 border-t">
+                <span className={`${(total - (poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                  sum + (line.qty_ordered * line.unit_price), 0) || 0)) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  Variance
+                </span>
+                <span className={`${(total - (poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                  sum + (line.qty_ordered * line.unit_price), 0) || 0)) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {formatCurrency(Math.abs(total - (poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                    sum + (line.qty_ordered * line.unit_price), 0) || 0)))}
+                  {total !== (poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                    sum + (line.qty_ordered * line.unit_price), 0) || 0) && 
+                    ` (${Math.abs(((total - (poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                      sum + (line.qty_ordered * line.unit_price), 0) || 0)) / 
+                      (poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                        sum + (line.qty_ordered * line.unit_price), 0) || 1)) * 100).toFixed(1)}%)`}
+                </span>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

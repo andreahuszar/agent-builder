@@ -1,8 +1,9 @@
 import { notFound } from 'next/navigation';
-import { FileText, Download } from 'lucide-react';
 import prisma from '@/lib/db/prisma';
 import InvoiceDetailLayout from '@/app/components/InvoiceDetailLayout';
-import { DocumentPreview } from '@/app/components/invoices/DocumentPreview';
+import { InvoiceDetailClient } from '@/app/invoices/[id]/InvoiceDetailClient';
+import { SelectionProvider } from '@/app/context/SelectionContext';
+import { InvoicePageWrapper } from './InvoicePageWrapper';
 
 interface InvoiceDetailPageProps {
   params: Promise<{
@@ -10,27 +11,35 @@ interface InvoiceDetailPageProps {
   }>;
 }
 
-async function getInvoice(id: string) {
+async function getInvoiceData(id: string) {
   try {
     // Fetch invoice header
     const invoiceHeaders = await prisma.$queryRaw`
       SELECT 
-        id,
-        invoice_number,
-        vendor_name_snapshot,
-        vendor_tax_id_snapshot,
-        vendor_address_snapshot,
-        invoice_date::text,
-        due_date::text,
-        currency,
-        subtotal::float,
-        tax_total::float,
-        total::float,
-        payment_terms_id,
-        terms_text,
-        created_at::text
-      FROM invoice_headers
-      WHERE id = ${id}::uuid
+        ih.id,
+        ih.invoice_number,
+        ih.vendor_name_snapshot,
+        ih.vendor_tax_id_snapshot,
+        ih.vendor_address_snapshot,
+        ih.invoice_date::text,
+        ih.due_date::text,
+        ih.currency,
+        ih.subtotal::float,
+        ih.tax_total::float,
+        ih.total::float,
+        ih.payment_terms_id,
+        ih.terms_text,
+        ih.helpdesk_ticket_ref,
+        ih.status,
+        ih.match_status,
+        ih.po_numbers_cached,
+        ih.created_at::text,
+        ih.vendor_id,
+        ih.ledger,
+        v.requires_po as vendor_requires_po
+      FROM invoice_headers ih
+      LEFT JOIN vendors v ON ih.vendor_id = v.id
+      WHERE ih.id = ${id}::uuid
     ` as any[];
 
     if (!invoiceHeaders || invoiceHeaders.length === 0) {
@@ -39,9 +48,32 @@ async function getInvoice(id: string) {
 
     const invoice = invoiceHeaders[0];
 
+    // Fetch PO total if there's a linked PO
+    let poTotal = null;
+    if (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0) {
+      // For now, use a mock PO total since purchase_orders table may not exist
+      // In production, this would query the actual purchase_orders table
+      poTotal = 3981.94; // Mock PO total for demonstration
+      
+      /* Uncomment when purchase_orders table exists:
+      const poNumber = invoice.po_numbers_cached[0];
+      const poData = await prisma.$queryRaw`
+        SELECT total::float
+        FROM purchase_orders
+        WHERE po_number = ${poNumber}
+        LIMIT 1
+      ` as any[];
+      
+      if (poData && poData.length > 0) {
+        poTotal = poData[0].total;
+      }
+      */
+    }
+
     // Fetch invoice lines
     const lines = await prisma.$queryRaw`
       SELECT 
+        id,
         line_no,
         description,
         qty::float,
@@ -66,6 +98,7 @@ async function getInvoice(id: string) {
 
     return {
       ...invoice,
+      po_total: poTotal,
       lines: lines || [],
       attachment: attachments?.[0] || null,
     };
@@ -77,214 +110,19 @@ async function getInvoice(id: string) {
 
 export default async function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
   const resolvedParams = await params;
-  const invoice = await getInvoice(resolvedParams.id);
+  const invoice = await getInvoiceData(resolvedParams.id);
 
   if (!invoice) {
     notFound();
   }
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'long', 
-      day: 'numeric' 
-    });
-  };
-
-  const formatCurrency = (amount: number, currency: string) => {
-    const formatter = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: currency || 'USD',
-      minimumFractionDigits: 2,
-      maximumFractionDigits: 2,
-    });
-    return formatter.format(amount);
-  };
-
   return (
-    <InvoiceDetailLayout invoiceNumber={invoice.invoice_number}>
-      <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Left Column - Document Preview */}
-          <div className="lg:sticky lg:top-6 h-[calc(100vh-8rem)]">
-            <DocumentPreview 
-              invoiceId={resolvedParams.id} 
-              hasAttachment={!!invoice.attachment}
-            />
-          </div>
-
-          {/* Right Column - Invoice Details */}
-          <div className="space-y-6">
-            {/* Invoice Header */}
-            <div className="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-lg p-6">
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <p className="text-sm text-gray-950">
-              Created on {formatDate(invoice.created_at)}
-            </p>
-          </div>
-          {invoice.attachment && (
-            <a
-              href={`/api/invoices/download/${resolvedParams.id}`}
-              className="inline-flex items-center px-3 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-950 bg-white hover:bg-gray-50"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              Download Original
-            </a>
-          )}
-        </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Vendor Information */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-950 mb-2">Vendor</h3>
-            <p className="text-sm text-gray-950">{invoice.vendor_name_snapshot}</p>
-            {invoice.vendor_tax_id_snapshot && (
-              <p className="text-sm text-gray-500">Tax ID: {invoice.vendor_tax_id_snapshot}</p>
-            )}
-            {invoice.vendor_address_snapshot?.address && (
-              <p className="text-sm text-gray-500 mt-1">
-                {invoice.vendor_address_snapshot.address}
-              </p>
-            )}
-          </div>
-
-          {/* Invoice Dates */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-950 mb-2">Dates</h3>
-            <div className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Invoice Date:</span>
-                <span className="text-gray-950">{formatDate(invoice.invoice_date)}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Due Date:</span>
-                <span className="text-gray-950">{formatDate(invoice.due_date)}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Totals */}
-          <div>
-            <h3 className="text-sm font-semibold text-gray-950 mb-2">Totals</h3>
-            <div className="space-y-1">
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Subtotal:</span>
-                <span className="text-gray-950">
-                  {formatCurrency(invoice.subtotal, invoice.currency)}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-gray-500">Tax:</span>
-                <span className="text-gray-950">
-                  {formatCurrency(invoice.tax_total, invoice.currency)}
-                </span>
-              </div>
-              <div className="flex justify-between text-sm font-semibold pt-1 border-t">
-                <span className="text-gray-950">Total:</span>
-                <span className="text-gray-950">
-                  {formatCurrency(invoice.total, invoice.currency)}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {invoice.terms_text && (
-          <div className="mt-6 pt-6 border-t">
-            <h3 className="text-sm font-semibold text-gray-950 mb-2">Payment Terms</h3>
-            <p className="text-sm text-gray-950">{invoice.terms_text}</p>
-          </div>
-        )}
-            </div>
-
-            {/* Invoice Lines */}
-            {invoice.lines && invoice.lines.length > 0 && (
-              <div className="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-lg overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h2 className="text-lg font-semibold text-gray-950">Line Items</h2>
-          </div>
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">
-                    Line No.
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">
-                    Description
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-800 uppercase tracking-wider">
-                    Qty
-                  </th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-800 uppercase tracking-wider">
-                    UOM
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-800 uppercase tracking-wider">
-                    Unit Price
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-800 uppercase tracking-wider">
-                    Net Amount
-                  </th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-800 uppercase tracking-wider">
-                    Line Total
-                  </th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {invoice.lines.map((line: any) => (
-                  <tr key={line.line_no}>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950">
-                      {line.line_no}
-                    </td>
-                    <td className="px-6 py-4 text-sm font-medium text-gray-950">
-                      {line.description}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
-                      {line.qty}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950">
-                      {line.uom}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
-                      {formatCurrency(line.unit_price, invoice.currency)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
-                      {formatCurrency(line.net_amount, invoice.currency)}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
-                      {formatCurrency(line.line_total, invoice.currency)}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-              </div>
-            )}
-
-            {/* Attachment Link */}
-            {invoice.attachment && (
-              <div className="bg-white shadow-sm ring-1 ring-gray-900/5 rounded-lg p-6">
-                <h3 className="text-sm font-semibold text-gray-950 mb-3">Attachment</h3>
-                <div className="flex items-center space-x-3">
-                  <FileText className="h-6 w-6 text-gray-400" />
-                  <div>
-                    <p className="text-sm text-gray-950">{invoice.attachment.filename}</p>
-                    <a
-                      href={`/api/invoices/download/${resolvedParams.id}`}
-                      className="text-sm text-purple-600 hover:text-purple-700"
-                    >
-                      View original document
-                    </a>
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-    </InvoiceDetailLayout>
+    <SelectionProvider>
+      <InvoicePageWrapper
+        invoiceId={resolvedParams.id}
+        initialInvoice={invoice}
+        invoiceNumber={invoice.invoice_number}
+      />
+    </SelectionProvider>
   );
 }

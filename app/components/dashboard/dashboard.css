@@ -1,0 +1,19 @@
+/* Custom Dashboard Tab Styles */
+.dashboard-tabs button[data-state="active"] {
+  color: rgb(124 58 237) !important; /* violet-600 */
+  position: relative;
+}
+
+.dashboard-tabs button[data-state="active"]::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: rgb(124 58 237); /* violet-600 */
+}
+
+.dashboard-tabs button {
+  position: relative;
+}

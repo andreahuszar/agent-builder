@@ -1,51 +1,51 @@
--- 030_indexes.sql - Create performance indexes
+-- 030_indexes.sql - Create performance indexes (idempotent)
 
 -- ================================================================
 -- RECOMMENDED INDEXES FROM SCHEMA
 -- ================================================================
 
 -- PO Lines
-CREATE INDEX idx_po_lines_po_id_line_no ON po_lines(po_id, line_no);
+CREATE INDEX IF NOT EXISTS idx_po_lines_po_id_line_no ON po_lines(po_id, line_no);
 
 -- GR Lines
-CREATE INDEX idx_gr_lines_po_line_id ON gr_lines(po_line_id);
+CREATE INDEX IF NOT EXISTS idx_gr_lines_po_line_id ON gr_lines(po_line_id);
 
 -- Invoice Lines
-CREATE INDEX idx_invoice_lines_invoice_id_line_no ON invoice_lines(invoice_id, line_no);
-CREATE INDEX idx_invoice_lines_po_line_id ON invoice_lines(po_line_id);
-CREATE INDEX idx_invoice_lines_gr_line_id ON invoice_lines(gr_line_id);
-CREATE INDEX idx_invoice_lines_ses_line_id ON invoice_lines(ses_line_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_lines_invoice_id_line_no ON invoice_lines(invoice_id, line_no);
+CREATE INDEX IF NOT EXISTS idx_invoice_lines_po_line_id ON invoice_lines(po_line_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_lines_gr_line_id ON invoice_lines(gr_line_id);
+CREATE INDEX IF NOT EXISTS idx_invoice_lines_ses_line_id ON invoice_lines(ses_line_id);
 
 -- Invoice Headers
-CREATE INDEX idx_invoice_headers_vendor_id_invoice_date ON invoice_headers(vendor_id, invoice_date);
-CREATE INDEX idx_invoice_headers_due_date ON invoice_headers(due_date);
+CREATE INDEX IF NOT EXISTS idx_invoice_headers_vendor_id_invoice_date ON invoice_headers(vendor_id, invoice_date);
+CREATE INDEX IF NOT EXISTS idx_invoice_headers_due_date ON invoice_headers(due_date);
 
 -- GIN index for array search on po_numbers_cached
-CREATE INDEX idx_invoice_headers_po_numbers_cached ON invoice_headers USING GIN(po_numbers_cached);
+CREATE INDEX IF NOT EXISTS idx_invoice_headers_po_numbers_cached ON invoice_headers USING GIN(po_numbers_cached);
 
 -- ================================================================
 -- FOREIGN KEY INDEXES (not already created by constraints)
 -- ================================================================
 
 -- Vendors
-CREATE INDEX idx_vendors_payment_terms_id ON vendors(payment_terms_id);
-CREATE INDEX idx_vendors_tolerance_profile_id ON vendors(tolerance_profile_id);
+CREATE INDEX IF NOT EXISTS idx_vendors_payment_terms_id ON vendors(payment_terms_id);
+CREATE INDEX IF NOT EXISTS idx_vendors_tolerance_profile_id ON vendors(tolerance_profile_id);
 
 -- Vendor Bank Accounts
-CREATE INDEX idx_vendor_bank_accounts_vendor_id ON vendor_bank_accounts(vendor_id);
-CREATE INDEX idx_vendor_bank_accounts_is_default ON vendor_bank_accounts(is_default);
+CREATE INDEX IF NOT EXISTS idx_vendor_bank_accounts_vendor_id ON vendor_bank_accounts(vendor_id);
+CREATE INDEX IF NOT EXISTS idx_vendor_bank_accounts_is_default ON vendor_bank_accounts(is_default);
 
 -- Items
-CREATE INDEX idx_items_sku ON items(sku);
-CREATE INDEX idx_items_description ON items(description);
+CREATE INDEX IF NOT EXISTS idx_items_sku ON items(sku);
+CREATE INDEX IF NOT EXISTS idx_items_description ON items(description);
 
 -- Tax Rates
-CREATE INDEX idx_tax_rates_code ON tax_rates(code);
-CREATE INDEX idx_tax_rates_valid_from ON tax_rates(valid_from);
-CREATE INDEX idx_tax_rates_valid_to ON tax_rates(valid_to);
+CREATE INDEX IF NOT EXISTS idx_tax_rates_code ON tax_rates(code);
+CREATE INDEX IF NOT EXISTS idx_tax_rates_valid_from ON tax_rates(valid_from);
+CREATE INDEX IF NOT EXISTS idx_tax_rates_valid_to ON tax_rates(valid_to);
 
 -- Payment Terms
-CREATE INDEX idx_payment_terms_name ON payment_terms(name);
+CREATE INDEX IF NOT EXISTS idx_payment_terms_name ON payment_terms(name);
 
 -- Ship To Sites
 CREATE INDEX idx_ship_to_sites_org_entity_id ON ship_to_sites(org_entity_id);

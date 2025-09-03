@@ -25,7 +25,24 @@ const migrations = [
   '080_critical_fixes.sql',
   '090_missing_indexes.sql',
   '095_test_migrations_table.sql',
-  '100_add_invoice_assigned_to.sql'
+  '100_add_invoice_assigned_to.sql',
+  '110_add_validation_fields.sql',
+  '111_create_validation_tables.sql',
+  '112_update_invoice_statuses_simple.sql',
+  '112a_update_draft_status.sql',
+  '113_seed_enhanced_invoices.sql',
+  '114_add_missing_line_items.sql',
+  '115_add_remaining_line_items.sql',
+  '116_update_match_status_and_add_exception_invoices.sql',
+  '117_fixed_exception_invoices.sql',
+  '120_seed_purchase_orders_and_receipts.sql',
+  '121_create_match_results_for_all_po_invoices.sql',
+  '122_create_more_matching_po_lines.sql',
+  '123_create_missing_pos.sql',
+  '091_add_electricity_vendor.sql',
+  '092_update_match_function_nonpo.sql',
+  '093_add_ledger_field.sql',
+  '124_update_invoice_dates_2025.sql'
 ];
 
 /**

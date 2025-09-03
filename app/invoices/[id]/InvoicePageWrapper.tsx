@@ -1,0 +1,78 @@
+'use client';
+
+import React, { useState, useEffect } from 'react';
+import InvoiceDetailLayout from '@/app/components/InvoiceDetailLayout';
+import { ViewModeSwitcher, ViewMode } from '@/app/components/invoices/ViewModeSwitcher';
+import { InvoiceDetailClient } from './InvoiceDetailClient';
+
+interface InvoicePageWrapperProps {
+  invoiceId: string;
+  initialInvoice: any;
+  invoiceNumber: string;
+}
+
+export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }: InvoicePageWrapperProps) {
+  const [viewMode, setViewMode] = useState<ViewMode>('review');
+  const [hasGR, setHasGR] = useState(false);
+  const [hasSES, setHasSES] = useState(false);
+
+  // Check for GR/SES data from match results
+  useEffect(() => {
+    const fetchMatchInfo = async () => {
+      try {
+        const response = await fetch(`/api/invoices/${invoiceId}/match-results`);
+        if (response.ok) {
+          const data = await response.json();
+          setHasGR(data.some((mr: any) => mr.matched_gr_line_id));
+          setHasSES(data.some((mr: any) => mr.matched_ses_line_id));
+        }
+      } catch (error) {
+        console.error('Error fetching match info:', error);
+      }
+    };
+    fetchMatchInfo();
+  }, [invoiceId]);
+
+  const viewModeSwitcher = (
+    <ViewModeSwitcher
+      currentMode={viewMode}
+      onModeChange={setViewMode}
+      hasGR={hasGR}
+      hasSES={hasSES}
+    />
+  );
+
+  return (
+    <InvoiceDetailLayout 
+      invoiceNumber={invoiceNumber}
+      vendorName={initialInvoice.vendor_name_snapshot}
+      viewModeSwitcher={viewModeSwitcher}
+      workflowStatus={initialInvoice.status || 'draft'}
+    >
+      <InvoiceDetailClientWithViewMode
+        invoiceId={invoiceId}
+        initialInvoice={initialInvoice}
+        viewMode={viewMode}
+      />
+    </InvoiceDetailLayout>
+  );
+}
+
+// Export a modified version that accepts viewMode as prop
+export function InvoiceDetailClientWithViewMode({ 
+  invoiceId, 
+  initialInvoice, 
+  viewMode 
+}: { 
+  invoiceId: string; 
+  initialInvoice: any; 
+  viewMode: ViewMode;
+}) {
+  return (
+    <InvoiceDetailClient
+      invoiceId={invoiceId}
+      initialInvoice={initialInvoice}
+      viewMode={viewMode}
+    />
+  );
+}
