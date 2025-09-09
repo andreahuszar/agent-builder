@@ -5,10 +5,11 @@ export async function GET() {
   try {
     console.log('🔧 Attempting to fix database...');
     
-    // Try to add the missing column using raw SQL
+    // Try to add the missing columns using raw SQL
     await prisma.$executeRawUnsafe(`
       DO $$ 
       BEGIN
+        -- Add gr_numbers_cached if missing
         IF NOT EXISTS (
           SELECT 1 
           FROM information_schema.columns 
@@ -19,6 +20,18 @@ export async function GET() {
           ADD COLUMN gr_numbers_cached text[] DEFAULT '{}' NOT NULL;
           RAISE NOTICE 'Added gr_numbers_cached column';
         END IF;
+        
+        -- Add po_id if missing
+        IF NOT EXISTS (
+          SELECT 1 
+          FROM information_schema.columns 
+          WHERE table_name = 'invoice_headers' 
+          AND column_name = 'po_id'
+        ) THEN
+          ALTER TABLE invoice_headers 
+          ADD COLUMN po_id UUID DEFAULT NULL;
+          RAISE NOTICE 'Added po_id column';
+        END IF;
       END $$;
     `);
     
@@ -28,19 +41,21 @@ export async function GET() {
       ON invoice_headers USING GIN (gr_numbers_cached);
     `);
     
-    // Verify the column exists
-    const result = await prisma.$queryRaw<Array<{column_name: string, data_type: string}>>`
+    // Verify both columns exist
+    const columns = await prisma.$queryRaw<Array<{column_name: string, data_type: string}>>`
       SELECT column_name, data_type 
       FROM information_schema.columns 
       WHERE table_name = 'invoice_headers' 
-      AND column_name = 'gr_numbers_cached'
+      AND column_name IN ('gr_numbers_cached', 'po_id')
+      ORDER BY column_name
     `;
     
     return NextResponse.json({
       success: true,
       message: 'Database fixed successfully',
-      column_exists: result.length > 0,
-      result
+      columns_added: columns.map(c => c.column_name),
+      columns_count: columns.length,
+      details: columns
     });
     
   } catch (error) {
