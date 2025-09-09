@@ -21,6 +21,7 @@
     "db:seed": "tsx prisma/seed.ts",
     "db:export": "node scripts/export-local-data.js",
     "db:production:import": "node scripts/import-to-production.js",
+    "db:production:seed": "node scripts/seed-production-from-local.js",
     "db:production:migrate": "node scripts/production-migration.js",
     "db:production:wipe": "node scripts/wipe-production.js",
     "postinstall": "prisma generate"
