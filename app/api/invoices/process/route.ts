@@ -244,7 +244,7 @@ export async function POST(request: NextRequest) {
         vendor_id: vendor.id,
         vendor_name_snapshot: normalized.vendorName || vendor.name,
         vendor_tax_id_snapshot: normalized.vendorTaxId || vendor.tax_id,
-        vendor_address_snapshot: normalized.vendorAddress || vendor.address,
+        vendor_address_snapshot: normalized.vendorAddress || null,
         invoice_date: new Date(normalized.invoiceDate),
         due_date: new Date(normalized.dueDate),
         currency: normalized.currency,
