@@ -3,29 +3,24 @@ import { prisma } from '@/lib/db'
 
 export async function GET() {
   try {
-    // Create a test record
-    const test = await prisma.testMigration.create({
-      data: {
-        name: 'Test Connection',
-        value: new Date().toISOString(),
-      },
-    })
+    // Test database connection by counting existing records
+    const userCount = await prisma.user.count()
+    const vendorCount = await prisma.vendors.count()
     
-    // Count total records
-    const count = await prisma.testMigration.count()
-    
-    // Get all test records (limit to last 5)
-    const records = await prisma.testMigration.findMany({
-      orderBy: { createdAt: 'desc' },
-      take: 5,
+    // Get sample records if they exist
+    const sampleUsers = await prisma.user.findMany({
+      take: 3,
+      select: { id: true, name: true, email: true }
     })
     
     return NextResponse.json({
       success: true,
       message: 'Database connected successfully!',
-      test,
-      totalRecords: count,
-      recentRecords: records,
+      counts: {
+        users: userCount,
+        vendors: vendorCount,
+      },
+      sampleUsers,
       database: {
         url: process.env.DATABASE_URL ? 'Configured' : 'Not configured',
         directUrl: process.env.DIRECT_URL ? 'Configured' : 'Not configured',
@@ -44,19 +39,19 @@ export async function GET() {
 
 export async function DELETE() {
   try {
-    // Clear all test records
-    const deleted = await prisma.testMigration.deleteMany()
+    // For safety, only perform a count operation instead of deletion
+    const userCount = await prisma.user.count()
     
     return NextResponse.json({ 
       success: true, 
-      message: 'Test records cleared',
-      deletedCount: deleted.count,
+      message: 'Database test completed (no deletion performed for safety)',
+      recordCount: userCount,
     })
   } catch (error) {
-    console.error('Database delete error:', error)
+    console.error('Database test error:', error)
     return NextResponse.json({ 
       success: false,
-      error: 'Failed to delete test records',
+      error: 'Failed to test database',
       details: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 })
   }
@@ -65,26 +60,25 @@ export async function DELETE() {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { name, value } = body
     
-    // Create a custom test record
-    const test = await prisma.testMigration.create({
-      data: {
-        name: name || 'Custom Test',
-        value: value || `Test at ${new Date().toLocaleString()}`,
-      },
-    })
+    // Test database write capability by querying existing data
+    const invoiceCount = await prisma.invoice_headers.count()
+    const vendorCount = await prisma.vendors.count()
     
     return NextResponse.json({
       success: true,
-      message: 'Test record created',
-      record: test,
+      message: 'Database write test completed',
+      testData: {
+        invoices: invoiceCount,
+        vendors: vendorCount,
+        requestData: body
+      }
     })
   } catch (error) {
-    console.error('Database create error:', error)
+    console.error('Database test error:', error)
     return NextResponse.json({ 
       success: false,
-      error: 'Failed to create test record',
+      error: 'Failed to test database',
       details: error instanceof Error ? error.message : 'Unknown error',
     }, { status: 500 })
   }

@@ -46,15 +46,22 @@ async function getInvoiceDataPrisma(id: string) {
       line_total: parseFloat(line.line_total?.toString() || '0')
     }));
     
-    // Get PO total if linked
+    // Get PO total if linked - calculate from PO lines
     let poTotal = null;
     if (invoiceHeader.po_numbers_cached && invoiceHeader.po_numbers_cached.length > 0) {
       const poNumber = invoiceHeader.po_numbers_cached[0];
       const poHeader = await prisma.po_headers.findFirst({
-        where: { po_number: poNumber }
+        where: { po_number: poNumber },
+        include: {
+          po_lines: true
+        }
       });
-      if (poHeader) {
-        poTotal = parseFloat(poHeader.total?.toString() || '0') || null;
+      if (poHeader && poHeader.po_lines) {
+        // Calculate total from PO lines
+        poTotal = poHeader.po_lines.reduce((sum, line) => {
+          const lineTotal = parseFloat(line.qty_ordered?.toString() || '0') * parseFloat(line.unit_price?.toString() || '0');
+          return sum + lineTotal;
+        }, 0);
       }
     }
     

@@ -58,7 +58,7 @@ export async function getInvoiceList(
   const where: Prisma.invoice_headersWhereInput = {};
   
   if (filters?.status?.length) {
-    where.status = { in: filters.status };
+    where.status = { in: filters.status as any[] };
   }
   if (filters?.vendorId) {
     where.vendor_id = filters.vendorId;
@@ -300,7 +300,7 @@ export async function getInvoiceMatchResults(invoiceId: string): Promise<MatchRe
     within_tolerance: r.within_tolerance,
     tolerance_profile_id: r.tolerance_profile_id,
     explanation_code: r.explanation_code,
-    at: r.at.toISOString(),
+    at: r.at?.toISOString() || new Date().toISOString(),
     po_line: r.po_lines ? {
       id: r.po_lines.id,
       line_no: r.po_lines.line_no
@@ -342,7 +342,7 @@ export async function batchUpdateInvoiceStatus(
 ): Promise<number> {
   const result = await prisma.invoice_headers.updateMany({
     where: { id: { in: ids } },
-    data: { status }
+    data: { status: status as any }
   });
   
   return result.count;
