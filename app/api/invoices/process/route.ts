@@ -50,16 +50,16 @@ export async function POST(request: NextRequest) {
     // Read file content
     const fileBuffer = await readFile(sourceFile.storage_url);
     
-    // Handle PDF conversion to image
+    // Handle file conversion to base64
     let base64: string;
     let mediaType: string = sourceFile.media_type;
     
     if (sourceFile.media_type === 'application/pdf') {
       try {
-        console.log('Converting PDF to PNG for processing...');
+        console.log('Processing PDF for AI extraction...');
         
         // Dynamic import to avoid build-time issues
-        const { validatePdfFile, convertPdfToPng } = await import('@/lib/pdf-utils');
+        const { validatePdfFile } = await import('@/lib/pdf-utils');
         
         // Validate PDF file
         const validation = await validatePdfFile(fileBuffer);
@@ -73,17 +73,17 @@ export async function POST(request: NextRequest) {
           );
         }
         
-        // Convert PDF to PNG
-        const conversion = await convertPdfToPng(fileBuffer);
-        base64 = conversion.base64;
-        mediaType = conversion.mediaType;
+        // For PDFs, we can send them directly to Anthropic's API
+        // Claude Vision API supports PDFs natively
+        base64 = fileBuffer.toString('base64');
+        mediaType = 'application/pdf';
         
-        console.log('PDF converted successfully');
+        console.log('PDF prepared for AI extraction');
       } catch (error) {
-        console.error('PDF conversion error:', error);
+        console.error('PDF processing error:', error);
         return NextResponse.json(
           { 
-            error: 'Failed to convert PDF',
+            error: 'Failed to process PDF',
             details: error instanceof Error ? error.message : 'Unknown error'
           },
           { status: 500 }
@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
     
     const extractionResult = await AnthropicService.extractInvoiceData(
       base64,
-      mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+      mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | 'application/pdf'
     );
 
     console.log('Extraction completed:', {

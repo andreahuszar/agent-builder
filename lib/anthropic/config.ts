@@ -18,7 +18,7 @@ export const anthropicConfig = {
   vision: {
     maxImageSize: 10 * 1024 * 1024, // 10MB
     maxImagesPerRequest: 20, // Claude supports up to 100, but we'll be conservative
-    supportedFormats: ['image/jpeg', 'image/png', 'image/gif', 'image/webp'] as const,
+    supportedFormats: ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf'] as const,
     // Approximate token usage per image
     tokensPerImage: 1600,
   },

@@ -149,7 +149,7 @@ export interface ApiKeyValidationResult {
 // Vision-specific types
 export interface ImageAnalysisRequest {
   image: string; // base64 or URL
-  mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+  mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | 'application/pdf';
   prompt?: string;
   extractInvoice?: boolean;
   model?: string;
@@ -158,7 +158,7 @@ export interface ImageAnalysisRequest {
 export interface BatchImageAnalysisRequest {
   images: Array<{
     data: string;
-    mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp';
+    mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | 'application/pdf';
     prompt?: string;
   }>;
   model?: string;

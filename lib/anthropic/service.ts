@@ -63,24 +63,38 @@ export class AnthropicService {
    */
   static async analyzeImage(request: ImageAnalysisRequest): Promise<AnthropicResponse> {
     try {
-      // Validate image format
+      // Validate format
       if (!isValidImageFormat(request.mediaType)) {
-        throw new Error(`Unsupported image format: ${request.mediaType}`);
+        throw new Error(`Unsupported format: ${request.mediaType}`);
       }
       
       // Build the message content
       const content: MessageContent[] = [];
       
-      // Add the image
-      const imageContent: ImageContent = {
-        type: 'image',
-        source: {
-          type: 'base64',
-          media_type: request.mediaType,
-          data: request.image,
-        },
-      };
-      content.push(imageContent);
+      // Handle PDFs and images
+      if (request.mediaType === 'application/pdf') {
+        // For PDFs, we'll send as document type (Claude can handle PDFs)
+        const documentContent: any = {
+          type: 'document',
+          source: {
+            type: 'base64',
+            media_type: request.mediaType,
+            data: request.image,
+          },
+        };
+        content.push(documentContent);
+      } else {
+        // For images, use image type
+        const imageContent: ImageContent = {
+          type: 'image',
+          source: {
+            type: 'base64',
+            media_type: request.mediaType as any,
+            data: request.image,
+          },
+        };
+        content.push(imageContent);
+      }
       
       // Add the prompt
       const prompt = request.prompt || 'Analyze this image and describe what you see.';
@@ -110,7 +124,7 @@ export class AnthropicService {
    */
   static async extractInvoiceData(
     imageData: string,
-    mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
+    mediaType: 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | 'application/pdf'
   ): Promise<InvoiceExtractionResult> {
     try {
       const extractionPrompt = `
@@ -259,7 +273,7 @@ export class AnthropicService {
           type: 'image',
           source: {
             type: 'base64',
-            media_type: image.mediaType,
+            media_type: image.mediaType as any,
             data: image.data,
           },
         });
