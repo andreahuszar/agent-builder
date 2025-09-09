@@ -15,6 +15,7 @@ export async function GET(request: NextRequest) {
         status: true,
         match_status: true,
         po_numbers_cached: true,
+        gr_numbers_cached: true,
         created_at: true,
         vendors: true,
         match_results: {
@@ -31,12 +32,14 @@ export async function GET(request: NextRequest) {
     });
     
     const invoices = invoiceHeaders.map(invoice => {
-      // Get unique GR numbers from match results
-      const grNumbers = [...new Set(
-        invoice.match_results
-          .filter(mr => mr.gr_lines?.gr_headers?.gr_number)
-          .map(mr => mr.gr_lines!.gr_headers!.gr_number)
-      )];
+      // Use cached GR numbers if available, otherwise compute from match results
+      const grNumbers = invoice.gr_numbers_cached && invoice.gr_numbers_cached.length > 0 
+        ? invoice.gr_numbers_cached 
+        : [...new Set(
+            invoice.match_results
+              .filter(mr => mr.gr_lines?.gr_headers?.gr_number)
+              .map(mr => mr.gr_lines!.gr_headers!.gr_number)
+          )];
       
       return {
         id: invoice.id,
