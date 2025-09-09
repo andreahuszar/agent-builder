@@ -291,12 +291,13 @@ export async function POST(request: NextRequest) {
       // Check for rounding differences
       if (!isWithinRoundingTolerance(actualTotal, total)) {
         // Update header with actual totals
+        const roundingDiff = actualTotal - total;
         await prisma.invoice_headers.update({
           where: { id: invoiceId },
           data: {
             subtotal: actualSubtotal,
             total: actualTotal,
-            rounding_adjustment: roundingDiff
+            rounding_diff: roundingDiff
           }
         });
         console.log(`Applied rounding adjustment: ${roundingDiff}`);
