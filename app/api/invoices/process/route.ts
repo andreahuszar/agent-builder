@@ -352,19 +352,19 @@ export async function POST(request: NextRequest) {
 // Helper function to normalize extraction results
 function normalizeExtractionResult(result: InvoiceExtractionResult) {
   return {
-    invoiceNumber: result.invoiceNumber || `INV-${Date.now()}`,
-    invoiceDate: normalizeDate(result.invoiceDate) || new Date().toISOString().split('T')[0],
-    dueDate: normalizeDate(result.dueDate) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    vendorName: result.vendorName || 'Unknown Vendor',
-    vendorTaxId: result.vendorTaxId || null,
-    vendorAddress: result.vendorAddress || null,
-    subtotal: normalizeNumber(result.subtotal?.value),
-    taxTotal: normalizeNumber(result.tax?.value) || 0,
-    total: normalizeNumber(result.total?.value) || 0,
-    currency: normalizeCurrency(result.total?.currency),
+    invoiceNumber: result.invoice?.number || `INV-${Date.now()}`,
+    invoiceDate: normalizeDate(result.invoice?.date) || new Date().toISOString().split('T')[0],
+    dueDate: normalizeDate(result.invoice?.dueDate) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    vendorName: result.vendor?.name || 'Unknown Vendor',
+    vendorTaxId: result.vendor?.taxId || null,
+    vendorAddress: result.vendor?.address || null,
+    subtotal: normalizeNumber(result.totals?.subtotal),
+    taxTotal: normalizeNumber(result.totals?.tax) || 0,
+    total: normalizeNumber(result.totals?.total) || 0,
+    currency: normalizeCurrency(result.totals?.currency),
     paymentTerms: result.paymentTerms || 'Net 30',
-    poNumbers: normalizePONumbers(result.purchaseOrderNumber),
-    lineItems: result.lineItems?.map(item => ({
+    poNumbers: normalizePONumbers(result.invoice?.poNumber),
+    lineItems: result.items?.map((item: any) => ({
       description: item.description || '',
       quantity: normalizeNumber(item.quantity) || 1,
       unit: item.unit || 'EA',
