@@ -14,16 +14,27 @@ const nextConfig: NextConfig = {
   
   // Webpack configuration for better handling of native modules
   webpack: (config, { isServer }) => {
-    // Handle canvas and other native dependencies that pdf-to-png-converter might use
+    // Handle native .node binaries
+    config.module.rules.push({
+      test: /\.node$/,
+      loader: 'node-loader',
+    });
+    
+    // Handle canvas and other native dependencies that pdf-to-png-converter uses
     if (isServer) {
-      config.externals = [...(config.externals || []), 'canvas', 'jsdom'];
+      // Externalize native modules
+      config.externals = [...(config.externals || [])];
+      
+      // Don't try to bundle native modules
+      config.externalsPresets = { ...config.externalsPresets, node: true };
     }
     
-    // Ensure proper handling of binary files
-    config.module.rules.push({
-      test: /\.(woff|woff2|eot|ttf|otf)$/,
-      type: 'asset/resource',
-    });
+    // Ignore specific native modules that should not be processed
+    config.resolve.alias = {
+      ...config.resolve.alias,
+      '@napi-rs/canvas': false,
+      'canvas': false,
+    };
     
     return config;
   },
@@ -33,6 +44,12 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb', // Allow larger file uploads for PDFs
     },
+    // Use server components by default for API routes
+    serverComponentsExternalPackages: [
+      'pdf-to-png-converter',
+      '@napi-rs/canvas',
+      'canvas'
+    ],
   },
 };
 
