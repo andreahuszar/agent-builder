@@ -29,7 +29,7 @@ export async function GET() {
     `);
     
     // Verify the column exists
-    const result = await prisma.$queryRaw`
+    const result = await prisma.$queryRaw<Array<{column_name: string, data_type: string}>>`
       SELECT column_name, data_type 
       FROM information_schema.columns 
       WHERE table_name = 'invoice_headers' 
