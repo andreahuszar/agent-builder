@@ -147,8 +147,8 @@ export async function POST(request: NextRequest) {
           id: randomUUID(),
           name: normalized.vendorName || 'Unknown Vendor',
           tax_id: normalized.vendorTaxId,
-          address: normalized.vendorAddress,
-          country: 'USA',
+          country_code: 'US',
+          default_currency: 'USD',
           requires_po: false,
           active: false, // New vendors start as inactive
           is_verified: false,
