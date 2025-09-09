@@ -1,11 +1,4 @@
 import { Buffer } from 'buffer';
-import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
-
-// Set worker to avoid Canvas dependency
-if (typeof window === 'undefined') {
-  // Server-side: use the legacy worker that doesn't require Canvas
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs';
-}
 
 export interface PdfValidationResult {
   isValid: boolean;
@@ -22,7 +15,8 @@ export interface PdfConversionResult {
 }
 
 /**
- * Validates a PDF file buffer
+ * Validates a PDF file buffer using simple checks
+ * No external dependencies needed
  */
 export async function validatePdfFile(fileBuffer: Buffer): Promise<PdfValidationResult> {
   try {
@@ -35,31 +29,32 @@ export async function validatePdfFile(fileBuffer: Buffer): Promise<PdfValidation
       };
     }
 
-    // Try to load the PDF to validate structure
-    try {
-      const data = new Uint8Array(fileBuffer);
-      const loadingTask = pdfjsLib.getDocument({ data });
-      const pdfDoc = await loadingTask.promise;
-      const pageCount = pdfDoc.numPages;
-      
-      if (pageCount === 0) {
+    // Check for PDF end marker
+    const endMarker = fileBuffer.slice(-7).toString('ascii');
+    if (!endMarker.includes('%%EOF')) {
+      // Some PDFs might have trailing bytes after %%EOF
+      const lastKb = fileBuffer.slice(-1024).toString('ascii');
+      if (!lastKb.includes('%%EOF')) {
         return {
           isValid: false,
-          error: 'PDF has no pages',
+          error: 'Invalid PDF structure: missing EOF marker',
         };
       }
+    }
 
-      return {
-        isValid: true,
-        pageCount,
-      };
-    } catch (error: any) {
-      // If we can't load the PDF, it might be corrupted
+    // Basic size check
+    if (fileBuffer.length < 100) {
       return {
         isValid: false,
-        error: `PDF validation failed: ${error.message}`,
+        error: 'PDF file too small',
       };
     }
+
+    // We can't easily get page count without parsing, so just return valid
+    return {
+      isValid: true,
+      pageCount: 1, // Assume at least 1 page
+    };
   } catch (error: any) {
     return {
       isValid: false,
@@ -131,30 +126,11 @@ export async function convertPdfToMultiplePngs(fileBuffer: Buffer): Promise<PdfC
 }
 
 /**
- * Extracts text content from a PDF using pdfjs
- * This provides basic text extraction without Canvas
+ * Extracts text content from a PDF
+ * Since we're sending PDFs directly to AI, this is just a placeholder
  */
 export async function extractPdfText(fileBuffer: Buffer): Promise<string> {
-  try {
-    const data = new Uint8Array(fileBuffer);
-    const loadingTask = pdfjsLib.getDocument({ data });
-    const pdfDoc = await loadingTask.promise;
-    
-    let fullText = '';
-    
-    // Extract text from each page
-    for (let pageNum = 1; pageNum <= pdfDoc.numPages; pageNum++) {
-      const page = await pdfDoc.getPage(pageNum);
-      const textContent = await page.getTextContent();
-      const pageText = textContent.items
-        .map((item: any) => item.str)
-        .join(' ');
-      fullText += pageText + '\n';
-    }
-    
-    return fullText;
-  } catch (error: any) {
-    console.log('Text extraction will be handled by AI vision service');
-    return '';
-  }
+  // Text extraction is handled by the AI vision service
+  console.log('Text extraction from PDF is handled by AI vision service');
+  return '';
 }

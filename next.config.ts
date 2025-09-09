@@ -12,10 +12,6 @@ const nextConfig: NextConfig = {
   // Standalone output for optimized Docker deployments
   // output: 'standalone',
   
-  // Externalize packages that use native modules
-  serverExternalPackages: [
-    'pdfjs-dist'
-  ],
   
   // Webpack configuration
   webpack: (config, { isServer }) => {
