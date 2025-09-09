@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "prisma generate && next build",
-    "start": "node scripts/migrate-sql.js && node scripts/seed-production-sample-data.js && next start",
+    "start": "node scripts/migrate-sql-safe.js && node scripts/seed-production-sample-data.js && node .next/standalone/server.js",
     "deploy": "node scripts/migrate-sql.js",
     "db:migrate:sql": "node scripts/migrate-sql.js",
     "lint": "next lint",
