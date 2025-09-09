@@ -230,7 +230,7 @@ export async function POST(request: NextRequest) {
     const invoiceId = randomUUID();
     
     // Calculate header totals (will be updated after lines are created)
-    const subtotal = normalized.lineItems?.reduce((sum, item) => 
+    const subtotal = normalized.lineItems?.reduce((sum: number, item: any) => 
       sum + (item.quantity * item.unitPrice), 0
     ) || normalized.subtotal || 0;
     
@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
     
     // Create invoice lines
     if (normalized.lineItems && normalized.lineItems.length > 0) {
-      const lineData = normalized.lineItems.map((item, index) => ({
+      const lineData = normalized.lineItems.map((item: any, index: number) => ({
         id: randomUUID(),
         invoice_id: invoiceId,
         line_no: index + 1,
@@ -285,12 +285,11 @@ export async function POST(request: NextRequest) {
       console.log(`Created ${lineData.length} invoice lines`);
       
       // Recalculate totals from actual lines
-      const actualSubtotal = lineData.reduce((sum, line) => sum + line.net_amount, 0);
+      const actualSubtotal = lineData.reduce((sum: number, line: any) => sum + line.net_amount, 0);
       const actualTotal = actualSubtotal + taxTotal;
       
       // Check for rounding differences
-      const roundingDiff = calculateRoundingDiff(actualTotal, total);
-      if (!isWithinRoundingTolerance(roundingDiff)) {
+      if (!isWithinRoundingTolerance(actualTotal, total)) {
         // Update header with actual totals
         await prisma.invoice_headers.update({
           where: { id: invoiceId },
