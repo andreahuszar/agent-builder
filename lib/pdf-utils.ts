@@ -1,5 +1,5 @@
 import { Buffer } from 'buffer';
-import { getMuPDFInstance } from './mupdf-init';
+import { pdf } from 'pdf-to-png-converter';
 
 export interface PdfValidationResult {
   isValid: boolean;
@@ -29,24 +29,34 @@ export async function validatePdfFile(fileBuffer: Buffer): Promise<PdfValidation
       };
     }
 
-    // Get initialized MuPDF instance
-    const mupdf = await getMuPDFInstance();
-    
-    // Try to load the PDF with mupdf to validate structure
-    const document = mupdf.Document.openDocument(fileBuffer, 'application/pdf');
-    const pageCount = document.countPages();
-    
-    if (pageCount === 0) {
+    // Try to get page count to validate PDF structure
+    try {
+      const pdfInfo = await pdf(fileBuffer, {
+        disableFontFace: true,
+        useSystemFonts: false,
+        viewportScale: 1.0,
+      });
+      
+      const pageCount = pdfInfo.length;
+      
+      if (pageCount === 0) {
+        return {
+          isValid: false,
+          error: 'PDF has no pages',
+        };
+      }
+
+      return {
+        isValid: true,
+        pageCount,
+      };
+    } catch (error: any) {
+      // If we can't get page info, the PDF might be corrupted
       return {
         isValid: false,
-        error: 'PDF has no pages',
+        error: `PDF validation failed: ${error.message}`,
       };
     }
-
-    return {
-      isValid: true,
-      pageCount,
-    };
   } catch (error: any) {
     return {
       isValid: false,
@@ -61,54 +71,42 @@ export async function validatePdfFile(fileBuffer: Buffer): Promise<PdfValidation
  */
 export async function convertPdfToPng(fileBuffer: Buffer): Promise<PdfConversionResult> {
   try {
-    // Get initialized MuPDF instance
-    const mupdf = await getMuPDFInstance();
+    console.log('Starting PDF to PNG conversion...');
     
-    // Load the PDF document
-    const document = mupdf.Document.openDocument(fileBuffer, 'application/pdf');
-    const pageCount = document.countPages();
+    // Convert PDF to PNG using pdf-to-png-converter
+    // This library handles all the complexity of PDF rendering
+    const pngPages = await pdf(fileBuffer, {
+      disableFontFace: true,
+      useSystemFonts: false,
+      viewportScale: 2.0, // Higher quality output
+      page: 1, // Only convert first page for invoices
+    });
     
-    if (pageCount === 0) {
-      throw new Error('PDF has no pages');
+    if (!pngPages || pngPages.length === 0) {
+      throw new Error('No pages generated from PDF');
     }
-
+    
     // Get the first page
-    const page = document.loadPage(0);
+    const firstPage = pngPages[0];
     
-    // Get page bounds for proper scaling
-    const bounds = page.getBounds();
-    const pageWidth = bounds[2] - bounds[0];
-    const pageHeight = bounds[3] - bounds[1];
+    if (!firstPage.content) {
+      throw new Error('No content generated from PDF page');
+    }
     
-    // Calculate scale to fit within reasonable dimensions (max 2400px on longest side)
-    const maxDimension = 2400;
-    const scale = Math.min(maxDimension / pageWidth, maxDimension / pageHeight, 2.0);
+    // Convert Buffer to base64
+    const base64 = firstPage.content.toString('base64');
     
-    // Create a transformation matrix for scaling
-    const matrix = mupdf.Matrix.scale(scale, scale);
-    
-    // Render the page to a pixmap (raster image)
-    const pixmap = page.toPixmap(matrix, mupdf.ColorSpace.DeviceRGB, false);
-    
-    // Convert pixmap to PNG buffer
-    const pngBuffer = pixmap.asPNG();
-    
-    // Convert to base64
-    const base64 = Buffer.from(pngBuffer).toString('base64');
-    
-    // Clean up resources
-    pixmap.destroy();
-    page.destroy();
-    document.destroy();
+    console.log('PDF to PNG conversion successful');
     
     return {
       base64,
       mediaType: 'image/png',
-      pageCount,
-      width: Math.round(pageWidth * scale),
-      height: Math.round(pageHeight * scale),
+      pageCount: 1,
+      width: firstPage.width,
+      height: firstPage.height,
     };
   } catch (error: any) {
+    console.error('PDF to PNG conversion error:', error);
     throw new Error(`PDF to PNG conversion failed: ${error.message}`);
   }
 }
@@ -121,57 +119,32 @@ export async function convertPdfToMultiplePngs(fileBuffer: Buffer): Promise<PdfC
   try {
     const results: PdfConversionResult[] = [];
     
-    // Get initialized MuPDF instance
-    const mupdf = await getMuPDFInstance();
+    // Convert all pages
+    const pngPages = await pdf(fileBuffer, {
+      disableFontFace: true,
+      useSystemFonts: false,
+      viewportScale: 2.0,
+    });
     
-    // Load the PDF document
-    const document = mupdf.Document.openDocument(fileBuffer, 'application/pdf');
-    const pageCount = document.countPages();
-    
-    if (pageCount === 0) {
-      throw new Error('PDF has no pages');
+    if (!pngPages || pngPages.length === 0) {
+      throw new Error('No pages generated from PDF');
     }
 
-    for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
-      // Get the page
-      const page = document.loadPage(pageIndex);
+    for (const page of pngPages) {
+      if (!page.content) {
+        continue;
+      }
       
-      // Get page bounds for proper scaling
-      const bounds = page.getBounds();
-      const pageWidth = bounds[2] - bounds[0];
-      const pageHeight = bounds[3] - bounds[1];
-      
-      // Calculate scale to fit within reasonable dimensions
-      const maxDimension = 2400;
-      const scale = Math.min(maxDimension / pageWidth, maxDimension / pageHeight, 2.0);
-      
-      // Create a transformation matrix for scaling
-      const matrix = mupdf.Matrix.scale(scale, scale);
-      
-      // Render the page to a pixmap
-      const pixmap = page.toPixmap(matrix, mupdf.ColorSpace.DeviceRGB, false);
-      
-      // Convert pixmap to PNG buffer
-      const pngBuffer = pixmap.asPNG();
-      
-      // Convert to base64
-      const base64 = Buffer.from(pngBuffer).toString('base64');
+      const base64 = page.content.toString('base64');
       
       results.push({
         base64,
         mediaType: 'image/png',
         pageCount: 1,
-        width: Math.round(pageWidth * scale),
-        height: Math.round(pageHeight * scale),
+        width: page.width,
+        height: page.height,
       });
-      
-      // Clean up resources for this page
-      pixmap.destroy();
-      page.destroy();
     }
-    
-    // Clean up document
-    document.destroy();
     
     return results;
   } catch (error: any) {
@@ -181,28 +154,16 @@ export async function convertPdfToMultiplePngs(fileBuffer: Buffer): Promise<PdfC
 
 /**
  * Extracts text content from a PDF
- * Useful for fallback text extraction if vision API fails
+ * Note: pdf-to-png-converter doesn't support text extraction,
+ * so this is a placeholder that returns empty string.
+ * The actual text extraction happens via AI vision processing.
  */
 export async function extractPdfText(fileBuffer: Buffer): Promise<string> {
   try {
-    // Get initialized MuPDF instance
-    const mupdf = await getMuPDFInstance();
-    
-    const document = mupdf.Document.openDocument(fileBuffer, 'application/pdf');
-    const pageCount = document.countPages();
-    
-    let fullText = '';
-    
-    for (let i = 0; i < pageCount; i++) {
-      const page = document.loadPage(i);
-      const text = page.toStructuredText().asText();
-      fullText += text + '\n\n';
-      page.destroy();
-    }
-    
-    document.destroy();
-    
-    return fullText.trim();
+    // Text extraction is not supported by pdf-to-png-converter
+    // This is handled by the AI vision service instead
+    console.log('Text extraction from PDF is handled by AI vision service');
+    return '';
   } catch (error: any) {
     throw new Error(`PDF text extraction failed: ${error.message}`);
   }
