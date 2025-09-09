@@ -12,6 +12,13 @@ const nextConfig: NextConfig = {
   // Standalone output for optimized Docker deployments
   // output: 'standalone',
   
+  // Externalize packages that use native modules
+  serverExternalPackages: [
+    'pdf-to-png-converter',
+    '@napi-rs/canvas',
+    'canvas'
+  ],
+  
   // Webpack configuration for better handling of native modules
   webpack: (config, { isServer }) => {
     // Handle native .node binaries
@@ -22,9 +29,6 @@ const nextConfig: NextConfig = {
     
     // Handle canvas and other native dependencies that pdf-to-png-converter uses
     if (isServer) {
-      // Externalize native modules
-      config.externals = [...(config.externals || [])];
-      
       // Don't try to bundle native modules
       config.externalsPresets = { ...config.externalsPresets, node: true };
     }
@@ -44,12 +48,6 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: '10mb', // Allow larger file uploads for PDFs
     },
-    // Use server components by default for API routes
-    serverComponentsExternalPackages: [
-      'pdf-to-png-converter',
-      '@napi-rs/canvas',
-      'canvas'
-    ],
   },
 };
 
