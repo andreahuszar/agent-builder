@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "prisma generate && next build && node scripts/migrate-sql-safe.js && node scripts/seed-production-sample-data.js",
-    "start": "node .next/standalone/server.js",
+    "build": "prisma generate && next build",
+    "start": "node scripts/init-production.js & node .next/standalone/server.js",
     "deploy": "node scripts/migrate-sql.js",
     "db:migrate:sql": "node scripts/migrate-sql.js",
     "lint": "next lint",
