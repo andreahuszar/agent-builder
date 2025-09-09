@@ -62,7 +62,7 @@ export async function POST(request: NextRequest) {
         const { validatePdfFile, convertPdfToPng } = await import('@/lib/pdf-utils');
         
         // Validate PDF file
-        const validation = validatePdfFile(fileBuffer);
+        const validation = await validatePdfFile(fileBuffer);
         if (!validation.isValid) {
           return NextResponse.json(
             { 

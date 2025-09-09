@@ -1,5 +1,5 @@
 import { Buffer } from 'buffer';
-import mupdf from 'mupdf';
+import { getMuPDFInstance } from './mupdf-init';
 
 export interface PdfValidationResult {
   isValid: boolean;
@@ -18,7 +18,7 @@ export interface PdfConversionResult {
 /**
  * Validates a PDF file buffer
  */
-export function validatePdfFile(fileBuffer: Buffer): PdfValidationResult {
+export async function validatePdfFile(fileBuffer: Buffer): Promise<PdfValidationResult> {
   try {
     // Check if buffer starts with PDF signature
     const pdfSignature = fileBuffer.slice(0, 5).toString('ascii');
@@ -29,6 +29,9 @@ export function validatePdfFile(fileBuffer: Buffer): PdfValidationResult {
       };
     }
 
+    // Get initialized MuPDF instance
+    const mupdf = await getMuPDFInstance();
+    
     // Try to load the PDF with mupdf to validate structure
     const document = mupdf.Document.openDocument(fileBuffer, 'application/pdf');
     const pageCount = document.countPages();
@@ -58,6 +61,9 @@ export function validatePdfFile(fileBuffer: Buffer): PdfValidationResult {
  */
 export async function convertPdfToPng(fileBuffer: Buffer): Promise<PdfConversionResult> {
   try {
+    // Get initialized MuPDF instance
+    const mupdf = await getMuPDFInstance();
+    
     // Load the PDF document
     const document = mupdf.Document.openDocument(fileBuffer, 'application/pdf');
     const pageCount = document.countPages();
@@ -114,6 +120,9 @@ export async function convertPdfToPng(fileBuffer: Buffer): Promise<PdfConversion
 export async function convertPdfToMultiplePngs(fileBuffer: Buffer): Promise<PdfConversionResult[]> {
   try {
     const results: PdfConversionResult[] = [];
+    
+    // Get initialized MuPDF instance
+    const mupdf = await getMuPDFInstance();
     
     // Load the PDF document
     const document = mupdf.Document.openDocument(fileBuffer, 'application/pdf');
@@ -174,8 +183,11 @@ export async function convertPdfToMultiplePngs(fileBuffer: Buffer): Promise<PdfC
  * Extracts text content from a PDF
  * Useful for fallback text extraction if vision API fails
  */
-export function extractPdfText(fileBuffer: Buffer): string {
+export async function extractPdfText(fileBuffer: Buffer): Promise<string> {
   try {
+    // Get initialized MuPDF instance
+    const mupdf = await getMuPDFInstance();
+    
     const document = mupdf.Document.openDocument(fileBuffer, 'application/pdf');
     const pageCount = document.countPages();
     

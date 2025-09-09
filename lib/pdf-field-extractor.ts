@@ -1,4 +1,4 @@
-import mupdf from 'mupdf';
+import { getMuPDFInstance } from './mupdf-init';
 
 export type Quad = [number, number, number, number, number, number, number, number];
 
@@ -118,6 +118,9 @@ export async function extractFieldPositions(
       console.log('Skipping field extraction for non-PDF format');
       return [];
     }
+    
+    // Get initialized MuPDF instance
+    const mupdf = await getMuPDFInstance();
     
     // Load the PDF document
     const doc = mupdf.Document.openDocument(fileBuffer, 'application/pdf');
