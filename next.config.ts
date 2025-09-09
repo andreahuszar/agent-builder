@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: false,
   },
   // Standalone output for optimized Docker deployments
-  output: 'standalone',
+  // output: 'standalone',
 };
 
 export default nextConfig;
