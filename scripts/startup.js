@@ -2,34 +2,51 @@
 
 /**
  * Startup script for production
- * Ensures database is ready before starting the server
+ * Starts server immediately and runs migrations in background
  */
 
-const { execSync } = require('child_process');
+const { exec } = require('child_process');
+
+async function runMigrationsInBackground() {
+  // Wait a bit for server to start
+  setTimeout(() => {
+    console.log('📦 Running database migrations in background...');
+    
+    // Run migrations
+    exec('node scripts/migrate-sql-safe.js', (error, stdout, stderr) => {
+      if (error) {
+        console.error('⚠️  Migration error:', error.message);
+      } else {
+        console.log('✅ Migrations completed');
+      }
+      if (stdout) console.log(stdout);
+      if (stderr) console.error(stderr);
+    });
+    
+    // Run seeding after a delay
+    setTimeout(() => {
+      exec('node scripts/seed-production-sample-data.js', (error, stdout, stderr) => {
+        if (error) {
+          console.error('⚠️  Seeding error:', error.message);
+        } else {
+          console.log('✅ Seeding completed');
+        }
+        if (stdout) console.log(stdout);
+        if (stderr) console.error(stderr);
+      });
+    }, 5000);
+  }, 2000);
+}
 
 async function startup() {
   console.log('🚀 Starting production server...');
   
-  // Run migrations if DATABASE_URL is set
+  // Run migrations in background if DATABASE_URL is set
   if (process.env.DATABASE_URL) {
-    console.log('📦 Running database migrations...');
-    try {
-      execSync('node scripts/migrate-sql-safe.js', { stdio: 'inherit' });
-      console.log('✅ Migrations completed');
-    } catch (error) {
-      console.error('⚠️  Migration failed, but continuing:', error.message);
-    }
-    
-    // Seed sample data if needed
-    try {
-      execSync('node scripts/seed-production-sample-data.js', { stdio: 'inherit' });
-      console.log('✅ Seeding completed');
-    } catch (error) {
-      console.error('⚠️  Seeding failed, but continuing:', error.message);
-    }
+    runMigrationsInBackground();
   }
   
-  // Start the Next.js server
+  // Start the Next.js server IMMEDIATELY
   console.log('🌐 Starting Next.js server...');
   require('next/dist/cli/next-start');
 }
