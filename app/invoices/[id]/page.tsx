@@ -112,9 +112,14 @@ async function getInvoiceData(id: string) {
 
 export default async function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {
   const resolvedParams = await params;
+  console.log('[InvoiceDetailPage] Params:', resolvedParams);
+  console.log('[InvoiceDetailPage] Invoice ID:', resolvedParams.id);
+  
   const invoice = await getInvoiceData(resolvedParams.id);
+  console.log('[InvoiceDetailPage] Invoice found:', !!invoice);
 
   if (!invoice) {
+    console.error('[InvoiceDetailPage] Invoice not found, returning 404');
     notFound();
   }
 
