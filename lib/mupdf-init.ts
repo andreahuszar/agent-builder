@@ -36,7 +36,7 @@ async function initializeMuPDF() {
     
     // Check if we have the expected API
     if (mupdf.Document && typeof mupdf.Document.openDocument === 'function') {
-      console.log('MuPDF initialized successfully');
+      console.log('MuPDF initialized successfully (v1.26.4)');
       return mupdf;
     }
     
