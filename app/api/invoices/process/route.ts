@@ -320,9 +320,9 @@ export async function POST(request: NextRequest) {
       data: {
         id: randomUUID(),
         invoice_id: invoiceId,
-        status: 'draft',
-        changed_by_user_id: null,
-        notes: 'Invoice created from AI extraction'
+        new_status: 'draft',
+        changed_by: null,
+        reason: 'Invoice created from AI extraction'
       }
     });
     
