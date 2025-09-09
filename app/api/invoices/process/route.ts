@@ -240,6 +240,7 @@ export async function POST(request: NextRequest) {
     const invoiceHeader = await prisma.invoice_headers.create({
       data: {
         id: invoiceId,
+        type: 'invoice',
         invoice_number: normalized.invoiceNumber,
         vendor_id: vendor.id,
         vendor_name_snapshot: normalized.vendorName || vendor.name,
