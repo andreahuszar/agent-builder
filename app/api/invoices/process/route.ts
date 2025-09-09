@@ -126,9 +126,9 @@ export async function POST(request: NextRequest) {
     
     // Create vendor if not found
     if (!vendor) {
-      // Get default payment terms
+      // Get first available payment terms  
       let paymentTerms = await prisma.payment_terms.findFirst({
-        where: { is_default: true }
+        orderBy: { name: 'asc' }
       });
       
       if (!paymentTerms) {
@@ -137,8 +137,7 @@ export async function POST(request: NextRequest) {
           data: {
             id: randomUUID(),
             name: 'Net 30',
-            days: 30,
-            is_default: true
+            net_days: 30
           }
         });
       }
@@ -165,7 +164,7 @@ export async function POST(request: NextRequest) {
     let paymentTermsId = vendor.payment_terms_id;
     if (!paymentTermsId) {
       const paymentTerms = await prisma.payment_terms.findFirst({
-        where: { is_default: true }
+        orderBy: { name: 'asc' }
       });
       
       if (paymentTerms) {
@@ -175,8 +174,7 @@ export async function POST(request: NextRequest) {
           data: {
             id: randomUUID(),
             name: 'Net 30',
-            days: 30,
-            is_default: true
+            net_days: 30
           }
         });
         paymentTermsId = newPaymentTerms.id;
@@ -184,17 +182,18 @@ export async function POST(request: NextRequest) {
     }
     
     // Get or create bill-to organization entity
-    let billToEntity = await prisma.organization_entities.findFirst({
-      where: { is_default_bill_to: true }
+    let billToEntity = await prisma.org_entities.findFirst({
+      orderBy: { legal_name: 'asc' }
     });
     
     if (!billToEntity) {
-      billToEntity = await prisma.organization_entities.create({
+      billToEntity = await prisma.org_entities.create({
         data: {
           id: randomUUID(),
-          name: 'Default Company',
-          entity_type: 'company',
-          is_default_bill_to: true
+          legal_name: 'Default Company',
+          tax_id: '12345',
+          address_lines: {},
+          default_currency: 'USD'
         }
       });
     }
