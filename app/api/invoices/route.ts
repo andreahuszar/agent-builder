@@ -4,7 +4,18 @@ import prisma from '@/lib/db/prisma';
 export async function GET(request: NextRequest) {
   try {
     const invoiceHeaders = await prisma.invoice_headers.findMany({
-      include: {
+      select: {
+        id: true,
+        invoice_number: true,
+        vendor_name_snapshot: true,
+        invoice_date: true,
+        due_date: true,
+        currency: true,
+        total: true,
+        status: true,
+        match_status: true,
+        po_numbers_cached: true,
+        created_at: true,
         vendors: true,
         match_results: {
           include: {
