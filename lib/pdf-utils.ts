@@ -1,5 +1,5 @@
 import { Buffer } from 'buffer';
-import * as pdfToPng from 'pdf-to-png-converter';
+import { pdfToPng } from 'pdf-to-png-converter';
 
 export interface PdfValidationResult {
   isValid: boolean;
@@ -31,7 +31,7 @@ export async function validatePdfFile(fileBuffer: Buffer): Promise<PdfValidation
 
     // Try to get page count to validate PDF structure
     try {
-      const pdfInfo = await pdfToPng.pdf(fileBuffer, {
+      const pdfInfo = await pdfToPng(fileBuffer, {
         disableFontFace: true,
         useSystemFonts: false,
         viewportScale: 1.0,
@@ -75,7 +75,7 @@ export async function convertPdfToPng(fileBuffer: Buffer): Promise<PdfConversion
     
     // Convert PDF to PNG using pdf-to-png-converter
     // This library handles all the complexity of PDF rendering
-    const pngPages = await pdfToPng.pdf(fileBuffer, {
+    const pngPages = await pdfToPng(fileBuffer, {
       disableFontFace: true,
       useSystemFonts: false,
       viewportScale: 2.0, // Higher quality output
@@ -120,7 +120,7 @@ export async function convertPdfToMultiplePngs(fileBuffer: Buffer): Promise<PdfC
     const results: PdfConversionResult[] = [];
     
     // Convert all pages
-    const pngPages = await pdfToPng.pdf(fileBuffer, {
+    const pngPages = await pdfToPng(fileBuffer, {
       disableFontFace: true,
       useSystemFonts: false,
       viewportScale: 2.0,
