@@ -208,6 +208,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                 <label className="block text-xs font-medium text-gray-500 mb-1">
                   Vendor
                   <ValidationIndicator validations={[...errors, ...warnings]} field="vendor_name_snapshot" />
+                  <ValidationIndicator validations={[...errors, ...warnings]} field="vendor_approval_status" />
                 </label>
                 {isEditing ? (
                   <EditableField
@@ -216,7 +217,15 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                     type="text"
                   />
                 ) : (
-                  <p className="text-sm text-gray-950">{invoiceData.vendor_name_snapshot}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm text-gray-950">{invoiceData.vendor_name_snapshot}</p>
+                    {invoiceData.vendor_is_verified === false && (
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                        <AlertTriangle className="h-3 w-3" />
+                        Unverified
+                      </span>
+                    )}
+                  </div>
                 )}
               </div>
               <div>
@@ -226,7 +235,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                     <User className="h-3.5 w-3.5 text-purple-600" />
                   </div>
                   <span className="text-sm text-gray-950">
-                    {invoiceData.assigned_to_name || 'AI Agent'}
+                    {invoiceData.assigned_to_name || 'Unassigned'}
                   </span>
                 </div>
               </div>
@@ -331,7 +340,10 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                   <ValidationIndicator validations={[...errors, ...warnings]} field="payment_method" />
                 </label>
                 <p className="text-sm text-gray-950">
-                  {invoiceData.payment_method || 'Credit Card'}
+                  {invoiceData.bank_name && invoiceData.account_number_masked 
+                    ? `${invoiceData.bank_name} ${invoiceData.account_number_masked}`
+                    : 'Not specified'
+                  }
                 </p>
               </div>
               <div>
@@ -364,10 +376,14 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                   <p className="text-sm text-gray-950">{formatDate(invoiceData.due_date)}</p>
                 )}
               </div>
-              {invoiceData.vendor_address_snapshot?.address && (
+              {invoiceData.vendor_address_snapshot && (
                 <div className="md:col-span-2 lg:col-span-3">
                   <label className="block text-xs font-medium text-gray-500 mb-1">Billing Address</label>
-                  <p className="text-sm text-gray-950">{invoiceData.vendor_address_snapshot.address}</p>
+                  <p className="text-sm text-gray-950">
+                    {typeof invoiceData.vendor_address_snapshot === 'string' 
+                      ? invoiceData.vendor_address_snapshot 
+                      : invoiceData.vendor_address_snapshot.street || invoiceData.vendor_address_snapshot.address || JSON.stringify(invoiceData.vendor_address_snapshot)}
+                  </p>
                 </div>
               )}
             </div>
@@ -409,14 +425,14 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
           onClick={() => setIsEditing(true)}
           className={`
             fixed bottom-6 right-6 z-50
-            inline-flex items-center gap-2 px-4 py-2
+            inline-flex items-center gap-1.5 px-3 py-1.5
             bg-purple-900 text-white rounded-full shadow-lg
             hover:bg-purple-800 hover:shadow-xl
-            transition-all duration-200 transform
+            transition-all duration-200 transform text-sm
             ${showFab ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'}
           `}
         >
-          <Edit2 className="h-5 w-5" />
+          <Edit2 className="h-4 w-4" />
           <span className="font-medium">Edit Details</span>
         </button>
       )}

@@ -260,6 +260,59 @@ When adding new features:
 4. **Test locally** - Use `PORT=3001 npm run dev`
 5. **Check database** - Use `npm run db:studio` to view data
 
+## Code Review Practices
+
+### Automatic Code Review Trigger
+**ALWAYS invoke the expert-code-reviewer agent after completing medium-sized code changes:**
+
+The expert-code-reviewer agent should be automatically used after:
+1. **Implementing a new feature or module** - Any new functionality added
+2. **Completing a refactoring task** - Architectural or design changes
+3. **Writing 50+ lines of new code** - Significant code additions
+4. **Modifying security-sensitive code** - Authentication, authorization, data handling
+5. **Creating new API endpoints** - REST or GraphQL endpoints
+6. **Implementing data processing logic** - Complex algorithms or data transformations
+7. **After fixing bugs** - Ensure the fix doesn't introduce new issues
+
+### What Constitutes "Medium Code Changes"
+- Adding/modifying 3+ functions or methods
+- Creating new React components or hooks
+- Implementing new service layers or utilities
+- Modifying database queries or schemas
+- Adding new API integrations
+- Refactoring existing modules
+- Any changes to authentication/authorization
+- Performance-critical code modifications
+
+### Review Process
+After completing any of the above changes, Claude should:
+1. Save all modified files
+2. Automatically trigger: "I'll use the expert-code-reviewer agent to review these changes"
+3. Address any critical or high-severity issues found
+4. Re-run the review if significant fixes were made
+5. Only mark the task as complete after review passes
+
+### Example Review Triggers
+```
+# After implementing a feature:
+"I've completed the user authentication module. Let me review it with the expert-code-reviewer agent."
+
+# After refactoring:
+"The payment processing has been refactored. I'll run the expert-code-reviewer agent to validate the changes."
+
+# After bug fixes:
+"Fixed the data validation issue. Let me review the fix with the expert-code-reviewer agent."
+```
+
+### Review Focus Areas
+The expert-code-reviewer agent will automatically check:
+- **Security**: Vulnerabilities, data exposure, injection risks
+- **Performance**: Bottlenecks, inefficient algorithms, memory leaks
+- **Best Practices**: Design patterns, SOLID principles, clean code
+- **Error Handling**: Proper exception handling and logging
+- **Type Safety**: TypeScript usage and type definitions
+- **Testing**: Adequate test coverage for new code
+
 ## Design System
 
 The project uses a centralized Xelix brand color system defined in `tailwind.config.ts`.

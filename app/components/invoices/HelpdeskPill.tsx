@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Inbox, ExternalLink } from 'lucide-react';
+import { Mail, ExternalLink } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 
 interface HelpdeskPillProps {
@@ -23,7 +23,7 @@ export function HelpdeskPill({ ticketRef, className = '' }: HelpdeskPillProps) {
             href="/helpdesk"
             className={`inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-full text-xs font-medium transition-colors ${className}`}
           >
-            <Inbox className="h-3.5 w-3.5" />
+            <Mail className="h-3.5 w-3.5" />
             <span>{ticketRef}</span>
             <ExternalLink className="h-3 w-3 opacity-60" />
           </Link>
@@ -56,7 +56,7 @@ export function HelpdeskPillCompact({ ticketRef, className = '' }: HelpdeskPillP
             href="/helpdesk"
             className={`inline-flex items-center gap-1 px-2 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded text-xs font-medium transition-colors ${className}`}
           >
-            <Inbox className="h-3 w-3" />
+            <Mail className="h-3 w-3" />
             <span className="font-mono">{ticketRef.split('-').pop()}</span>
           </Link>
         </Tooltip.Trigger>

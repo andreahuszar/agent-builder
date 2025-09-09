@@ -1,38 +1,88 @@
+import { Buffer } from 'buffer';
 import mupdf from 'mupdf';
 
-/**
- * Convert PDF buffer to PNG image(s)
- * Returns base64-encoded PNG data for the first page
- * Based on the working Python implementation using PyMuPDF
- */
-export async function convertPdfToPng(pdfBuffer: Buffer): Promise<{
+export interface PdfValidationResult {
+  isValid: boolean;
+  error?: string;
+  pageCount?: number;
+}
+
+export interface PdfConversionResult {
   base64: string;
-  mediaType: 'image/png';
+  mediaType: string;
   pageCount: number;
-}> {
+  width?: number;
+  height?: number;
+}
+
+/**
+ * Validates a PDF file buffer
+ */
+export function validatePdfFile(fileBuffer: Buffer): PdfValidationResult {
   try {
-    // Load the PDF document from buffer using the static method
-    const doc = mupdf.Document.openDocument(pdfBuffer, 'application/pdf');
-    
-    if (!doc) {
-      throw new Error('Failed to load PDF document');
+    // Check if buffer starts with PDF signature
+    const pdfSignature = fileBuffer.slice(0, 5).toString('ascii');
+    if (pdfSignature !== '%PDF-') {
+      return {
+        isValid: false,
+        error: 'Invalid PDF signature',
+      };
     }
+
+    // Try to load the PDF with mupdf to validate structure
+    const document = mupdf.Document.openDocument(fileBuffer, 'application/pdf');
+    const pageCount = document.countPages();
     
-    const pageCount = doc.countPages();
     if (pageCount === 0) {
-      throw new Error('No pages found in PDF');
+      return {
+        isValid: false,
+        error: 'PDF has no pages',
+      };
     }
+
+    return {
+      isValid: true,
+      pageCount,
+    };
+  } catch (error: any) {
+    return {
+      isValid: false,
+      error: `PDF validation failed: ${error.message}`,
+    };
+  }
+}
+
+/**
+ * Converts a PDF buffer to PNG image(s)
+ * For multi-page PDFs, converts only the first page
+ */
+export async function convertPdfToPng(fileBuffer: Buffer): Promise<PdfConversionResult> {
+  try {
+    // Load the PDF document
+    const document = mupdf.Document.openDocument(fileBuffer, 'application/pdf');
+    const pageCount = document.countPages();
     
-    // Load the first page (0-indexed)
-    const page = doc.loadPage(0);
+    if (pageCount === 0) {
+      throw new Error('PDF has no pages');
+    }
+
+    // Get the first page
+    const page = document.loadPage(0);
     
-    // Create a transformation matrix with 3x zoom (same as Python version)
-    // This ensures high quality for OCR
-    const zoom = 3.0;
-    const matrix = mupdf.Matrix.scale(zoom, zoom);
+    // Get page bounds for proper scaling
+    const bounds = page.getBounds();
+    const pageWidth = bounds[2] - bounds[0];
+    const pageHeight = bounds[3] - bounds[1];
+    
+    // Calculate scale to fit within reasonable dimensions (max 2400px on longest side)
+    const maxDimension = 2400;
+    const scale = Math.min(maxDimension / pageWidth, maxDimension / pageHeight, 2.0);
+    
+    // Create a transformation matrix for scaling
+    const matrix = mupdf.Matrix.scale(scale, scale);
     
     // Render the page to a pixmap (raster image)
-    const pixmap = page.toPixmap(matrix, mupdf.ColorSpace.DeviceRGB);
+    const pixmap = page.toPixmap(matrix, mupdf.ColorSpace.DeviceRGB, false);
     
     // Convert pixmap to PNG buffer
     const pngBuffer = pixmap.asPNG();
@@ -43,138 +93,105 @@ export async function convertPdfToPng(pdfBuffer: Buffer): Promise<{
     // Clean up resources
     pixmap.destroy();
     page.destroy();
-    doc.destroy();
+    document.destroy();
     
     return {
-      base64: base64,
+      base64,
       mediaType: 'image/png',
-      pageCount: pageCount,
+      pageCount,
+      width: Math.round(pageWidth * scale),
+      height: Math.round(pageHeight * scale),
     };
   } catch (error: any) {
-    console.error('PDF to PNG conversion error:', error);
-    throw new Error(`Failed to convert PDF to image: ${error.message}`);
+    throw new Error(`PDF to PNG conversion failed: ${error.message}`);
   }
 }
 
 /**
- * Convert all pages of a PDF to PNG images
- * Useful for multi-page invoices
+ * Converts all pages of a PDF to separate PNG images
+ * Useful for multi-page invoice processing
  */
-export async function convertPdfToMultiplePngs(pdfBuffer: Buffer): Promise<{
-  pages: Array<{
-    pageNumber: number;
-    base64: string;
-    mediaType: 'image/png';
-  }>;
-  pageCount: number;
-}> {
+export async function convertPdfToMultiplePngs(fileBuffer: Buffer): Promise<PdfConversionResult[]> {
   try {
+    const results: PdfConversionResult[] = [];
+    
     // Load the PDF document
-    const doc = mupdf.Document.openDocument(pdfBuffer, 'application/pdf');
+    const document = mupdf.Document.openDocument(fileBuffer, 'application/pdf');
+    const pageCount = document.countPages();
     
-    if (!doc) {
-      throw new Error('Failed to load PDF document');
-    }
-    
-    const pageCount = doc.countPages();
     if (pageCount === 0) {
-      throw new Error('No pages found in PDF');
+      throw new Error('PDF has no pages');
     }
-    
-    const pages = [];
-    const zoom = 3.0;
-    const matrix = mupdf.Matrix.scale(zoom, zoom);
-    
-    // Convert each page (limit to 20 pages for performance)
-    const maxPages = Math.min(pageCount, 20);
-    for (let i = 0; i < maxPages; i++) {
-      const page = doc.loadPage(i);
-      const pixmap = page.toPixmap(matrix, mupdf.ColorSpace.DeviceRGB);
+
+    for (let pageIndex = 0; pageIndex < pageCount; pageIndex++) {
+      // Get the page
+      const page = document.loadPage(pageIndex);
+      
+      // Get page bounds for proper scaling
+      const bounds = page.getBounds();
+      const pageWidth = bounds[2] - bounds[0];
+      const pageHeight = bounds[3] - bounds[1];
+      
+      // Calculate scale to fit within reasonable dimensions
+      const maxDimension = 2400;
+      const scale = Math.min(maxDimension / pageWidth, maxDimension / pageHeight, 2.0);
+      
+      // Create a transformation matrix for scaling
+      const matrix = mupdf.Matrix.scale(scale, scale);
+      
+      // Render the page to a pixmap
+      const pixmap = page.toPixmap(matrix, mupdf.ColorSpace.DeviceRGB, false);
+      
+      // Convert pixmap to PNG buffer
       const pngBuffer = pixmap.asPNG();
+      
+      // Convert to base64
       const base64 = Buffer.from(pngBuffer).toString('base64');
       
-      pages.push({
-        pageNumber: i + 1,
-        base64: base64,
-        mediaType: 'image/png' as const,
+      results.push({
+        base64,
+        mediaType: 'image/png',
+        pageCount: 1,
+        width: Math.round(pageWidth * scale),
+        height: Math.round(pageHeight * scale),
       });
       
-      // Clean up page resources
+      // Clean up resources for this page
       pixmap.destroy();
       page.destroy();
     }
     
     // Clean up document
-    doc.destroy();
+    document.destroy();
     
-    return {
-      pages,
-      pageCount: pageCount,
-    };
+    return results;
   } catch (error: any) {
-    console.error('PDF to PNG conversion error:', error);
-    throw new Error(`Failed to convert PDF pages to images: ${error.message}`);
+    throw new Error(`PDF to PNG conversion failed: ${error.message}`);
   }
 }
 
 /**
- * Validate PDF file
+ * Extracts text content from a PDF
+ * Useful for fallback text extraction if vision API fails
  */
-export function validatePdfFile(buffer: Buffer): { valid: boolean; error?: string } {
-  // Check PDF header
-  const pdfHeader = buffer.slice(0, 5).toString();
-  if (!pdfHeader.startsWith('%PDF-')) {
-    return {
-      valid: false,
-      error: 'Invalid PDF file - missing PDF header',
-    };
+export function extractPdfText(fileBuffer: Buffer): string {
+  try {
+    const document = mupdf.Document.openDocument(fileBuffer, 'application/pdf');
+    const pageCount = document.countPages();
+    
+    let fullText = '';
+    
+    for (let i = 0; i < pageCount; i++) {
+      const page = document.loadPage(i);
+      const text = page.toStructuredText().asText();
+      fullText += text + '\n\n';
+      page.destroy();
+    }
+    
+    document.destroy();
+    
+    return fullText.trim();
+  } catch (error: any) {
+    throw new Error(`PDF text extraction failed: ${error.message}`);
   }
-
-  // Check minimum size
-  if (buffer.length < 100) {
-    return {
-      valid: false,
-      error: 'PDF file appears to be corrupted - too small',
-    };
-  }
-
-  return { valid: true };
-}
-
-/**
- * Estimate conversion complexity based on PDF size
- */
-export function estimatePdfComplexity(buffer: Buffer): {
-  estimatedPages: number;
-  estimatedProcessingTimeMs: number;
-  complexity: 'simple' | 'medium' | 'complex';
-} {
-  const sizeInMB = buffer.length / (1024 * 1024);
-  
-  // Rough estimates based on file size
-  let estimatedPages: number;
-  let complexity: 'simple' | 'medium' | 'complex';
-  let baseTimeMs: number;
-
-  if (sizeInMB < 1) {
-    estimatedPages = 1;
-    complexity = 'simple';
-    baseTimeMs = 2000; // 2 seconds
-  } else if (sizeInMB < 5) {
-    estimatedPages = Math.ceil(sizeInMB * 2);
-    complexity = 'medium';
-    baseTimeMs = 5000; // 5 seconds
-  } else {
-    estimatedPages = Math.ceil(sizeInMB * 3);
-    complexity = 'complex';
-    baseTimeMs = 10000; // 10 seconds
-  }
-
-  const estimatedProcessingTimeMs = baseTimeMs + (estimatedPages * 1000);
-
-  return {
-    estimatedPages,
-    estimatedProcessingTimeMs,
-    complexity,
-  };
 }

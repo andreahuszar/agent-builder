@@ -1,26 +1,41 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    // Fetch purchase orders with vendor information and calculated totals
-    const purchaseOrders = await prisma.$queryRaw`
-      SELECT 
-        ph.id,
-        ph.po_number,
-        v.name as vendor_name,
-        ph.order_date,
-        ph.status,
-        ph.currency,
-        ph.created_at,
-        COALESCE(SUM(pl.qty_ordered * pl.unit_price), 0)::float as total_amount
-      FROM po_headers ph
-      LEFT JOIN vendors v ON ph.vendor_id = v.id
-      LEFT JOIN po_lines pl ON ph.id = pl.po_id
-      GROUP BY ph.id, ph.po_number, v.name, ph.order_date, ph.status, ph.currency, ph.created_at
-      ORDER BY ph.order_date DESC, ph.created_at DESC
-    ` as any[];
-
+    const poHeaders = await prisma.po_headers.findMany({
+      include: {
+        vendors: true,
+        po_lines: true
+      },
+      orderBy: [
+        { order_date: 'desc' },
+        { created_at: 'desc' }
+      ]
+    });
+    
+    const purchaseOrders = poHeaders.map(po => {
+      // Calculate total amount from lines
+      const totalAmount = po.po_lines.reduce((sum, line) => {
+        const lineTotal = (parseFloat(line.qty_ordered?.toString() || '0') * 
+                          parseFloat(line.unit_price?.toString() || '0'));
+        return sum + lineTotal;
+      }, 0);
+      
+      return {
+        id: po.id,
+        po_number: po.po_number,
+        vendor_name: po.vendors?.name || null,
+        order_date: po.order_date?.toISOString().split('T')[0] || null,
+        status: po.status,
+        currency: po.currency,
+        created_at: po.created_at?.toISOString() || null,
+        total_amount: totalAmount
+      };
+    });
+    
+    console.log(`Successfully fetched ${purchaseOrders.length} purchase orders`);
+    
     return NextResponse.json({
       purchaseOrders,
       count: purchaseOrders.length

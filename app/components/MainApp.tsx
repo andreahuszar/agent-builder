@@ -8,7 +8,7 @@ import { ApprovalsClient } from './approvals/ApprovalsClient';
 import { EscalationsClient } from './escalations/EscalationsClient';
 import { GoodsReceiptsClient } from './goods-receipts/GoodsReceiptsClient';
 import DashboardClient from './dashboard/DashboardClient';
-import { Plus, Search } from 'lucide-react';
+import { Plus, Search, SlidersHorizontal } from 'lucide-react';
 
 interface InvoiceProcessingContentProps {
   currentView?: string;
@@ -75,15 +75,25 @@ function InvoiceProcessingContent({ currentView = 'dashboard' }: InvoiceProcessi
                   <h1 className="text-2xl font-bold text-gray-950">Invoices</h1>
                 </div>
               )}
-              renderMiddleSection={(onClick) => (
+              renderMiddleSection={(onClick, searchQuery, onSearchChange) => (
                 <div className="mb-4 flex gap-2 justify-between">
-                  <div className="relative flex-1 max-w-xs">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
-                    <input 
-                      type="search" 
-                      placeholder="Search invoices..." 
-                      className="pl-8 h-9 text-sm w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
+                  <div className="flex gap-2 flex-1">
+                    <div className="relative flex-1 max-w-xs">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
+                      <input 
+                        type="search" 
+                        placeholder="Search invoices..." 
+                        value={searchQuery}
+                        onChange={(e) => onSearchChange(e.target.value)}
+                        className="pl-8 h-9 text-sm w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                      />
+                    </div>
+                    <button
+                      className="inline-flex items-center px-2 py-1.5 bg-white border border-purple-900 text-purple-900 text-sm rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                    >
+                      <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
+                      Columns & Filters
+                    </button>
                   </div>
                   <button
                     onClick={onClick}
@@ -118,7 +128,9 @@ function InvoiceProcessingContent({ currentView = 'dashboard' }: InvoiceProcessi
         <ApprovalsClient />
       )}
       {currentView === 'escalations' && (
-        <EscalationsClient />
+        <div className="h-full w-full overflow-hidden">
+          <EscalationsClient />
+        </div>
       )}
       {currentView === 'goods-receipts' && (
         <GoodsReceiptsClient />

@@ -12,10 +12,11 @@ import {
   FileX,
   ShieldAlert,
   ClipboardCheck,
-  Database
+  Database,
+  Truck
 } from 'lucide-react';
 
-export type ValidationCategory = 'financial' | 'process' | 'compliance' | 'risk' | 'data_quality';
+export type ValidationCategory = 'financial' | 'process' | 'compliance' | 'risk' | 'data_quality' | 'delivery';
 export type ValidationSeverity = 'error' | 'warning' | 'info' | 'success';
 
 export interface ValidationIssue {
@@ -83,6 +84,13 @@ const categoryConfig: Record<ValidationCategory, {
     color: 'text-blue-700',
     bgColor: 'bg-blue-50',
     borderColor: 'border-blue-200',
+  },
+  delivery: {
+    title: 'Delivery Issues',
+    icon: Truck,
+    color: 'text-indigo-700',
+    bgColor: 'bg-indigo-50',
+    borderColor: 'border-indigo-200',
   },
 };
 

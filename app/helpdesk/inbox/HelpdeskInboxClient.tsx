@@ -57,11 +57,11 @@ export function HelpdeskInboxClient() {
   const tickets = [
     {
       id: 1,
-      sender: 'Accounts Payable Team Enea; #388867',
-      email: 'accounts.receivable@murray-farrell-and-wall.com',
-      subject: 'Invoice #ASA199_73778 Issued on 16/08/25',
-      preview: 'Dear Genpact Demo, We are sending Invoice #ASA199_73778, issued on 16/08/25, for your records. Kindly process payment before 09/11/25.',
-      time: '30/08/2025 at 00:25',
+      sender: 'TechFlow Solutions',
+      email: 'billing@techflow-solutions.com',
+      subject: 'Invoice #INV-2025-005 - Payment Due',
+      preview: 'Dear Valued Customer, Please find attached Invoice #INV-2025-005 dated 01/18/25 for $13,200.00. Payment is due within 30 days.',
+      time: '18/01/2025 at 09:15',
       status: 'New',
       tag: '#388867',
       tagColor: 'text-[#2563EB]',
@@ -305,7 +305,7 @@ export function HelpdeskInboxClient() {
                 </div>
               </div>
               <h2 className="text-[16px] font-semibold text-gray-900 mt-1.5">
-                Invoice #ASA199_73778 Issued on 16/08/25
+                Invoice #INV-2025-005 - Payment Due
               </h2>
             </div>
             
@@ -349,7 +349,7 @@ export function HelpdeskInboxClient() {
               <div className="flex items-center gap-2">
                 <span className="text-gray-500">Vendors</span>
                 <button className="flex items-center gap-1 text-[#7C3AED] font-semibold">
-                  Lewis and Sons
+                  TechFlow Solutions
                   <ChevronDown className="h-3 w-3" />
                 </button>
               </div>
@@ -369,8 +369,8 @@ export function HelpdeskInboxClient() {
               <div className="mb-4">
                 <div className="flex items-center justify-between mb-2">
                   <div>
-                    <div className="font-semibold text-[14px] text-gray-900">Murray, Farrell and Wall</div>
-                    <div className="text-[13px] text-gray-500">&lt;accounts.receivable@murray-farrell-and-wall.com&gt;</div>
+                    <div className="font-semibold text-[14px] text-gray-900">TechFlow Solutions</div>
+                    <div className="text-[13px] text-gray-500">&lt;billing@techflow-solutions.com&gt;</div>
                   </div>
                   <div className="flex items-center gap-2">
                     <button className="p-1.5 hover:bg-gray-200 rounded">
@@ -388,16 +388,22 @@ export function HelpdeskInboxClient() {
                   To: ap.queries@genpact-demo.com
                 </div>
                 <div className="text-[13px] text-gray-600">
-                  Subject: Invoice #ASA199_73778 Issued on 16/08/25
+                  Subject: Invoice #INV-2025-005 - Payment Due
                 </div>
                 <div className="text-[11px] text-gray-500 mt-1">
-                  30/08/2025 at 00:25
+                  18/01/2025 at 09:15
                 </div>
               </div>
 
               <div className="text-[13px] text-gray-700 leading-relaxed">
-                Dear Genpact Demo, We are sending Invoice #ASA199_73778, issued on 16/08/25, for your records.
-                Kindly process payment before 09/11/25.
+                Dear Valued Customer,<br /><br />
+                Please find attached Invoice #INV-2025-005 dated 01/18/25 for professional services rendered. 
+                The total amount due is $13,200.00.<br /><br />
+                Payment is due within 30 days of the invoice date. Please remit payment by 02/17/25 to avoid any late fees.<br /><br />
+                If you have any questions regarding this invoice, please don't hesitate to contact our billing department.<br /><br />
+                Thank you for your business.<br /><br />
+                Best regards,<br />
+                TechFlow Solutions Billing Team
               </div>
             </div>
           </div>
@@ -459,26 +465,26 @@ export function HelpdeskInboxClient() {
                 {expandedSections.includes('items') && (
                   <div className="px-4 py-2 border-l-2 border-gray-100 ml-4">
                     <Link 
-                      href="/invoices/11100001-1111-1111-1111-111111111111"
+                      href="/invoices/11111111-0000-0000-0000-000000000005"
                       className="block p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
                     >
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
                           <FileText className="h-4 w-4 text-red-500" />
                           <span className="text-[13px] font-semibold text-purple-600">
-                            Invoice #INV-2024-0001
+                            Invoice #INV-2025-005
                           </span>
                         </div>
                         <span className="text-[11px] text-gray-500">
-                          01/12/24
+                          01/18/25
                         </span>
                       </div>
                       <div className="text-[12px] text-gray-600 mb-2">
-                        Acme Office Supplies
+                        TechFlow Solutions
                       </div>
                       <div className="flex items-center justify-between">
                         <span className="text-[13px] font-medium text-gray-900">
-                          $4,860.00
+                          $13,200.00
                         </span>
                         <span className="text-[11px] px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full font-medium">
                           Processing

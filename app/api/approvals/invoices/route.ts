@@ -5,96 +5,123 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const view = searchParams.get('view') || 'pending';
-    // const userId = searchParams.get('userId');
-    // const userRole = searchParams.get('role') || 'user';
 
-    let whereClause = '';
+    // Build where clause based on view
+    let whereClause: any = {};
     
-    // Build WHERE clause based on view
-    // Map to actual database status values
     switch (view) {
       case 'pending':
-        whereClause = "WHERE ih.status IN ('pending_approval', 'requires_review', 'processing', 'validating')";
+        whereClause.status = {
+          in: ['pending_approval', 'requires_review', 'processing', 'validating', 'draft']
+        };
         break;
       case 'approved':
-        whereClause = "WHERE ih.status IN ('approved_ready_for_payment', 'paid')";
+        whereClause.status = {
+          in: ['approved', 'approved_ready_for_payment', 'paid']
+        };
         break;
       case 'rejected':
-        whereClause = "WHERE ih.status = 'on_hold'";
+        whereClause.status = {
+          in: ['rejected', 'void']
+        };
         break;
       case 'overdue':
-        whereClause = "WHERE ih.status IN ('pending_approval', 'requires_review') AND ih.due_date < NOW()";
+        whereClause = {
+          due_date: { lt: new Date() },
+          status: {
+            notIn: ['paid', 'approved', 'rejected', 'void']
+          }
+        };
         break;
       case 'on-hold':
-        whereClause = "WHERE ih.status = 'on_hold'";
+        whereClause.status = 'on_hold';
         break;
       case 'all':
       default:
-        whereClause = '';
+        // No filter - get everything
+        whereClause = {};
     }
 
-    // Add user filter for non-admin views (placeholder for now)
-    // In production, this should use parameterized queries
-    // For now, we'll skip user filtering to avoid SQL injection risks
+    // Fetch invoices
+    const invoiceHeaders = await prisma.invoice_headers.findMany({
+      where: whereClause,
+      orderBy: [
+        { created_at: 'desc' }
+      ],
+      take: 100
+    });
 
-    // Build and execute query
-    const query = `
-      SELECT 
-        ih.id,
-        ih.invoice_number,
-        ih.vendor_name_snapshot,
-        ih.invoice_date::text,
-        ih.due_date::text,
-        ih.currency,
-        COALESCE(ih.total, 0) as total,
-        COALESCE(ih.subtotal, 0) as subtotal,
-        COALESCE(ih.tax_total, 0) as tax_total,
-        ih.status,
-        ih.match_status,
-        ih.assigned_to_user_id,
-        u.name as assigned_to_name,
-        ih.po_numbers_cached,
-        CASE 
-          WHEN ih.due_date < NOW() 
-          THEN EXTRACT(DAY FROM NOW() - ih.due_date)::integer
-          ELSE 0
-        END as days_past_due
-      FROM invoice_headers ih
-      LEFT JOIN users u ON ih.assigned_to_user_id = u.id
-      ${whereClause}
-      ORDER BY 
-        CASE 
-          WHEN ih.status = 'pending_approval' THEN 0
-          WHEN ih.status = 'requires_review' THEN 1
-          ELSE 2
-        END,
-        ih.due_date ASC,
-        ih.created_at DESC
-      LIMIT 100
-    `;
-    
-    const invoices = await prisma.$queryRawUnsafe(query);
+    const now = new Date();
+    const invoices = invoiceHeaders.map(ih => {
+      const dueDate = new Date(ih.due_date);
+      const daysPastDue = dueDate < now 
+        ? Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24))
+        : 0;
 
-    // Fetch team members for assignment (simplified without non-existent columns)
-    const teamMembers = await prisma.$queryRaw`
-      SELECT 
-        u.id,
-        u.name,
-        u.email,
-        'Approver' as role,
-        UPPER(SUBSTRING(u.name FROM 1 FOR 1) || COALESCE(SUBSTRING(SPLIT_PART(u.name, ' ', 2) FROM 1 FOR 1), '')) as initials,
-        'bg-purple-600' as color,
-        'available' as status,
-        COUNT(ih.id)::integer as current_workload,
-        20 as capacity,
-        95 as sla_compliance,
-        1.5 as avg_approval_time,
-        0 as completed_today
-      FROM users u
-      LEFT JOIN invoice_headers ih ON ih.assigned_to_user_id = u.id AND ih.status IN ('pending_approval', 'requires_review')
-      GROUP BY u.id, u.name, u.email
-      ORDER BY u.name
-    `;
+      return {
+        id: ih.id,
+        invoice_number: ih.invoice_number,
+        vendor_name_snapshot: ih.vendor_name_snapshot,
+        invoice_date: ih.invoice_date.toISOString().split('T')[0],
+        due_date: ih.due_date.toISOString().split('T')[0],
+        currency: ih.currency,
+        total: parseFloat(ih.total?.toString() || '0'),
+        subtotal: parseFloat(ih.subtotal?.toString() || '0'),
+        tax_total: parseFloat(ih.tax_total?.toString() || '0'),
+        status: ih.status,
+        match_status: ih.match_status,
+        assigned_to_user_id: null,
+        assigned_to_name: null,
+        po_numbers_cached: ih.po_numbers_cached || [],
+        days_past_due: daysPastDue
+      };
+    });
+
+    // Sort invoices by priority
+    invoices.sort((a, b) => {
+      // Priority order: pending_approval, requires_review, then others
+      const priorityMap: { [key: string]: number } = {
+        'pending_approval': 0,
+        'requires_review': 1
+      };
+      
+      const aPriority = priorityMap[a.status] ?? 2;
+      const bPriority = priorityMap[b.status] ?? 2;
+      
+      if (aPriority !== bPriority) return aPriority - bPriority;
+      
+      // Then sort by due date
+      return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+    });
+
+    // Fetch team members
+    const users = await prisma.User.findMany({
+      orderBy: { name: 'asc' }
+    });
+
+    // Since assigned_to_user_id doesn't exist in invoice_headers,
+    // we'll set workload to 0 for all users
+    const workloadMap = new Map();
+
+    const teamMembers = users.map(user => {
+      const nameParts = user.name?.split(' ') || [];
+      const initials = nameParts
+        .map(part => part.charAt(0).toUpperCase())
+        .slice(0, 2)
+        .join('');
+
+      return {
+        id: user.id,
+        name: user.name || 'Unknown',
+        email: user.email,
+        role: 'Approver',
+        initials: initials || 'U',
+        color: 'bg-purple-600',
+        status: 'available',
+        current_workload: workloadMap.get(user.id) || 0,
+        capacity: 20
+      };
+    });
 
     return NextResponse.json({
       invoices: invoices || [],

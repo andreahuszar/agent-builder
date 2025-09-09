@@ -56,6 +56,7 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
       compliance: [],
       risk: [],
       data_quality: [],
+      delivery: [],
     };
     
     // If this is a Non-PO vendor, skip PO-related checks
@@ -88,8 +89,27 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
       return issues;
     }
 
-    // Add approval limit check
-    if (invoiceData?.total && invoiceData.total > approvalLimit) {
+    // Check vendor verification status
+    if (invoiceData?.vendor_is_verified === false) {
+      issues.compliance.push({
+        id: 'vendor-unverified',
+        field: 'vendor',
+        message: 'Vendor not in Master Data',
+        details: `The vendor "${invoiceData.vendor_name_snapshot}" is not verified in the master vendor database. This vendor was auto-created from the invoice and requires verification before payment processing.`,
+        severity: 'error',
+        category: 'compliance',
+        action: {
+          label: 'Verify Vendor',
+          onClick: () => console.log('Verify vendor', invoiceData.vendor_id),
+        },
+      });
+    }
+
+    // Add approval limit check - but only for invoices that aren't already approved/paid
+    const approvedStatuses = ['approved', 'paid', 'completed', 'closed', 'ready_for_payment'];
+    const isAlreadyApproved = invoiceData?.status && approvedStatuses.includes(invoiceData.status.toLowerCase());
+    
+    if (invoiceData?.total && invoiceData.total > approvalLimit && !isAlreadyApproved) {
       issues.compliance.push({
         id: 'approval-limit',
         field: 'total',
@@ -148,6 +168,8 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
           category = 'financial';
         } else if (validation.field === 'vendor_name_snapshot' || validation.field === 'po_numbers') {
           category = 'process';
+        } else if (validation.field === 'vendor_approval_status') {
+          category = 'compliance';
         }
         
         issues[category].push({
@@ -161,6 +183,65 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
           category,
         });
       });
+    }
+
+    // Check for partial delivery issues by comparing GR quantities with PO and invoice
+    if (poComparisonData?.grData && poComparisonData?.poData) {
+      const poLines = poComparisonData.poData.po_lines || [];
+      const grLines = poComparisonData.grData.gr_lines || [];
+      
+      poLines.forEach((poLine: any) => {
+        const grLine = grLines.find((gr: any) => gr.po_line_id === poLine.id);
+        if (grLine && grLine.qty_received < poLine.qty_ordered) {
+          const percentageReceived = (grLine.qty_received / poLine.qty_ordered * 100).toFixed(0);
+          const undeliveredQty = poLine.qty_ordered - grLine.qty_received;
+          
+          issues.delivery.push({
+            id: `partial-delivery-${poLine.id}`,
+            field: 'quantity_received',
+            lineNumber: poLine.line_no,
+            message: `Partial delivery for line ${poLine.line_no}`,
+            details: `Only ${grLine.qty_received} of ${poLine.qty_ordered} ${poLine.uom} received (${percentageReceived}% delivered) for ${poLine.description}. ${undeliveredQty} ${poLine.uom} outstanding.`,
+            actualValue: grLine.qty_received,
+            expectedValue: poLine.qty_ordered,
+            variance: ((poLine.qty_ordered - grLine.qty_received) / poLine.qty_ordered * 100),
+            severity: 'warning',
+            category: 'delivery',
+            action: {
+              label: 'View GR',
+              onClick: () => console.log('View GR details', grLine),
+            },
+          });
+          
+          // Also add a financial impact warning if invoice quantity doesn't match GR
+          const invoiceLine = lines.find(l => l.description?.includes(poLine.description));
+          if (invoiceLine && invoiceLine.quantity > grLine.qty_received) {
+            issues.delivery.push({
+              id: `over-invoiced-${poLine.id}`,
+              field: 'invoice_quantity',
+              lineNumber: poLine.line_no,
+              message: `Invoice exceeds delivered quantity`,
+              details: `Invoice claims ${invoiceLine.quantity} ${poLine.uom} but only ${grLine.qty_received} ${poLine.uom} were received. Potential overpayment risk.`,
+              actualValue: invoiceLine.quantity,
+              expectedValue: grLine.qty_received,
+              severity: 'error',
+              category: 'delivery',
+            });
+          }
+        }
+      });
+      
+      // Add summary if there are multiple partial deliveries
+      const partialDeliveryCount = issues.delivery.filter(i => i.id.startsWith('partial-delivery')).length;
+      if (partialDeliveryCount > 1) {
+        issues.delivery.unshift({
+          id: 'partial-delivery-summary',
+          message: 'Multiple partial deliveries detected',
+          details: `${partialDeliveryCount} line items have incomplete deliveries. Review goods receipt documentation and coordinate with supplier for remaining deliveries.`,
+          severity: 'warning',
+          category: 'delivery',
+        });
+      }
     }
 
     // Track if we've already added certain issues to avoid duplicates
@@ -280,7 +361,7 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
     }
 
     return issues;
-  }, [matchResults, lines]);
+  }, [matchResults, lines, invoiceData, poComparisonData, approvalLimit]);
 
   const handleRerunMatching = async () => {
     try {
@@ -361,7 +442,10 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
     );
   }
 
-  if (matchResults.length === 0) {
+  // Check if there are any validation issues to show even without match results
+  const hasValidationIssues = Object.values(validationIssues).some(issues => issues.length > 0);
+
+  if (matchResults.length === 0 && !hasValidationIssues) {
     return (
       <div className="flex flex-col items-center justify-center py-12">
         <div className="text-center max-w-md">
@@ -399,9 +483,24 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
           className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors"
         >
           <RefreshCw className="h-3.5 w-3.5" />
-          Re-run Matching
+          {matchResults.length === 0 ? 'Run Matching' : 'Re-run Matching'}
         </button>
       </div>
+
+      {/* Show message if no match results yet */}
+      {matchResults.length === 0 && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+          <div className="flex items-start gap-3">
+            <RefreshCw className="h-5 w-5 text-amber-600 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-900">Matching Not Run</p>
+              <p className="text-sm text-amber-700 mt-0.5">
+                This invoice has not been matched yet. Run the matching process to check for Purchase Orders and Goods Receipts.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Validation cards */}
       <ValidationCardContainer>
@@ -442,6 +541,13 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
                 category="data_quality"
                 issues={validationIssues.data_quality}
                 defaultExpanded={validationIssues.data_quality.length === 1}
+              />
+            )}
+            {validationIssues.delivery.length > 0 && (
+              <ValidationCard
+                category="delivery"
+                issues={validationIssues.delivery}
+                defaultExpanded={validationIssues.delivery.length === 1}
               />
             )}
           </>

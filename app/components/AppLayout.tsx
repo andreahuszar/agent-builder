@@ -74,7 +74,7 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
       )}
       
       {/* Main Content Area */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col overflow-hidden">
         {/* Top Bar with Navigation Pills or Custom Top Bar */}
         {customTopBar ? customTopBar : (
           <TopBar
@@ -85,7 +85,7 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
         )}
         
         {/* Main Content */}
-        <main id="main-content" className="flex-1 pb-8">
+        <main id="main-content" className="flex-1 overflow-hidden">
           {customTopBar ? children : 
             React.isValidElement(children) && typeof children.type !== 'string' 
               ? React.cloneElement(children as React.ReactElement<{ currentView?: string; currentModule?: string }>, { 

@@ -11,32 +11,35 @@ export async function GET(request: Request, { params }: Params) {
 
   try {
     // Get invoice with its lines
-    const invoice = await prisma.$queryRaw`
-      SELECT 
-        ih.id,
-        ih.invoice_number,
-        ih.po_numbers_cached,
-        array_agg(
-          json_build_object(
-            'id', il.id,
-            'line_no', il.line_no,
-            'description', il.description,
-            'qty', il.qty::float,
-            'unit_price', il.unit_price::float,
-            'uom', il.uom
-          ) ORDER BY il.line_no
-        ) as lines
-      FROM invoice_headers ih
-      LEFT JOIN invoice_lines il ON il.invoice_id = ih.id
-      WHERE ih.id = ${invoiceId}::uuid
-      GROUP BY ih.id
-    ` as any[];
+    const invoiceHeader = await prisma.invoice_headers.findUnique({
+      where: { id: invoiceId },
+      include: {
+        invoice_lines: {
+          orderBy: { line_no: 'asc' }
+        }
+      }
+    });
 
-    if (!invoice || invoice.length === 0) {
+    if (!invoiceHeader) {
       return NextResponse.json({ error: 'Invoice not found' }, { status: 404 });
     }
 
-    const invoiceData = invoice[0];
+    const invoiceData = {
+      id: invoiceHeader.id,
+      invoice_number: invoiceHeader.invoice_number,
+      po_numbers_cached: invoiceHeader.po_numbers_cached || [],
+      lines: invoiceHeader.invoice_lines.map(line => ({
+        id: line.id,
+        line_no: line.line_no || 0,
+        description: line.description,
+        qty: parseFloat(line.qty?.toString() || '0'),
+        unit_price: parseFloat(line.unit_price?.toString() || '0'),
+        uom: line.uom,
+        net_amount: parseFloat(line.net_amount?.toString() || '0'),
+        line_total: parseFloat(line.line_total?.toString() || '0')
+      }))
+    };
+
     const poNumber = invoiceData.po_numbers_cached?.[0];
 
     if (!poNumber) {
@@ -48,96 +51,115 @@ export async function GET(request: Request, { params }: Params) {
     }
 
     // Get PO header and lines
-    const poData = await prisma.$queryRaw`
-      SELECT 
-        ph.id as po_id,
-        ph.po_number,
-        ph.vendor_id,
-        ph.currency,
-        ph.status as po_status,
-        ph.expected_match_rule,
-        array_agg(
-          json_build_object(
-            'id', pl.id,
-            'line_no', pl.line_no,
-            'description', pl.description,
-            'qty_ordered', pl.qty_ordered::float,
-            'unit_price', pl.unit_price::float,
-            'uom', pl.uom,
-            'status', pl.status
-          ) ORDER BY pl.line_no
-        ) as po_lines
-      FROM po_headers ph
-      LEFT JOIN po_lines pl ON pl.po_id = ph.id
-      WHERE ph.po_number = ${poNumber}
-      GROUP BY ph.id
-    ` as any[];
+    const poHeader = await prisma.po_headers.findFirst({
+      where: { po_number: poNumber },
+      include: {
+        po_lines: {
+          orderBy: { line_no: 'asc' }
+        }
+      }
+    });
+
+    let poData = null;
+    if (poHeader) {
+      poData = {
+        po_id: poHeader.id,
+        po_number: poHeader.po_number,
+        vendor_id: poHeader.vendor_id,
+        currency: poHeader.currency,
+        po_status: poHeader.status,
+        expected_match_rule: poHeader.expected_match_rule,
+        po_lines: poHeader.po_lines.map(line => ({
+          id: line.id,
+          line_no: line.line_no || 0,
+          description: line.description,
+          qty_ordered: parseFloat(line.qty_ordered?.toString() || '0'),
+          unit_price: parseFloat(line.unit_price?.toString() || '0'),
+          uom: line.uom,
+          status: line.status
+        }))
+      };
+    }
 
     // Get match results with PO line details
-    const matchResults = await prisma.$queryRaw`
-      SELECT 
-        mr.id,
-        mr.invoice_line_id,
-        mr.matched_po_line_id,
-        mr.matched_gr_line_id,
-        mr.qty_variance::float,
-        mr.price_variance::float,
-        mr.amount_variance::float,
-        mr.within_tolerance,
-        mr.explanation_code,
-        pl.line_no as po_line_no,
-        pl.description as po_description,
-        pl.qty_ordered::float as po_qty,
-        pl.unit_price::float as po_unit_price,
-        pl.uom as po_uom,
-        gr.qty_received::float as gr_qty_received
-      FROM match_results mr
-      LEFT JOIN po_lines pl ON pl.id = mr.matched_po_line_id
-      LEFT JOIN gr_lines gr ON gr.id = mr.matched_gr_line_id
-      WHERE mr.invoice_id = ${invoiceId}::uuid
-        AND mr.invoice_line_id IS NOT NULL
-    ` as any[];
+    const matchResultsData = await prisma.match_results.findMany({
+      where: {
+        invoice_id: invoiceId,
+        invoice_line_id: { not: null }
+      },
+      include: {
+        po_lines: true,
+        gr_lines: true
+      }
+    });
 
-    // Get GR data if exists
-    let grData = [];
-    if (poData && poData.length > 0) {
-      grData = await prisma.$queryRaw`
-        SELECT 
-          gr.id as gr_line_id,
-          gr.po_line_id,
-          gr.qty_received::float,
-          gr.uom,
-          gh.gr_number,
-          gh.receipt_date::text
-        FROM gr_lines gr
-        JOIN gr_headers gh ON gh.id = gr.gr_id
-        WHERE gr.po_line_id IN (
-          SELECT id FROM po_lines WHERE po_id = ${poData[0].po_id}::uuid
-        )
-      ` as any[];
+    const matchResults = matchResultsData.map(mr => ({
+      id: mr.id,
+      invoice_line_id: mr.invoice_line_id,
+      matched_po_line_id: mr.matched_po_line_id,
+      matched_gr_line_id: mr.matched_gr_line_id,
+      qty_variance: parseFloat(mr.qty_variance?.toString() || '0'),
+      price_variance: parseFloat(mr.price_variance?.toString() || '0'),
+      amount_variance: parseFloat(mr.amount_variance?.toString() || '0'),
+      within_tolerance: mr.within_tolerance || false,
+      explanation_code: mr.explanation_code,
+      po_line_no: mr.po_lines?.line_no || null,
+      po_description: mr.po_lines?.description || null,
+      po_qty: mr.po_lines ? parseFloat(mr.po_lines.qty_ordered?.toString() || '0') : null,
+      po_unit_price: mr.po_lines ? parseFloat(mr.po_lines.unit_price?.toString() || '0') : null,
+      po_uom: mr.po_lines?.uom || null,
+      gr_qty_received: mr.gr_lines ? parseFloat(mr.gr_lines.qty_received?.toString() || '0') : null
+    }));
+
+    // Get GR data if PO exists
+    let grData: any[] = [];
+    if (poData) {
+      const poLineIds = poData.po_lines.map((pl: any) => pl.id);
+      
+      const grLines = await prisma.gr_lines.findMany({
+        where: {
+          po_line_id: {
+            in: poLineIds
+          }
+        },
+        include: {
+          gr_headers: true
+        }
+      });
+
+      grData = grLines.map(gr => ({
+        gr_line_id: gr.id,
+        po_line_id: gr.po_line_id,
+        qty_received: parseFloat(gr.qty_received?.toString() || '0'),
+        uom: gr.uom,
+        gr_number: gr.gr_headers?.gr_number || null,
+        receipt_date: gr.gr_headers?.receipt_date?.toISOString().split('T')[0] || null
+      }));
     }
 
     // Find which PO lines have been matched to invoice lines
     const matchedPoLineIds = matchResults
-      .filter((mr: any) => mr.matched_po_line_id)
-      .map((mr: any) => mr.matched_po_line_id);
+      .filter(mr => mr.matched_po_line_id)
+      .map(mr => mr.matched_po_line_id);
     
     // Find unmatched PO lines (PO lines not invoiced)
-    const unmatchedPoLines = poData?.[0]?.po_lines?.filter(
+    const unmatchedPoLines = poData?.po_lines?.filter(
       (pl: any) => !matchedPoLineIds.includes(pl.id)
     ) || [];
 
     // Build comparison data
     const comparisonData = {
       invoice: invoiceData,
-      poData: poData?.[0] || null,
+      poData: poData,
       matchResults,
-      grData,
+      grData: {
+        gr_lines: grData
+      },
       // Create a map of invoice lines to PO lines for easy comparison
       lineComparison: invoiceData.lines?.map((invLine: any) => {
-        const matchResult = matchResults.find((mr: any) => mr.invoice_line_id === invLine.id);
-        const poLine = poData?.[0]?.po_lines?.find((pl: any) => pl.id === matchResult?.matched_po_line_id);
-        const grLine = grData.find((gr: any) => gr.po_line_id === poLine?.id);
+        const matchResult = matchResults.find(mr => mr.invoice_line_id === invLine.id);
+        const poLine = poData?.po_lines?.find((pl: any) => pl.id === matchResult?.matched_po_line_id);
+        const grLine = grData.find(gr => gr.po_line_id === poLine?.id);
 
         return {
           invoice: invLine,
@@ -150,7 +172,7 @@ export async function GET(request: Request, { params }: Params) {
       }) || [],
       // Add unmatched PO lines for visibility
       unmatchedPoLines: unmatchedPoLines.map((poLine: any) => {
-        const grLine = grData.find((gr: any) => gr.po_line_id === poLine.id);
+        const grLine = grData.find(gr => gr.po_line_id === poLine.id);
         return {
           po: poLine,
           gr: grLine || null,

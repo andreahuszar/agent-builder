@@ -1,15 +1,18 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ZoomIn, ZoomOut, RotateCw, Maximize2, Download } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCw, Maximize2, Download, FileText } from 'lucide-react';
+import { FakeInvoiceDocument } from './FakeInvoiceDocument';
 
 interface DocumentPreviewProps {
   invoiceId: string;
   hasAttachment: boolean;
+  invoiceData?: any;
 }
 
-export function DocumentPreview({ invoiceId, hasAttachment }: DocumentPreviewProps) {
-  const [zoom, setZoom] = useState(1);
+export function DocumentPreview({ invoiceId, hasAttachment, invoiceData }: DocumentPreviewProps) {
+  // Start with 50% zoom for fake documents, 100% for real attachments
+  const [zoom, setZoom] = useState(hasAttachment ? 1 : 0.5);
   const [rotation, setRotation] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -64,17 +67,7 @@ export function DocumentPreview({ invoiceId, hasAttachment }: DocumentPreviewPro
     };
   }, []);
 
-  if (!hasAttachment) {
-    return (
-      <div className="h-full flex items-center justify-center bg-gray-50 rounded-lg">
-        <div className="text-center">
-          <p className="text-gray-500 mb-2">No document attached</p>
-          <p className="text-sm text-gray-400">Upload a document to see preview</p>
-        </div>
-      </div>
-    );
-  }
-
+  // Always show the document viewer with toolbar
   return (
     <div 
       ref={containerRef}
@@ -116,14 +109,6 @@ export function DocumentPreview({ invoiceId, hasAttachment }: DocumentPreviewPro
           >
             <RotateCw className="h-4 w-4" />
           </button>
-
-          <button
-            onClick={handleFitToScreen}
-            className="p-1.5 rounded hover:bg-gray-100 transition-colors text-gray-950"
-            title="Fit to Screen"
-          >
-            <Maximize2 className="h-4 w-4" />
-          </button>
         </div>
 
         <div className="flex items-center space-x-2">
@@ -146,54 +131,85 @@ export function DocumentPreview({ invoiceId, hasAttachment }: DocumentPreviewPro
       </div>
 
       {/* Document Display Area */}
-      <div className="flex-1 overflow-auto p-4 relative">
-        {isLoading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900 mx-auto mb-2"></div>
-              <p className="text-sm text-gray-950">Loading preview...</p>
-            </div>
-          </div>
-        )}
-        
-        {imageError ? (
-          <div className="flex items-center justify-center h-full">
-            <div className="text-center">
-              <p className="text-red-600 mb-2">Failed to load preview</p>
-              <button
-                onClick={handleDownload}
-                className="text-sm text-purple-600 hover:text-purple-700 underline"
+      <div className="flex-1 overflow-auto p-4 relative bg-gray-100">
+        {hasAttachment ? (
+          <>
+            {isLoading && (
+              <div className="absolute inset-0 flex items-center justify-center bg-gray-50 z-10">
+                <div className="text-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900 mx-auto mb-2"></div>
+                  <p className="text-sm text-gray-950">Loading preview...</p>
+                </div>
+              </div>
+            )}
+            
+            {imageError ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <p className="text-red-600 mb-2">Failed to load preview</p>
+                  <button
+                    onClick={handleDownload}
+                    className="text-sm text-purple-600 hover:text-purple-700 underline"
+                  >
+                    Download original document
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div 
+                className="flex items-start justify-center min-h-full"
+                style={{
+                  paddingTop: zoom > 1 ? '20px' : '0',
+                  paddingBottom: zoom > 1 ? '20px' : '0',
+                }}
               >
-                Download original document
-              </button>
-            </div>
-          </div>
+                <img
+                  ref={imageRef}
+                  src={`/api/invoices/${invoiceId}/preview`}
+                  alt="Invoice Document"
+                  className="shadow-lg transition-transform duration-200"
+                  style={{
+                    transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                    transformOrigin: 'center top',
+                    maxWidth: zoom > 1 ? 'none' : '100%',
+                    width: zoom > 1 ? 'auto' : '100%',
+                    height: 'auto',
+                  }}
+                  onLoad={() => setIsLoading(false)}
+                  onError={() => {
+                    setIsLoading(false);
+                    setImageError(true);
+                  }}
+                />
+              </div>
+            )}
+          </>
         ) : (
+          // Show fake invoice document when no attachment
           <div 
             className="flex items-start justify-center min-h-full"
             style={{
-              paddingTop: zoom > 1 ? '20px' : '0',
-              paddingBottom: zoom > 1 ? '20px' : '0',
+              paddingTop: '20px',
+              paddingBottom: '20px',
             }}
           >
-            <img
-              ref={imageRef}
-              src={`/api/invoices/${invoiceId}/preview`}
-              alt="Invoice Document"
-              className="shadow-lg transition-transform duration-200"
+            <div
+              className="transition-transform duration-200 origin-top"
               style={{
                 transform: `scale(${zoom}) rotate(${rotation}deg)`,
-                transformOrigin: 'center top',
-                maxWidth: zoom > 1 ? 'none' : '100%',
-                width: zoom > 1 ? 'auto' : '100%',
-                height: 'auto',
               }}
-              onLoad={() => setIsLoading(false)}
-              onError={() => {
-                setIsLoading(false);
-                setImageError(true);
-              }}
-            />
+            >
+              {invoiceData ? (
+                <FakeInvoiceDocument invoice={invoiceData} scale={1} />
+              ) : (
+                <div className="bg-white shadow-lg p-12 rounded-lg">
+                  <div className="flex items-center gap-3 mb-4">
+                    <FileText className="h-8 w-8 text-purple-600" />
+                    <p className="text-gray-600">Invoice document will be displayed here</p>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>

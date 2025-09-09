@@ -1,9 +1,9 @@
 import { notFound } from 'next/navigation';
-import prisma from '@/lib/db/prisma';
 import InvoiceDetailLayout from '@/app/components/InvoiceDetailLayout';
 import { InvoiceDetailClient } from '@/app/invoices/[id]/InvoiceDetailClient';
 import { SelectionProvider } from '@/app/context/SelectionContext';
 import { InvoicePageWrapper } from './InvoicePageWrapper';
+import prisma from '@/lib/db/prisma';
 
 interface InvoiceDetailPageProps {
   params: Promise<{
@@ -11,101 +11,96 @@ interface InvoiceDetailPageProps {
   }>;
 }
 
-async function getInvoiceData(id: string) {
+async function getInvoiceDataPrisma(id: string) {
   try {
-    // Fetch invoice header
-    const invoiceHeaders = await prisma.$queryRaw`
-      SELECT 
-        ih.id,
-        ih.invoice_number,
-        ih.vendor_name_snapshot,
-        ih.vendor_tax_id_snapshot,
-        ih.vendor_address_snapshot,
-        ih.invoice_date::text,
-        ih.due_date::text,
-        ih.currency,
-        ih.subtotal::float,
-        ih.tax_total::float,
-        ih.total::float,
-        ih.payment_terms_id,
-        ih.terms_text,
-        ih.helpdesk_ticket_ref,
-        ih.status,
-        ih.match_status,
-        ih.po_numbers_cached,
-        ih.created_at::text,
-        ih.vendor_id,
-        ih.ledger,
-        v.requires_po as vendor_requires_po
-      FROM invoice_headers ih
-      LEFT JOIN vendors v ON ih.vendor_id = v.id
-      WHERE ih.id = ${id}::uuid
-    ` as any[];
-
-    if (!invoiceHeaders || invoiceHeaders.length === 0) {
+    const invoiceHeader = await prisma.invoice_headers.findUnique({
+      where: { id },
+      include: {
+        vendors: {
+          include: {
+            vendor_bank_accounts_vendor_bank_accounts_vendor_idTovendors: true
+          }
+        },
+        invoice_lines: {
+          orderBy: { line_no: 'asc' }
+        }
+      }
+    });
+    
+    if (!invoiceHeader) {
       return null;
     }
-
-    const invoice = invoiceHeaders[0];
-
-    // Fetch PO total if there's a linked PO
+    
+    // Transform to expected format
+    const vendorBankAccounts = invoiceHeader.vendors?.vendor_bank_accounts_vendor_bank_accounts_vendor_idTovendors || [];
+    
+    // Transform lines
+    const lines = invoiceHeader.invoice_lines.map(line => ({
+      id: line.id,
+      line_no: line.line_no || 0,
+      description: line.description || '',
+      qty: parseFloat(line.qty?.toString() || '0'),
+      uom: line.uom || '',
+      unit_price: parseFloat(line.unit_price?.toString() || '0'),
+      net_amount: parseFloat(line.net_amount?.toString() || '0'),
+      line_total: parseFloat(line.line_total?.toString() || '0')
+    }));
+    
+    // Get PO total if linked
     let poTotal = null;
-    if (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0) {
-      // For now, use a mock PO total since purchase_orders table may not exist
-      // In production, this would query the actual purchase_orders table
-      poTotal = 3981.94; // Mock PO total for demonstration
-      
-      /* Uncomment when purchase_orders table exists:
-      const poNumber = invoice.po_numbers_cached[0];
-      const poData = await prisma.$queryRaw`
-        SELECT total::float
-        FROM purchase_orders
-        WHERE po_number = ${poNumber}
-        LIMIT 1
-      ` as any[];
-      
-      if (poData && poData.length > 0) {
-        poTotal = poData[0].total;
+    if (invoiceHeader.po_numbers_cached && invoiceHeader.po_numbers_cached.length > 0) {
+      const poNumber = invoiceHeader.po_numbers_cached[0];
+      const poHeader = await prisma.po_headers.findFirst({
+        where: { po_number: poNumber }
+      });
+      if (poHeader) {
+        poTotal = parseFloat(poHeader.total?.toString() || '0') || null;
       }
-      */
     }
-
-    // Fetch invoice lines
-    const lines = await prisma.$queryRaw`
-      SELECT 
-        id,
-        line_no,
-        description,
-        qty::float,
-        uom,
-        unit_price::float,
-        net_amount::float,
-        line_total::float
-      FROM invoice_lines
-      WHERE invoice_id = ${id}::uuid
-      ORDER BY line_no
-    ` as any[];
-
-    // Fetch attachments
-    const attachments = await prisma.$queryRaw`
-      SELECT 
-        filename,
-        storage_url
-      FROM attachments
-      WHERE doc_type = 'INV' AND doc_id = ${id}::uuid
-      LIMIT 1
-    ` as any[];
-
-    return {
-      ...invoice,
-      po_total: poTotal,
-      lines: lines || [],
-      attachment: attachments?.[0] || null,
+    
+    // Combine everything into a single invoice object
+    const invoice = {
+      id: invoiceHeader.id,
+      invoice_number: invoiceHeader.invoice_number,
+      vendor_name_snapshot: invoiceHeader.vendor_name_snapshot,
+      vendor_tax_id_snapshot: invoiceHeader.vendor_tax_id_snapshot,
+      vendor_address_snapshot: invoiceHeader.vendor_address_snapshot,
+      invoice_date: invoiceHeader.invoice_date.toISOString().split('T')[0],
+      due_date: invoiceHeader.due_date.toISOString().split('T')[0],
+      currency: invoiceHeader.currency,
+      subtotal: parseFloat(invoiceHeader.subtotal?.toString() || '0'),
+      tax_total: parseFloat(invoiceHeader.tax_total?.toString() || '0'),
+      total: parseFloat(invoiceHeader.total?.toString() || '0'),
+      payment_terms_id: invoiceHeader.payment_terms_id,
+      terms_text: invoiceHeader.terms_text,
+      status: invoiceHeader.status,
+      match_status: invoiceHeader.match_status || 'not_matched',
+      po_numbers_cached: invoiceHeader.po_numbers_cached || [],
+      po_id: invoiceHeader.po_id || null,
+      created_at: invoiceHeader.created_at?.toISOString() || '',
+      vendor_id: invoiceHeader.vendor_id,
+      vendor_requires_po: invoiceHeader.vendors?.requires_po || false,
+      vendor_is_verified: invoiceHeader.vendors?.is_verified || false,
+      vendor_approval_status: invoiceHeader.vendors?.active === false ? 'pending' : 'approved',
+      bank_name: vendorBankAccounts[0]?.bank_name || null,
+      account_number_masked: vendorBankAccounts[0]?.account_number_masked || null,
+      // Add missing fields with defaults
+      assigned_to_name: null,
+      ledger: 'Accounts Payable',
+      // Include lines in the invoice object
+      lines: lines,
+      poTotal: poTotal
     };
+    
+    return invoice;
   } catch (error) {
-    console.error('Error fetching invoice:', error);
+    console.error('[Prisma] Error fetching invoice data:', error);
     return null;
   }
+}
+
+async function getInvoiceData(id: string) {
+  return await getInvoiceDataPrisma(id);
 }
 
 export default async function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {

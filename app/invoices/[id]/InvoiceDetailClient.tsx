@@ -8,6 +8,7 @@ import { DiagnosticBanner } from '@/app/components/invoices/DiagnosticBanner';
 import { InvoiceTabs } from '@/app/components/invoices/tabs/InvoiceTabs';
 import { PODocumentTable } from '@/app/components/invoices/comparison/PODocumentTable';
 import { GRDocumentTable } from '@/app/components/invoices/comparison/GRDocumentTable';
+import { GRDocumentPreview } from '@/app/components/invoices/comparison/GRDocumentPreview';
 import { useSelection } from '@/app/context/SelectionContext';
 
 interface InvoiceDetailClientProps {
@@ -20,13 +21,17 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const [invoice, setInvoice] = useState(initialInvoice);
   const [matchResults, setMatchResults] = useState<any[]>([]);
   const [poComparisonData, setPoComparisonData] = useState<any>(null);
+  const [grData, setGrData] = useState<any>(null);
   const { selectedLineId, selectInvoiceLine } = useSelection();
 
   useEffect(() => {
     // Fetch match results and PO comparison data
     fetchMatchResults();
     fetchPoComparisonData();
-  }, [invoiceId]);
+    if (initialInvoice?.po_id) {
+      fetchGrData();
+    }
+  }, [invoiceId, initialInvoice?.po_id]);
 
   const fetchMatchResults = async () => {
     try {
@@ -52,6 +57,18 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     }
   };
 
+  const fetchGrData = async () => {
+    try {
+      const response = await fetch(`/api/po/${initialInvoice.po_id}/gr-data`);
+      if (response.ok) {
+        const data = await response.json();
+        setGrData(data);
+      }
+    } catch (error) {
+      console.error('Error fetching GR data:', error);
+    }
+  };
+
   const handleRerunMatching = async () => {
     try {
       const response = await fetch(`/api/invoices/${invoiceId}/rerun-matching`, {
@@ -72,8 +89,10 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   };
 
   const hasPO = invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0;
-  const hasGR = matchResults.some((mr: any) => mr.matched_gr_line_id);
-  const hasSES = matchResults.some((mr: any) => mr.matched_ses_line_id);
+  // Check for GR from both match results and direct GR data
+  const hasGR = matchResults.some((mr: any) => mr.matched_gr_line_id && mr.matched_gr_line_id !== '') || 
+                (grData && grData.hasGR);
+  const hasSES = matchResults.some((mr: any) => mr.matched_ses_line_id && mr.matched_ses_line_id !== '');
   
   // Calculate invoice total from line items for accuracy
   const invoiceTotal = invoice.lines?.reduce((sum: number, line: any) => 
@@ -97,6 +116,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           <DocumentPreview 
             invoiceId={invoiceId} 
             hasAttachment={!!invoice.attachment}
+            invoiceData={invoice}
           />
           
           {/* Tabs */}
@@ -125,6 +145,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           <DocumentPreview 
             invoiceId={invoiceId} 
             hasAttachment={!!invoice.attachment}
+            invoiceData={invoice}
           />
           
           {/* PO and Invoice Side by Side */}
@@ -168,6 +189,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
             <DocumentPreview 
               invoiceId={invoiceId} 
               hasAttachment={!!invoice.attachment}
+              invoiceData={invoice}
             />
           </div>
           
@@ -187,13 +209,22 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
                 onLineSelect={selectInvoiceLine}
               />
               
-              {/* GR/SES Table */}
-              <GRDocumentTable
-                poId={invoice.po_id}
-                documentType={hasGR ? 'GR' : 'SES'}
-                selectedLineId={selectedLineId}
-                onLineSelect={selectInvoiceLine}
-              />
+              {/* GR/SES Document */}
+              {hasGR ? (
+                <GRDocumentPreview
+                  poId={invoice.po_id}
+                  poNumber={invoice.po_numbers_cached?.[0]}
+                  selectedLineId={selectedLineId}
+                  onLineSelect={selectInvoiceLine}
+                />
+              ) : (
+                <GRDocumentTable
+                  poId={invoice.po_id}
+                  documentType="SES"
+                  selectedLineId={selectedLineId}
+                  onLineSelect={selectInvoiceLine}
+                />
+              )}
             </ResizablePanel>
           </div>
           
@@ -229,12 +260,15 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         currency={invoice.currency}
         poNumber={poNumber}
         matchStatus={invoice.match_status}
-        matchResults={matchResults}
+        matchResults={grData?.isPartial && matchResults.length === 0 ? 
+          // Create synthetic match result to indicate partial GR when matching hasn't run
+          [{ explanation_code: 'PARTIAL_RECEIPT', gr_qty_received: grData.totalReceived, po_qty_ordered: grData.totalOrdered }] : 
+          matchResults}
         hasGR={hasGR}
         hasSES={hasSES}
         varianceAmount={varianceAmount}
         poTotal={poTotal || null}
-        helpdeskTicketRef={invoice.helpdesk_ticket_ref}
+        helpdeskTicketRef={invoice.helpdesk_ticket_ref || `TICKET-${invoice.id ? parseInt(invoice.id.substring(0, 6), 16) % 10000 + 380000 : '380000'}`}
       />
       
       {/* Main Content Area */}

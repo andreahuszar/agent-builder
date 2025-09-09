@@ -7,6 +7,7 @@ import { InvoiceTable } from './InvoiceTable';
 import { UploadDialog } from './UploadDialog';
 import InvoicePipeline from './InvoicePipeline';
 import { calculatePipelineCounts, PipelineStage } from '@/app/utils/pipelineCalculations';
+import { PurchaseOrderDrawer } from '../purchase-orders/PurchaseOrderDrawer';
 
 interface Invoice {
   id: string;
@@ -19,19 +20,25 @@ interface Invoice {
   status?: string;
   match_status?: string;
   approval_status?: string;
+  po_numbers_cached?: string[];
+  gr_numbers?: string[];
 }
 
 interface InvoicesClientProps {
   initialInvoices: Invoice[];
   renderAddButton?: (onClick: () => void) => React.ReactNode;
-  renderMiddleSection?: (onClick: () => void) => React.ReactNode;
+  renderMiddleSection?: (onClick: () => void, searchQuery: string, onSearchChange: (query: string) => void) => React.ReactNode;
 }
 
 export default function InvoicesClient({ initialInvoices, renderAddButton, renderMiddleSection }: InvoicesClientProps) {
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
+  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>(initialInvoices);
+  const [searchQuery, setSearchQuery] = useState('');
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
   const [pipelineLoading, setPipelineLoading] = useState(false);
+  const [selectedPO, setSelectedPO] = useState<any>(null);
+  const [loadingPO, setLoadingPO] = useState(false);
   const router = useRouter();
 
   // Calculate pipeline stages when invoices change
@@ -41,6 +48,48 @@ export default function InvoicesClient({ initialInvoices, renderAddButton, rende
     const stages = calculatePipelineCounts(validInvoices as any);
     setPipelineStages(stages);
   }, [invoices]);
+
+  // Handle search filtering
+  useEffect(() => {
+    if (!searchQuery.trim()) {
+      setFilteredInvoices(invoices);
+      return;
+    }
+
+    const query = searchQuery.toLowerCase().trim();
+    const filtered = invoices.filter(invoice => {
+      // Search in invoice number
+      if (invoice.invoice_number?.toLowerCase().includes(query)) return true;
+      
+      // Search in vendor name
+      if (invoice.vendor_name_snapshot?.toLowerCase().includes(query)) return true;
+      
+      // Search in PO numbers
+      if (invoice.po_numbers_cached?.some(po => 
+        po.toLowerCase().includes(query)
+      )) return true;
+      
+      // Search in total amount
+      if (invoice.total?.toString().includes(query)) return true;
+      
+      // Search in currency
+      if (invoice.currency?.toLowerCase().includes(query)) return true;
+      
+      // Search in status
+      if (invoice.status?.toLowerCase().includes(query)) return true;
+      
+      // Search in match status
+      if (invoice.match_status?.toLowerCase().includes(query)) return true;
+      
+      return false;
+    });
+    
+    setFilteredInvoices(filtered);
+  }, [searchQuery, invoices]);
+
+  const handleSearchChange = useCallback((query: string) => {
+    setSearchQuery(query);
+  }, []);
 
   // Handle pipeline stage click
   const handleStageClick = useCallback((stageLabel: string) => {
@@ -97,6 +146,23 @@ export default function InvoicesClient({ initialInvoices, renderAddButton, rende
     }
   }, [refreshInvoices]);
 
+  const handlePOClick = useCallback(async (poNumber: string) => {
+    setLoadingPO(true);
+    try {
+      const response = await fetch(`/api/purchase-orders/by-number/${encodeURIComponent(poNumber)}`);
+      if (response.ok) {
+        const poData = await response.json();
+        if (poData) {
+          setSelectedPO(poData);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching PO details:', error);
+    } finally {
+      setLoadingPO(false);
+    }
+  }, []);
+
   return (
     <>
       {renderAddButton && renderAddButton(() => setUploadDialogOpen(true))}
@@ -109,15 +175,28 @@ export default function InvoicesClient({ initialInvoices, renderAddButton, rende
       />
       
       {/* Middle section with search and add button */}
-      {renderMiddleSection && renderMiddleSection(() => setUploadDialogOpen(true))}
+      {renderMiddleSection && renderMiddleSection(() => setUploadDialogOpen(true), searchQuery, handleSearchChange)}
       
-      <InvoiceTable invoices={invoices as any} onDelete={handleDelete} />
+      <InvoiceTable 
+        invoices={filteredInvoices as any} 
+        onDelete={handleDelete} 
+        onPOClick={handlePOClick}
+      />
 
       <UploadDialog 
         open={uploadDialogOpen}
         onOpenChange={setUploadDialogOpen}
         onUploadComplete={handleUploadComplete}
       />
+
+      {/* Purchase Order Drawer */}
+      {selectedPO && (
+        <PurchaseOrderDrawer
+          purchaseOrderId={selectedPO.id}
+          purchaseOrder={selectedPO}
+          onClose={() => setSelectedPO(null)}
+        />
+      )}
     </>
   );
 }

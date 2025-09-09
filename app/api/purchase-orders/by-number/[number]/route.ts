@@ -7,60 +7,73 @@ export async function GET(
 ) {
   try {
     const { number } = await context.params;
-
-    // Fetch PO header
-    const poHeaders = await prisma.$queryRaw`
-      SELECT 
-        ph.id,
-        ph.po_number,
-        ph.order_date::text,
-        ph.currency,
-        ph.status,
-        v.name as vendor_name
-      FROM po_headers ph
-      LEFT JOIN vendors v ON ph.vendor_id = v.id
-      WHERE ph.po_number = ${number}
-    ` as any[];
-
-    if (!poHeaders || poHeaders.length === 0) {
+    
+    const poHeader = await prisma.po_headers.findFirst({
+      where: { po_number: number },
+      include: {
+        vendors: true,
+        po_lines: {
+          include: {
+            items: true,
+            gr_lines: true,
+            invoice_lines: true
+          },
+          orderBy: { line_no: 'asc' }
+        }
+      }
+    });
+    
+    if (!poHeader) {
       return NextResponse.json(null);
     }
-
-    const po = poHeaders[0];
-
-    // Fetch PO lines with rollup data
-    const lines = await prisma.$queryRaw`
-      SELECT 
-        pl.id,
-        pl.line_no,
-        pl.description,
-        i.description as item_description,
-        pl.qty_ordered::float,
-        pl.uom,
-        pl.unit_price::float,
-        pl.status,
-        plr.qty_received_to_date::float,
-        plr.qty_invoiced_to_date::float,
-        plr.qty_remaining_to_receive::float,
-        plr.qty_remaining_to_invoice::float
-      FROM po_lines pl
-      LEFT JOIN items i ON pl.item_id = i.id
-      LEFT JOIN po_line_rollups plr ON plr.po_line_id = pl.id
-      WHERE pl.po_id = ${po.id}::uuid
-      ORDER BY pl.line_no
-    ` as any[];
-
+    
+    // Calculate quantities from related records
+    const lines = poHeader.po_lines.map(line => {
+      const qtyOrdered = parseFloat(line.qty_ordered?.toString() || '0');
+      
+      // Calculate received quantity from GR lines
+      const qtyReceived = line.gr_lines?.reduce((sum, gr) => 
+        sum + parseFloat(gr.qty_received?.toString() || '0'), 0) || 0;
+      
+      // Calculate invoiced quantity from invoice lines
+      const qtyInvoiced = line.invoice_lines?.reduce((sum, inv) => 
+        sum + parseFloat(inv.qty?.toString() || '0'), 0) || 0;
+      
+      return {
+        id: line.id,
+        line_no: line.line_no || 0,
+        description: line.description,
+        item_description: line.items?.description || null,
+        qty_ordered: qtyOrdered,
+        uom: line.uom,
+        unit_price: parseFloat(line.unit_price?.toString() || '0'),
+        status: line.status,
+        qty_received_to_date: qtyReceived,
+        qty_invoiced_to_date: qtyInvoiced,
+        qty_remaining_to_receive: Math.max(0, qtyOrdered - qtyReceived),
+        qty_remaining_to_invoice: Math.max(0, qtyOrdered - qtyInvoiced)
+      };
+    });
+    
     // Calculate totals
-    const subtotal = lines.reduce((sum: number, line: any) => 
+    const subtotal = lines.reduce((sum, line) => 
       sum + (line.qty_ordered * line.unit_price), 0
     );
-
-    return NextResponse.json({
-      ...po,
+    
+    const result = {
+      id: poHeader.id,
+      po_number: poHeader.po_number,
+      order_date: poHeader.order_date?.toISOString().split('T')[0] || null,
+      currency: poHeader.currency,
+      status: poHeader.status,
+      vendor_name: poHeader.vendors?.name || null,
       lines,
       subtotal,
-      total: subtotal, // Simplified - no tax calculation for now
-    });
+      total: subtotal
+    };
+    
+    console.log(`Successfully fetched PO ${number}`);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Error fetching PO by number:', error);
     return NextResponse.json(

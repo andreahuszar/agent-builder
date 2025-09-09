@@ -1,7 +1,8 @@
 'use client';
 
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { FileText, MoreHorizontal, Trash2 } from 'lucide-react';
+import { FileText, MoreHorizontal, Trash2, ChevronUp, ChevronDown, ChevronsUpDown } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,14 +23,80 @@ interface Invoice {
   assigned_to_user_id?: string;
   assigned_to_name?: string;
   assigned_to_email?: string;
+  po_numbers_cached?: string[];
+  gr_numbers?: string[];
 }
 
 interface InvoiceTableProps {
   invoices: Invoice[];
   onDelete?: (invoiceId: string) => void;
+  onPOClick?: (poNumber: string) => void;
 }
 
-export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
+type SortField = 'status' | 'invoice_number' | 'vendor_name_snapshot' | 'invoice_date' | 'due_date' | 'total' | 'currency' | 'match_status';
+type SortDirection = 'asc' | 'desc';
+
+export function InvoiceTable({ invoices, onDelete, onPOClick }: InvoiceTableProps) {
+  const [sortField, setSortField] = useState<SortField | null>(null);
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if clicking the same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, default to ascending
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  const sortedInvoices = useMemo(() => {
+    if (!sortField) return invoices;
+
+    const sorted = [...invoices].sort((a, b) => {
+      let aValue = a[sortField];
+      let bValue = b[sortField];
+
+      // Handle null/undefined values
+      if (aValue == null) return 1;
+      if (bValue == null) return -1;
+
+      // Handle date fields
+      if (sortField === 'invoice_date' || sortField === 'due_date') {
+        aValue = new Date(aValue as string).getTime();
+        bValue = new Date(bValue as string).getTime();
+      }
+
+      // Handle numeric fields
+      if (sortField === 'total') {
+        aValue = Number(aValue);
+        bValue = Number(bValue);
+      }
+
+      // Convert to strings for comparison if not numbers
+      if (typeof aValue === 'string' && typeof bValue === 'string') {
+        aValue = aValue.toLowerCase();
+        bValue = bValue.toLowerCase();
+      }
+
+      if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+      return 0;
+    });
+
+    return sorted;
+  }, [invoices, sortField, sortDirection]);
+
+  const getSortIcon = (field: SortField) => {
+    if (sortField !== field) {
+      return <ChevronsUpDown className="h-4 w-4 text-gray-400" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ChevronUp className="h-4 w-4 text-purple-600" />
+      : <ChevronDown className="h-4 w-4 text-purple-600" />;
+  };
+
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { 
@@ -88,6 +155,15 @@ export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
             Needs Review
           </span>
         );
+      case 'in_approval':
+        return (
+          <span 
+            className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
+            style={{ backgroundColor: 'rgb(254 240 138)', color: 'rgb(133 77 14)' }}
+          >
+            In Approval
+          </span>
+        );
       case 'pending_approval':
         return (
           <span 
@@ -107,6 +183,7 @@ export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
           </span>
         );
       case 'approved_ready_for_payment':
+      case 'ready_for_payment':
         return (
           <span 
             className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium"
@@ -167,7 +244,7 @@ export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
     const matchStatusColors = {
       'not_matched': 'bg-gray-100 text-gray-800',
       'matched': 'bg-green-100 text-green-800',
-      'within_tolerance': 'bg-yellow-100 text-yellow-800',
+      'within_tolerance': 'bg-blue-100 text-blue-800',
       'exception': 'bg-red-100 text-red-800',
       'non_po': 'bg-purple-100 text-purple-800',
     };
@@ -207,6 +284,62 @@ export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
     );
   };
 
+  const getPONumberDisplay = (poNumbers?: string[]) => {
+    if (!poNumbers || poNumbers.length === 0) {
+      return <span className="text-gray-500 text-sm">No PO</span>;
+    }
+    
+    const firstPO = poNumbers[0];
+    
+    // Clean up the PO value (remove quotes if present)
+    const cleanPO = firstPO.replace(/^["']|["']$/g, '');
+    
+    // Don't make "N/A" or "PO Missing" clickable links, and convert N/A to Non-PO
+    if (cleanPO === 'N/A' || cleanPO.toLowerCase() === 'n/a') {
+      return <span className="text-gray-500 text-sm">Non-PO</span>;
+    }
+    if (cleanPO === 'PO Missing' || cleanPO.toLowerCase() === 'po missing') {
+      return <span className="text-gray-500 text-sm">{cleanPO}</span>;
+    }
+    
+    return (
+      <button
+        onClick={() => onPOClick && onPOClick(cleanPO)}
+        className="font-medium text-purple-600 hover:text-purple-700 hover:underline text-sm text-left"
+      >
+        {cleanPO}
+        {poNumbers.length > 1 && (
+          <span className="text-xs text-gray-500 ml-1">+{poNumbers.length - 1}</span>
+        )}
+      </button>
+    );
+  };
+
+  const getGRDisplay = (grNumbers?: string[]) => {
+    if (!grNumbers || grNumbers.length === 0) {
+      return <span className="text-gray-500 text-sm">No GR</span>;
+    }
+    
+    const firstGR = grNumbers[0];
+    
+    // Don't make "N/A" clickable
+    if (firstGR === 'N/A') {
+      return <span className="text-gray-500 text-sm">{firstGR}</span>;
+    }
+    
+    return (
+      <Link 
+        href={`/goods-receipts?search=${firstGR}`}
+        className="font-medium text-purple-600 hover:text-purple-700 hover:underline text-sm"
+      >
+        {firstGR}
+        {grNumbers.length > 1 && (
+          <span className="text-xs text-gray-500 ml-1">+{grNumbers.length - 1}</span>
+        )}
+      </Link>
+    );
+  };
+
   if (invoices.length === 0) {
     return (
       <div className="text-center py-12 bg-white rounded-lg border border-gray-200">
@@ -224,28 +357,82 @@ export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
           <thead>
             <tr>
               <th scope="col" className="px-3 lg:px-6 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Status
+                <button
+                  onClick={() => handleSort('status')}
+                  className="flex items-center space-x-1 hover:text-purple-600 transition-colors"
+                >
+                  <span>Status</span>
+                  {getSortIcon('status')}
+                </button>
               </th>
               <th scope="col" className="px-2 lg:px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Invoice No.
+                <button
+                  onClick={() => handleSort('invoice_number')}
+                  className="flex items-center space-x-1 hover:text-purple-600 transition-colors"
+                >
+                  <span>Invoice No.</span>
+                  {getSortIcon('invoice_number')}
+                </button>
               </th>
               <th scope="col" className="hidden md:table-cell px-2 lg:px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Vendor
+                <button
+                  onClick={() => handleSort('vendor_name_snapshot')}
+                  className="flex items-center space-x-1 hover:text-purple-600 transition-colors"
+                >
+                  <span>Vendor</span>
+                  {getSortIcon('vendor_name_snapshot')}
+                </button>
               </th>
               <th scope="col" className="hidden lg:table-cell px-2 lg:px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Invoice Date
+                <button
+                  onClick={() => handleSort('invoice_date')}
+                  className="flex items-center space-x-1 hover:text-purple-600 transition-colors"
+                >
+                  <span>Invoice Date</span>
+                  {getSortIcon('invoice_date')}
+                </button>
               </th>
               <th scope="col" className="px-2 lg:px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Due Date
+                <button
+                  onClick={() => handleSort('due_date')}
+                  className="flex items-center space-x-1 hover:text-purple-600 transition-colors"
+                >
+                  <span>Due Date</span>
+                  {getSortIcon('due_date')}
+                </button>
               </th>
               <th scope="col" className="px-2 lg:px-3 py-3.5 text-right text-sm font-semibold text-gray-800">
-                Total
+                <button
+                  onClick={() => handleSort('total')}
+                  className="flex items-center space-x-1 hover:text-purple-600 transition-colors ml-auto"
+                >
+                  <span>Total</span>
+                  {getSortIcon('total')}
+                </button>
               </th>
               <th scope="col" className="hidden xl:table-cell px-2 lg:px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Currency
+                <button
+                  onClick={() => handleSort('currency')}
+                  className="flex items-center space-x-1 hover:text-purple-600 transition-colors"
+                >
+                  <span>Currency</span>
+                  {getSortIcon('currency')}
+                </button>
               </th>
               <th scope="col" className="hidden lg:table-cell px-2 lg:px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Match Status
+                <button
+                  onClick={() => handleSort('match_status')}
+                  className="flex items-center space-x-1 hover:text-purple-600 transition-colors"
+                >
+                  <span>Match Status</span>
+                  {getSortIcon('match_status')}
+                </button>
+              </th>
+              <th scope="col" className="hidden lg:table-cell px-2 lg:px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
+                PO Number
+              </th>
+              <th scope="col" className="hidden lg:table-cell px-2 lg:px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
+                GR
               </th>
               <th scope="col" className="hidden xl:table-cell px-2 lg:px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 Assigned To
@@ -256,7 +443,7 @@ export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
-            {invoices.map((invoice) => (
+            {sortedInvoices.map((invoice) => (
               <tr key={invoice.id} className="hover:bg-purple-50 transition-colors">
                 <td className="whitespace-nowrap px-3 lg:px-6 py-2.5 text-sm">
                   {getInvoiceStatusBadge(invoice.status)}
@@ -288,6 +475,12 @@ export function InvoiceTable({ invoices, onDelete }: InvoiceTableProps) {
                 </td>
                 <td className="hidden lg:table-cell whitespace-nowrap px-2 lg:px-3 py-2.5 text-sm">
                   {getMatchStatusBadge(invoice.match_status)}
+                </td>
+                <td className="hidden lg:table-cell whitespace-nowrap px-2 lg:px-3 py-2.5 text-sm">
+                  {getPONumberDisplay(invoice.po_numbers_cached)}
+                </td>
+                <td className="hidden lg:table-cell whitespace-nowrap px-2 lg:px-3 py-2.5 text-sm">
+                  {getGRDisplay(invoice.gr_numbers)}
                 </td>
                 <td className="hidden xl:table-cell whitespace-nowrap px-2 lg:px-3 py-2.5 text-sm">
                   {getAssignedToBadge(invoice.assigned_to_name, invoice.assigned_to_email)}

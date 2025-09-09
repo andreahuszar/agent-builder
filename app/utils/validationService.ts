@@ -22,6 +22,7 @@ export interface InvoiceValidationData {
   vendor_id?: string;
   vendor_name_snapshot?: string;
   vendor_tax_id_snapshot?: string;
+  vendor_approval_status?: string;
   payment_terms_id?: string;
   po_numbers_cached?: string[];
   status?: string;
@@ -228,7 +229,7 @@ export class InvoiceValidator {
 
   // Vendor information validation
   private validateVendorInfo() {
-    const { vendor_tax_id_snapshot } = this.invoice;
+    const { vendor_tax_id_snapshot, vendor_approval_status } = this.invoice;
     
     if (!vendor_tax_id_snapshot) {
       this.warnings.push({
@@ -238,11 +239,22 @@ export class InvoiceValidator {
         category: 'compliance',
       });
     }
+
+    // Check vendor approval status
+    if (vendor_approval_status === 'pending') {
+      this.warnings.push({
+        field: 'vendor_approval_status',
+        message: 'Vendor not approved in master data',
+        severity: 'warning',
+        category: 'compliance',
+        value: vendor_approval_status,
+      });
+    }
   }
 
   // Fraud detection
   private detectPotentialFraud() {
-    const { invoice_number, vendor_name_snapshot } = this.invoice;
+    const { invoice_number } = this.invoice;
     
     // Check for sequential gaps (simplified - would need historical data)
     if (invoice_number) {

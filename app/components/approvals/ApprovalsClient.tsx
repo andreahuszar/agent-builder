@@ -13,7 +13,7 @@ import { DelegationModal } from '@/app/components/approvals/DelegationModal';
 import { TeamWorkloadDrawer } from '@/app/components/approvals/TeamWorkloadDrawer';
 import { BulkAssignmentDrawer } from '@/app/components/approvals/BulkAssignmentDrawer';
 
-export type ViewType = 'pending' | 'on-hold' | 'overdue' | 'approved' | 'rejected' | 'delegated' | 'all';
+export type ViewType = 'pending' | 'on-hold' | 'overdue' | 'approved' | 'rejected' | 'all';
 export type UserRole = 'user' | 'admin';
 
 interface Invoice {
@@ -53,7 +53,8 @@ interface TeamMember {
 export function ApprovalsClient() {
   const [activeView, setActiveView] = useState<ViewType>('pending');
   const [userRole, setUserRole] = useState<UserRole>('user');
-  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
+  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>([]);
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [showDelegationModal, setShowDelegationModal] = useState<{ invoiceId: string; assignee: TeamMember } | null>(null);
@@ -78,26 +79,39 @@ export function ApprovalsClient() {
     }
   }, []);
 
-  // Fetch invoices
+  // Fetch all invoices on mount and when user role changes
   useEffect(() => {
     fetchInvoices();
-  }, [activeView, userRole]);
+  }, [userRole]);
+  
+  // Filter invoices when view changes
+  useEffect(() => {
+    if (allInvoices.length > 0) {
+      const filtered = filterInvoicesByView(allInvoices, activeView);
+      setFilteredInvoices(filtered);
+    }
+  }, [activeView, allInvoices]);
 
   const fetchInvoices = async () => {
     setIsLoading(true);
     try {
-      const response = await fetch(`/api/approvals/invoices?view=${activeView}&role=${userRole}&userId=current-user`);
+      // Always fetch all invoices regardless of view
+      const response = await fetch(`/api/approvals/invoices?view=all&role=${userRole}&userId=current-user`);
       if (response.ok) {
         const data = await response.json();
-        setInvoices(data.invoices || []);
+        const invoicesArray = data.invoices || [];
+        setAllInvoices(invoicesArray);
+        setFilteredInvoices(filterInvoicesByView(invoicesArray, activeView));
         setTeamMembers(data.teamMembers?.length > 0 ? data.teamMembers : defaultTeamMembers);
       } else {
         // Fallback to general invoices API
         const fallbackResponse = await fetch('/api/invoices');
         if (fallbackResponse.ok) {
           const data = await fallbackResponse.json();
-          const filtered = filterInvoicesByView(data, activeView);
-          setInvoices(filtered);
+          // Extract invoices array from the response object
+          const invoicesArray = data.invoices || data || [];
+          setAllInvoices(invoicesArray);
+          setFilteredInvoices(filterInvoicesByView(invoicesArray, activeView));
           setTeamMembers(defaultTeamMembers);
         }
       }
@@ -115,7 +129,13 @@ export function ApprovalsClient() {
     
     switch (view) {
       case 'pending':
-        return invoices.filter(inv => inv.status === 'draft' || inv.status === 'pending' || inv.status === 'submitted');
+        return invoices.filter(inv => 
+          inv.status === 'pending_approval' || 
+          inv.status === 'requires_review' || 
+          inv.status === 'processing' || 
+          inv.status === 'validating' ||
+          inv.status === 'draft'
+        );
       case 'on-hold':
         return invoices.filter(inv => inv.status === 'on_hold');
       case 'overdue':
@@ -124,12 +144,13 @@ export function ApprovalsClient() {
           return dueDate < today && inv.status !== 'paid' && inv.status !== 'approved';
         });
       case 'approved':
-        return invoices.filter(inv => inv.status === 'approved' || inv.status === 'posted');
+        return invoices.filter(inv => 
+          inv.status === 'approved' || 
+          inv.status === 'approved_ready_for_payment' || 
+          inv.status === 'paid'
+        );
       case 'rejected':
         return invoices.filter(inv => inv.status === 'rejected' || inv.status === 'void');
-      case 'delegated':
-        // Would need to track delegations separately
-        return [];
       case 'all':
         return invoices;
       default:
@@ -138,16 +159,29 @@ export function ApprovalsClient() {
   };
 
   const getViewStats = () => {
+    // Calculate stats from complete dataset for stability
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
     return {
-      pending: invoices.filter(inv => inv.status === 'draft' || inv.status === 'pending' || inv.status === 'submitted').length,
-      onHold: invoices.filter(inv => inv.status === 'on_hold').length,
-      overdue: invoices.filter(inv => {
+      pending: allInvoices.filter(inv => 
+        inv.status === 'pending_approval' || 
+        inv.status === 'requires_review' || 
+        inv.status === 'processing' || 
+        inv.status === 'validating' ||
+        inv.status === 'draft'
+      ).length,
+      onHold: allInvoices.filter(inv => inv.status === 'on_hold').length,
+      overdue: allInvoices.filter(inv => {
         const dueDate = new Date(inv.due_date);
-        const today = new Date();
         return dueDate < today && inv.status !== 'paid' && inv.status !== 'approved';
       }).length,
-      approved: invoices.filter(inv => inv.status === 'approved' || inv.status === 'posted').length,
-      rejected: invoices.filter(inv => inv.status === 'rejected' || inv.status === 'void').length,
+      approved: allInvoices.filter(inv => 
+        inv.status === 'approved' || 
+        inv.status === 'approved_ready_for_payment' || 
+        inv.status === 'paid'
+      ).length,
+      rejected: allInvoices.filter(inv => inv.status === 'rejected' || inv.status === 'void').length,
     };
   };
 
@@ -328,8 +362,7 @@ export function ApprovalsClient() {
                 { id: 'overdue', label: 'Overdue', count: stats.overdue },
                 { id: 'approved', label: 'Approved', count: stats.approved },
                 { id: 'rejected', label: 'Rejected', count: stats.rejected },
-                { id: 'delegated', label: 'Delegated', count: 0 },
-                { id: 'all', label: 'All', count: invoices.length },
+                { id: 'all', label: 'All', count: allInvoices.length },
               ].map((tab) => (
                 <button
                   key={tab.id}
@@ -358,7 +391,7 @@ export function ApprovalsClient() {
           {/* Table */}
           <div className="overflow-x-auto">
             <ApprovalsTable
-              invoices={invoices}
+              invoices={filteredInvoices}
               selectedInvoices={selectedInvoices}
               onSelectInvoice={(id, selected) => {
                 const newSelection = new Set(selectedInvoices);
@@ -371,7 +404,7 @@ export function ApprovalsClient() {
               }}
               onSelectAll={(selected) => {
                 if (selected) {
-                  setSelectedInvoices(new Set(invoices.map(inv => inv.id)));
+                  setSelectedInvoices(new Set(filteredInvoices.map(inv => inv.id)));
                 } else {
                   setSelectedInvoices(new Set());
                 }
@@ -393,7 +426,7 @@ export function ApprovalsClient() {
       {selectedInvoiceId && (
         <InvoiceDrawer
           invoiceId={selectedInvoiceId}
-          invoice={invoices.find(inv => inv.id === selectedInvoiceId)}
+          invoice={allInvoices.find(inv => inv.id === selectedInvoiceId)}
           onClose={() => setSelectedInvoiceId(null)}
           onApprove={handleApprove}
           onReject={handleReject}
@@ -430,7 +463,7 @@ export function ApprovalsClient() {
 
       {/* Fixed Bulk Actions Bar at bottom */}
       {selectedInvoices.size > 0 && (
-        <div className="fixed bottom-0 left-64 right-0 z-50 bg-white border-t border-gray-200 shadow-lg px-6 py-3">
+        <div className="fixed bottom-0 left-16 right-0 z-40 bg-white border-t border-gray-200 shadow-lg px-6 py-3">
           <div className="flex items-center justify-between">
             <p className="text-sm text-purple-900 font-medium">
               {selectedInvoices.size} invoice{selectedInvoices.size > 1 ? 's' : ''} selected

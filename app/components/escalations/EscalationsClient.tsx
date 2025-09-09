@@ -220,8 +220,9 @@ export function EscalationsClient() {
   });
 
   return (
-    <div className="w-full p-4 sm:px-6 lg:px-8">
-      <div className="mb-6">
+    <div className="h-full w-full flex flex-col p-4 sm:px-6 lg:px-8">
+      {/* Fixed Header Section */}
+      <div className="flex-shrink-0 mb-6">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-950">Escalations</h1>
@@ -240,8 +241,8 @@ export function EscalationsClient() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="mb-4 flex gap-2">
+      {/* Fixed Filters Section */}
+      <div className="flex-shrink-0 mb-4 flex gap-2">
         <div className="relative flex-1 max-w-xs">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-500" />
           <Input 
@@ -276,9 +277,9 @@ export function EscalationsClient() {
         </Select>
       </div>
 
-      {/* Table */}
-      <div className="overflow-hidden bg-white shadow-sm ring-1 ring-gray-900/5 rounded-lg">
-        <div className="overflow-x-auto">
+      {/* Scrollable Table Container */}
+      <div className="flex-1 min-h-0 bg-white shadow-sm ring-1 ring-gray-900/5 rounded-lg overflow-hidden">
+        <div className="h-full overflow-auto">
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr>

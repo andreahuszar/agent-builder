@@ -64,8 +64,16 @@ export function InvoiceTabs({
     const issues: any[] = [];
     const approvalLimit = 2500; // Default approval limit
     
-    // Add approval limit check
-    if (invoiceData?.total && invoiceData.total > approvalLimit) {
+    // Check vendor verification status (must match MatchingTab logic)
+    if (invoiceData?.vendor_is_verified === false) {
+      issues.push({ severity: 'error', type: 'vendor_verification' });
+    }
+    
+    // Add approval limit check - but only for invoices that aren't already approved/paid
+    const approvedStatuses = ['approved', 'paid', 'completed', 'closed', 'ready_for_payment'];
+    const isAlreadyApproved = invoiceData?.status && approvedStatuses.includes(invoiceData.status.toLowerCase());
+    
+    if (invoiceData?.total && invoiceData.total > approvalLimit && !isAlreadyApproved) {
       issues.push({ severity: 'error', type: 'approval' });
     }
     
@@ -125,7 +133,7 @@ export function InvoiceTabs({
     },
     {
       id: 'matching' as TabId,
-      label: 'Matching',
+      label: 'Exceptions',
       icon: GitCompare,
       matchingCount: totalIssuesCount,
       hasIssues: totalIssuesCount > 0,
@@ -151,14 +159,22 @@ export function InvoiceTabs({
         className={`
           group relative min-w-0 flex-1 overflow-hidden py-3 px-4 text-center text-sm font-medium 
           hover:bg-gray-50 transition-colors focus:z-10
-          ${activeTab === tab.id
+          ${tab.id === 'matching' && tab.hasIssues
+            ? 'text-red-700 hover:text-red-700 hover:bg-red-50'
+            : activeTab === tab.id
             ? 'text-purple-900 bg-white'
             : 'text-gray-700 hover:text-gray-900'
           }
         `}
       >
         <div className={`flex items-center justify-center ${compactMode ? 'gap-1.5' : 'gap-2'}`}>
-          <tab.icon className={`h-4 w-4 ${activeTab === tab.id ? 'text-purple-900' : 'text-gray-700'}`} />
+          <tab.icon className={`h-4 w-4 ${
+            tab.id === 'matching' && tab.hasIssues 
+              ? 'text-red-700' 
+              : activeTab === tab.id 
+              ? 'text-purple-900' 
+              : 'text-gray-700'
+          }`} />
           {!compactMode && <span>{tab.label}</span>}
           
           {/* Special handling for Matching tab */}
@@ -195,7 +211,9 @@ export function InvoiceTabs({
         </div>
         {activeTab === tab.id && (
           <span
-            className="absolute inset-x-0 bottom-0 h-0.5 bg-purple-900"
+            className={`absolute inset-x-0 bottom-0 h-0.5 ${
+              tab.id === 'matching' && tab.hasIssues ? 'bg-red-700' : 'bg-purple-900'
+            }`}
             aria-hidden="true"
           />
         )}

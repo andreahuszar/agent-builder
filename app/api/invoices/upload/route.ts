@@ -59,59 +59,43 @@ export async function POST(request: NextRequest) {
     // Save file to disk
     await writeFile(filepath, buffer);
 
-    // Create source_files record
-    const sourceFile = await prisma.$queryRaw`
-      INSERT INTO source_files (
-        filename,
-        media_type,
-        storage_url,
-        sha256,
-        created_at,
-        updated_at
-      ) VALUES (
-        ${file.name},
-        ${file.type},
-        ${filepath},
-        ${sha256},
-        NOW(),
-        NOW()
-      )
-      RETURNING id, filename, media_type, sha256
-    ` as any[];
+    // Create source_files record using Prisma
+    const sourceFile = await prisma.source_files.create({
+      data: {
+        filename: file.name,
+        media_type: file.type,
+        storage_url: filepath,
+        sha256: sha256
+      }
+    });
 
-    const sourceFileRecord = sourceFile[0];
+    if (!sourceFile) {
+      throw new Error('Failed to create source file record');
+    }
 
-    // Create attachments record (temporarily linked to source_file)
-    await prisma.$executeRaw`
-      INSERT INTO attachments (
-        doc_type,
-        doc_id,
-        filename,
-        media_type,
-        storage_url,
-        source,
-        sha256,
-        created_at,
-        updated_at
-      ) VALUES (
-        'INV',
-        ${sourceFileRecord.id}::uuid,
-        ${file.name},
-        ${file.type},
-        ${filepath},
-        'upload',
-        ${sha256},
-        NOW(),
-        NOW()
-      )
-    `;
+    // Create attachments record using Prisma
+    const attachment = await prisma.attachments.create({
+      data: {
+        doc_type: 'INV',
+        doc_id: sourceFile.id,
+        filename: file.name,
+        media_type: file.type,
+        storage_url: filepath,
+        source: 'upload',
+        sha256: sha256
+      }
+    });
+
+    if (!attachment) {
+      throw new Error('Failed to create attachment record');
+    }
 
     return NextResponse.json({
       success: true,
-      source_file_id: sourceFileRecord.id,
-      filename: sourceFileRecord.filename,
-      media_type: sourceFileRecord.media_type,
-      sha256: sourceFileRecord.sha256,
+      source_file_id: sourceFile.id,
+      filename: sourceFile.filename,
+      media_type: sourceFile.media_type,
+      sha256: sourceFile.sha256,
     });
   } catch (error: any) {
     console.error('Upload error:', error);

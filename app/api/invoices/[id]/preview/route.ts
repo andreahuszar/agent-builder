@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
+import { convertPdfToPng } from '@/lib/pdf-utils';
 import prisma from '@/lib/db/prisma';
-// import { convertPdfToPng } from '@/lib/pdf-utils';
 
 export async function GET(
   request: NextRequest,
@@ -19,30 +19,24 @@ export async function GET(
       );
     }
 
-    // Query for attachment linked to this invoice
-    const attachments = await prisma.$queryRaw`
-      SELECT 
-        filename,
-        media_type,
-        storage_url
-      FROM attachments
-      WHERE doc_type = 'INV' 
-        AND doc_id = ${id}::uuid
-      LIMIT 1
-    ` as Array<{
-      filename: string;
-      media_type: string;
-      storage_url: string;
-    }>;
-
-    if (!attachments || attachments.length === 0) {
+    const attachment = await prisma.attachments.findFirst({
+      where: {
+        doc_type: 'INV',
+        doc_id: id
+      },
+      select: {
+        filename: true,
+        media_type: true,
+        storage_url: true
+      }
+    });
+    
+    if (!attachment) {
       return NextResponse.json(
         { error: 'No attachment found for this invoice' },
         { status: 404 }
       );
     }
-
-    const attachment = attachments[0];
 
     // Read the file from disk
     let fileBuffer: Buffer;
@@ -61,22 +55,17 @@ export async function GET(
     let contentType: string;
 
     if (attachment.media_type === 'application/pdf') {
-      // TODO: Re-enable PDF conversion when pdf-utils is available
-      return NextResponse.json(
-        { error: 'PDF preview temporarily unavailable' },
-        { status: 503 }
-      );
-      // try {
-      //   const conversion = await convertPdfToPng(fileBuffer);
-      //   imageBuffer = Buffer.from(conversion.base64, 'base64');
-      //   contentType = 'image/png';
-      // } catch (error) {
-      //   console.error('PDF conversion error:', error);
-      //   return NextResponse.json(
-      //     { error: 'Failed to convert PDF for preview' },
-      //     { status: 500 }
-      //   );
-      // }
+      try {
+        const conversion = await convertPdfToPng(fileBuffer);
+        imageBuffer = Buffer.from(conversion.base64, 'base64');
+        contentType = 'image/png';
+      } catch (error) {
+        console.error('PDF conversion error:', error);
+        return NextResponse.json(
+          { error: 'Failed to convert PDF for preview' },
+          { status: 500 }
+        );
+      }
     } else if (attachment.media_type.startsWith('image/')) {
       // Serve image directly
       imageBuffer = fileBuffer;

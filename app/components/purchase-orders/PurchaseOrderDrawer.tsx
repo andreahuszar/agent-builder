@@ -61,12 +61,15 @@ export function PurchaseOrderDrawer({
   const [comments, setComments] = useState<any[]>([]);
   const [activeTab, setActiveTab] = useState<'details' | 'items' | 'activity'>('details');
   const [lineItems, setLineItems] = useState<PurchaseOrderLine[]>([]);
+  const [isVisible, setIsVisible] = useState(false);
 
   useEffect(() => {
     if (purchaseOrderId) {
       fetchPurchaseOrderDetails();
       fetchLineItems();
       fetchComments();
+      // Trigger animation after a brief delay to ensure DOM is ready
+      setTimeout(() => setIsVisible(true), 10);
     }
   }, [purchaseOrderId]);
 
@@ -142,6 +145,15 @@ export function PurchaseOrderDrawer({
     fetchComments();
   };
 
+  const handleClose = () => {
+    // Trigger close animation
+    setIsVisible(false);
+    // Wait for animation to complete before actually closing
+    setTimeout(() => {
+      onClose();
+    }, 300); // Match transition duration
+  };
+
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -204,9 +216,16 @@ export function PurchaseOrderDrawer({
   
   return createPortal(
     <div className="fixed inset-0 z-50 overflow-hidden">
-      <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
+      <div 
+        className={`absolute inset-0 bg-black transition-opacity duration-300 ${
+          isVisible ? 'bg-opacity-50' : 'bg-opacity-0'
+        }`} 
+        onClick={handleClose} 
+      />
       
-      <div className="absolute right-0 top-0 h-full w-[600px] bg-white shadow-xl">
+      <div className={`absolute right-0 top-0 h-full w-[600px] bg-white shadow-xl transform transition-transform duration-300 ease-out ${
+        isVisible ? 'translate-x-0' : 'translate-x-full'
+      }`}>
         <div className="flex h-full flex-col">
           {/* Header */}
           <div className="border-b border-gray-200 px-6 py-4">
@@ -222,7 +241,7 @@ export function PurchaseOrderDrawer({
                 </span>
               </div>
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="rounded-lg p-1 hover:bg-gray-100 transition-colors"
               >
                 <X className="h-5 w-5 text-gray-500" />
@@ -502,7 +521,7 @@ export function PurchaseOrderDrawer({
                 </button>
               )}
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-200 transition-colors"
               >
                 Close

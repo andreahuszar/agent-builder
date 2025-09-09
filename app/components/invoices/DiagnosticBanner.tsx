@@ -59,26 +59,29 @@ export function DiagnosticBanner({
       return { label: 'No GR/SES', color: 'text-gray-600', bgColor: 'bg-gray-50', icon: X };
     }
     
-    // Check if all match results have GR/SES
-    const hasFullReceipt = matchResults.some(mr => 
-      mr.matched_gr_line_id || mr.matched_ses_line_id
+    // Check for partial receipt based on explanation code or other indicators
+    const hasPartialReceipt = matchResults.some(mr => 
+      mr.explanation_code === 'PARTIAL_RECEIPT' || 
+      (mr.gr_qty_received && mr.po_qty_ordered && mr.gr_qty_received < mr.po_qty_ordered)
     );
     
-    if (hasFullReceipt) {
+    if (hasPartialReceipt) {
       const receiptType = hasGR ? 'GR' : 'SES';
       return { 
-        label: `${receiptType} Complete`, 
-        color: 'text-green-700', 
-        bgColor: 'bg-green-50', 
-        icon: Check 
+        label: `Partial ${receiptType}`, 
+        color: 'text-orange-700', 
+        bgColor: 'bg-orange-50', 
+        icon: AlertTriangle 
       };
     }
     
+    // Full receipt
+    const receiptType = hasGR ? 'GR' : 'SES';
     return { 
-      label: 'Partial Receipt', 
-      color: 'text-amber-700', 
-      bgColor: 'bg-amber-50', 
-      icon: AlertTriangle 
+      label: `${receiptType} Complete`, 
+      color: 'text-green-700', 
+      bgColor: 'bg-green-50', 
+      icon: Check 
     };
   };
 
@@ -87,7 +90,7 @@ export function DiagnosticBanner({
   const ReceiptIcon = receiptStatus.icon;
 
   return (
-    <div className={`flex items-center justify-between px-6 py-1.5 bg-purple-50/20 border-b border-gray-200 ${className}`}>
+    <div className={`flex items-center justify-between px-6 py-1.5 bg-white border-b border-gray-200 ${className}`}>
       <div className="flex items-center gap-3">
         {/* Total Amount */}
         <div className="text-sm font-bold text-gray-950">
@@ -97,9 +100,25 @@ export function DiagnosticBanner({
         {/* PO Status */}
         <div className={`
           inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-          ${poNumber ? 'bg-green-50 text-green-700' : 'bg-amber-50 text-amber-700'}
+          ${poNumber === 'PO Missing' || poNumber === '"PO Missing"' 
+            ? 'bg-red-50 text-red-700'
+            : poNumber === 'N/A' || poNumber === '"N/A"'
+              ? 'bg-gray-50 text-gray-600'
+              : poNumber 
+                ? 'bg-green-50 text-green-700' 
+                : 'bg-amber-50 text-amber-700'}
         `}>
-          {poNumber ? (
+          {poNumber === 'PO Missing' || poNumber === '"PO Missing"' ? (
+            <>
+              <X className="h-3 w-3" />
+              <span>PO Missing</span>
+            </>
+          ) : poNumber === 'N/A' || poNumber === '"N/A"' ? (
+            <>
+              <X className="h-3 w-3" />
+              <span>Non-PO</span>
+            </>
+          ) : poNumber ? (
             <>
               <Check className="h-3 w-3" />
               <span>{poNumber}</span>
