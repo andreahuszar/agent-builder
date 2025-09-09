@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
-import { convertPdfToPng } from '@/lib/pdf-utils';
 import prisma from '@/lib/db/prisma';
 
 export async function GET(
@@ -8,6 +7,14 @@ export async function GET(
   context: { params: Promise<{ id: string }> }
 ) {
   try {
+    // Skip during build time
+    if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: 'Service not available during build' },
+        { status: 503 }
+      );
+    }
+    
     const { id } = await context.params;
 
     // Validate UUID format
@@ -56,6 +63,8 @@ export async function GET(
 
     if (attachment.media_type === 'application/pdf') {
       try {
+        // Dynamic import to avoid build-time issues
+        const { convertPdfToPng } = await import('@/lib/pdf-utils');
         const conversion = await convertPdfToPng(fileBuffer);
         imageBuffer = Buffer.from(conversion.base64, 'base64');
         contentType = 'image/png';

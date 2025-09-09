@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile } from 'fs/promises';
-import { AnthropicService } from '@/lib/anthropic';
-import type { InvoiceExtractionResult } from '@/lib/anthropic';
+import { AnthropicService } from '@/lib/anthropic/service';
+import type { InvoiceExtractionResult } from '@/lib/anthropic/types';
 import { 
   normalizeCurrency, 
   normalizeDate, 
@@ -10,7 +10,6 @@ import {
   calculateRoundingDiff,
   isWithinRoundingTolerance 
 } from '@/lib/normalization';
-import { convertPdfToPng, validatePdfFile } from '@/lib/pdf-utils';
 import prisma from '@/lib/db/prisma';
 import { randomUUID } from 'crypto';
 
@@ -19,6 +18,14 @@ export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
+    // Skip during build time
+    if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL) {
+      return NextResponse.json(
+        { error: 'Service not available during build' },
+        { status: 503 }
+      );
+    }
+    
     const { source_file_id } = await request.json();
 
     if (!source_file_id) {
@@ -50,6 +57,9 @@ export async function POST(request: NextRequest) {
     if (sourceFile.media_type === 'application/pdf') {
       try {
         console.log('Converting PDF to PNG for processing...');
+        
+        // Dynamic import to avoid build-time issues
+        const { validatePdfFile, convertPdfToPng } = await import('@/lib/pdf-utils');
         
         // Validate PDF file
         const validation = validatePdfFile(fileBuffer);
