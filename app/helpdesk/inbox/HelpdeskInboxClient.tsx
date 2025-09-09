@@ -400,7 +400,7 @@ export function HelpdeskInboxClient() {
                 Please find attached Invoice #INV-2025-005 dated 01/18/25 for professional services rendered. 
                 The total amount due is $13,200.00.<br /><br />
                 Payment is due within 30 days of the invoice date. Please remit payment by 02/17/25 to avoid any late fees.<br /><br />
-                If you have any questions regarding this invoice, please don't hesitate to contact our billing department.<br /><br />
+                If you have any questions regarding this invoice, please don&apos;t hesitate to contact our billing department.<br /><br />
                 Thank you for your business.<br /><br />
                 Best regards,<br />
                 TechFlow Solutions Billing Team
