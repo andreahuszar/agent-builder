@@ -95,7 +95,7 @@ export async function GET(request: NextRequest) {
     });
 
     // Fetch team members
-    const users = await prisma.User.findMany({
+    const users = await prisma.users.findMany({
       orderBy: { name: 'asc' }
     });
 
