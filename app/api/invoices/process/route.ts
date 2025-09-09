@@ -84,21 +84,19 @@ export async function POST(request: NextRequest) {
       base64 = fileBuffer.toString('base64');
     }
 
-    // Initialize Anthropic service
-    const anthropicService = new AnthropicService();
     console.log('Extracting invoice data with AI...');
     
-    const extractionResult = await anthropicService.extractInvoice(
+    const extractionResult = await AnthropicService.extractInvoiceData(
       base64,
-      mediaType
+      mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp'
     );
 
     console.log('Extraction completed:', {
-      invoiceNumber: extractionResult.invoiceNumber,
-      vendorName: extractionResult.vendorName,
-      total: extractionResult.total.value,
-      currency: extractionResult.total.currency,
-      lineCount: extractionResult.lineItems?.length || 0
+      invoiceNumber: extractionResult.invoice?.number,
+      vendorName: extractionResult.vendor?.name,
+      total: extractionResult.totals?.total,
+      currency: extractionResult.totals?.currency,
+      lineCount: extractionResult.items?.length || 0
     });
 
     // Process extraction result with normalization
