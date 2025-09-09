@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack",
     "build": "prisma generate && next build",
-    "start": "node scripts/migrate-sql.js && next start",
+    "start": "node scripts/migrate-sql.js && node scripts/seed-production-sample-data.js && next start",
     "deploy": "node scripts/migrate-sql.js",
     "db:migrate:sql": "node scripts/migrate-sql.js",
     "lint": "next lint",
@@ -22,6 +22,7 @@
     "db:export": "node scripts/export-local-data.js",
     "db:production:import": "node scripts/import-to-production.js",
     "db:production:seed": "node scripts/seed-production-from-local.js",
+    "db:production:seed-sample": "node scripts/seed-production-sample-data.js",
     "db:production:migrate": "node scripts/production-migration.js",
     "db:production:wipe": "node scripts/wipe-production.js",
     "postinstall": "prisma generate"
