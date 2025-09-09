@@ -257,7 +257,6 @@ export async function POST(request: NextRequest) {
         match_status: 'not_matched',
         po_numbers_cached: normalized.poNumbers || [],
         bill_to_id: billToEntity.id,
-        source: 'manual',
         created_by: null
       }
     });
