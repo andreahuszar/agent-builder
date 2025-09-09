@@ -75,11 +75,12 @@ export async function convertPdfToPng(fileBuffer: Buffer): Promise<PdfConversion
     
     // Convert PDF to PNG using pdf-to-png-converter
     // This library handles all the complexity of PDF rendering
+    // pagesToProcess option allows us to convert specific pages
     const pngPages = await pdfToPng(fileBuffer, {
       disableFontFace: true,
       useSystemFonts: false,
       viewportScale: 2.0, // Higher quality output
-      page: 1, // Only convert first page for invoices
+      pagesToProcess: [1], // Only convert first page for invoices
     });
     
     if (!pngPages || pngPages.length === 0) {
@@ -119,7 +120,7 @@ export async function convertPdfToMultiplePngs(fileBuffer: Buffer): Promise<PdfC
   try {
     const results: PdfConversionResult[] = [];
     
-    // Convert all pages
+    // Convert all pages (don't specify pagesToProcess to get all)
     const pngPages = await pdfToPng(fileBuffer, {
       disableFontFace: true,
       useSystemFonts: false,
