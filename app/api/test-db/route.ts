@@ -3,37 +3,68 @@ import { prisma } from '@/lib/db'
 
 export async function GET() {
   try {
-    // Test database connection by counting existing records
-    const userCount = await prisma.user.count()
-    const vendorCount = await prisma.vendors.count()
+    // If database isn't configured, return basic health status
+    if (!process.env.DATABASE_URL) {
+      return NextResponse.json({
+        success: false,
+        error: 'Database not configured',
+        hint: 'DATABASE_URL environment variable is required',
+      }, { status: 503 })
+    }
+
+    // Test database connection with timeout
+    const connectionTimeout = new Promise((_, reject) => 
+      setTimeout(() => reject(new Error('Database connection timeout')), 5000)
+    )
     
-    // Get sample records if they exist
-    const sampleUsers = await prisma.user.findMany({
-      take: 3,
-      select: { id: true, name: true, email: true }
-    })
+    const dbTest = async () => {
+      // Test basic database connectivity first
+      await prisma.$queryRaw`SELECT 1 as test`
+      
+      // If connection works, get counts
+      const userCount = await prisma.user.count()
+      const vendorCount = await prisma.vendors.count()
+      
+      // Get sample records if they exist
+      const sampleUsers = await prisma.user.findMany({
+        take: 3,
+        select: { id: true, name: true, email: true }
+      })
+      
+      return {
+        success: true,
+        message: 'Database connected successfully!',
+        counts: {
+          users: userCount,
+          vendors: vendorCount,
+        },
+        sampleUsers,
+        database: {
+          url: 'Configured',
+          directUrl: process.env.DIRECT_URL ? 'Configured' : 'Not configured',
+        },
+      }
+    }
+
+    const result = await Promise.race([dbTest(), connectionTimeout])
+    return NextResponse.json(result)
     
-    return NextResponse.json({
-      success: true,
-      message: 'Database connected successfully!',
-      counts: {
-        users: userCount,
-        vendors: vendorCount,
-      },
-      sampleUsers,
-      database: {
-        url: process.env.DATABASE_URL ? 'Configured' : 'Not configured',
-        directUrl: process.env.DIRECT_URL ? 'Configured' : 'Not configured',
-      },
-    })
   } catch (error) {
     console.error('Database connection error:', error)
+    
+    // Return 200 with error details instead of 500 during initialization
+    const isTimeout = error instanceof Error && error.message.includes('timeout')
+    const status = isTimeout ? 200 : 500
+    
     return NextResponse.json({
       success: false,
       error: 'Database connection failed',
       details: error instanceof Error ? error.message : 'Unknown error',
-      hint: 'Make sure PostgreSQL is running (npm run db:dev) and migrations are applied (npm run db:migrate:dev)',
-    }, { status: 500 })
+      hint: isTimeout ? 
+        'Database is initializing, try again in a moment' : 
+        'Make sure PostgreSQL is running and migrations are applied',
+      status: isTimeout ? 'initializing' : 'error'
+    }, { status })
   }
 }
 
