@@ -7,7 +7,7 @@
   "deploy": {
     "releaseCommand": "npm run deploy",
     "startCommand": "npm run start",
-    "healthcheckPath": "/api/test-db",
+    "healthcheckPath": "/api/health",
     "healthcheckTimeout": 30,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
