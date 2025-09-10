@@ -227,6 +227,7 @@ model invoice_headers {
   subtotal                                                                     Decimal                  @db.Decimal(18, 4)
   discount_total                                                               Decimal?                 @db.Decimal(18, 4)
   tax_total                                                                    Decimal                  @db.Decimal(18, 4)
+  tax_rate_percent                                                             Decimal?                 @db.Decimal(9, 6)
   shipping_total                                                               Decimal?                 @db.Decimal(18, 4)
   other_charges_total                                                          Decimal?                 @db.Decimal(18, 4)
   withholding_tax_total                                                        Decimal?                 @db.Decimal(18, 4)
@@ -355,6 +356,7 @@ model invoice_lines {
   extended_amount            Decimal?                     @db.Decimal(18, 4)
   net_amount                 Decimal                      @db.Decimal(18, 4)
   tax_rate_id                String?                      @db.Uuid
+  tax_rate_percent           Decimal?                     @db.Decimal(9, 6)
   tax_amount                 Decimal?                     @db.Decimal(18, 4)
   line_total                 Decimal                      @db.Decimal(18, 4)
   cost_center                String?                      @db.VarChar(50)

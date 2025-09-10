@@ -77,6 +77,7 @@ async function getInvoiceDataPrisma(id: string) {
       currency: invoiceHeader.currency,
       subtotal: parseFloat(invoiceHeader.subtotal?.toString() || '0'),
       tax_total: parseFloat(invoiceHeader.tax_total?.toString() || '0'),
+      tax_rate_percent: invoiceHeader.tax_rate_percent ? parseFloat(invoiceHeader.tax_rate_percent.toString()) : null,
       total: parseFloat(invoiceHeader.total?.toString() || '0'),
       payment_terms_id: invoiceHeader.payment_terms_id,
       terms_text: invoiceHeader.terms_text,

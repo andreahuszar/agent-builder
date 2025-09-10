@@ -74,6 +74,7 @@ export interface InvoiceLineItem {
 export interface InvoiceTotal {
   subtotal: number;
   tax?: number;
+  taxRate?: number;
   discount?: number;
   total: number;
   currency: string;
@@ -93,6 +94,7 @@ export interface InvoiceExtractionResult {
     po_numbers_cached?: string[];
     subtotal: number;
     tax_total?: number;
+    tax_rate?: number;
     discount_total?: number;
     total: number;
   };

@@ -261,6 +261,7 @@ export async function POST(request: NextRequest) {
         currency: normalized.currency,
         subtotal: subtotal,
         tax_total: taxTotal,
+        tax_rate_percent: normalized.taxRate,
         total: total,
         payment_terms_id: paymentTermsId,
         terms_text: normalized.paymentTerms,
@@ -276,17 +277,25 @@ export async function POST(request: NextRequest) {
     
     // Create invoice lines
     if (normalized.lineItems && normalized.lineItems.length > 0) {
-      const lineData = normalized.lineItems.map((item: any, index: number) => ({
-        id: randomUUID(),
-        invoice_id: invoiceId,
-        line_no: index + 1,
-        description: item.description || '',
-        qty: item.quantity || 0,
-        uom: item.unit || 'EA',
-        unit_price: item.unitPrice || 0,
-        net_amount: (item.quantity || 0) * (item.unitPrice || 0),
-        line_total: item.amount || ((item.quantity || 0) * (item.unitPrice || 0))
-      }));
+      const lineData = normalized.lineItems.map((item: any, index: number) => {
+        const netAmount = (item.quantity || 0) * (item.unitPrice || 0);
+        const taxAmount = item.taxAmount || 0;
+        const lineTotal = item.amount || (netAmount + taxAmount);
+        
+        return {
+          id: randomUUID(),
+          invoice_id: invoiceId,
+          line_no: index + 1,
+          description: item.description || '',
+          qty: item.quantity || 0,
+          uom: item.unit || 'EA',
+          unit_price: item.unitPrice || 0,
+          net_amount: netAmount,
+          tax_amount: taxAmount || null,
+          tax_rate_percent: taxAmount && netAmount > 0 ? (taxAmount / netAmount) * 100 : null,
+          line_total: lineTotal
+        };
+      });
       
       await prisma.invoice_lines.createMany({
         data: lineData
@@ -361,25 +370,39 @@ export async function POST(request: NextRequest) {
 
 // Helper function to normalize extraction results
 function normalizeExtractionResult(result: InvoiceExtractionResult) {
+  // Use new format if available, fallback to legacy format
+  const headers = result.invoice_headers;
+  const legacyInvoice = result.invoice;
+  const legacyTotals = result.totals;
+  
   return {
-    invoiceNumber: result.invoice?.number || `INV-${Date.now()}`,
-    invoiceDate: normalizeDate(result.invoice?.date) || new Date().toISOString().split('T')[0],
-    dueDate: normalizeDate(result.invoice?.dueDate) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
-    vendorName: result.vendor?.name || 'Unknown Vendor',
-    vendorTaxId: result.vendor?.taxId || null,
-    vendorAddress: result.vendor?.address || null,
-    subtotal: normalizeNumber(result.totals?.subtotal),
-    taxTotal: normalizeNumber(result.totals?.tax) || 0,
-    total: normalizeNumber(result.totals?.total) || 0,
-    currency: normalizeCurrency(result.totals?.currency),
-    paymentTerms: result.paymentTerms || 'Net 30',
-    poNumbers: normalizePONumbers(result.invoice?.poNumber),
-    lineItems: result.items?.map((item: any) => ({
+    invoiceNumber: headers?.invoice_number || legacyInvoice?.number || `INV-${Date.now()}`,
+    invoiceDate: normalizeDate(headers?.invoice_date || legacyInvoice?.date) || new Date().toISOString().split('T')[0],
+    dueDate: normalizeDate(headers?.due_date || legacyInvoice?.dueDate) || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    vendorName: headers?.vendor_name_snapshot || result.vendor?.name || 'Unknown Vendor',
+    vendorTaxId: headers?.vendor_tax_id_snapshot || result.vendor?.taxId || null,
+    vendorAddress: headers?.vendor_address_snapshot || result.vendor?.address || null,
+    subtotal: normalizeNumber(headers?.subtotal || legacyTotals?.subtotal),
+    taxTotal: normalizeNumber(headers?.tax_total || legacyTotals?.tax) || 0,
+    taxRate: normalizeNumber(headers?.tax_rate || legacyTotals?.taxRate) || null,
+    total: normalizeNumber(headers?.total || legacyTotals?.total) || 0,
+    currency: normalizeCurrency(headers?.currency || legacyTotals?.currency),
+    paymentTerms: headers?.payment_terms_text || result.paymentTerms || 'Net 30',
+    poNumbers: normalizePONumbers(headers?.po_numbers_cached?.join(',') || legacyInvoice?.poNumber),
+    lineItems: result.invoice_lines?.map((line: any) => ({
+      description: line.description || '',
+      quantity: normalizeNumber(line.qty) || 1,
+      unit: line.uom || 'EA',
+      unitPrice: normalizeNumber(line.unit_price) || 0,
+      amount: normalizeNumber(line.net_amount) || 0,
+      taxAmount: normalizeNumber(line.tax_amount) || 0
+    })) || result.items?.map((item: any) => ({
       description: item.description || '',
       quantity: normalizeNumber(item.quantity) || 1,
       unit: item.unit || 'EA',
       unitPrice: normalizeNumber(item.unitPrice) || 0,
-      amount: normalizeNumber(item.amount) || 0
+      amount: normalizeNumber(item.amount) || 0,
+      taxAmount: normalizeNumber(item.tax) || 0
     }))
   };
 }

@@ -32,6 +32,10 @@ export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentP
   const taxTotal = invoice.tax_total || invoice.lines?.reduce((sum: number, line: any) => 
     sum + (line.tax_amount || 0), 0) || 0;
   const total = invoice.total || subtotal + taxTotal;
+  
+  // Get tax rate - either from stored value or calculate
+  const taxRate = invoice.tax_rate_percent || 
+    (subtotal > 0 && taxTotal > 0 ? ((taxTotal / subtotal) * 100) : 0);
 
   return (
     <div 
@@ -63,23 +67,31 @@ export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentP
             
             {/* Vendor Address */}
             <div className="text-sm text-gray-600 space-y-1">
-              {invoice.vendor_address_snapshot?.address ? (
-                <p>{invoice.vendor_address_snapshot.address}</p>
+              {invoice.vendor_address_snapshot ? (
+                // Handle vendor address as string with newlines
+                typeof invoice.vendor_address_snapshot === 'string' ? (
+                  invoice.vendor_address_snapshot.split('\n').map((line, index) => (
+                    <p key={index}>{line}</p>
+                  ))
+                ) : (
+                  // Handle as object if needed (backward compatibility)
+                  <p>{invoice.vendor_address_snapshot.address || JSON.stringify(invoice.vendor_address_snapshot)}</p>
+                )
               ) : (
+                // Generic fallback if no address
                 <>
-                  <p>123 Business Street</p>
-                  <p>Suite 100</p>
-                  <p>New York, NY 10001</p>
+                  <p>{invoice.vendor_name_snapshot || 'Vendor Name'}</p>
+                  <p>Address not available</p>
                 </>
               )}
               <div className="flex items-center gap-4 mt-2">
                 <span className="flex items-center gap-1">
                   <Mail className="h-3 w-3" />
-                  billing@company.com
+                  {invoice.vendor_email || 'billing@company.com'}
                 </span>
                 <span className="flex items-center gap-1">
                   <Phone className="h-3 w-3" />
-                  (555) 123-4567
+                  {invoice.vendor_phone || '(555) 123-4567'}
                 </span>
               </div>
             </div>
@@ -188,7 +200,9 @@ export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentP
               </div>
               {taxTotal > 0 && (
                 <div className="flex justify-between py-2 border-b border-gray-200">
-                  <span className="text-sm text-gray-600">Tax:</span>
+                  <span className="text-sm text-gray-600">
+                    Tax{taxRate > 0 ? ` (${taxRate.toFixed(1)}%)` : ''}:
+                  </span>
                   <span className="text-sm font-medium text-gray-900">
                     {formatCurrency(taxTotal, invoice.currency)}
                   </span>

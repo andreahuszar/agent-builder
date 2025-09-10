@@ -146,6 +146,7 @@ export class AnthropicService {
             "po_numbers_cached": ["string", "..."],
             "subtotal": number,
             "tax_total": number,
+            "tax_rate": number,
             "discount_total": number,
             "total": number
           },
@@ -182,6 +183,10 @@ export class AnthropicService {
         - Keep negative signs for credit amounts
         - line_no starts at 1 and increments
         - uom defaults to "EA" if not specified
+        - tax_rate: Express as percentage (e.g., 20 for 20%, 7.5 for 7.5%)
+        - If tax percentage is shown (e.g., "VAT 20%", "Tax (20%)", "20.0% VAT"), extract as tax_rate: 20
+        - IMPORTANT: Extract tax_rate even if tax_total is 0 (e.g., "Tax (20%) £0.00" means tax_rate: 20, tax_total: 0)
+        - If only tax amount shown, calculate rate from subtotal if possible
         - Omit fields if unclear rather than guessing
         
         Return STRICT JSON only, no additional text.
@@ -226,6 +231,7 @@ export class AnthropicService {
         extractedData.totals = {
           subtotal: extractedData.invoice_headers.subtotal,
           tax: extractedData.invoice_headers.tax_total || 0,
+          taxRate: extractedData.invoice_headers.tax_rate || null,
           discount: extractedData.invoice_headers.discount_total || 0,
           total: extractedData.invoice_headers.total,
           currency: extractedData.invoice_headers.currency,

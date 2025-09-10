@@ -44,7 +44,8 @@ const migrations = [
   '093_add_ledger_field.sql',
   '124_update_invoice_dates_2025.sql',
   '125_add_vendor_verification.sql',
-  '126_add_gr_numbers_cached.sql'
+  '126_add_gr_numbers_cached.sql',
+  '200_add_tax_rate_percent.sql'
 ];
 
 /**

@@ -68,7 +68,11 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
     return formatter.format(amount);
   };
 
-  const calculateTaxRate = () => {
+  const getTaxRate = () => {
+    // Use stored tax rate if available, otherwise calculate
+    if (invoiceData?.tax_rate_percent) {
+      return Number(invoiceData.tax_rate_percent).toFixed(1);
+    }
     if (!calculatedSubtotal || calculatedSubtotal === 0) return '0.0';
     return ((calculatedTaxTotal / calculatedSubtotal) * 100).toFixed(1);
   };
@@ -273,7 +277,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Subtotal</label>
                 <p className="text-sm font-medium text-gray-950">
-                  {formatCurrency(calculatedSubtotal, invoiceData.currency)}
+                  {formatCurrency(invoiceData.subtotal || calculatedSubtotal, invoiceData.currency)}
                 </p>
               </div>
               <div>
@@ -300,13 +304,13 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                   <ValidationIndicator validations={[...errors, ...warnings]} field="tax_total" />
                 </label>
                 <p className="text-sm font-medium text-gray-950">
-                  {formatCurrency(calculatedTaxTotal, invoiceData.currency)}
+                  {formatCurrency(invoiceData.tax_total || calculatedTaxTotal, invoiceData.currency)}
                 </p>
               </div>
               <div>
                 <label className="block text-xs font-medium text-gray-500 mb-1">Tax Rate</label>
                 <p className="text-sm font-medium text-gray-950">
-                  {calculateTaxRate()}%
+                  {getTaxRate()}%
                 </p>
               </div>
             </div>
@@ -317,7 +321,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                   <ValidationIndicator validations={[...errors, ...warnings]} field="total" />
                 </span>
                 <span className="text-xl font-bold text-gray-950">
-                  {formatCurrency(calculatedTotal, invoiceData.currency)}
+                  {formatCurrency(invoiceData.total || calculatedTotal, invoiceData.currency)}
                 </span>
               </div>
             </div>
