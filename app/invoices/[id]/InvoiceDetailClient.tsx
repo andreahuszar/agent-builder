@@ -94,11 +94,10 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
                 (grData && grData.hasGR);
   const hasSES = matchResults.some((mr: any) => mr.matched_ses_line_id && mr.matched_ses_line_id !== '');
   
-  // Calculate invoice total from line items for accuracy
-  const invoiceTotal = invoice.lines?.reduce((sum: number, line: any) => 
-    sum + (line.line_total || 0), 0) || 0;
+  // Use the actual invoice total (includes tax, shipping, discount)
+  const invoiceTotal = invoice.total || 0;
   
-  // Calculate variance for diagnostic banner using line-calculated total
+  // Calculate variance for diagnostic banner using actual total
   const poTotal = poComparisonData?.poData?.po_lines?.reduce((sum: number, line: any) => 
     sum + (line.qty_ordered * line.unit_price), 0) || 0;
   const varianceAmount = poComparisonData?.poData ? invoiceTotal - poTotal : null;
@@ -247,10 +246,25 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     }
   };
 
-  // Get the first PO number if available
-  const poNumber = invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 
-    ? invoice.po_numbers_cached[0] 
-    : null;
+  // Determine PO status based on vendor configuration
+  const getPOStatus = () => {
+    // If invoice has a PO, return the PO number
+    if (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0) {
+      return invoice.po_numbers_cached[0];
+    }
+    
+    // Check if vendor is verified Non-PO vendor
+    const isVerifiedNonPOVendor = invoice.vendor_requires_po === false && invoice.vendor_is_verified === true;
+    
+    if (isVerifiedNonPOVendor) {
+      return 'N/A'; // Non-PO vendor - PO not required
+    }
+    
+    // All other cases: PO is missing (either required or vendor not verified)
+    return 'PO Missing';
+  };
+
+  const poNumber = getPOStatus();
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">

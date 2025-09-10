@@ -93,8 +93,11 @@ export function DiagnosticBanner({
     <div className={`flex items-center justify-between px-6 py-1.5 bg-white border-b border-gray-200 ${className}`}>
       <div className="flex items-center gap-3">
         {/* Total Amount */}
-        <div className="text-sm font-bold text-gray-950">
-          {formatCompactCurrency(total)}
+        <div className="flex items-center gap-1.5">
+          <span className="text-xs text-gray-500">Total</span>
+          <span className="text-sm font-bold text-gray-950">
+            {formatCompactCurrency(total)}
+          </span>
         </div>
 
         {/* PO Status */}
@@ -106,7 +109,7 @@ export function DiagnosticBanner({
               ? 'bg-gray-50 text-gray-600'
               : poNumber 
                 ? 'bg-green-50 text-green-700' 
-                : 'bg-amber-50 text-amber-700'}
+                : 'bg-red-50 text-red-700'}
         `}>
           {poNumber === 'PO Missing' || poNumber === '"PO Missing"' ? (
             <>
@@ -125,8 +128,8 @@ export function DiagnosticBanner({
             </>
           ) : (
             <>
-              <AlertTriangle className="h-3 w-3" />
-              <span>No PO</span>
+              <X className="h-3 w-3" />
+              <span>PO Missing</span>
             </>
           )}
         </div>

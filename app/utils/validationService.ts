@@ -26,6 +26,8 @@ export interface InvoiceValidationData {
   vendor_name_snapshot?: string;
   vendor_tax_id_snapshot?: string;
   vendor_approval_status?: string;
+  vendor_requires_po?: boolean | null;
+  vendor_is_verified?: boolean;
   payment_terms_id?: string;
   po_numbers_cached?: string[];
   status?: string;
@@ -225,13 +227,33 @@ export class InvoiceValidator {
 
   // PO requirement validation
   private validatePORequirement() {
-    const { total, po_numbers_cached } = this.invoice;
+    const { total, po_numbers_cached, vendor_requires_po, vendor_is_verified } = this.invoice;
     
-    // Check if PO is required based on amount
-    if (total && total > 1000 && (!po_numbers_cached || po_numbers_cached.length === 0)) {
+    // Check if vendor is a verified Non-PO vendor
+    const isVerifiedNonPOVendor = vendor_requires_po === false && vendor_is_verified === true;
+    
+    // Skip PO validation for verified Non-PO vendors
+    if (isVerifiedNonPOVendor) {
+      return;
+    }
+    
+    // Check if PO is missing
+    const hasPO = po_numbers_cached && po_numbers_cached.length > 0;
+    if (!hasPO) {
+      // Determine the appropriate message based on vendor status
+      let message = 'Purchase Order is missing';
+      
+      if (!vendor_is_verified) {
+        message = 'Purchase Order required - vendor not verified';
+      } else if (vendor_requires_po === true) {
+        message = 'Purchase Order required by vendor policy';
+      } else if (total && total > 1000) {
+        message = 'Purchase Order required for amounts over $1,000';
+      }
+      
       this.errors.push({
         field: 'po_numbers_cached',
-        message: 'Purchase Order required for amounts over $1,000',
+        message,
         severity: 'error',
         category: 'process',
         value: po_numbers_cached,

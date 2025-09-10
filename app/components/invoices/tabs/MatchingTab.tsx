@@ -166,10 +166,13 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
           category = 'compliance';
         } else if (validation.field === 'total' || validation.field === 'subtotal' || validation.field === 'tax_total') {
           category = 'financial';
-        } else if (validation.field === 'vendor_name_snapshot' || validation.field === 'po_numbers') {
+        } else if (validation.field === 'vendor_name_snapshot' || validation.field === 'po_numbers' || validation.field === 'po_numbers_cached') {
           category = 'process';
         } else if (validation.field === 'vendor_approval_status') {
           category = 'compliance';
+        } else if (validation.category) {
+          // Use the category from the validation itself if provided
+          category = validation.category as ValidationCategory;
         }
         
         issues[category].push({
