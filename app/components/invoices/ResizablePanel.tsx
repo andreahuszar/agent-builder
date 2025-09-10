@@ -26,6 +26,9 @@ export function ResizablePanel({
   const containerRef = useRef<HTMLDivElement>(null);
   const [sizes, setSizes] = useState<number[]>(defaultSizes);
   const [isDragging, setIsDragging] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
+  const [wasDragged, setWasDragged] = useState(false);
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dragStartPos = useRef<number>(0);
   const dragStartSizes = useRef<number[]>([]);
   const [isClient, setIsClient] = useState(false);
@@ -55,11 +58,30 @@ export function ResizablePanel({
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsDragging(true);
+    setWasDragged(true);
     dragStartPos.current = direction === 'horizontal' ? e.clientX : e.clientY;
     dragStartSizes.current = [...sizes];
     document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
     document.body.style.userSelect = 'none';
   }, [direction, sizes]);
+
+  const handleMouseEnter = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setIsHovered(true);
+    }, 1000);
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setIsHovered(false);
+    setWasDragged(false);
+  }, []);
 
   useEffect(() => {
     if (!isDragging) return;
@@ -133,28 +155,21 @@ export function ResizablePanel({
       {/* Divider */}
       <div
         onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
         className={`
           ${isHorizontal ? 'w-1 cursor-col-resize' : 'h-1 cursor-row-resize'}
-          bg-gray-100 hover:bg-gray-200 transition-colors relative group
-          ${isDragging ? 'bg-purple-400' : ''}
+          transition-colors relative
+          ${isDragging || wasDragged || isHovered 
+            ? 'bg-purple-400 hover:bg-purple-500' 
+            : 'bg-gray-300 hover:bg-gray-400'
+          }
         `}
         style={{
           flexShrink: 0,
           zIndex: 10,
         }}
       >
-        {/* Handle with dots in the middle */}
-        <div
-          className={`
-            absolute ${isHorizontal ? 'top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2' : 'left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'}
-            flex ${isHorizontal ? 'flex-col' : 'flex-row'} gap-1
-            opacity-0 group-hover:opacity-100 transition-opacity
-          `}
-        >
-          <div className="w-1 h-1 bg-gray-400 rounded-full" />
-          <div className="w-1 h-1 bg-gray-400 rounded-full" />
-          <div className="w-1 h-1 bg-gray-400 rounded-full" />
-        </div>
         {/* Hover Area for Better Grabbing */}
         <div
           className={`
@@ -209,6 +224,9 @@ export function MultiResizablePanel({
 
   const [sizes, setSizes] = useState<number[]>(getDefaultSizes());
   const [draggingIndex, setDraggingIndex] = useState<number | null>(null);
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [draggedIndices, setDraggedIndices] = useState<Set<number>>(new Set());
+  const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<number>(0);
   const dragStartSizes = useRef<number[]>([]);
@@ -238,11 +256,34 @@ export function MultiResizablePanel({
   const handleMouseDown = useCallback((index: number, e: React.MouseEvent) => {
     e.preventDefault();
     setDraggingIndex(index);
+    setDraggedIndices(prev => new Set(prev).add(index));
     dragStartPos.current = e.clientX;
     dragStartSizes.current = [...sizes];
     document.body.style.cursor = 'col-resize';
     document.body.style.userSelect = 'none';
   }, [sizes]);
+
+  const handleMouseEnter = useCallback((index: number) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+    }
+    hoverTimeoutRef.current = setTimeout(() => {
+      setHoveredIndex(index);
+    }, 1000);
+  }, []);
+
+  const handleMouseLeave = useCallback((index: number) => {
+    if (hoverTimeoutRef.current) {
+      clearTimeout(hoverTimeoutRef.current);
+      hoverTimeoutRef.current = null;
+    }
+    setHoveredIndex(null);
+    setDraggedIndices(prev => {
+      const newSet = new Set(prev);
+      newSet.delete(index);
+      return newSet;
+    });
+  }, []);
 
   useEffect(() => {
     if (draggingIndex === null) return;
@@ -309,18 +350,18 @@ export function MultiResizablePanel({
           {index < panels.length - 1 && (
             <div
               onMouseDown={(e) => handleMouseDown(index, e)}
+              onMouseEnter={() => handleMouseEnter(index)}
+              onMouseLeave={() => handleMouseLeave(index)}
               className={`
-                w-1 cursor-col-resize bg-gray-100 hover:bg-gray-200 transition-colors relative group
-                ${draggingIndex === index ? 'bg-purple-400' : ''}
+                w-1 cursor-col-resize transition-colors relative
+                ${draggingIndex === index || draggedIndices.has(index) || hoveredIndex === index
+                  ? 'bg-purple-400 hover:bg-purple-500'
+                  : 'bg-gray-300 hover:bg-gray-400'
+                }
               `}
               style={{ flexShrink: 0, zIndex: 10 }}
             >
-              {/* Handle with dots in the middle */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <div className="w-1 h-1 bg-gray-400 rounded-full" />
-                <div className="w-1 h-1 bg-gray-400 rounded-full" />
-                <div className="w-1 h-1 bg-gray-400 rounded-full" />
-              </div>
+              {/* Hover Area for Better Grabbing */}
               <div className="absolute inset-y-0 -left-1 -right-1 w-3" />
             </div>
           )}

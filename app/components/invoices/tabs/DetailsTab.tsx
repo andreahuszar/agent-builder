@@ -6,7 +6,7 @@ import {
   Edit2, 
   X, 
   FileText, 
-  DollarSign, 
+  Coins, 
   CreditCard, 
   Calendar,
   Building2,
@@ -176,7 +176,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto space-y-6 px-6 py-6">
         {/* Invoice Information Section */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="bg-purple-50 px-4 py-2 border-b border-purple-100">
+          <div className="bg-purple-50/50 px-4 py-2.5 border-b border-purple-100">
             <div className="flex items-center gap-2">
               <FileText className="h-4 w-4 text-purple-600" />
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Invoice Information</h3>
@@ -309,9 +309,9 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
 
         {/* Financial Details Section */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="bg-purple-50 px-4 py-2 border-b border-purple-100">
+          <div className="bg-purple-50/50 px-4 py-2.5 border-b border-purple-100">
             <div className="flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-purple-600" />
+              <Coins className="h-4 w-4 text-purple-600" />
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Financial Details</h3>
             </div>
           </div>
@@ -457,7 +457,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
 
         {/* Payment Information Section */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="bg-purple-50 px-4 py-2 border-b border-purple-100">
+          <div className="bg-purple-50/50 px-4 py-2.5 border-b border-purple-100">
             <div className="flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-purple-600" />
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Payment Information</h3>
@@ -533,7 +533,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
 
         {/* Accounting Classification Section */}
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="bg-purple-50 px-4 py-2 border-b border-purple-100">
+          <div className="bg-purple-50/50 px-4 py-2.5 border-b border-purple-100">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-purple-600" />
@@ -654,7 +654,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
         {/* Document Links Section - Only show if there are linked documents */}
         {invoiceData.po_numbers_cached && invoiceData.po_numbers_cached.length > 0 && (
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="bg-purple-50 px-4 py-2 border-b border-purple-100">
+            <div className="bg-purple-50/50 px-4 py-2.5 border-b border-purple-100">
               <div className="flex items-center gap-2">
                 <Link2 className="h-4 w-4 text-purple-600" />
                 <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Document Links</h3>

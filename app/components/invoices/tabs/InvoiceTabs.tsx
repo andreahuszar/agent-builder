@@ -157,17 +157,23 @@ export function InvoiceTabs({
         key={tab.id}
         onClick={() => setActiveTab(tab.id)}
         className={`
-          group relative min-w-0 flex-1 overflow-hidden py-3 px-4 text-center text-sm font-medium 
-          hover:bg-gray-50 transition-colors focus:z-10
+          group relative min-w-0 flex-1 py-3 px-4 text-center text-sm font-medium 
+          transition-colors focus:z-10
           ${tab.id === 'matching' && tab.hasIssues
-            ? 'text-red-700 hover:text-red-700 hover:bg-red-50'
+            ? 'text-red-700 hover:text-red-700'
             : activeTab === tab.id
             ? 'text-purple-900 bg-white'
             : 'text-gray-700 hover:text-gray-900'
           }
         `}
       >
-        <div className={`flex items-center justify-center ${compactMode ? 'gap-1.5' : 'gap-2'}`}>
+        {/* Hover background - positioned behind content but above base */}
+        <span className={`absolute inset-0 transition-colors ${
+          tab.id === 'matching' && tab.hasIssues
+            ? 'hover:bg-red-50'
+            : 'hover:bg-gray-50'
+        }`} />
+        <div className={`relative flex items-center justify-center ${compactMode ? 'gap-1.5' : 'gap-2'}`}>
           <tab.icon className={`h-4 w-4 ${
             tab.id === 'matching' && tab.hasIssues 
               ? 'text-red-700' 
@@ -211,7 +217,7 @@ export function InvoiceTabs({
         </div>
         {activeTab === tab.id && (
           <span
-            className={`absolute inset-x-0 bottom-0 h-0.5 ${
+            className={`absolute inset-x-0 bottom-0 h-0.5 z-10 ${
               tab.id === 'matching' && tab.hasIssues ? 'bg-red-700' : 'bg-purple-900'
             }`}
             aria-hidden="true"
@@ -270,6 +276,12 @@ export function InvoiceTabs({
             onLineSelect={onLineSelect}
             onLinesUpdate={(lines) => onDataUpdate?.({ ...invoiceData, lines })}
             poComparisonData={poComparisonData}
+            invoiceSubtotal={invoiceData?.subtotal}
+            invoiceTaxTotal={invoiceData?.tax_total}
+            invoiceTaxRate={invoiceData?.tax_rate_percent}
+            invoiceShippingTotal={invoiceData?.shipping_total}
+            invoiceDiscountTotal={invoiceData?.discount_total}
+            invoiceTotal={invoiceData?.total}
           />
         )}
         {activeTab === 'matching' && (

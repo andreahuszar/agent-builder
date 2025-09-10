@@ -33,6 +33,12 @@ interface EnhancedLineItemsTabV2Props {
   onLineSelect?: (lineId: string | null) => void;
   onLinesUpdate?: (lines: LineItem[]) => void;
   poComparisonData?: any;
+  invoiceSubtotal?: number;
+  invoiceTaxTotal?: number;
+  invoiceTaxRate?: number | null;
+  invoiceShippingTotal?: number;
+  invoiceDiscountTotal?: number;
+  invoiceTotal?: number;
 }
 
 export function EnhancedLineItemsTabV2({
@@ -44,6 +50,12 @@ export function EnhancedLineItemsTabV2({
   onLineSelect,
   onLinesUpdate,
   poComparisonData,
+  invoiceSubtotal,
+  invoiceTaxTotal,
+  invoiceTaxRate,
+  invoiceShippingTotal,
+  invoiceDiscountTotal,
+  invoiceTotal,
 }: EnhancedLineItemsTabV2Props) {
   const [showComparison, setShowComparison] = useState(false);
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
@@ -112,7 +124,7 @@ export function EnhancedLineItemsTabV2({
             Matched
           </span>
           {comparison.po && (
-            <span className="text-[10px] text-gray-500">PO Line #{comparison.po.line_no}</span>
+            <span className="text-[10px] text-gray-700">PO Line #{comparison.po.line_no}</span>
           )}
         </div>
       );
@@ -126,7 +138,7 @@ export function EnhancedLineItemsTabV2({
             Variance
           </span>
           {comparison.po && (
-            <span className="text-[10px] text-gray-500">PO Line #{comparison.po.line_no}</span>
+            <span className="text-[10px] text-gray-700">PO Line #{comparison.po.line_no}</span>
           )}
         </div>
       );
@@ -139,10 +151,14 @@ export function EnhancedLineItemsTabV2({
     );
   };
 
-  // Always calculate totals from line items for accuracy
-  const subtotal = lines.reduce((sum, line) => sum + line.net_amount, 0);
-  const taxAmount = lines.reduce((sum, line) => sum + (line.line_total - line.net_amount), 0);
-  const total = lines.reduce((sum, line) => sum + line.line_total, 0);
+  // Use invoice totals if available, otherwise calculate from line items
+  const calculatedSubtotal = lines.reduce((sum, line) => sum + line.net_amount, 0);
+  const subtotal = invoiceSubtotal !== undefined ? invoiceSubtotal : calculatedSubtotal;
+  const taxAmount = invoiceTaxTotal !== undefined ? invoiceTaxTotal : 0;
+  const taxRate = invoiceTaxRate !== undefined && invoiceTaxRate !== null ? invoiceTaxRate : 0;
+  const shippingAmount = invoiceShippingTotal || 0;
+  const discountAmount = invoiceDiscountTotal || 0;
+  const total = invoiceTotal !== undefined ? invoiceTotal : calculatedSubtotal;
 
   if (!showComparison) {
     // Simple view without comparison
@@ -150,13 +166,13 @@ export function EnhancedLineItemsTabV2({
       <div className="h-full flex flex-col bg-white">
         {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center gap-3">
-            <Package className="h-5 w-5 text-purple-600" />
-            <h3 className="text-sm font-semibold text-gray-950">LINE ITEMS</h3>
+          <div className="flex items-center gap-2">
+            <Package className="h-4 w-4 text-purple-600" />
+            <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">LINE ITEMS</h3>
           </div>
           {poComparisonData?.poData && (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-gray-600">Comparing with PO</span>
+              <span className="text-xs text-gray-700">Comparing with PO</span>
               <button
                 onClick={() => setShowComparison(true)}
                 className="inline-flex items-center gap-2 px-3 py-1.5 bg-white border border-purple-300 rounded-full text-xs font-medium text-purple-700 hover:bg-purple-50 transition-colors"
@@ -186,7 +202,7 @@ export function EnhancedLineItemsTabV2({
                   
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-gray-950">{line.description}</h4>
-                    <div className="flex items-center gap-4 mt-1 text-xs text-gray-600">
+                    <div className="flex items-center gap-4 mt-1 text-xs text-gray-700">
                       <span>{line.qty} {line.uom}</span>
                       <span>× {formatCompactCurrency(line.unit_price)}</span>
                     </div>
@@ -203,7 +219,7 @@ export function EnhancedLineItemsTabV2({
                       e.stopPropagation();
                       setEditingLineId(line.id || null);
                     }}
-                    className="p-1 text-gray-400 hover:text-purple-600"
+                    className="p-1 text-gray-600 hover:text-purple-600"
                   >
                     <Edit2 className="h-4 w-4" />
                   </button>
@@ -217,11 +233,23 @@ export function EnhancedLineItemsTabV2({
         <div className="border-t border-gray-200 bg-gray-50 px-4 py-3">
           <div className="space-y-1">
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Subtotal</span>
+              <span className="text-gray-700">Subtotal</span>
               <span className="font-medium text-gray-950">{formatCurrency(subtotal)}</span>
             </div>
+            {shippingAmount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-700">Shipping</span>
+                <span className="font-medium text-gray-950">{formatCurrency(shippingAmount)}</span>
+              </div>
+            )}
+            {discountAmount > 0 && (
+              <div className="flex justify-between text-sm">
+                <span className="text-gray-700">Discount</span>
+                <span className="font-medium text-green-600">-{formatCurrency(discountAmount)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-sm">
-              <span className="text-gray-600">Tax (8.0%)</span>
+              <span className="text-gray-700">Tax {taxRate > 0 ? `(${taxRate.toFixed(1)}%)` : ''}</span>
               <span className="font-medium text-gray-950">{formatCurrency(taxAmount)}</span>
             </div>
             <div className="flex justify-between text-sm font-semibold pt-1 border-t">
@@ -239,9 +267,9 @@ export function EnhancedLineItemsTabV2({
     <div className="h-full flex flex-col bg-white">
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
-        <div className="flex items-center gap-3">
-          <Package className="h-5 w-5 text-purple-600" />
-          <h3 className="text-sm font-semibold text-gray-950">LINE ITEMS</h3>
+        <div className="flex items-center gap-2">
+          <Package className="h-4 w-4 text-purple-600" />
+          <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">LINE ITEMS</h3>
         </div>
         <div className="flex items-center gap-2">
           <span className="text-xs text-gray-600">Comparing with PO</span>
@@ -342,7 +370,7 @@ export function EnhancedLineItemsTabV2({
                       e.stopPropagation();
                       setEditingLineId(line.id || null);
                     }}
-                    className="p-1 text-gray-400 hover:text-purple-600"
+                    className="p-1 text-gray-600 hover:text-purple-600"
                   >
                     <Edit2 className="h-4 w-4" />
                   </button>
@@ -372,7 +400,7 @@ export function EnhancedLineItemsTabV2({
                     {/* Status */}
                     <div className="col-span-2">
                       {getStatusBadge(null, true)}
-                      <span className="text-[10px] text-gray-500 mt-1 block">PO Line #{po.line_no}</span>
+                      <span className="text-[10px] text-gray-700 mt-1 block">PO Line #{po.line_no}</span>
                     </div>
                     
                     {/* Description */}
@@ -424,8 +452,20 @@ export function EnhancedLineItemsTabV2({
             <span className="text-gray-600">Subtotal</span>
             <span className="font-medium text-gray-950">{formatCurrency(subtotal)}</span>
           </div>
+          {shippingAmount > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Shipping</span>
+              <span className="font-medium text-gray-950">{formatCurrency(shippingAmount)}</span>
+            </div>
+          )}
+          {discountAmount > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-600">Discount</span>
+              <span className="font-medium text-green-600">-{formatCurrency(discountAmount)}</span>
+            </div>
+          )}
           <div className="flex justify-between text-sm">
-            <span className="text-gray-600">Tax (8.0%)</span>
+            <span className="text-gray-600">Tax {taxRate > 0 ? `(${taxRate.toFixed(1)}%)` : ''}</span>
             <span className="font-medium text-gray-950">{formatCurrency(taxAmount)}</span>
           </div>
           <div className="flex justify-between text-sm font-semibold pt-1 border-t">
