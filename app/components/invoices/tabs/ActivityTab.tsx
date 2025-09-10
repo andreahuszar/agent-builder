@@ -149,8 +149,18 @@ export function ActivityTab({ invoiceId }: ActivityTabProps) {
 
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      <div className="h-full flex flex-col bg-white">
+        {/* Header */}
+        <div className="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-purple-600" />
+            <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">ACTIVITY</h3>
+          </div>
+        </div>
+        
+        <div className="flex items-center justify-center flex-1">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+        </div>
       </div>
     );
   }
@@ -211,16 +221,16 @@ export function ActivityTab({ invoiceId }: ActivityTabProps) {
   const displayEvents = events.length > 0 ? events : mockEvents;
 
   return (
-    <div className="h-full overflow-y-auto space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-950">Activity Timeline</h3>
-        <button
-          onClick={fetchAuditEvents}
-          className="text-sm text-purple-600 hover:text-purple-700"
-        >
-          <RefreshCw className="h-4 w-4" />
-        </button>
+    <div className="h-full flex flex-col bg-white">
+      {/* Header */}
+      <div className="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
+        <div className="flex items-center gap-2">
+          <Clock className="h-4 w-4 text-purple-600" />
+          <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">ACTIVITY</h3>
+        </div>
       </div>
+      
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
       {/* Timeline */}
       <div className="flow-root">
@@ -273,6 +283,7 @@ export function ActivityTab({ invoiceId }: ActivityTabProps) {
           <p className="text-gray-500">No activity recorded yet</p>
         </div>
       )}
+      </div>
     </div>
   );
 }

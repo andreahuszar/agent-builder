@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { FileText, Download, Eye, Upload, File, Image, FileSpreadsheet, X } from 'lucide-react';
+import { FileText, Download, Eye, Upload, File, Image, FileSpreadsheet, X, Paperclip } from 'lucide-react';
 
 interface Attachment {
   id: string;
@@ -101,7 +101,16 @@ export function AttachmentsTab({ invoiceId, attachments }: AttachmentsTabProps) 
 
   if (attachments.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
+      <div className="h-full flex flex-col bg-white">
+        {/* Header */}
+        <div className="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-2">
+            <Paperclip className="h-4 w-4 text-purple-600" />
+            <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">ATTACHMENTS</h3>
+          </div>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center flex-1">
         <FileText className="h-12 w-12 text-gray-400 mb-4" />
         <h3 className="text-lg font-medium text-gray-950 mb-2">No Attachments</h3>
         <p className="text-sm text-gray-500 text-center max-w-md mb-6">
@@ -120,15 +129,19 @@ export function AttachmentsTab({ invoiceId, attachments }: AttachmentsTabProps) 
             <span>{isUploading ? 'Uploading...' : 'Upload Attachment'}</span>
           </div>
         </label>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full overflow-y-auto space-y-6 p-6">
-      {/* Upload Button */}
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold text-gray-950">Document Attachments</h3>
+    <div className="h-full flex flex-col bg-white">
+      {/* Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
+        <div className="flex items-center gap-2">
+          <Paperclip className="h-4 w-4 text-purple-600" />
+          <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">ATTACHMENTS</h3>
+        </div>
         <label className="relative cursor-pointer">
           <input
             type="file"
@@ -143,6 +156,8 @@ export function AttachmentsTab({ invoiceId, attachments }: AttachmentsTabProps) 
           </div>
         </label>
       </div>
+      
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
       {/* Attachments Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -231,6 +246,7 @@ export function AttachmentsTab({ invoiceId, attachments }: AttachmentsTabProps) 
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

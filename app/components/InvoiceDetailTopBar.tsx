@@ -64,7 +64,7 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
           
           {/* View Mode Switcher */}
           {viewModeSwitcher && (
-            <div className="flex items-center">
+            <div className="flex items-center ml-auto">
               {viewModeSwitcher}
             </div>
           )}

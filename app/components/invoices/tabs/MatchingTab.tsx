@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo } from 'react';
-import { RefreshCw } from 'lucide-react';
+import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { 
   ValidationCard, 
   ValidationCardContainer, 
@@ -363,20 +363,6 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
     return issues;
   }, [matchResults, lines, invoiceData, poComparisonData, approvalLimit]);
 
-  const handleRerunMatching = async () => {
-    try {
-      const response = await fetch(`/api/invoices/${invoiceId}/rerun-matching`, {
-        method: 'POST',
-      });
-      if (response.ok) {
-        // Refresh the page or update state
-        window.location.reload();
-      }
-    } catch (error) {
-      console.error('Error rerunning matching:', error);
-    }
-  };
-
   // Check if all validations passed
   const allPassed = Object.values(validationIssues).every(
     categoryIssues => categoryIssues.filter(i => i.severity === 'error').length === 0
@@ -385,17 +371,17 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
   // Special display for Non-PO vendors
   if (isNonPOVendor) {
     return (
-      <div className="space-y-4 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-950">Non-PO Invoice</h2>
-            <p className="text-sm text-gray-500 mt-0.5">
-              This vendor does not require Purchase Order matching
-            </p>
+      <div className="h-full flex flex-col bg-white">
+        {/* Header */}
+        <div className="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-purple-600" />
+            <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">VALIDATION RESULTS</h3>
           </div>
         </div>
         
-        <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+        <div className="p-6 space-y-4">
+          <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <div className="flex-shrink-0">
               <div className="h-8 w-8 bg-purple-100 rounded-full flex items-center justify-center">
@@ -409,12 +395,12 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
                 The invoice will be processed based on configured approval workflows only.
               </p>
             </div>
+            </div>
           </div>
-        </div>
 
-        {/* Show any validation issues that aren't PO-related */}
-        {Object.values(validationIssues).some(issues => issues.length > 0) && (
-          <ValidationCardContainer>
+          {/* Show any validation issues that aren't PO-related */}
+          {Object.values(validationIssues).some(issues => issues.length > 0) && (
+            <ValidationCardContainer>
             {validationIssues.financial.length > 0 && (
               <ValidationCard
                 category="financial"
@@ -436,8 +422,9 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
                 defaultExpanded={validationIssues.data_quality.length === 1}
               />
             )}
-          </ValidationCardContainer>
-        )}
+            </ValidationCardContainer>
+          )}
+        </div>
       </div>
     );
   }
@@ -447,49 +434,45 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
 
   if (matchResults.length === 0 && !hasValidationIssues) {
     return (
-      <div className="flex flex-col items-center justify-center py-12">
-        <div className="text-center max-w-md">
-          <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
-            <RefreshCw className="h-full w-full" />
+      <div className="h-full flex flex-col bg-white">
+        {/* Header */}
+        <div className="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4 text-purple-600" />
+            <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">VALIDATION RESULTS</h3>
           </div>
-          <h3 className="text-lg font-medium text-gray-950 mb-2">No Matching Results</h3>
-          <p className="text-sm text-gray-500 mb-4">
-            This invoice has not been matched yet. Click the button below to run the matching process.
-          </p>
-          <button
-            onClick={handleRerunMatching}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Run Matching
-          </button>
+        </div>
+        
+        <div className="flex flex-col items-center justify-center py-12">
+          <div className="text-center max-w-md">
+            <div className="mx-auto h-12 w-12 text-gray-400 mb-4">
+              <RefreshCw className="h-full w-full" />
+            </div>
+            <h3 className="text-lg font-medium text-gray-950 mb-2">No Matching Results</h3>
+            <p className="text-sm text-gray-500">
+              This invoice has not been matched yet. Click the button above to run the matching process.
+            </p>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4 p-6">
-      {/* Header with rerun button */}
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-lg font-semibold text-gray-950">Matching Validation Results</h2>
-          <p className="text-sm text-gray-500 mt-0.5">
-            Review validation issues grouped by category
-          </p>
+    <div className="h-full flex flex-col bg-white">
+      {/* Header */}
+      <div className="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
+        <div className="flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-purple-600" />
+          <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">VALIDATION RESULTS</h3>
         </div>
-        <button
-          onClick={handleRerunMatching}
-          className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors"
-        >
-          <RefreshCw className="h-3.5 w-3.5" />
-          {matchResults.length === 0 ? 'Run Matching' : 'Re-run Matching'}
-        </button>
       </div>
 
-      {/* Show message if no match results yet */}
-      {matchResults.length === 0 && (
-        <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-4">
+      {/* Content */}
+      <div className="p-6 space-y-4">
+        {/* Show message if no match results yet */}
+        {matchResults.length === 0 && (
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
           <div className="flex items-start gap-3">
             <RefreshCw className="h-5 w-5 text-amber-600 mt-0.5" />
             <div>
@@ -499,11 +482,11 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
               </p>
             </div>
           </div>
-        </div>
-      )}
+          </div>
+        )}
 
-      {/* Validation cards */}
-      <ValidationCardContainer>
+        {/* Validation cards */}
+        <ValidationCardContainer>
         {allPassed ? (
           <ValidationSuccessCard />
         ) : (
@@ -552,7 +535,8 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
             )}
           </>
         )}
-      </ValidationCardContainer>
+        </ValidationCardContainer>
+      </div>
     </div>
   );
 }

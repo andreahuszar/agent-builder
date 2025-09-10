@@ -5,7 +5,7 @@ import {
   Save, 
   Edit2, 
   X, 
-  FileText, 
+  File, 
   Coins, 
   CreditCard, 
   Calendar,
@@ -18,6 +18,7 @@ import {
   Clock,
   XCircle,
   BookOpen,
+  Check,
   Brain,
   ChevronDown,
   ChevronUp
@@ -173,16 +174,16 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
     <Tooltip.Provider>
       <div className="h-full flex flex-col relative">
         {/* Scrollable Content Area - Now takes full height */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto space-y-6 px-6 py-6">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
         {/* Invoice Information Section */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="bg-purple-50/50 px-4 py-2.5 border-b border-purple-100">
+        <div>
+          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
             <div className="flex items-center gap-2">
-              <FileText className="h-4 w-4 text-purple-600" />
+              <File className="h-4 w-4 text-purple-600" />
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Invoice Information</h3>
             </div>
           </div>
-          <div className="p-4">
+          <div className="px-4 py-4 bg-white">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
@@ -308,15 +309,16 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
         </div>
 
         {/* Financial Details Section */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="bg-purple-50/50 px-4 py-2.5 border-b border-purple-100">
+        <div>
+          <div className="px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
             <div className="flex items-center gap-2">
               <Coins className="h-4 w-4 text-purple-600" />
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Financial Details</h3>
             </div>
           </div>
-          <div className="p-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="px-4 py-4 bg-white">
+            {/* First Row: Subtotal, Currency, Tax Rate */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Subtotal
@@ -357,6 +359,23 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
               </div>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
+                  Tax Rate
+                  <FieldConfidenceIndicator 
+                    fieldName="tax_rate"
+                    confidence={invoiceData.extraction_field_confidences?.tax_rate}
+                    isManuallyEdited={invoiceData.is_manually_edited?.tax_rate}
+                  />
+                </label>
+                <p className="text-sm font-medium text-gray-950">
+                  {getTaxRate()}%
+                </p>
+              </div>
+            </div>
+            
+            {/* Second Row: Tax Amount, Shipping/Freight, Discount */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+              <div>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Tax Amount
                   <FieldConfidenceIndicator 
                     fieldName="tax_total"
@@ -371,71 +390,61 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
               </div>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Tax Rate
+                  Shipping/Freight
                   <FieldConfidenceIndicator 
-                    fieldName="tax_rate"
-                    confidence={invoiceData.extraction_field_confidences?.tax_rate}
-                    isManuallyEdited={invoiceData.is_manually_edited?.tax_rate}
+                    fieldName="shipping_total"
+                    confidence={invoiceData.extraction_field_confidences?.shipping_total}
+                    isManuallyEdited={invoiceData.is_manually_edited?.shipping_total}
                   />
                 </label>
                 <p className="text-sm font-medium text-gray-950">
-                  {getTaxRate()}%
+                  {invoiceData.shipping_total > 0 
+                    ? formatCurrency(invoiceData.shipping_total, invoiceData.currency)
+                    : '-'
+                  }
+                </p>
+              </div>
+              <div>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
+                  Discount
+                  <FieldConfidenceIndicator 
+                    fieldName="discount_total"
+                    confidence={invoiceData.extraction_field_confidences?.discount_total}
+                    isManuallyEdited={invoiceData.is_manually_edited?.discount_total}
+                  />
+                </label>
+                <p className={`text-sm font-medium ${invoiceData.discount_total > 0 ? 'text-green-600' : 'text-gray-950'}`}>
+                  {invoiceData.discount_total > 0 
+                    ? `-${formatCurrency(invoiceData.discount_total, invoiceData.currency)}`
+                    : '-'
+                  }
                 </p>
               </div>
             </div>
-            {/* Additional Charges Row */}
-            {(invoiceData.shipping_total > 0 || invoiceData.other_charges_total > 0 || invoiceData.discount_total > 0) && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
-                {invoiceData.shipping_total > 0 && (
-                  <div>
-                    <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                      Shipping/Freight
-                      <FieldConfidenceIndicator 
-                        fieldName="shipping_total"
-                        confidence={invoiceData.extraction_field_confidences?.shipping_total}
-                        isManuallyEdited={invoiceData.is_manually_edited?.shipping_total}
-                      />
-                    </label>
-                    <p className="text-sm font-medium text-gray-950">
-                      {formatCurrency(invoiceData.shipping_total, invoiceData.currency)}
-                    </p>
-                  </div>
-                )}
-                {invoiceData.other_charges_total > 0 && (
-                  <div>
-                    <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                      Other Charges
-                      <FieldConfidenceIndicator 
-                        fieldName="other_charges_total"
-                        confidence={invoiceData.extraction_field_confidences?.other_charges_total}
-                        isManuallyEdited={invoiceData.is_manually_edited?.other_charges_total}
-                      />
-                    </label>
-                    <p className="text-sm font-medium text-gray-950">
-                      {formatCurrency(invoiceData.other_charges_total, invoiceData.currency)}
-                    </p>
-                  </div>
-                )}
-                {invoiceData.discount_total > 0 && (
-                  <div>
-                    <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                      Discount
-                      <FieldConfidenceIndicator 
-                        fieldName="discount_total"
-                        confidence={invoiceData.extraction_field_confidences?.discount_total}
-                        isManuallyEdited={invoiceData.is_manually_edited?.discount_total}
-                      />
-                    </label>
-                    <p className="text-sm font-medium text-gray-950 text-green-600">
-                      -{formatCurrency(invoiceData.discount_total, invoiceData.currency)}
-                    </p>
-                  </div>
-                )}
+            
+            {/* Third Row: Other charges if present */}
+            {invoiceData.other_charges_total > 0 && (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+                <div>
+                  <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
+                    Other Charges
+                    <FieldConfidenceIndicator 
+                      fieldName="other_charges_total"
+                      confidence={invoiceData.extraction_field_confidences?.other_charges_total}
+                      isManuallyEdited={invoiceData.is_manually_edited?.other_charges_total}
+                    />
+                  </label>
+                  <p className="text-sm font-medium text-gray-950">
+                    {formatCurrency(invoiceData.other_charges_total, invoiceData.currency)}
+                  </p>
+                </div>
+                <div></div>
+                <div></div>
               </div>
             )}
             {/* Invoice Total Row */}
             <div className="mt-4 pt-4 border-t border-gray-100">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 <div>
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                     Invoice Total
@@ -450,20 +459,22 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                     {formatCurrency(invoiceData.total || calculatedTotal, invoiceData.currency)}
                   </p>
                 </div>
+                <div></div>
+                <div></div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Payment Information Section */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="bg-purple-50/50 px-4 py-2.5 border-b border-purple-100">
+        <div>
+          <div className="px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
             <div className="flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-purple-600" />
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Payment Information</h3>
             </div>
           </div>
-          <div className="p-4">
+          <div className="px-4 py-4 bg-white">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
@@ -532,8 +543,8 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
         </div>
 
         {/* Accounting Classification Section */}
-        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="bg-purple-50/50 px-4 py-2.5 border-b border-purple-100">
+        <div>
+          <div className="px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-purple-600" />
@@ -549,7 +560,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
               )}
             </div>
           </div>
-          <div className="p-4">
+          <div className="px-4 py-4 bg-white">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
@@ -653,14 +664,14 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
 
         {/* Document Links Section - Only show if there are linked documents */}
         {invoiceData.po_numbers_cached && invoiceData.po_numbers_cached.length > 0 && (
-          <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-            <div className="bg-purple-50/50 px-4 py-2.5 border-b border-purple-100">
+          <div>
+            <div className="px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
               <div className="flex items-center gap-2">
                 <Link2 className="h-4 w-4 text-purple-600" />
                 <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Document Links</h3>
               </div>
             </div>
-            <div className="p-4">
+            <div className="px-4 py-4 bg-white">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-2">Linked Purchase Orders</label>
                 <div className="flex flex-wrap gap-2">
@@ -703,24 +714,24 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
           <button
             onClick={handleCancel}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-full shadow-lg hover:bg-gray-50 transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-full shadow-lg hover:bg-gray-50 transition-all"
           >
-            <X className="h-5 w-5" />
+            <X className="h-4 w-4" />
             <span className="font-medium">Cancel</span>
           </button>
           <button
             onClick={handleSave}
             disabled={isSaving}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-purple-900 text-white rounded-full shadow-lg hover:bg-purple-800 disabled:opacity-50 transition-all"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-900 text-white rounded-full shadow-lg hover:bg-purple-800 disabled:opacity-50 transition-all"
           >
             {isSaving ? (
               <>
-                <div className="h-5 w-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 <span className="font-medium">Saving...</span>
               </>
             ) : (
               <>
-                <Save className="h-5 w-5" />
+                <Check className="h-4 w-4" />
                 <span className="font-medium">Save Changes</span>
               </>
             )}
