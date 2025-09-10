@@ -704,7 +704,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
             ${showFab ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'}
           `}
         >
-          <Edit2 className="h-4 w-4" />
+          <Edit2 className="h-3.5 w-3.5" />
           <span className="font-medium">Edit Details</span>
         </button>
       )}
