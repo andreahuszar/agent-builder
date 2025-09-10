@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
         total: parseFloat(invoice.total.toString()),
         status: invoice.status,
         match_status: invoice.match_status || 'not_matched',
-        vendor_requires_po: invoice.vendors?.requires_po || false,
+        vendor_requires_po: invoice.vendors?.requires_po ?? null,
         vendor_approval_status: invoice.vendors?.active === false ? 'pending' : 'approved',
         po_numbers_cached: invoice.po_numbers_cached || [],
         gr_numbers: grNumbers

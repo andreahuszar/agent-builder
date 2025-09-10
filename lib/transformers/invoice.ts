@@ -60,7 +60,7 @@ export function transformInvoiceHeader(
     po_id: invoice.po_id,
     created_at: invoice.created_at?.toISOString() || '',
     vendor_id: invoice.vendor_id,
-    vendor_requires_po: vendor?.requires_po || false,
+    vendor_requires_po: vendor?.requires_po ?? null,
     vendor_is_verified: vendor?.is_verified || false,
     vendor_approval_status: vendor?.active === false ? 'pending' : 'approved',
     bank_name: bankAccount?.bank_name || null,
@@ -127,7 +127,7 @@ export function transformInvoiceListItem(
     total: decimalToNumber(invoice.total),
     status: invoice.status || 'draft',
     match_status: invoice.match_status || 'not_matched',
-    vendor_requires_po: vendor?.requires_po || false,
+    vendor_requires_po: vendor?.requires_po ?? null,
     vendor_approval_status: vendor?.active === false ? 'pending' : 'approved',
     po_numbers_cached: invoice.po_numbers_cached || [],
     gr_numbers: grNumbers || []

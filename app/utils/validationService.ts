@@ -19,6 +19,9 @@ export interface InvoiceValidationData {
   total?: number;
   subtotal?: number;
   tax_total?: number;
+  tax_rate_percent?: number | null;
+  shipping_total?: number;
+  discount_total?: number;
   vendor_id?: string;
   vendor_name_snapshot?: string;
   vendor_tax_id_snapshot?: string;
@@ -175,23 +178,47 @@ export class InvoiceValidator {
 
   // Tax calculation validation
   private validateTaxCalculation() {
-    const { subtotal, tax_total } = this.invoice;
+    const { subtotal, tax_total, tax_rate_percent, shipping_total, discount_total } = this.invoice;
     
     if (subtotal && tax_total) {
-      const taxRate = (tax_total / subtotal) * 100;
-      
-      // Check for common tax rates (adjust based on your jurisdiction)
-      const commonRates = [0, 5, 6, 7, 7.25, 8, 8.25, 8.5, 9, 10, 15, 20];
-      const isCommonRate = commonRates.some(rate => Math.abs(taxRate - rate) < 0.1);
-      
-      if (!isCommonRate && taxRate > 0) {
-        this.warnings.push({
-          field: 'tax_total',
-          message: `Unusual tax rate: ${taxRate.toFixed(2)}%`,
-          severity: 'warning',
-          category: 'financial',
-          value: taxRate.toFixed(2),
-        });
+      // If we have a stored tax rate, use it for validation
+      if (tax_rate_percent !== null && tax_rate_percent !== undefined) {
+        // Calculate the tax base (what the tax was applied to)
+        // Typically: (subtotal - discount + shipping) * tax_rate
+        const taxBase = (subtotal - (discount_total || 0) + (shipping_total || 0));
+        const expectedTax = (taxBase * tax_rate_percent) / 100;
+        const variance = Math.abs(tax_total - expectedTax);
+        
+        // Allow small rounding differences (0.02 = 2 cents)
+        if (variance > 0.02) {
+          this.warnings.push({
+            field: 'tax_total',
+            message: `Tax calculation mismatch. Expected ${expectedTax.toFixed(2)} at ${tax_rate_percent}% rate`,
+            severity: 'warning',
+            category: 'financial',
+            value: tax_total.toFixed(2),
+            expectedValue: expectedTax.toFixed(2),
+          });
+        }
+      } else {
+        // Fallback: estimate tax rate from totals if not stored
+        // Calculate effective tax rate considering shipping and discounts
+        const taxBase = (subtotal - (discount_total || 0) + (shipping_total || 0));
+        const effectiveTaxRate = taxBase > 0 ? (tax_total / taxBase) * 100 : 0;
+        
+        // Check for common tax rates (including 19% for European VAT)
+        const commonRates = [0, 5, 6, 7, 7.25, 8, 8.25, 8.5, 9, 10, 15, 19, 20, 21, 23];
+        const isCommonRate = commonRates.some(rate => Math.abs(effectiveTaxRate - rate) < 0.1);
+        
+        if (!isCommonRate && effectiveTaxRate > 0) {
+          this.warnings.push({
+            field: 'tax_total',
+            message: `Unusual tax rate: ${effectiveTaxRate.toFixed(2)}%`,
+            severity: 'warning',
+            category: 'financial',
+            value: effectiveTaxRate.toFixed(2),
+          });
+        }
       }
     }
   }
@@ -229,7 +256,7 @@ export class InvoiceValidator {
 
   // Vendor information validation
   private validateVendorInfo() {
-    const { vendor_tax_id_snapshot, vendor_approval_status } = this.invoice;
+    const { vendor_tax_id_snapshot } = this.invoice;
     
     if (!vendor_tax_id_snapshot) {
       this.warnings.push({
@@ -240,16 +267,8 @@ export class InvoiceValidator {
       });
     }
 
-    // Check vendor approval status
-    if (vendor_approval_status === 'pending') {
-      this.warnings.push({
-        field: 'vendor_approval_status',
-        message: 'Vendor not approved in master data',
-        severity: 'warning',
-        category: 'compliance',
-        value: vendor_approval_status,
-      });
-    }
+    // Note: Vendor approval/verification status is handled in MatchingTab.tsx
+    // with a more detailed message and action button, so we don't duplicate it here
   }
 
   // Fraud detection

@@ -125,7 +125,7 @@ export function AttachmentsTab({ invoiceId, attachments }: AttachmentsTabProps) 
   }
 
   return (
-    <div className="h-full overflow-y-auto space-y-6">
+    <div className="h-full overflow-y-auto space-y-6 p-6">
       {/* Upload Button */}
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold text-gray-950">Document Attachments</h3>

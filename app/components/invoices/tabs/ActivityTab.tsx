@@ -211,7 +211,7 @@ export function ActivityTab({ invoiceId }: ActivityTabProps) {
   const displayEvents = events.length > 0 ? events : mockEvents;
 
   return (
-    <div className="h-full overflow-y-auto space-y-6">
+    <div className="h-full overflow-y-auto space-y-6 p-6">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-950">Activity Timeline</h3>
         <button

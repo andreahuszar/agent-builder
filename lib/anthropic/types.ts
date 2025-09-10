@@ -76,6 +76,8 @@ export interface InvoiceTotal {
   tax?: number;
   taxRate?: number;
   discount?: number;
+  shipping?: number;
+  otherCharges?: number;
   total: number;
   currency: string;
 }
@@ -96,7 +98,16 @@ export interface InvoiceExtractionResult {
     tax_total?: number;
     tax_rate?: number;
     discount_total?: number;
+    shipping_total?: number;
+    other_charges_total?: number;
     total: number;
+    ledger?: string;
+    cost_center?: string | null;
+    cost_center_name?: string | null;
+    gl_code?: string | null;
+    department?: string | null;
+    ai_classification_confidence?: number | null;
+    ai_classification_reasoning?: string | null;
   };
   invoice_lines?: Array<{
     line_no: number;
@@ -117,6 +128,7 @@ export interface InvoiceExtractionResult {
     code: string;
     message: string;
   }>;
+  field_confidences?: Record<string, number>;
   confidence_overall?: number;
   
   // Legacy fields for backward compatibility
@@ -133,6 +145,15 @@ export interface InvoiceExtractionResult {
   paymentTerms?: string;
   notes?: string;
   rawText?: string;
+  
+  // Accounting classification fields
+  ledger?: string;
+  cost_center?: string | null;
+  cost_center_name?: string | null;
+  gl_code?: string | null;
+  department?: string | null;
+  ai_classification_confidence?: number | null;
+  ai_classification_reasoning?: string | null;
 }
 
 export interface AnthropicError {

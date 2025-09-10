@@ -45,7 +45,9 @@ const migrations = [
   '124_update_invoice_dates_2025.sql',
   '125_add_vendor_verification.sql',
   '126_add_gr_numbers_cached.sql',
-  '200_add_tax_rate_percent.sql'
+  '200_add_tax_rate_percent.sql',
+  '201_add_accounting_classification.sql',
+  '100_add_field_confidence_tracking.sql'
 ];
 
 /**

@@ -33,7 +33,7 @@ export interface InvoiceHeader {
   po_id: string | null;
   created_at: string;
   vendor_id: string;
-  vendor_requires_po: boolean;
+  vendor_requires_po: boolean | null;
   vendor_is_verified: boolean;
   vendor_approval_status: 'pending' | 'approved' | 'rejected';
   bank_name: string | null;
@@ -71,7 +71,7 @@ export interface InvoiceListItem {
   total: number;
   status: string;
   match_status: string;
-  vendor_requires_po: boolean;
+  vendor_requires_po: boolean | null;
   vendor_approval_status: string;
   po_numbers_cached: string[];
   gr_numbers: string[];

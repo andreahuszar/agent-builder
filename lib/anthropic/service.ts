@@ -148,7 +148,16 @@ export class AnthropicService {
             "tax_total": number,
             "tax_rate": number,
             "discount_total": number,
-            "total": number
+            "shipping_total": number,
+            "other_charges_total": number,
+            "total": number,
+            "ledger": "Accounts Payable|Fixed Assets|Prepaid Expenses|Accruals|Inventory",
+            "cost_center": "IT-100|MKT-200|OPS-300|HR-400|FIN-500|R&D-600|FAC-700|EXEC-800|SALES-900|LEGAL-1000|null",
+            "cost_center_name": "string|null",
+            "gl_code": "string|null",
+            "department": "string|null",
+            "ai_classification_confidence": number,
+            "ai_classification_reasoning": "string"
           },
           "invoice_lines": [
             {
@@ -166,6 +175,24 @@ export class AnthropicService {
           "customer": {
             "name": "string",
             "address": "string"
+          },
+          "field_confidences": {
+            "vendor_name_snapshot": number,
+            "vendor_tax_id_snapshot": number,
+            "vendor_address_snapshot": number,
+            "invoice_number": number,
+            "invoice_date": number,
+            "due_date": number,
+            "currency": number,
+            "payment_terms_text": number,
+            "po_numbers_cached": number,
+            "subtotal": number,
+            "tax_total": number,
+            "tax_rate": number,
+            "discount_total": number,
+            "shipping_total": number,
+            "other_charges_total": number,
+            "total": number
           },
           "warnings": [ 
             { 
@@ -187,7 +214,44 @@ export class AnthropicService {
         - If tax percentage is shown (e.g., "VAT 20%", "Tax (20%)", "20.0% VAT"), extract as tax_rate: 20
         - IMPORTANT: Extract tax_rate even if tax_total is 0 (e.g., "Tax (20%) £0.00" means tax_rate: 20, tax_total: 0)
         - If only tax amount shown, calculate rate from subtotal if possible
+        - shipping_total: Extract freight, shipping, delivery, postage charges (set to 0 if not present)
+        - other_charges_total: Sum of handling fees, insurance, fuel surcharges, processing fees, service charges (set to 0 if not present)
+        - IMPORTANT: Do NOT include shipping/freight as line items - extract them separately
+        - total should equal: subtotal + tax_total + shipping_total + other_charges_total - discount_total
         - Omit fields if unclear rather than guessing
+        
+        Accounting Classification Rules:
+        - ledger: Determine based on invoice type and amount:
+          * "Fixed Assets": Equipment/furniture/machinery > $5000
+          * "Prepaid Expenses": Insurance, annual licenses, subscriptions paid in advance
+          * "Accruals": Utilities, services crossing month boundaries
+          * "Inventory": Raw materials, resale items, stock
+          * "Accounts Payable": Default for standard vendor invoices
+        - cost_center: Based on vendor and items:
+          * IT-100: Software, hardware, IT services
+          * MKT-200: Advertising, marketing campaigns, events
+          * OPS-300: Operational supplies, shipping
+          * HR-400: Recruitment, training, benefits
+          * FIN-500: Audit, compliance, financial services
+          * R&D-600: Product development, research
+          * FAC-700: Rent, utilities, maintenance
+          * EXEC-800: Executive expenses, board costs
+          * SALES-900: Sales operations, commissions
+          * LEGAL-1000: Legal services, contracts
+        - cost_center_name: Full name matching the code (e.g., "Information Technology" for IT-100)
+        - gl_code: Suggest based on expense type (e.g., 6210 for software, 5410 for rent)
+        - department: Department name (e.g., "Technology", "Marketing", "Operations")
+        - ai_classification_confidence: 0.00 to 1.00 based on certainty
+        - ai_classification_reasoning: Brief explanation of classification logic
+        
+        Field Confidence Rules:
+        - field_confidences: For each extracted field, provide confidence score 0-100
+        - 90-100: Very clear, unambiguous text/numbers
+        - 70-89: Readable but may have minor ambiguity (e.g., slightly blurry, unusual format)
+        - 50-69: Difficult to read, significant ambiguity
+        - 0-49: Very unclear, highly uncertain extraction
+        - If field is omitted/null, don't include in field_confidences
+        - confidence_overall: Average of all field confidences (0.00 to 1.00)
         
         Return STRICT JSON only, no additional text.
       `;
@@ -210,8 +274,21 @@ export class AnthropicService {
       
       const extractedData = JSON.parse(jsonMatch[0]) as InvoiceExtractionResult;
       
+      // Debug: log the raw AI response
+      console.log('AI raw JSON response (first 500 chars):', jsonMatch[0].substring(0, 500));
+      console.log('AI classification fields in response:', {
+        headers_ledger: extractedData.invoice_headers?.ledger,
+        headers_cost_center: extractedData.invoice_headers?.cost_center,
+        headers_gl_code: extractedData.invoice_headers?.gl_code,
+      });
+      
       // Add raw text for reference
       extractedData.rawText = responseText;
+      
+      // Store field confidences if provided
+      if (extractedData.field_confidences) {
+        console.log('Field confidences extracted:', extractedData.field_confidences);
+      }
       
       // Map new format to legacy format for backward compatibility
       if (extractedData.invoice_headers && !extractedData.invoice) {
@@ -233,12 +310,23 @@ export class AnthropicService {
           tax: extractedData.invoice_headers.tax_total || 0,
           taxRate: extractedData.invoice_headers.tax_rate || null,
           discount: extractedData.invoice_headers.discount_total || 0,
+          shipping: extractedData.invoice_headers.shipping_total || 0,
+          otherCharges: extractedData.invoice_headers.other_charges_total || 0,
           total: extractedData.invoice_headers.total,
           currency: extractedData.invoice_headers.currency,
         };
         
         extractedData.paymentTerms = extractedData.invoice_headers.payment_terms_text;
         extractedData.confidence = extractedData.confidence_overall || 0.95;
+        
+        // Preserve accounting classification fields
+        extractedData.ledger = extractedData.invoice_headers.ledger;
+        extractedData.cost_center = extractedData.invoice_headers.cost_center;
+        extractedData.cost_center_name = extractedData.invoice_headers.cost_center_name;
+        extractedData.gl_code = extractedData.invoice_headers.gl_code;
+        extractedData.department = extractedData.invoice_headers.department;
+        extractedData.ai_classification_confidence = extractedData.invoice_headers.ai_classification_confidence;
+        extractedData.ai_classification_reasoning = extractedData.invoice_headers.ai_classification_reasoning;
         
         // Map invoice_lines to items for backward compatibility
         if (extractedData.invoice_lines) {

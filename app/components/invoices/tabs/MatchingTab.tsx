@@ -38,8 +38,8 @@ interface MatchingTabProps {
 }
 
 export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, approvalLimit = 2500, poComparisonData }: MatchingTabProps) {
-  // Check if this is a Non-PO vendor
-  const isNonPOVendor = invoiceData?.vendor_requires_po === false;
+  // Check if this is a Non-PO vendor (only if vendor is verified in master data)
+  const isNonPOVendor = invoiceData?.vendor_requires_po === false && invoiceData?.vendor_is_verified === true;
   
   // Run invoice validations if data is provided
   const invoiceValidations = useMemo(() => {
@@ -385,7 +385,7 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
   // Special display for Non-PO vendors
   if (isNonPOVendor) {
     return (
-      <div className="space-y-4 p-4">
+      <div className="space-y-4 p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-lg font-semibold text-gray-950">Non-PO Invoice</h2>
@@ -469,7 +469,7 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
   }
 
   return (
-    <div className="space-y-4 p-4">
+    <div className="space-y-4 p-6">
       {/* Header with rerun button */}
       <div className="flex items-center justify-between mb-4">
         <div>

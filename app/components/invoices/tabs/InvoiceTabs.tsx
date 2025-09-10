@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FileText, List, GitCompare, Paperclip, Clock, Check } from 'lucide-react';
+import { FileText, Package, GitCompare, Paperclip, Clock, Check, AlertTriangle, CheckCircle } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { DetailsTab } from './DetailsTab';
 import { LineItemsTab } from './LineItemsTab';
@@ -128,13 +128,13 @@ export function InvoiceTabs({
     {
       id: 'line-items' as TabId,
       label: 'Line Items',
-      icon: List,
+      icon: Package,
       count: invoiceData?.lines?.length,
     },
     {
       id: 'matching' as TabId,
       label: 'Exceptions',
-      icon: GitCompare,
+      icon: totalIssuesCount > 0 ? AlertTriangle : CheckCircle,
       matchingCount: totalIssuesCount,
       hasIssues: totalIssuesCount > 0,
     },
@@ -253,7 +253,7 @@ export function InvoiceTabs({
         </div>
 
       {/* Tab Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto">
         {activeTab === 'details' && (
           <DetailsTab
             invoiceData={invoiceData}

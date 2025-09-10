@@ -8,21 +8,24 @@ datasource db {
 }
 
 model User {
-  id                                                String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                                              String                   @db.VarChar(255)
-  email                                             String                   @unique @db.VarChar(255)
-  created_at                                        DateTime?                @default(now()) @db.Timestamptz(6)
-  updated_at                                        DateTime?                @default(now()) @db.Timestamptz(6)
-  approvals                                         approvals[]
-  approver_group_members                            approver_group_members[]
-  audit_events                                      audit_events[]
-  gr_headers                                        gr_headers[]
-  invoice_headers_invoice_headers_created_byTousers invoice_headers[]        @relation("invoice_headers_created_byTousers")
-  invoice_headers_invoice_headers_updated_byTousers invoice_headers[]        @relation("invoice_headers_updated_byTousers")
-  invoice_status_history                            invoice_status_history[]
-  po_headers                                        po_headers[]
-  ses_headers                                       ses_headers[]
-  work_items                                        work_items[]
+  id                                                         String                   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                                                       String                   @db.VarChar(255)
+  email                                                      String                   @unique @db.VarChar(255)
+  created_at                                                 DateTime?                @default(now()) @db.Timestamptz(6)
+  updated_at                                                 DateTime?                @default(now()) @db.Timestamptz(6)
+  approvals                                                  approvals[]
+  approver_group_members                                     approver_group_members[]
+  audit_events                                               audit_events[]
+  gr_headers                                                 gr_headers[]
+  invoice_headers_invoice_headers_assigned_to_user_idTousers invoice_headers[]        @relation("invoice_headers_assigned_to_user_idTousers")
+  invoice_headers_invoice_headers_created_byTousers          invoice_headers[]        @relation("invoice_headers_created_byTousers")
+  invoice_headers_invoice_headers_updated_byTousers          invoice_headers[]        @relation("invoice_headers_updated_byTousers")
+  invoice_status_history                                     invoice_status_history[]
+  invoice_validations                                        invoice_validations[]
+  po_headers                                                 po_headers[]
+  ses_headers                                                ses_headers[]
+  validation_runs                                            validation_runs[]
+  work_items                                                 work_items[]
 
   @@map("users")
 }
@@ -187,6 +190,7 @@ model gr_headers {
   @@index([po_id], map: "idx_gr_headers_po_id")
   @@index([receipt_date], map: "idx_gr_headers_receipt_date")
   @@index([status], map: "idx_gr_headers_status")
+  @@index([gr_number], map: "idx_gr_headers_gr_number")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -227,7 +231,6 @@ model invoice_headers {
   subtotal                                                                     Decimal                  @db.Decimal(18, 4)
   discount_total                                                               Decimal?                 @db.Decimal(18, 4)
   tax_total                                                                    Decimal                  @db.Decimal(18, 4)
-  tax_rate_percent                                                             Decimal?                 @db.Decimal(9, 6)
   shipping_total                                                               Decimal?                 @db.Decimal(18, 4)
   other_charges_total                                                          Decimal?                 @db.Decimal(18, 4)
   withholding_tax_total                                                        Decimal?                 @db.Decimal(18, 4)
@@ -266,6 +269,28 @@ model invoice_headers {
   approval_status                                                              approval_status?         @default(not_required)
   gr_numbers_cached                                                            String[]
   po_id                                                                        String?                  @db.Uuid
+  bill_to_snapshot                                                             Json?
+  ship_to_snapshot                                                             Json?
+  assigned_to_user_id                                                          String?                  @db.Uuid
+  helpdesk_ticket_ref                                                          String?                  @db.VarChar(50)
+  validation_errors                                                            Json?                    @default("[]")
+  validation_warnings                                                          Json?                    @default("[]")
+  confidence_score                                                             Decimal?                 @default(100.00) @db.Decimal(5, 2)
+  fraud_risk_score                                                             Decimal?                 @default(0.00) @db.Decimal(5, 2)
+  processing_started_at                                                        DateTime?                @db.Timestamptz(6)
+  processing_completed_at                                                      DateTime?                @db.Timestamptz(6)
+  ledger                                                                       String?                  @default("Accounts Payable") @db.VarChar(50)
+  tax_rate_percent                                                             Decimal?                 @db.Decimal(9, 6)
+  cost_center                                                                  String?                  @db.VarChar(100)
+  cost_center_name                                                             String?                  @db.VarChar(255)
+  gl_code                                                                      String?                  @db.VarChar(50)
+  department                                                                   String?                  @db.VarChar(100)
+  accounting_notes                                                             String?
+  ai_classification_confidence                                                 Decimal?                 @db.Decimal(3, 2)
+  ai_classification_reasoning                                                  String?
+  extraction_field_confidences                                                 Json?                    @default("{}")
+  is_manually_edited                                                           Json?                    @default("{}")
+  users_invoice_headers_assigned_to_user_idTousers                             User?                    @relation("invoice_headers_assigned_to_user_idTousers", fields: [assigned_to_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   org_entities                                                                 org_entities             @relation(fields: [bill_to_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_invoice_headers_created_byTousers                                      User?                    @relation("invoice_headers_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
   payment_terms                                                                payment_terms            @relation(fields: [payment_terms_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -279,7 +304,9 @@ model invoice_headers {
   vendors                                                                      vendors                  @relation(fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   invoice_lines                                                                invoice_lines[]
   invoice_status_history                                                       invoice_status_history[]
+  invoice_validations                                                          invoice_validations[]
   match_results                                                                match_results[]
+  validation_runs                                                              validation_runs[]
 
   @@unique([vendor_id, invoice_number])
   @@index([due_date], map: "idx_invoice_headers_due_date")
@@ -289,6 +316,13 @@ model invoice_headers {
   @@index([vendor_id], map: "idx_invoice_headers_vendor_id")
   @@index([vendor_id, invoice_date], map: "idx_invoice_headers_vendor_id_invoice_date")
   @@index([status], map: "idx_invoice_headers_status")
+  @@index([invoice_date, status], map: "idx_invoice_date_status")
+  @@index([assigned_to_user_id], map: "idx_invoice_headers_assigned_to")
+  @@index([confidence_score], map: "idx_invoice_headers_confidence")
+  @@index([created_at(sort: Desc)], map: "idx_invoice_headers_created_at")
+  @@index([gr_numbers_cached], map: "idx_invoice_headers_gr_numbers_cached", type: Gin)
+  @@index([po_numbers_cached], map: "idx_invoice_headers_po_numbers", type: Gin)
+  @@index([vendor_id, status], map: "idx_invoice_vendor_status")
 }
 
 model invoice_line_distributions {
@@ -356,7 +390,6 @@ model invoice_lines {
   extended_amount            Decimal?                     @db.Decimal(18, 4)
   net_amount                 Decimal                      @db.Decimal(18, 4)
   tax_rate_id                String?                      @db.Uuid
-  tax_rate_percent           Decimal?                     @db.Decimal(9, 6)
   tax_amount                 Decimal?                     @db.Decimal(18, 4)
   line_total                 Decimal                      @db.Decimal(18, 4)
   cost_center                String?                      @db.VarChar(50)
@@ -376,6 +409,7 @@ model invoice_lines {
   gr_line_no_snapshot        Int?
   created_at                 DateTime?                    @default(now()) @db.Timestamptz(6)
   updated_at                 DateTime?                    @default(now()) @db.Timestamptz(6)
+  tax_rate_percent           Decimal?                     @db.Decimal(9, 6)
   invoice_line_distributions invoice_line_distributions[]
   invoice_line_receipts      invoice_line_receipts[]
   invoice_line_taxes         invoice_line_taxes[]
@@ -394,6 +428,7 @@ model invoice_lines {
   @@index([po_line_id], map: "idx_invoice_lines_po_line_id")
   @@index([project_code], map: "idx_invoice_lines_project_code")
   @@index([ses_line_id], map: "idx_invoice_lines_ses_line_id")
+  @@index([invoice_id], map: "idx_invoice_lines_invoice_id")
 }
 
 model invoice_status_history {
@@ -454,6 +489,9 @@ model match_results {
   @@index([invoice_id], map: "idx_match_results_invoice_id")
   @@index([invoice_line_id], map: "idx_match_results_invoice_line_id")
   @@index([within_tolerance], map: "idx_match_results_within_tolerance")
+  @@index([invoice_id, within_tolerance], map: "idx_match_invoice_tolerance")
+  @@index([matched_gr_line_id], map: "idx_match_results_gr_line_id")
+  @@index([matched_po_line_id], map: "idx_match_results_po_line_id")
 }
 
 model org_entities {
@@ -515,6 +553,8 @@ model po_headers {
   @@index([order_date], map: "idx_po_headers_order_date")
   @@index([status], map: "idx_po_headers_status")
   @@index([vendor_id], map: "idx_po_headers_vendor_id")
+  @@index([po_number], map: "idx_po_headers_po_number")
+  @@index([vendor_id, status], map: "idx_po_vendor_status")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -549,6 +589,7 @@ model po_lines {
   @@index([item_id], map: "idx_po_lines_item_id")
   @@index([po_id], map: "idx_po_lines_po_id")
   @@index([po_id, line_no], map: "idx_po_lines_po_id_line_no")
+  @@index([status], map: "idx_po_lines_status")
 }
 
 model projects {
@@ -721,6 +762,9 @@ model vendors {
   @@index([payment_terms_id], map: "idx_vendors_payment_terms_id")
   @@index([tolerance_profile_id], map: "idx_vendors_tolerance_profile_id")
   @@index([is_verified], map: "idx_vendors_is_verified")
+  @@index([active], map: "idx_vendors_active")
+  @@index([name], map: "idx_vendors_name")
+  @@index([requires_po], map: "idx_vendors_requires_po")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -745,6 +789,101 @@ model work_items {
   @@index([due_at], map: "idx_work_items_due_at")
   @@index([stage], map: "idx_work_items_stage")
   @@index([status], map: "idx_work_items_status")
+  @@index([priority], map: "idx_work_items_priority")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model invoice_validations {
+  id                 String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoice_id         String              @db.Uuid
+  validation_rule_id String              @db.Uuid
+  field_name         String?             @db.VarChar(100)
+  line_number        Int?
+  severity           validation_severity
+  category           validation_category
+  is_valid           Boolean
+  message            String
+  details            Json?               @default("{}")
+  expected_value     String?
+  actual_value       String?
+  variance_amount    Decimal?            @db.Decimal(18, 4)
+  variance_percent   Decimal?            @db.Decimal(7, 4)
+  is_resolved        Boolean?            @default(false)
+  resolved_by        String?             @db.Uuid
+  resolved_at        DateTime?           @db.Timestamptz(6)
+  resolution_notes   String?
+  created_at         DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?           @default(now()) @db.Timestamptz(6)
+  invoice_headers    invoice_headers     @relation(fields: [invoice_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users              User?               @relation(fields: [resolved_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  validation_rules   validation_rules    @relation(fields: [validation_rule_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([category], map: "idx_invoice_validations_category")
+  @@index([invoice_id], map: "idx_invoice_validations_invoice_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model schema_migrations {
+  id                Int       @id @default(autoincrement())
+  filename          String    @unique @db.VarChar(255)
+  checksum          String    @db.VarChar(64)
+  applied_at        DateTime? @default(now()) @db.Timestamptz(6)
+  execution_time_ms Int?
+  success           Boolean?  @default(true)
+  error_message     String?
+  rolled_back       Boolean?  @default(false)
+  rolled_back_at    DateTime? @db.Timestamptz(6)
+
+  @@index([filename], map: "idx_schema_migrations_filename")
+}
+
+model test_migrations {
+  id        String    @id @default(dbgenerated("concat('test_', to_char(now(), 'YYYYMMDDHH24MISS'::text), '_', substr(md5((random())::text), 1, 6))")) @db.VarChar(30)
+  name      String    @db.VarChar(255)
+  value     String?
+  createdAt DateTime? @default(now()) @db.Timestamptz(6)
+  updatedAt DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model validation_rules {
+  id                  String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  code                String                @unique @db.VarChar(50)
+  name                String                @db.VarChar(255)
+  description         String?
+  rule_type           validation_rule_type
+  category            validation_category
+  severity            validation_severity
+  is_active           Boolean?              @default(true)
+  config              Json?                 @default("{}")
+  tolerance_percent   Decimal?              @db.Decimal(7, 4)
+  tolerance_amount    Decimal?              @db.Decimal(18, 4)
+  created_at          DateTime?             @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?             @default(now()) @db.Timestamptz(6)
+  invoice_validations invoice_validations[]
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model validation_runs {
+  id                  String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  invoice_id          String          @db.Uuid
+  run_type            String          @db.VarChar(50)
+  triggered_by        String?         @db.Uuid
+  total_rules_checked Int             @default(0)
+  errors_found        Int             @default(0)
+  warnings_found      Int             @default(0)
+  info_found          Int             @default(0)
+  confidence_score    Decimal?        @db.Decimal(5, 2)
+  fraud_risk_score    Decimal?        @db.Decimal(5, 2)
+  started_at          DateTime        @default(now()) @db.Timestamptz(6)
+  completed_at        DateTime?       @db.Timestamptz(6)
+  duration_ms         Int?
+  created_at          DateTime?       @default(now()) @db.Timestamptz(6)
+  invoice_headers     invoice_headers @relation(fields: [invoice_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  users               User?           @relation(fields: [triggered_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([completed_at(sort: Desc)], map: "idx_validation_runs_completed")
+  @@index([invoice_id], map: "idx_validation_runs_invoice_id")
 }
 
 enum approval_status {
@@ -806,6 +945,7 @@ enum match_rule {
 
 enum match_status {
   not_matched
+  non_po
   matched
   within_tolerance
   exception
@@ -853,4 +993,32 @@ enum workflow_status {
   approved
   rejected
   skipped
+}
+
+enum validation_category {
+  financial
+  process
+  compliance
+  risk
+  data_quality
+}
+
+enum validation_rule_type {
+  required_field
+  amount_variance
+  date_consistency
+  tax_calculation
+  duplicate_detection
+  vendor_verification
+  po_matching
+  receipt_matching
+  budget_impact
+  approval_limit
+  custom
+}
+
+enum validation_severity {
+  error
+  warning
+  info
 }

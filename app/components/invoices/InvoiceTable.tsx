@@ -499,7 +499,7 @@ export function InvoiceTable({ invoices, onDelete, onPOClick }: InvoiceTableProp
                         className="text-red-600 hover:bg-red-50 focus:bg-red-50 focus:text-red-600"
                       >
                         <Trash2 className="mr-2 h-4 w-4" />
-                        Delete
+                        Archive
                       </DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>

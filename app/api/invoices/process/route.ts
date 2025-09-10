@@ -101,12 +101,28 @@ export async function POST(request: NextRequest) {
       mediaType as 'image/jpeg' | 'image/png' | 'image/gif' | 'image/webp' | 'application/pdf'
     );
 
+    console.log('Raw extraction result classification fields:', {
+      has_invoice_headers: !!extractionResult.invoice_headers,
+      headers_ledger: extractionResult.invoice_headers?.ledger,
+      headers_cost_center: extractionResult.invoice_headers?.cost_center,
+      headers_gl_code: extractionResult.invoice_headers?.gl_code,
+      root_ledger: extractionResult.ledger,
+      root_cost_center: extractionResult.cost_center,
+      root_gl_code: extractionResult.gl_code,
+    });
+    
     console.log('Extraction completed:', {
       invoiceNumber: extractionResult.invoice?.number,
       vendorName: extractionResult.vendor?.name,
       total: extractionResult.totals?.total,
       currency: extractionResult.totals?.currency,
-      lineCount: extractionResult.items?.length || 0
+      lineCount: extractionResult.items?.length || 0,
+      // Debug classification fields
+      ledger: extractionResult.ledger,
+      cost_center: extractionResult.cost_center,
+      gl_code: extractionResult.gl_code,
+      department: extractionResult.department,
+      ai_confidence: extractionResult.ai_classification_confidence
     });
 
     // Process extraction result with normalization
@@ -245,7 +261,10 @@ export async function POST(request: NextRequest) {
     ) || normalized.subtotal || 0;
     
     const taxTotal = normalized.taxTotal || 0;
-    const total = normalized.total || subtotal + taxTotal;
+    const shippingTotal = normalized.shippingTotal || 0;
+    const otherChargesTotal = normalized.otherChargesTotal || 0;
+    const discountTotal = normalized.discountTotal || 0;
+    const total = normalized.total || (subtotal + taxTotal + shippingTotal + otherChargesTotal - discountTotal);
     
     const invoiceHeader = await prisma.invoice_headers.create({
       data: {
@@ -262,6 +281,9 @@ export async function POST(request: NextRequest) {
         subtotal: subtotal,
         tax_total: taxTotal,
         tax_rate_percent: normalized.taxRate,
+        shipping_total: shippingTotal,
+        other_charges_total: otherChargesTotal,
+        discount_total: discountTotal,
         total: total,
         payment_terms_id: paymentTermsId,
         terms_text: normalized.paymentTerms,
@@ -269,7 +291,18 @@ export async function POST(request: NextRequest) {
         match_status: 'not_matched',
         po_numbers_cached: normalized.poNumbers || [],
         bill_to_id: billToEntity.id,
-        created_by: null
+        created_by: null,
+        // Accounting classification fields from AI extraction
+        ledger: extractionResult.ledger || 'Accounts Payable',
+        cost_center: extractionResult.cost_center || null,
+        cost_center_name: extractionResult.cost_center_name || null,
+        gl_code: extractionResult.gl_code || null,
+        department: extractionResult.department || null,
+        ai_classification_confidence: extractionResult.ai_classification_confidence || null,
+        ai_classification_reasoning: extractionResult.ai_classification_reasoning || null,
+        // Field confidence tracking
+        extraction_field_confidences: extractionResult.field_confidences || {},
+        is_manually_edited: {}
       }
     });
     
@@ -305,7 +338,7 @@ export async function POST(request: NextRequest) {
       
       // Recalculate totals from actual lines
       const actualSubtotal = lineData.reduce((sum: number, line: any) => sum + line.net_amount, 0);
-      const actualTotal = actualSubtotal + taxTotal;
+      const actualTotal = actualSubtotal + taxTotal + shippingTotal + otherChargesTotal - discountTotal;
       
       // Check for rounding differences
       if (!isWithinRoundingTolerance(actualTotal, total)) {
@@ -385,6 +418,9 @@ function normalizeExtractionResult(result: InvoiceExtractionResult) {
     subtotal: normalizeNumber(headers?.subtotal || legacyTotals?.subtotal),
     taxTotal: normalizeNumber(headers?.tax_total || legacyTotals?.tax) || 0,
     taxRate: normalizeNumber(headers?.tax_rate || legacyTotals?.taxRate) || null,
+    shippingTotal: normalizeNumber(headers?.shipping_total || legacyTotals?.shipping) || 0,
+    otherChargesTotal: normalizeNumber(headers?.other_charges_total || legacyTotals?.otherCharges) || 0,
+    discountTotal: normalizeNumber(headers?.discount_total || legacyTotals?.discount) || 0,
     total: normalizeNumber(headers?.total || legacyTotals?.total) || 0,
     currency: normalizeCurrency(headers?.currency || legacyTotals?.currency),
     paymentTerms: headers?.payment_terms_text || result.paymentTerms || 'Net 30',

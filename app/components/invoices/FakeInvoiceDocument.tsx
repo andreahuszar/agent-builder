@@ -31,7 +31,10 @@ export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentP
     sum + (line.net_amount || 0), 0) || 0;
   const taxTotal = invoice.tax_total || invoice.lines?.reduce((sum: number, line: any) => 
     sum + (line.tax_amount || 0), 0) || 0;
-  const total = invoice.total || subtotal + taxTotal;
+  const shippingTotal = invoice.shipping_total || 0;
+  const otherChargesTotal = invoice.other_charges_total || 0;
+  const discountTotal = invoice.discount_total || 0;
+  const total = invoice.total || (subtotal + taxTotal + shippingTotal + otherChargesTotal - discountTotal);
   
   // Get tax rate - either from stored value or calculate
   const taxRate = invoice.tax_rate_percent || 
@@ -205,6 +208,30 @@ export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentP
                   </span>
                   <span className="text-sm font-medium text-gray-900">
                     {formatCurrency(taxTotal, invoice.currency)}
+                  </span>
+                </div>
+              )}
+              {shippingTotal > 0 && (
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-sm text-gray-600">Shipping/Freight:</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {formatCurrency(shippingTotal, invoice.currency)}
+                  </span>
+                </div>
+              )}
+              {otherChargesTotal > 0 && (
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-sm text-gray-600">Other Charges:</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {formatCurrency(otherChargesTotal, invoice.currency)}
+                  </span>
+                </div>
+              )}
+              {discountTotal > 0 && (
+                <div className="flex justify-between py-2 border-b border-gray-200">
+                  <span className="text-sm text-gray-600">Discount:</span>
+                  <span className="text-sm font-medium text-green-600">
+                    -{formatCurrency(discountTotal, invoice.currency)}
                   </span>
                 </div>
               )}
