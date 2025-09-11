@@ -168,22 +168,159 @@ export async function POST(request: NextRequest) {
         });
       }
       
-      vendor = await prisma.vendors.create({
-        data: {
-          id: randomUUID(),
-          name: normalized.vendorName || 'Unknown Vendor',
-          tax_id: normalized.vendorTaxId,
-          country_code: 'US',
-          default_currency: 'USD',
-          requires_po: false,
-          active: false, // New vendors start as inactive
-          is_verified: false,
-          payment_terms_id: paymentTerms.id
+      // Check if we have bank details from the invoice
+      const bankDetails = normalized.paymentBankDetails;
+      const hasBankDetails = bankDetails && (
+        bankDetails.bank_name || 
+        bankDetails.iban || 
+        bankDetails.account_number
+      );
+
+      // Create vendor and bank account in a transaction
+      const result = await prisma.$transaction(async (tx) => {
+        // Create the vendor first
+        const newVendor = await tx.vendors.create({
+          data: {
+            id: randomUUID(),
+            name: normalized.vendorName || 'Unknown Vendor',
+            tax_id: normalized.vendorTaxId,
+            country_code: normalized.vendorCountryCode || 'US',
+            default_currency: normalized.currency || 'USD',
+            requires_po: true, // Unverified vendors require PO
+            active: true, // Active so they can process invoices
+            is_verified: false,
+            preferred_payment_method: hasBankDetails ? 'bank_transfer' : null,
+            payment_terms_id: paymentTerms.id
+          }
+        });
+
+        let bankAccountId = null;
+
+        // If we have bank details, create a bank account
+        if (hasBankDetails) {
+          // Create masked account number (show last 4 digits)
+          let maskedAccountNumber = '****';
+          if (bankDetails.account_number) {
+            const accNum = bankDetails.account_number.replace(/\s/g, '');
+            if (accNum.length >= 4) {
+              maskedAccountNumber = '*'.repeat(Math.max(4, accNum.length - 4)) + accNum.slice(-4);
+            }
+          } else if (bankDetails.iban) {
+            const iban = bankDetails.iban.replace(/\s/g, '');
+            if (iban.length >= 4) {
+              maskedAccountNumber = iban.slice(0, 2) + '*'.repeat(Math.max(4, iban.length - 6)) + iban.slice(-4);
+            }
+          }
+
+          const bankAccount = await tx.vendor_bank_accounts.create({
+            data: {
+              id: randomUUID(),
+              vendor_id: newVendor.id,
+              bank_name: bankDetails.bank_name || 'Unknown Bank',
+              account_name: bankDetails.account_name || newVendor.name,
+              account_number: bankDetails.account_number || null,
+              account_number_masked: maskedAccountNumber,
+              iban: bankDetails.iban || null,
+              swift_bic: bankDetails.swift_bic || null,
+              sort_code: bankDetails.sort_code || null,
+              routing_number: bankDetails.routing_number || null,
+              is_default: true
+            }
+          });
+
+          bankAccountId = bankAccount.id;
+
+          // Update vendor with default bank account
+          await tx.vendors.update({
+            where: { id: newVendor.id },
+            data: { default_bank_account_id: bankAccountId }
+          });
+
+          console.log('Created bank account for vendor:', {
+            vendorId: newVendor.id,
+            bankAccountId: bankAccount.id,
+            bankName: bankAccount.bank_name,
+            masked: bankAccount.account_number_masked
+          });
         }
+
+        return { vendor: newVendor, bankAccountId };
       });
-      console.log('Created new vendor:', vendor.id);
+
+      vendor = result.vendor;
+      console.log('Created new vendor:', {
+        id: vendor.id,
+        name: vendor.name,
+        country: vendor.country_code,
+        currency: vendor.default_currency,
+        hasBankAccount: !!result.bankAccountId
+      });
     } else {
       console.log('Found existing vendor:', vendor.id);
+      
+      // Check if existing vendor has bank accounts and if we have bank details from invoice
+      const bankDetails = normalized.paymentBankDetails;
+      const hasBankDetails = bankDetails && (
+        bankDetails.bank_name || 
+        bankDetails.iban || 
+        bankDetails.account_number
+      );
+      
+      if (hasBankDetails) {
+        // Check if vendor already has bank accounts
+        const existingBankAccounts = await prisma.vendor_bank_accounts.count({
+          where: { vendor_id: vendor.id }
+        });
+        
+        // Only create bank account if vendor doesn't have any
+        if (existingBankAccounts === 0) {
+          // Create masked account number (show last 4 digits)
+          let maskedAccountNumber = '****';
+          if (bankDetails.account_number) {
+            const accNum = bankDetails.account_number.replace(/\s/g, '');
+            if (accNum.length >= 4) {
+              maskedAccountNumber = '*'.repeat(Math.max(4, accNum.length - 4)) + accNum.slice(-4);
+            }
+          } else if (bankDetails.iban) {
+            const iban = bankDetails.iban.replace(/\s/g, '');
+            if (iban.length >= 4) {
+              maskedAccountNumber = iban.slice(0, 2) + '*'.repeat(Math.max(4, iban.length - 6)) + iban.slice(-4);
+            }
+          }
+
+          const bankAccount = await prisma.vendor_bank_accounts.create({
+            data: {
+              id: randomUUID(),
+              vendor_id: vendor.id,
+              bank_name: bankDetails.bank_name || 'Unknown Bank',
+              account_name: bankDetails.account_name || vendor.name,
+              account_number: bankDetails.account_number || null,
+              account_number_masked: maskedAccountNumber,
+              iban: bankDetails.iban || null,
+              swift_bic: bankDetails.swift_bic || null,
+              sort_code: bankDetails.sort_code || null,
+              routing_number: bankDetails.routing_number || null,
+              is_default: true
+            }
+          });
+
+          // Update vendor with default bank account and payment method
+          await prisma.vendors.update({
+            where: { id: vendor.id },
+            data: { 
+              default_bank_account_id: bankAccount.id,
+              preferred_payment_method: vendor.preferred_payment_method || 'bank_transfer'
+            }
+          });
+
+          console.log('Created bank account for existing vendor:', {
+            vendorId: vendor.id,
+            bankAccountId: bankAccount.id,
+            bankName: bankAccount.bank_name,
+            masked: bankAccount.account_number_masked
+          });
+        }
+      }
     }
     
     // Get or create payment terms
@@ -264,7 +401,24 @@ export async function POST(request: NextRequest) {
     const shippingTotal = normalized.shippingTotal || 0;
     const otherChargesTotal = normalized.otherChargesTotal || 0;
     const discountTotal = normalized.discountTotal || 0;
-    const total = normalized.total || (subtotal + taxTotal + shippingTotal + otherChargesTotal - discountTotal);
+    
+    // Always calculate total from components
+    const calculatedTotal = subtotal + taxTotal + shippingTotal + otherChargesTotal - discountTotal;
+    const extractedTotal = normalized.total || 0;
+    
+    // Check for significant discrepancy
+    const totalDiscrepancy = Math.abs(calculatedTotal - extractedTotal);
+    const hasSignificantDiscrepancy = totalDiscrepancy > 1.0; // More than 1 currency unit difference
+    
+    if (hasSignificantDiscrepancy && extractedTotal > 0) {
+      console.warn(`Total discrepancy detected: Extracted=${extractedTotal}, Calculated=${calculatedTotal}, Difference=${totalDiscrepancy}`);
+      console.warn(`Components: Subtotal=${subtotal}, Tax=${taxTotal}, Shipping=${shippingTotal}, Other=${otherChargesTotal}, Discount=${discountTotal}`);
+      console.warn(`Using extracted total (${extractedTotal}) as it's more reliable than calculated (${calculatedTotal})`);
+    }
+    
+    // When there's a discrepancy, prefer the extracted total from the AI as it's more reliable
+    // The AI reads the actual total from the invoice, which is the source of truth
+    const total = (hasSignificantDiscrepancy && extractedTotal > 0) ? extractedTotal : (extractedTotal || calculatedTotal);
     
     const invoiceHeader = await prisma.invoice_headers.create({
       data: {
@@ -285,6 +439,8 @@ export async function POST(request: NextRequest) {
         other_charges_total: otherChargesTotal,
         discount_total: discountTotal,
         total: total,
+        extracted_total: extractedTotal, // Store the original extracted total for comparison
+        total_discrepancy: hasSignificantDiscrepancy ? totalDiscrepancy : null,
         payment_terms_id: paymentTermsId,
         terms_text: normalized.paymentTerms,
         status: 'draft',
@@ -300,6 +456,9 @@ export async function POST(request: NextRequest) {
         department: extractionResult.department || null,
         ai_classification_confidence: extractionResult.ai_classification_confidence || null,
         ai_classification_reasoning: extractionResult.ai_classification_reasoning || null,
+        // Payment method fields
+        payment_method: extractionResult.invoice_headers?.payment_method || null,
+        payment_bank_details: extractionResult.invoice_headers?.payment_bank_details || null,
         // Field confidence tracking
         extraction_field_confidences: extractionResult.field_confidences || {},
         is_manually_edited: {}
@@ -338,21 +497,29 @@ export async function POST(request: NextRequest) {
       
       // Recalculate totals from actual lines
       const actualSubtotal = lineData.reduce((sum: number, line: any) => sum + line.net_amount, 0);
-      const actualTotal = actualSubtotal + taxTotal + shippingTotal + otherChargesTotal - discountTotal;
+      const actualLineTaxTotal = lineData.reduce((sum: number, line: any) => sum + (line.tax_amount || 0), 0);
       
-      // Check for rounding differences
-      if (!isWithinRoundingTolerance(actualTotal, total)) {
+      // Use line tax if header tax is missing but lines have tax
+      const finalTaxTotal = taxTotal || actualLineTaxTotal;
+      const actualTotal = actualSubtotal + finalTaxTotal + shippingTotal + otherChargesTotal - discountTotal;
+      
+      // Check for rounding differences or missing components
+      const finalTotalDiff = Math.abs(actualTotal - total);
+      if (finalTotalDiff > 0.02) {
         // Update header with actual totals
         const roundingDiff = actualTotal - total;
         await prisma.invoice_headers.update({
           where: { id: invoiceId },
           data: {
             subtotal: actualSubtotal,
+            tax_total: finalTaxTotal,
             total: actualTotal,
-            rounding_diff: roundingDiff
+            rounding_diff: roundingDiff,
+            total_discrepancy: finalTotalDiff
           }
         });
-        console.log(`Applied rounding adjustment: ${roundingDiff}`);
+        console.log(`Applied total adjustment: Original=${total}, Actual=${actualTotal}, Difference=${roundingDiff}`);
+        console.log(`Final components: Subtotal=${actualSubtotal}, Tax=${finalTaxTotal}, Shipping=${shippingTotal}, Other=${otherChargesTotal}, Discount=${discountTotal}`);
       }
     }
     
@@ -415,6 +582,7 @@ function normalizeExtractionResult(result: InvoiceExtractionResult) {
     vendorName: headers?.vendor_name_snapshot || result.vendor?.name || 'Unknown Vendor',
     vendorTaxId: headers?.vendor_tax_id_snapshot || result.vendor?.taxId || null,
     vendorAddress: headers?.vendor_address_snapshot || result.vendor?.address || null,
+    vendorCountryCode: headers?.vendor_country_code || null,
     subtotal: normalizeNumber(headers?.subtotal || legacyTotals?.subtotal),
     taxTotal: normalizeNumber(headers?.tax_total || legacyTotals?.tax) || 0,
     taxRate: normalizeNumber(headers?.tax_rate || legacyTotals?.taxRate) || null,
@@ -424,6 +592,8 @@ function normalizeExtractionResult(result: InvoiceExtractionResult) {
     total: normalizeNumber(headers?.total || legacyTotals?.total) || 0,
     currency: normalizeCurrency(headers?.currency || legacyTotals?.currency),
     paymentTerms: headers?.payment_terms_text || result.paymentTerms || 'Net 30',
+    paymentMethod: headers?.payment_method || null,
+    paymentBankDetails: headers?.payment_bank_details || null,
     poNumbers: normalizePONumbers(headers?.po_numbers_cached?.join(',') || legacyInvoice?.poNumber),
     lineItems: result.invoice_lines?.map((line: any) => ({
       description: line.description || '',

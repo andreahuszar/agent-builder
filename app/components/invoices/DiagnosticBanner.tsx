@@ -106,7 +106,7 @@ export function DiagnosticBanner({
           ${poNumber === 'PO Missing' || poNumber === '"PO Missing"' 
             ? 'bg-red-50 text-red-700'
             : poNumber === 'N/A' || poNumber === '"N/A"'
-              ? 'bg-gray-50 text-gray-600'
+              ? 'bg-green-50 text-green-700'  // Green for legitimate Non-PO
               : poNumber 
                 ? 'bg-green-50 text-green-700' 
                 : 'bg-red-50 text-red-700'}
@@ -118,7 +118,7 @@ export function DiagnosticBanner({
             </>
           ) : poNumber === 'N/A' || poNumber === '"N/A"' ? (
             <>
-              <X className="h-3 w-3" />
+              <Check className="h-3 w-3" />  {/* Checkmark for legitimate Non-PO */}
               <span>Non-PO</span>
             </>
           ) : poNumber ? (

@@ -62,7 +62,7 @@
     /* Semantic Colors */
     --muted: 0 0% 97%;                /* Xelix gray-50 #f7f7f7 */
     --muted-foreground: 0 0% 35%;     /* Xelix gray-900 #585858 */
-    --accent: 316 82% 58%;            /* Xelix pink-500 #eb3fc7 */
+    --accent: 271 65% 36%;            /* Xelix purple-900 #5a1899 */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 89% 54%;         /* Xelix red-500 #fa3939 */
     --destructive-foreground: 0 0% 100%;
@@ -93,7 +93,7 @@
     /* Semantic Colors */
     --muted: 0 0% 20%;                /* Xelix gray-950 #333333 */
     --muted-foreground: 0 0% 67%;     /* Xelix gray-500 #aaaaaa */
-    --accent: 316 82% 58%;            /* Xelix pink-500 #eb3fc7 */
+    --accent: 271 65% 36%;            /* Xelix purple-900 #5a1899 */
     --accent-foreground: 0 0% 100%;
     --destructive: 0 89% 54%;         /* Xelix red-500 #fa3939 */
     --destructive-foreground: 0 0% 100%;

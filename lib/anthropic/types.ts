@@ -88,6 +88,7 @@ export interface InvoiceExtractionResult {
     vendor_name_snapshot: string;
     vendor_tax_id_snapshot?: string;
     vendor_address_snapshot?: string;
+    vendor_country_code?: string;
     invoice_number: string;
     invoice_date: string;
     due_date?: string;

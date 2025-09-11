@@ -137,12 +137,23 @@ export class AnthropicService {
             "type": "invoice|credit_memo|debit_memo",
             "vendor_name_snapshot": "string",
             "vendor_tax_id_snapshot": "string",
-            "vendor_address_snapshot": "string", 
+            "vendor_address_snapshot": "string",
+            "vendor_country_code": "ISO 3166-1 alpha-2 code (e.g., US, GB, DE, FR) - extract from vendor address",
             "invoice_number": "string",
             "invoice_date": "YYYY-MM-DD",
             "due_date": "YYYY-MM-DD",
             "currency": "GBP|EUR|USD|other ISO code",
             "payment_terms_text": "string",
+            "payment_method": "bank_transfer|check|credit_card|paypal|wire_transfer|cash|other|null",
+            "payment_bank_details": {
+              "bank_name": "string|null",
+              "account_name": "string|null",
+              "account_number": "string|null",
+              "sort_code": "string|null",
+              "iban": "string|null",
+              "swift_bic": "string|null",
+              "routing_number": "string|null"
+            },
             "po_numbers_cached": ["string", "..."],
             "subtotal": number,
             "tax_total": number,
@@ -206,6 +217,13 @@ export class AnthropicService {
         Normalization rules:
         - Dates: ISO 8601 format (YYYY-MM-DD)
         - Currency: Map symbols to ISO codes (£→GBP, €→EUR, $→USD, ¥→JPY)
+        - vendor_country_code: Extract ISO 3166-1 alpha-2 country code from vendor address:
+          * Look for country name in address (e.g., "United Kingdom" → GB, "Germany" → DE, "France" → FR)
+          * Common mappings: UK/United Kingdom/Great Britain → GB, USA/United States → US, Deutschland → DE
+          * Look for postal code patterns: UK postcodes (e.g., EC2N 4AY) → GB, US ZIP codes → US, German PLZ → DE
+          * Look for city/region clues: London → GB, Berlin/München → DE, Paris → FR, New York → US
+          * If currency is GBP → likely GB, EUR → likely EU country, USD → likely US
+          * Default to US only if completely uncertain
         - Numbers: Use '.' as decimal separator, no thousands separators
         - Keep negative signs for credit amounts
         - line_no starts at 1 and increments
@@ -219,6 +237,20 @@ export class AnthropicService {
         - IMPORTANT: Do NOT include shipping/freight as line items - extract them separately
         - total should equal: subtotal + tax_total + shipping_total + other_charges_total - discount_total
         - Omit fields if unclear rather than guessing
+        
+        Payment Method Extraction Rules:
+        - payment_method: Look for payment instructions, remittance details, or payment method sections
+        - Common indicators: "Bank Transfer", "Wire Transfer", "Check", "Credit Card", "PayPal", "ACH", "EFT", "BACS"
+        - payment_bank_details: Extract ALL bank details found on invoice:
+          * bank_name: Bank or financial institution name
+          * account_name: Account holder/beneficiary name
+          * account_number: Bank account number (preserve full number, do not mask)
+          * sort_code: UK sort code (format: XX-XX-XX or XXXXXX)
+          * iban: International Bank Account Number
+          * swift_bic: SWIFT/BIC code for international transfers
+          * routing_number: US routing/ABA number
+        - Set payment_method to "bank_transfer" if any bank details are present
+        - Set to null if no payment information found
         
         Accounting Classification Rules:
         - ledger: Determine based on invoice type and amount:

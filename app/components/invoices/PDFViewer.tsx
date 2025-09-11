@@ -23,39 +23,56 @@ export function PDFViewer({ url, zoom, rotation, onLoad, onError }: PDFViewerPro
   const [pageRendering, setPageRendering] = useState(false);
   const [pageNumPending, setPageNumPending] = useState<number | null>(null);
   const renderTaskRef = useRef<any>(null);
+  const isRenderingRef = useRef(false);
 
   // Load PDF document
   useEffect(() => {
+    let isMounted = true;
+    
     const loadPdf = async () => {
       try {
         const loadingTask = pdfjsLib.getDocument(url);
         const pdf = await loadingTask.promise;
+        
+        if (!isMounted) return;
+        
         setPdfDoc(pdf);
-        renderPage(1, pdf, zoom, rotation);
+        setPageNum(1);
         if (onLoad) onLoad();
       } catch (error) {
         console.error('Error loading PDF:', error);
-        if (onError) onError();
+        if (isMounted && onError) onError();
       }
     };
 
     loadPdf();
-  }, [url]);
+    
+    return () => {
+      isMounted = false;
+    };
+  }, [url, onLoad, onError]);
 
   // Render a specific page
   const renderPage = useCallback(async (num: number, pdf: any, currentZoom: number, currentRotation: number) => {
     if (!pdf || !canvasRef.current) return;
+    
+    // If already rendering, queue this request
+    if (isRenderingRef.current) {
+      setPageNumPending(num);
+      return;
+    }
 
     // Cancel any existing render task
     if (renderTaskRef.current) {
       try {
-        renderTaskRef.current.cancel();
+        await renderTaskRef.current.cancel();
       } catch (e) {
         // Ignore cancellation errors
       }
       renderTaskRef.current = null;
     }
 
+    isRenderingRef.current = true;
     setPageRendering(true);
 
     try {
@@ -98,33 +115,32 @@ export function PDFViewer({ url, zoom, rotation, onLoad, onError }: PDFViewerPro
       await renderTaskRef.current.promise;
       renderTaskRef.current = null;
 
+      isRenderingRef.current = false;
       setPageRendering(false);
 
       // If another page rendering was requested, render it
       if (pageNumPending !== null) {
-        renderPage(pageNumPending, pdf, currentZoom, currentRotation);
+        const pending = pageNumPending;
         setPageNumPending(null);
+        renderPage(pending, pdf, currentZoom, currentRotation);
       }
     } catch (error: any) {
       // Only log errors that aren't cancellations
       if (error.name !== 'RenderingCancelledException') {
         console.error('Error rendering page:', error);
       }
+      isRenderingRef.current = false;
       setPageRendering(false);
       renderTaskRef.current = null;
     }
   }, []);
 
-  // Re-render when zoom or rotation changes
+  // Re-render when zoom, rotation, or pageNum changes
   useEffect(() => {
-    if (pdfDoc) {
-      if (pageRendering) {
-        setPageNumPending(pageNum);
-      } else {
-        renderPage(pageNum, pdfDoc, zoom, rotation);
-      }
+    if (pdfDoc && pageNum) {
+      renderPage(pageNum, pdfDoc, zoom, rotation);
     }
-  }, [zoom, rotation, pdfDoc, pageNum]);
+  }, [zoom, rotation, pdfDoc, pageNum, renderPage]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -136,7 +152,9 @@ export function PDFViewer({ url, zoom, rotation, onLoad, onError }: PDFViewerPro
         } catch (e) {
           // Ignore cancellation errors
         }
+        renderTaskRef.current = null;
       }
+      isRenderingRef.current = false;
     };
   }, []);
 

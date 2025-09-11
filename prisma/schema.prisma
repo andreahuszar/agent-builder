@@ -290,6 +290,10 @@ model invoice_headers {
   ai_classification_reasoning                                                  String?
   extraction_field_confidences                                                 Json?                    @default("{}")
   is_manually_edited                                                           Json?                    @default("{}")
+  payment_method                                                               String?                  @db.VarChar(50)
+  payment_bank_details                                                         Json?
+  extracted_total                                                              Decimal?                 @db.Decimal(18, 4)
+  total_discrepancy                                                            Decimal?                 @db.Decimal(18, 4)
   users_invoice_headers_assigned_to_user_idTousers                             User?                    @relation("invoice_headers_assigned_to_user_idTousers", fields: [assigned_to_user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   org_entities                                                                 org_entities             @relation(fields: [bill_to_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   users_invoice_headers_created_byTousers                                      User?                    @relation("invoice_headers_created_byTousers", fields: [created_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -323,6 +327,7 @@ model invoice_headers {
   @@index([gr_numbers_cached], map: "idx_invoice_headers_gr_numbers_cached", type: Gin)
   @@index([po_numbers_cached], map: "idx_invoice_headers_po_numbers", type: Gin)
   @@index([vendor_id, status], map: "idx_invoice_vendor_status")
+  @@index([payment_method], map: "idx_invoice_headers_payment_method")
 }
 
 model invoice_line_distributions {
@@ -727,6 +732,10 @@ model vendor_bank_accounts {
   is_default                                                    Boolean?          @default(false)
   created_at                                                    DateTime?         @default(now()) @db.Timestamptz(6)
   updated_at                                                    DateTime?         @default(now()) @db.Timestamptz(6)
+  account_name                                                  String?           @db.VarChar(255)
+  account_number                                                String?           @db.VarChar(100)
+  sort_code                                                     String?           @db.VarChar(20)
+  routing_number                                                String?           @db.VarChar(20)
   invoice_headers                                               invoice_headers[]
   vendors_vendor_bank_accounts_vendor_idTovendors               vendors           @relation("vendor_bank_accounts_vendor_idTovendors", fields: [vendor_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
   vendors_vendors_default_bank_account_idTovendor_bank_accounts vendors[]         @relation("vendors_default_bank_account_idTovendor_bank_accounts")
@@ -751,6 +760,7 @@ model vendors {
   created_at                                                                 DateTime?              @default(now()) @db.Timestamptz(6)
   updated_at                                                                 DateTime?              @default(now()) @db.Timestamptz(6)
   is_verified                                                                Boolean?               @default(false)
+  preferred_payment_method                                                   String?                @db.VarChar(50)
   approval_policies                                                          approval_policies[]
   invoice_headers                                                            invoice_headers[]
   po_headers                                                                 po_headers[]
@@ -765,6 +775,7 @@ model vendors {
   @@index([active], map: "idx_vendors_active")
   @@index([name], map: "idx_vendors_name")
   @@index([requires_po], map: "idx_vendors_requires_po")
+  @@index([preferred_payment_method], map: "idx_vendors_preferred_payment_method")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.

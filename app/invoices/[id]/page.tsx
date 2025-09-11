@@ -127,6 +127,9 @@ async function getInvoiceDataPrisma(id: string) {
       ai_classification_reasoning: invoiceHeader.ai_classification_reasoning,
       extraction_field_confidences: invoiceHeader.extraction_field_confidences as Record<string, number> || {},
       is_manually_edited: invoiceHeader.is_manually_edited as Record<string, boolean> || {},
+      // Payment information
+      payment_method: invoiceHeader.payment_method,
+      payment_bank_details: invoiceHeader.payment_bank_details as any || null,
       // Include lines in the invoice object
       lines: lines,
       poTotal: poTotal,

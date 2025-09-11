@@ -47,7 +47,6 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Vendors',
     icon: Building,
     href: '/vendors',
-    isDisabled: true,
   },
   {
     id: 'reports',
@@ -120,10 +119,7 @@ export const MODULE_PILLS: Record<string, TabItem[]> = {
     { id: 'annual', label: 'Annual', href: '/statements/annual' },
   ],
   'vendors': [
-    { id: 'all', label: 'All Vendors', href: '/vendors' },
-    { id: 'active', label: 'Active', href: '/vendors/active' },
-    { id: 'pending', label: 'Pending Approval', href: '/vendors/pending' },
-    { id: 'archived', label: 'Archived', href: '/vendors/archived' },
+    { id: 'vendors', label: 'Vendors', href: '/vendors' },
   ],
   'reports': [
     { id: 'overview', label: 'Overview', href: '/reports' },

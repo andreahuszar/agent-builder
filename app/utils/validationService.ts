@@ -137,16 +137,20 @@ export class InvoiceValidator {
 
   // Amount validations
   private validateAmounts() {
-    const { total, subtotal, tax_total } = this.invoice;
+    const { total, subtotal, tax_total, shipping_total, other_charges_total, discount_total } = this.invoice;
     
     if (total !== undefined && subtotal !== undefined && tax_total !== undefined) {
-      const expectedTotal = subtotal + tax_total;
+      // Calculate expected total including ALL components (shipping, other charges, discounts)
+      const expectedTotal = subtotal + tax_total + 
+                          (shipping_total || 0) + 
+                          (other_charges_total || 0) - 
+                          (discount_total || 0);
       const variance = Math.abs(total - expectedTotal);
       
       if (variance > 0.01) { // Allow for small rounding differences
         this.errors.push({
           field: 'total',
-          message: 'Total amount does not match subtotal + tax',
+          message: `Total amount does not match calculated total (subtotal + tax + shipping + other - discount)`,
           severity: 'error',
           category: 'financial',
           value: total,

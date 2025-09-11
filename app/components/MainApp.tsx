@@ -8,7 +8,7 @@ import { ApprovalsClient } from './approvals/ApprovalsClient';
 import { EscalationsClient } from './escalations/EscalationsClient';
 import { GoodsReceiptsClient } from './goods-receipts/GoodsReceiptsClient';
 import DashboardClient from './dashboard/DashboardClient';
-import { Plus, Search, SlidersHorizontal } from 'lucide-react';
+import { Plus, Search, Filter } from 'lucide-react';
 
 interface InvoiceProcessingContentProps {
   currentView?: string;
@@ -89,9 +89,9 @@ function InvoiceProcessingContent({ currentView = 'dashboard' }: InvoiceProcessi
                       />
                     </div>
                     <button
-                      className="inline-flex items-center px-2 py-1.5 bg-white border border-purple-900 text-purple-900 text-sm rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                      className="inline-flex items-center px-2 py-1.5 bg-white border border-purple-600 text-purple-600 text-sm rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
                     >
-                      <SlidersHorizontal className="h-3.5 w-3.5 mr-1.5" />
+                      <Filter className="h-3.5 w-3.5 mr-1.5" />
                       Columns & Filters
                     </button>
                   </div>

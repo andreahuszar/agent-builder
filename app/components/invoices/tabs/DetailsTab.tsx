@@ -458,6 +458,30 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                   <p className="text-sm font-bold text-gray-950">
                     {formatCurrency(invoiceData.total || calculatedTotal, invoiceData.currency)}
                   </p>
+                  {/* Show discrepancy warning if extracted total differs from current total */}
+                  {invoiceData.total_discrepancy && Number(invoiceData.total_discrepancy) > 1 && (
+                    <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
+                      <div className="flex items-start gap-2">
+                        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                        <div className="text-xs">
+                          <p className="font-medium text-amber-800">
+                            Total Discrepancy Detected
+                          </p>
+                          <p className="text-amber-700 mt-1">
+                            The AI extracted total ({formatCurrency(invoiceData.extracted_total || 0, invoiceData.currency)}) 
+                            differs from the calculated total. This may indicate missing charges (freight, fees) in the extraction.
+                          </p>
+                          <p className="text-amber-700 mt-1">
+                            Components: Subtotal ({formatCurrency(invoiceData.subtotal || 0, invoiceData.currency)})
+                            {invoiceData.tax_total > 0 && ` + Tax (${formatCurrency(invoiceData.tax_total, invoiceData.currency)})`}
+                            {invoiceData.shipping_total > 0 && ` + Shipping (${formatCurrency(invoiceData.shipping_total, invoiceData.currency)})`}
+                            {invoiceData.other_charges_total > 0 && ` + Other (${formatCurrency(invoiceData.other_charges_total, invoiceData.currency)})`}
+                            {invoiceData.discount_total > 0 && ` - Discount (${formatCurrency(invoiceData.discount_total, invoiceData.currency)})`}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div></div>
                 <div></div>
@@ -482,8 +506,8 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                   <ValidationIndicator validations={[...errors, ...warnings]} field="payment_method" />
                 </label>
                 <p className="text-sm font-medium text-gray-950">
-                  {invoiceData.bank_name && invoiceData.account_number_masked 
-                    ? `${invoiceData.bank_name} ${invoiceData.account_number_masked}`
+                  {invoiceData.payment_method 
+                    ? invoiceData.payment_method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
                     : 'Not specified'
                   }
                 </p>
@@ -536,6 +560,55 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                       ? invoiceData.vendor_address_snapshot 
                       : invoiceData.vendor_address_snapshot.street || invoiceData.vendor_address_snapshot.address || JSON.stringify(invoiceData.vendor_address_snapshot)}
                   </p>
+                </div>
+              )}
+              {invoiceData.payment_bank_details && Object.keys(invoiceData.payment_bank_details).some(key => invoiceData.payment_bank_details[key]) && (
+                <div className="md:col-span-2 lg:col-span-3 mt-3">
+                  <label className="flex items-center text-xs font-medium text-gray-700 mb-2 min-h-[20px]">Bank Details</label>
+                  <div className="bg-gray-50 rounded-md p-3 space-y-2">
+                    {invoiceData.payment_bank_details.bank_name && (
+                      <div className="flex gap-2">
+                        <span className="text-xs font-medium text-gray-600 min-w-[100px]">Bank Name:</span>
+                        <span className="text-xs font-medium text-gray-950">{invoiceData.payment_bank_details.bank_name}</span>
+                      </div>
+                    )}
+                    {invoiceData.payment_bank_details.account_name && (
+                      <div className="flex gap-2">
+                        <span className="text-xs font-medium text-gray-600 min-w-[100px]">Account Name:</span>
+                        <span className="text-xs font-medium text-gray-950">{invoiceData.payment_bank_details.account_name}</span>
+                      </div>
+                    )}
+                    {invoiceData.payment_bank_details.account_number && (
+                      <div className="flex gap-2">
+                        <span className="text-xs font-medium text-gray-600 min-w-[100px]">Account No:</span>
+                        <span className="text-xs font-medium text-gray-950">{invoiceData.payment_bank_details.account_number}</span>
+                      </div>
+                    )}
+                    {invoiceData.payment_bank_details.sort_code && (
+                      <div className="flex gap-2">
+                        <span className="text-xs font-medium text-gray-600 min-w-[100px]">Sort Code:</span>
+                        <span className="text-xs font-medium text-gray-950">{invoiceData.payment_bank_details.sort_code}</span>
+                      </div>
+                    )}
+                    {invoiceData.payment_bank_details.iban && (
+                      <div className="flex gap-2">
+                        <span className="text-xs font-medium text-gray-600 min-w-[100px]">IBAN:</span>
+                        <span className="text-xs font-medium text-gray-950">{invoiceData.payment_bank_details.iban}</span>
+                      </div>
+                    )}
+                    {invoiceData.payment_bank_details.swift_bic && (
+                      <div className="flex gap-2">
+                        <span className="text-xs font-medium text-gray-600 min-w-[100px]">SWIFT/BIC:</span>
+                        <span className="text-xs font-medium text-gray-950">{invoiceData.payment_bank_details.swift_bic}</span>
+                      </div>
+                    )}
+                    {invoiceData.payment_bank_details.routing_number && (
+                      <div className="flex gap-2">
+                        <span className="text-xs font-medium text-gray-600 min-w-[100px]">Routing No:</span>
+                        <span className="text-xs font-medium text-gray-950">{invoiceData.payment_bank_details.routing_number}</span>
+                      </div>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

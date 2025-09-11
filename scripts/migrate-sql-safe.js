@@ -47,7 +47,11 @@ const migrations = [
   '126_add_gr_numbers_cached.sql',
   '200_add_tax_rate_percent.sql',
   '201_add_accounting_classification.sql',
-  '100_add_field_confidence_tracking.sql'
+  '100_add_field_confidence_tracking.sql',
+  '202_add_payment_method_fields.sql',
+  '203_add_vendor_payment_method.sql',
+  '120_add_total_tracking_fields.sql',
+  '130_fix_invoice_totals_trigger.sql'
 ];
 
 /**
