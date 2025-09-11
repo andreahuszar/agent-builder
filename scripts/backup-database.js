@@ -95,28 +95,49 @@ function createBackupDir(timestamp, commit) {
   return backupPath;
 }
 
-// Execute pg_dump command
+// Execute pg_dump command using Docker
 function pgDump(args, outputFile, description) {
-  const env = {
-    PGPASSWORD: DB_CONFIG.password,
-    PATH: process.env.PATH
-  };
+  // Check if we should use Docker or local pg_dump
+  const useDocker = process.env.USE_DOCKER !== 'false';
+  const containerName = process.env.DB_CONTAINER || 'xelix_invoice_db';
   
-  const command = [
-    'pg_dump',
-    `-h ${DB_CONFIG.host}`,
-    `-p ${DB_CONFIG.port}`,
-    `-U ${DB_CONFIG.user}`,
-    `-d ${DB_CONFIG.database}`,
-    '--no-owner',
-    '--no-privileges',
-    '--no-comments',
-    args
-  ].join(' ');
+  let command;
+  if (useDocker) {
+    // Use Docker exec to run pg_dump inside the container
+    command = [
+      'docker exec',
+      containerName,
+      'pg_dump',
+      `-U ${DB_CONFIG.user}`,
+      `-d ${DB_CONFIG.database}`,
+      '--no-owner',
+      '--no-privileges',
+      '--no-comments',
+      args
+    ].join(' ');
+  } else {
+    // Use local pg_dump (fallback)
+    const env = { PGPASSWORD: DB_CONFIG.password };
+    command = [
+      'pg_dump',
+      `-h ${DB_CONFIG.host}`,
+      `-p ${DB_CONFIG.port}`,
+      `-U ${DB_CONFIG.user}`,
+      `-d ${DB_CONFIG.database}`,
+      '--no-owner',
+      '--no-privileges',
+      '--no-comments',
+      args
+    ].join(' ');
+  }
   
   try {
     console.log(`⏳ Creating ${description}...`);
-    execSync(`${command} > "${outputFile}"`, { env });
+    if (useDocker) {
+      execSync(`${command} > "${outputFile}"`);
+    } else {
+      execSync(`${command} > "${outputFile}"`, { env: { PGPASSWORD: DB_CONFIG.password } });
+    }
     const size = (fs.statSync(outputFile).size / 1024).toFixed(1);
     console.log(`✅ ${description} created (${size} KB)`);
     return true;
@@ -128,26 +149,34 @@ function pgDump(args, outputFile, description) {
 
 // Get database statistics
 function getDatabaseStats() {
-  const env = { PGPASSWORD: DB_CONFIG.password };
-  const psqlBase = `psql -h ${DB_CONFIG.host} -p ${DB_CONFIG.port} -U ${DB_CONFIG.user} -d ${DB_CONFIG.database} -t -c`;
+  const useDocker = process.env.USE_DOCKER !== 'false';
+  const containerName = process.env.DB_CONTAINER || 'xelix_invoice_db';
+  
+  let psqlBase;
+  if (useDocker) {
+    psqlBase = `docker exec ${containerName} psql -U ${DB_CONFIG.user} -d ${DB_CONFIG.database} -t -c`;
+  } else {
+    const env = { PGPASSWORD: DB_CONFIG.password };
+    psqlBase = `psql -h ${DB_CONFIG.host} -p ${DB_CONFIG.port} -U ${DB_CONFIG.user} -d ${DB_CONFIG.database} -t -c`;
+  }
   
   try {
     // Count tables
     const tableCount = execSync(
       `${psqlBase} "SELECT COUNT(*) FROM information_schema.tables WHERE table_schema = 'public' AND table_type = 'BASE TABLE';"`,
-      { env }
+      useDocker ? {} : { env: { PGPASSWORD: DB_CONFIG.password } }
     ).toString().trim();
     
     // Count total rows (approximate)
     const rowCount = execSync(
       `${psqlBase} "SELECT SUM(n_live_tup) FROM pg_stat_user_tables;"`,
-      { env }
+      useDocker ? {} : { env: { PGPASSWORD: DB_CONFIG.password } }
     ).toString().trim();
     
     // Database size
     const dbSize = execSync(
       `${psqlBase} "SELECT pg_size_pretty(pg_database_size('${DB_CONFIG.database}'));"`,
-      { env }
+      useDocker ? {} : { env: { PGPASSWORD: DB_CONFIG.password } }
     ).toString().trim();
     
     return {
@@ -188,13 +217,21 @@ function createMetadata(backupPath, timestamp, commit) {
 
 // Get PostgreSQL version
 function getPostgresVersion() {
+  const useDocker = process.env.USE_DOCKER !== 'false';
+  const containerName = process.env.DB_CONTAINER || 'xelix_invoice_db';
+  
   try {
-    const env = { PGPASSWORD: DB_CONFIG.password };
-    const version = execSync(
-      `psql -h ${DB_CONFIG.host} -p ${DB_CONFIG.port} -U ${DB_CONFIG.user} -d ${DB_CONFIG.database} -t -c "SELECT version();"`,
-      { env }
-    ).toString().trim();
-    return version.split(' ')[1];
+    let command;
+    if (useDocker) {
+      command = `docker exec ${containerName} psql -U ${DB_CONFIG.user} -d ${DB_CONFIG.database} -t -c "SELECT version();"`;
+      const version = execSync(command).toString().trim();
+      return version.split(' ')[1];
+    } else {
+      const env = { PGPASSWORD: DB_CONFIG.password };
+      command = `psql -h ${DB_CONFIG.host} -p ${DB_CONFIG.port} -U ${DB_CONFIG.user} -d ${DB_CONFIG.database} -t -c "SELECT version();"`;
+      const version = execSync(command, { env }).toString().trim();
+      return version.split(' ')[1];
+    }
   } catch (error) {
     return 'unknown';
   }
