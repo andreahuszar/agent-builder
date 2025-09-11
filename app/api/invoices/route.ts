@@ -52,6 +52,7 @@ export async function GET(request: NextRequest) {
         status: invoice.status,
         match_status: invoice.match_status || 'not_matched',
         vendor_requires_po: invoice.vendors?.requires_po ?? null,
+        vendor_is_verified: invoice.vendors?.is_verified || false,
         vendor_approval_status: invoice.vendors?.active === false ? 'pending' : 'approved',
         po_numbers_cached: invoice.po_numbers_cached || [],
         gr_numbers: grNumbers

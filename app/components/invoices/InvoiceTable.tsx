@@ -20,6 +20,8 @@ interface Invoice {
   total: number;
   status: string;
   match_status: string;
+  vendor_requires_po?: boolean | null;
+  vendor_is_verified?: boolean;
   assigned_to_user_id?: string;
   assigned_to_name?: string;
   assigned_to_email?: string;
@@ -240,23 +242,44 @@ export function InvoiceTable({ invoices, onDelete, onPOClick }: InvoiceTableProp
     }
   };
 
-  const getMatchStatusBadge = (matchStatus: string) => {
-    const matchStatusColors = {
-      'not_matched': 'bg-gray-100 text-gray-800',
-      'matched': 'bg-green-100 text-green-800',
-      'within_tolerance': 'bg-blue-100 text-blue-800',
-      'exception': 'bg-red-100 text-red-800',
-      'non_po': 'bg-purple-100 text-purple-800',
-    };
+  const getMatchStatusBadge = (invoice: Invoice) => {
+    // Determine the actual display status based on vendor configuration
+    const hasPO = invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0;
+    const isVerifiedNonPOVendor = invoice.vendor_requires_po === false && invoice.vendor_is_verified === true;
     
-    const colorClass = matchStatusColors[matchStatus as keyof typeof matchStatusColors] || 'bg-gray-100 text-gray-800';
+    let displayStatus: string;
+    let colorClass: string;
+    let displayText: string;
     
-    // Special case for Non-PO display
-    const displayText = matchStatus === 'non_po' 
-      ? 'Non-PO'
-      : matchStatus.split('_').map(word => 
-          word.charAt(0).toUpperCase() + word.slice(1)
-        ).join(' ');
+    if (!hasPO) {
+      if (isVerifiedNonPOVendor) {
+        // Legitimate Non-PO vendor
+        displayStatus = 'non_po';
+        displayText = 'Non-PO';
+        colorClass = 'bg-purple-100 text-purple-800';
+      } else {
+        // Invoice missing PO - show as exception
+        displayStatus = 'exception';
+        displayText = 'Exception';
+        colorClass = 'bg-red-100 text-red-800';
+      }
+    } else {
+      // Has PO, use the match_status from database
+      displayStatus = invoice.match_status;
+      const matchStatusColors = {
+        'not_matched': 'bg-gray-100 text-gray-800',
+        'matched': 'bg-green-100 text-green-800',
+        'within_tolerance': 'bg-blue-100 text-blue-800',
+        'exception': 'bg-red-100 text-red-800',
+        'non_po': 'bg-purple-100 text-purple-800',
+      };
+      colorClass = matchStatusColors[displayStatus as keyof typeof matchStatusColors] || 'bg-gray-100 text-gray-800';
+      displayText = displayStatus === 'non_po' 
+        ? 'Non-PO'
+        : displayStatus.split('_').map(word => 
+            word.charAt(0).toUpperCase() + word.slice(1)
+          ).join(' ');
+    }
     
     return (
       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
@@ -474,7 +497,7 @@ export function InvoiceTable({ invoices, onDelete, onPOClick }: InvoiceTableProp
                   {invoice.currency}
                 </td>
                 <td className="hidden lg:table-cell whitespace-nowrap px-2 lg:px-3 py-2.5 text-sm">
-                  {getMatchStatusBadge(invoice.match_status)}
+                  {getMatchStatusBadge(invoice)}
                 </td>
                 <td className="hidden lg:table-cell whitespace-nowrap px-2 lg:px-3 py-2.5 text-sm">
                   {getPONumberDisplay(invoice.po_numbers_cached)}

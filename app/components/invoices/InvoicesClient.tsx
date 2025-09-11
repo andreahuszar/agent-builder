@@ -19,6 +19,8 @@ interface Invoice {
   total: number;
   status?: string;
   match_status?: string;
+  vendor_requires_po?: boolean | null;
+  vendor_is_verified?: boolean;
   approval_status?: string;
   po_numbers_cached?: string[];
   gr_numbers?: string[];
