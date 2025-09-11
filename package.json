@@ -19,6 +19,8 @@
     "db:migrate:deploy": "prisma migrate deploy",
     "db:studio": "prisma studio",
     "db:seed": "tsx prisma/seed.ts",
+    "db:backup": "node scripts/backup-database.js",
+    "db:restore": "node scripts/restore-database.js",
     "db:export": "node scripts/export-local-data.js",
     "db:production:import": "node scripts/import-to-production.js",
     "db:production:seed": "node scripts/seed-production-from-local.js",

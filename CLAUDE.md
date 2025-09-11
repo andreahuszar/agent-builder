@@ -50,6 +50,93 @@ npm run db:studio
 npm run build
 ```
 
+## Database Backup & Restore 🔒
+
+### Creating a Database Backup
+**IMPORTANT**: Always create a backup before making risky database changes or when you have carefully prepared test data.
+
+```bash
+# Create a timestamped backup with current git commit reference
+npm run db:backup
+
+# Or with a description
+node scripts/backup-database.js "Description of current state"
+```
+
+This will:
+1. **Auto-commit** any uncommitted code changes (to align code with database)
+2. **Create backup** in `/dumps/backups/DD-MM-YY-HH-MIN-{commit_hash}/`
+3. **Generate three formats**:
+   - `schema.sql` - Database structure only
+   - `data.sql` - Data with INSERT statements
+   - `full.dump` - PostgreSQL custom format (most efficient)
+4. **Save metadata** including statistics and git commit reference
+5. **Create restore script** for easy restoration
+6. **Update symlink** at `/dumps/latest` to newest backup
+
+### Restoring from a Backup
+**WARNING**: This will completely replace your current database!
+
+```bash
+# Interactive restore - shows list of available backups
+npm run db:restore
+```
+
+This will:
+1. **List all backups** with dates, commits, and descriptions
+2. **Let you select** which backup to restore
+3. **Confirm before proceeding** (requires typing "yes")
+4. **Drop and recreate** the database
+5. **Restore all data** from the selected backup
+6. **Sync Prisma schema** automatically
+7. **Optionally checkout** the corresponding git commit
+
+### Manual Backup Commands
+If you need more control:
+
+```bash
+# Schema only
+pg_dump -h localhost -p 5433 -U postgres -d xelix_invoice_dev --schema-only > schema.sql
+
+# Data only
+pg_dump -h localhost -p 5433 -U postgres -d xelix_invoice_dev --data-only --inserts > data.sql
+
+# Full backup (custom format)
+pg_dump -h localhost -p 5433 -U postgres -d xelix_invoice_dev --format=custom > backup.dump
+
+# Restore from custom format
+pg_restore -h localhost -p 5433 -U postgres -d xelix_invoice_dev backup.dump
+```
+
+### Backup Location Structure
+```
+/dumps/
+  ├── backups/
+  │   ├── 09-01-25-17-30-abc123/  # Format: DD-MM-YY-HH-MIN-{git_commit}
+  │   │   ├── schema.sql           # Database structure
+  │   │   ├── data.sql             # Data as INSERT statements
+  │   │   ├── full.dump            # Complete backup (custom format)
+  │   │   ├── metadata.json        # Backup information
+  │   │   └── restore.sh           # Restoration script
+  │   └── [other backups...]
+  └── latest -> backups/09-01-25-17-30-abc123/  # Symlink to most recent
+```
+
+### Best Practices 📋
+1. **Before risky operations**: Always backup before schema changes or data migrations
+2. **Preserve test scenarios**: Backup when you have good test data set up
+3. **Meaningful descriptions**: Add descriptions when creating backups
+4. **Regular cleanup**: Delete old backups periodically to save space
+5. **Test restores**: Occasionally verify backups work by restoring to a test database
+
+### When to Use This
+- ✅ Before running database migrations
+- ✅ After setting up complex test data
+- ✅ Before experimenting with schema changes
+- ✅ When you have a "golden" state you want to preserve
+- ✅ Before letting AI assistants modify the database
+- ✅ At the end of each work session with important changes
+
 ## Database Migrations
 - **System**: Manual SQL migrations with tracking (no auto-diffing)
 - **Location**: `/migrations/*.sql` files executed in order
