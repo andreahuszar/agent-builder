@@ -90,7 +90,7 @@ export function DiagnosticBanner({
   const ReceiptIcon = receiptStatus.icon;
 
   return (
-    <div className={`flex items-center justify-between px-6 py-1.5 bg-white border-b border-gray-200 ${className}`}>
+    <div className={`flex items-center px-6 py-1.5 bg-white border-b border-gray-200 ${className}`}>
       <div className="flex items-center gap-3">
         {/* Total Amount */}
         <div className="flex items-center gap-1.5">
@@ -177,14 +177,15 @@ export function DiagnosticBanner({
             <span className="capitalize">{matchStatus.replace('_', ' ')}</span>
           </div>
         )}
-      </div>
 
-      {/* Helpdesk Ticket */}
-      {helpdeskTicketRef && (
-        <div className="flex items-center">
-          <HelpdeskPill ticketRef={helpdeskTicketRef} />
-        </div>
-      )}
+        {/* Vertical Divider and Helpdesk Ticket */}
+        {helpdeskTicketRef && (
+          <>
+            <div className="h-5 border-l border-gray-300"></div>
+            <HelpdeskPill ticketRef={helpdeskTicketRef} className="!px-2 !py-0.5" />
+          </>
+        )}
+      </div>
     </div>
   );
 }
