@@ -65,6 +65,26 @@ async function getInvoiceDataPrisma(id: string) {
       }
     }
     
+    // Fetch attachments for this invoice
+    const attachments = await prisma.attachments.findMany({
+      where: {
+        doc_type: 'INV',
+        doc_id: id
+      },
+      select: {
+        id: true,
+        filename: true,
+        media_type: true,
+        storage_url: true,
+        source: true,
+        sha256: true,
+        created_at: true
+      },
+      orderBy: {
+        created_at: 'desc'
+      }
+    });
+    
     // Combine everything into a single invoice object
     const invoice = {
       id: invoiceHeader.id,
@@ -109,7 +129,17 @@ async function getInvoiceDataPrisma(id: string) {
       is_manually_edited: invoiceHeader.is_manually_edited as Record<string, boolean> || {},
       // Include lines in the invoice object
       lines: lines,
-      poTotal: poTotal
+      poTotal: poTotal,
+      // Include attachments
+      attachments: attachments.map(att => ({
+        id: att.id,
+        filename: att.filename,
+        media_type: att.media_type,
+        storage_url: att.storage_url,
+        source: att.source,
+        sha256: att.sha256,
+        created_at: att.created_at?.toISOString() || ''
+      }))
     };
     
     return invoice;

@@ -57,27 +57,14 @@ export async function GET(
       );
     }
 
-    // Convert PDF to PNG if needed, otherwise serve the image directly
-    let imageBuffer: Buffer;
+    // Serve the file directly based on its type
     let contentType: string;
 
     if (attachment.media_type === 'application/pdf') {
-      try {
-        // Dynamic import to avoid build-time issues
-        const { convertPdfToPng } = await import('@/lib/pdf-utils');
-        const conversion = await convertPdfToPng(fileBuffer);
-        imageBuffer = Buffer.from(conversion.base64, 'base64');
-        contentType = 'image/png';
-      } catch (error) {
-        console.error('PDF conversion error:', error);
-        return NextResponse.json(
-          { error: 'Failed to convert PDF for preview' },
-          { status: 500 }
-        );
-      }
+      // Serve PDF directly
+      contentType = 'application/pdf';
     } else if (attachment.media_type.startsWith('image/')) {
       // Serve image directly
-      imageBuffer = fileBuffer;
       contentType = attachment.media_type;
     } else {
       return NextResponse.json(
@@ -86,13 +73,18 @@ export async function GET(
       );
     }
 
-    // Set appropriate headers for image preview
+    // Set appropriate headers
     const headers = new Headers();
     headers.set('Content-Type', contentType);
-    headers.set('Content-Length', imageBuffer.length.toString());
+    headers.set('Content-Length', fileBuffer.length.toString());
     headers.set('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
+    
+    // For PDFs, allow inline display
+    if (contentType === 'application/pdf') {
+      headers.set('Content-Disposition', 'inline');
+    }
 
-    return new Response(new Uint8Array(imageBuffer), {
+    return new Response(fileBuffer, {
       status: 200,
       headers,
     });

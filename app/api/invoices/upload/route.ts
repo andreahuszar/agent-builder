@@ -74,20 +74,25 @@ export async function POST(request: NextRequest) {
     }
 
     // Create attachments record using Prisma
-    const attachment = await prisma.attachments.create({
-      data: {
-        doc_type: 'INV',
-        doc_id: sourceFile.id,
-        filename: file.name,
-        media_type: file.type,
-        storage_url: filepath,
-        source: 'upload',
-        sha256: sha256
-      }
-    });
-
-    if (!attachment) {
-      throw new Error('Failed to create attachment record');
+    let attachment;
+    try {
+      attachment = await prisma.attachments.create({
+        data: {
+          doc_type: 'INV',
+          doc_id: sourceFile.id,
+          filename: file.name,
+          media_type: file.type,
+          storage_url: filepath,
+          source: 'upload',
+          sha256: sha256
+        }
+      });
+      console.log('Created attachment:', attachment.id);
+    } catch (attachmentError: any) {
+      console.error('Failed to create attachment record:', attachmentError);
+      // Don't fail the whole upload if attachment creation fails
+      // The source file was created successfully
+      console.warn('Continuing without attachment record');
     }
 
     return NextResponse.json({

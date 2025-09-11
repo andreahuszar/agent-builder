@@ -1,8 +1,22 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { ZoomIn, ZoomOut, RotateCw, Maximize2, Download, FileText } from 'lucide-react';
 import { FakeInvoiceDocument } from './FakeInvoiceDocument';
+
+// Dynamically import PDFViewer to avoid SSR issues
+const PDFViewer = dynamic(() => import('./PDFViewer').then(mod => mod.PDFViewer), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900 mx-auto mb-2"></div>
+        <p className="text-sm text-gray-950">Loading PDF viewer...</p>
+      </div>
+    </div>
+  ),
+});
 
 interface DocumentPreviewProps {
   invoiceId: string;
@@ -11,12 +25,13 @@ interface DocumentPreviewProps {
 }
 
 export function DocumentPreview({ invoiceId, hasAttachment, invoiceData }: DocumentPreviewProps) {
-  // Start with 50% zoom for fake documents, 100% for real attachments
-  const [zoom, setZoom] = useState(hasAttachment ? 1 : 0.5);
+  // Start with 75% zoom for all documents
+  const [zoom, setZoom] = useState(0.75);
   const [rotation, setRotation] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [imageError, setImageError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
+  const [isPdf, setIsPdf] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
@@ -66,6 +81,13 @@ export function DocumentPreview({ invoiceId, hasAttachment, invoiceData }: Docum
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
     };
   }, []);
+
+  // Check if attachment is PDF
+  useEffect(() => {
+    if (hasAttachment && invoiceData?.attachments?.[0]?.media_type === 'application/pdf') {
+      setIsPdf(true);
+    }
+  }, [hasAttachment, invoiceData]);
 
   // Always show the document viewer with toolbar
   return (
@@ -155,7 +177,28 @@ export function DocumentPreview({ invoiceId, hasAttachment, invoiceData }: Docum
                   </button>
                 </div>
               </div>
+            ) : isPdf ? (
+              // Display PDF using PDFViewer with canvas
+              <div 
+                className="flex-1 overflow-auto"
+                style={{
+                  paddingTop: '20px',
+                  paddingBottom: '20px',
+                }}
+              >
+                <PDFViewer
+                  url={`/api/invoices/${invoiceId}/preview`}
+                  zoom={zoom}
+                  rotation={rotation}
+                  onLoad={() => setIsLoading(false)}
+                  onError={() => {
+                    setIsLoading(false);
+                    setImageError(true);
+                  }}
+                />
+              </div>
             ) : (
+              // Display image
               <div 
                 className="flex items-start justify-center min-h-full"
                 style={{

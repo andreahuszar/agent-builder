@@ -114,7 +114,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           {/* Document Preview */}
           <DocumentPreview 
             invoiceId={invoiceId} 
-            hasAttachment={!!invoice.attachment}
+            hasAttachment={invoice.attachments && invoice.attachments.length > 0}
             invoiceData={invoice}
           />
           
@@ -123,7 +123,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
             invoiceId={invoiceId}
             invoiceData={invoice}
             matchResults={matchResults}
-            attachments={invoice.attachment ? [invoice.attachment] : []}
+            attachments={invoice.attachments || []}
             selectedLineId={selectedLineId}
             onLineSelect={selectInvoiceLine}
             onDataUpdate={handleInvoiceUpdate}
@@ -143,7 +143,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           {/* Document Preview */}
           <DocumentPreview 
             invoiceId={invoiceId} 
-            hasAttachment={!!invoice.attachment}
+            hasAttachment={invoice.attachments && invoice.attachments.length > 0}
             invoiceData={invoice}
           />
           
@@ -164,7 +164,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               invoiceId={invoiceId}
               invoiceData={invoice}
               matchResults={matchResults}
-              attachments={invoice.attachment ? [invoice.attachment] : []}
+              attachments={invoice.attachments || []}
               selectedLineId={selectedLineId}
               onLineSelect={selectInvoiceLine}
               onDataUpdate={handleInvoiceUpdate}
@@ -187,7 +187,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           <div className="h-full w-full flex flex-col">
             <DocumentPreview 
               invoiceId={invoiceId} 
-              hasAttachment={!!invoice.attachment}
+              hasAttachment={invoice.attachments && invoice.attachments.length > 0}
               invoiceData={invoice}
             />
           </div>
@@ -233,7 +233,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               invoiceId={invoiceId}
               invoiceData={invoice}
               matchResults={matchResults}
-              attachments={invoice.attachment ? [invoice.attachment] : []}
+              attachments={invoice.attachments || []}
               selectedLineId={selectedLineId}
               onLineSelect={selectInvoiceLine}
               onDataUpdate={handleInvoiceUpdate}

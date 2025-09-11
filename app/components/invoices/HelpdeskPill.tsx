@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Mail } from 'lucide-react';
+import { Mail, ExternalLink } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 
 interface HelpdeskPillProps {
@@ -25,6 +25,7 @@ export function HelpdeskPill({ ticketRef, className = '' }: HelpdeskPillProps) {
           >
             <Mail className="h-3 w-3" />
             <span>{ticketRef}</span>
+            <ExternalLink className="h-2.5 w-2.5 text-purple-400" />
           </Link>
         </Tooltip.Trigger>
         <Tooltip.Portal>

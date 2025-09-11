@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { FileText, Package, GitCompare, Paperclip, Clock, Check, AlertTriangle, CheckCircle } from 'lucide-react';
+import { FileText, Package, GitCompare, Paperclip, Clock, Check, AlertTriangle, CheckCircle, List } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { DetailsTab } from './DetailsTab';
 import { LineItemsTab } from './LineItemsTab';
