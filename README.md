@@ -1,5 +1,53 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Quick Start
+
+Prerequisites: Node 18+, Docker Desktop (for PostgreSQL).
+
+1) Install deps
+```bash
+npm install
+```
+
+2) Start local database (Postgres 16 on host port 5433)
+```bash
+npm run db:dev
+```
+
+3) Configure environment
+Create `.env.local` with your database URL and any AI keys.
+```env
+DATABASE_URL=postgres://postgres:postgres@localhost:5433/xelix_invoice_dev
+# Optional
+# OPENAI_API_KEY=...
+# ANTHROPIC_API_KEY=...
+```
+
+4) Sync schema and seed (optional)
+```bash
+npm run db:push
+npm run db:seed
+```
+
+5) Run the app (port 3001)
+```bash
+PORT=3001 npm run dev
+# Visit http://localhost:3001
+```
+
+6) Visual tests (Playwright)
+```bash
+npm run test:visual
+```
+This will reuse/start the dev server on port 3001. Update snapshots when UI changes are intentional:
+```bash
+npm run test:visual:update
+```
+
+Useful:
+- Stop DB: `npm run db:down`
+- Inspect DB: `npm run db:studio`
+
 ## Getting Started
 
 First, run the development server:
@@ -14,7 +62,7 @@ pnpm dev
 bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3001](http://localhost:3001) with your browser to see the result.
 
 You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 

@@ -183,7 +183,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Invoice Information</h3>
             </div>
           </div>
-          <div className="px-4 py-4 bg-white">
+          <div className="px-6 py-4 bg-white">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
@@ -316,7 +316,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Financial Details</h3>
             </div>
           </div>
-          <div className="px-4 py-4 bg-white">
+          <div className="px-6 py-4 bg-white">
             {/* First Row: Subtotal, Currency, Tax Rate */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
@@ -498,7 +498,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Payment Information</h3>
             </div>
           </div>
-          <div className="px-4 py-4 bg-white">
+          <div className="px-6 py-4 bg-white">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
@@ -633,7 +633,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
               )}
             </div>
           </div>
-          <div className="px-4 py-4 bg-white">
+          <div className="px-6 py-4 bg-white">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
@@ -744,7 +744,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                 <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Document Links</h3>
               </div>
             </div>
-            <div className="px-4 py-4 bg-white">
+            <div className="px-6 py-4 bg-white">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-2">Linked Purchase Orders</label>
                 <div className="flex flex-wrap gap-2">

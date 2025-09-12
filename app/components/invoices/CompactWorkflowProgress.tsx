@@ -12,7 +12,7 @@ interface CompactWorkflowProgressProps {
 }
 
 const WORKFLOW_STEPS: { id: WorkflowStep; label: string; shortLabel: string; statusValues: string[] }[] = [
-  { id: 'received', label: 'Received', shortLabel: 'R', statusValues: ['draft', 'processing'] },
+  { id: 'received', label: 'Processing', shortLabel: 'P', statusValues: ['draft', 'processing'] },
   { id: 'under_review', label: 'Under Review', shortLabel: 'UR', statusValues: ['validating', 'requires_review', 'pending_approval'] },
   { id: 'approved', label: 'Approved', shortLabel: 'A', statusValues: ['approved', 'approved_ready_for_payment'] },
   { id: 'posted', label: 'Posted', shortLabel: 'P', statusValues: ['posted'] },
@@ -31,9 +31,9 @@ export function CompactWorkflowProgress({ currentStatus, className = '' }: Compa
 
   return (
     <Tooltip.Provider>
-      <div className={`flex items-center gap-3 ${className}`}>
+      <div className={`flex flex-col items-center ${className}`}>
         {/* Dots with connectors */}
-        <div className="flex items-center">
+        <div className="relative flex items-center">
           {WORKFLOW_STEPS.map((step, index) => {
             const isCompleted = index < activeIndex;
             const isCurrent = index === activeIndex;
@@ -41,45 +41,54 @@ export function CompactWorkflowProgress({ currentStatus, className = '' }: Compa
 
             return (
               <React.Fragment key={step.id}>
-                {/* Dot */}
-                <Tooltip.Root>
-                  <Tooltip.Trigger asChild>
-                    <button
-                      className={`
-                        relative flex items-center justify-center w-3 h-3 transition-all
-                        focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 rounded-full
-                      `}
-                      tabIndex={0}
-                      aria-label={step.label}
-                    >
-                      {isCompleted && (
-                        <div className="w-full h-full rounded-full bg-green-500 flex items-center justify-center">
-                          <Check className="w-2 h-2 text-white" strokeWidth={3} />
-                        </div>
-                      )}
-                      {isCurrent && (
-                        <div className="w-full h-full rounded-full bg-purple-600 animate-pulse" />
-                      )}
-                      {isPending && (
-                        <div className="w-full h-full rounded-full bg-gray-300" />
-                      )}
-                    </button>
-                  </Tooltip.Trigger>
-                  <Tooltip.Portal>
-                    <Tooltip.Content
-                      className="z-50 overflow-hidden rounded-md bg-gray-900 px-3 py-1.5 text-xs text-white shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
-                      sideOffset={5}
-                    >
+                <div className="relative flex flex-col items-center">
+                  {/* Dot */}
+                  <Tooltip.Root>
+                    <Tooltip.Trigger asChild>
+                      <button
+                        className={`
+                          relative flex items-center justify-center w-3 h-3 transition-all
+                          focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 rounded-full
+                        `}
+                        tabIndex={0}
+                        aria-label={step.label}
+                      >
+                        {isCompleted && (
+                          <div className="w-full h-full rounded-full bg-green-500 flex items-center justify-center">
+                            <Check className="w-2 h-2 text-white" strokeWidth={3} />
+                          </div>
+                        )}
+                        {isCurrent && (
+                          <div className="w-full h-full rounded-full bg-purple-600 animate-pulse" />
+                        )}
+                        {isPending && (
+                          <div className="w-full h-full rounded-full bg-gray-300" />
+                        )}
+                      </button>
+                    </Tooltip.Trigger>
+                    <Tooltip.Portal>
+                      <Tooltip.Content
+                        className="z-50 overflow-hidden rounded-md bg-gray-900 px-3 py-1.5 text-xs text-white shadow-md animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2"
+                        sideOffset={5}
+                      >
+                        {step.label}
+                        <Tooltip.Arrow className="fill-gray-900" />
+                      </Tooltip.Content>
+                    </Tooltip.Portal>
+                  </Tooltip.Root>
+
+                  {/* Current Step Label - positioned below active node */}
+                  {isCurrent && (
+                    <span className="absolute top-4 left-1/2 transform -translate-x-1/2 text-xs font-medium text-gray-950 whitespace-nowrap">
                       {step.label}
-                      <Tooltip.Arrow className="fill-gray-900" />
-                    </Tooltip.Content>
-                  </Tooltip.Portal>
-                </Tooltip.Root>
+                    </span>
+                  )}
+                </div>
 
                 {/* Connector Line */}
                 {index < WORKFLOW_STEPS.length - 1 && (
                   <div className={`
-                    w-4 h-px transition-all
+                    w-5 sm:w-6 md:w-8 h-px transition-all
                     ${index < activeIndex ? 'bg-green-500' : 'bg-gray-300'}
                   `} />
                 )}
@@ -87,11 +96,6 @@ export function CompactWorkflowProgress({ currentStatus, className = '' }: Compa
             );
           })}
         </div>
-
-        {/* Current Step Label */}
-        <span className="text-sm font-medium text-gray-950 whitespace-nowrap">
-          {currentStep.label}
-        </span>
       </div>
     </Tooltip.Provider>
   );

@@ -167,12 +167,6 @@ export function InvoiceTabs({
           }
         `}
       >
-        {/* Hover background - positioned behind content but above base */}
-        <span className={`absolute inset-0 transition-colors ${
-          tab.id === 'matching' && tab.hasIssues
-            ? 'hover:bg-red-50'
-            : 'hover:bg-gray-50'
-        }`} />
         <div className={`relative flex items-center justify-center ${compactMode ? 'gap-1.5' : 'gap-2'}`}>
           <tab.icon className={`h-4 w-4 ${
             tab.id === 'matching' && tab.hasIssues 
