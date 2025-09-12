@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Building2, Mail, Phone, Globe, Calendar, FileText, DollarSign } from 'lucide-react';
+import { formatVendorAddress, formatBillToAddress, formatAddressLines } from '@/app/lib/addressFormatter';
 
 interface FakeInvoiceDocumentProps {
   invoice: any;
@@ -71,15 +72,12 @@ export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentP
             {/* Vendor Address */}
             <div className="text-sm text-gray-600 space-y-1">
               {invoice.vendor_address_snapshot ? (
-                // Handle vendor address as string with newlines
-                typeof invoice.vendor_address_snapshot === 'string' ? (
-                  invoice.vendor_address_snapshot.split('\n').map((line, index) => (
-                    <p key={index}>{line}</p>
-                  ))
-                ) : (
-                  // Handle as object if needed (backward compatibility)
-                  <p>{invoice.vendor_address_snapshot.address || JSON.stringify(invoice.vendor_address_snapshot)}</p>
-                )
+                formatAddressLines(
+                  // Handle both nested (bill_to style) and direct (vendor_address style) structures
+                  invoice.vendor_address_snapshot
+                ).map((line, index) => (
+                  <p key={index}>{line}</p>
+                ))
               ) : (
                 // Generic fallback if no address
                 <>
@@ -129,12 +127,27 @@ export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentP
         <div className="mb-8 p-4 bg-gray-50 rounded-lg">
           <h3 className="text-xs font-semibold text-gray-600 uppercase tracking-wider mb-2">Bill To:</h3>
           <div className="text-sm">
-            <p className="font-semibold text-gray-900">Genpact Demo Corporation</p>
-            <p className="text-gray-600">Accounts Payable Department</p>
-            <p className="text-gray-600">500 Enterprise Way</p>
-            <p className="text-gray-600">San Francisco, CA 94107</p>
-            {invoice.vendor_tax_id_snapshot && (
-              <p className="text-gray-600 mt-2">Tax ID: {invoice.vendor_tax_id_snapshot}</p>
+            {invoice.bill_to_snapshot ? (() => {
+              const billTo = formatBillToAddress(invoice.bill_to_snapshot);
+              return (
+                <>
+                  <p className="font-semibold text-gray-900">{billTo.companyName}</p>
+                  <p className="text-gray-600">Accounts Payable Department</p>
+                  {billTo.addressLines.map((line, index) => (
+                    <p key={index} className="text-gray-600">{line}</p>
+                  ))}
+                  {billTo.taxId && (
+                    <p className="text-gray-600 mt-2">Tax ID: {billTo.taxId}</p>
+                  )}
+                </>
+              );
+            })() : (
+              <>
+                <p className="font-semibold text-gray-900">Genpact Demo Corporation</p>
+                <p className="text-gray-600">Accounts Payable Department</p>
+                <p className="text-gray-600">500 Enterprise Way</p>
+                <p className="text-gray-600">San Francisco, CA 94107</p>
+              </>
             )}
           </div>
         </div>

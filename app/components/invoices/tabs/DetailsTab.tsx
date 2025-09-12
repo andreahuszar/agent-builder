@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import { formatVendorAddress } from '@/app/lib/addressFormatter';
 import { 
   Save, 
   Edit2, 
@@ -585,10 +586,8 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
               {invoiceData.vendor_address_snapshot && (
                 <div className={getFullSpan()}>
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">Billing Address</label>
-                  <p className="text-sm font-medium text-gray-950">
-                    {typeof invoiceData.vendor_address_snapshot === 'string' 
-                      ? invoiceData.vendor_address_snapshot 
-                      : invoiceData.vendor_address_snapshot.street || invoiceData.vendor_address_snapshot.address || JSON.stringify(invoiceData.vendor_address_snapshot)}
+                  <p className="text-sm font-medium text-gray-950 whitespace-pre-line">
+                    {formatVendorAddress(invoiceData.vendor_address_snapshot)}
                   </p>
                 </div>
               )}

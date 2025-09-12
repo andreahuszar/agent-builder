@@ -69,6 +69,9 @@ export async function GET(request: Request, { params }: Params) {
         currency: poHeader.currency,
         po_status: poHeader.status,
         expected_match_rule: poHeader.expected_match_rule,
+        subtotal: parseFloat(poHeader.subtotal?.toString() || '0'),
+        tax_total: parseFloat(poHeader.tax_total?.toString() || '0'),
+        total: parseFloat(poHeader.total?.toString() || '0'),
         po_lines: poHeader.po_lines.map(line => ({
           id: line.id,
           line_no: line.line_no || 0,

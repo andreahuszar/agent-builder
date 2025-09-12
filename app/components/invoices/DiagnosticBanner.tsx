@@ -43,10 +43,11 @@ export function DiagnosticBanner({
 
   // Calculate variance percentage
   const getVarianceInfo = () => {
-    if (!poTotal || !varianceAmount) return null;
+    if (!poTotal || varianceAmount === null) return null;
     const percentage = Math.abs((varianceAmount / poTotal) * 100);
     return {
       percentage,
+      isPerfectMatch: percentage === 0,
       isWithinTolerance: percentage <= 5, // 5% tolerance threshold
     };
   };
@@ -150,19 +151,25 @@ export function DiagnosticBanner({
         {poNumber && varianceInfo && (
           <div className={`
             inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-            ${varianceInfo.isWithinTolerance 
-              ? 'bg-green-50 text-green-700' 
-              : varianceInfo.percentage > 10 
-                ? 'bg-red-50 text-red-700'
-                : 'bg-amber-50 text-amber-700'
+            ${varianceInfo.isPerfectMatch
+              ? 'bg-green-50 text-green-700'
+              : varianceInfo.isWithinTolerance 
+                ? 'bg-green-50 text-green-700' 
+                : varianceInfo.percentage > 10 
+                  ? 'bg-red-50 text-red-700'
+                  : 'bg-amber-50 text-amber-700'
             }
           `}>
-            {varianceInfo.isWithinTolerance ? (
+            {varianceInfo.isPerfectMatch || varianceInfo.isWithinTolerance ? (
               <Check className="h-3 w-3" />
             ) : (
               <AlertTriangle className="h-3 w-3" />
             )}
-            <span>{varianceInfo.percentage.toFixed(1)}% variance</span>
+            <span>
+              {varianceInfo.isPerfectMatch 
+                ? 'Perfect Match' 
+                : `${varianceInfo.percentage.toFixed(1)}% variance`}
+            </span>
           </div>
         )}
 

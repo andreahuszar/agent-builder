@@ -477,25 +477,32 @@ export function EnhancedLineItemsTabV2({
               <div className="flex justify-between text-sm font-semibold">
                 <span className="text-gray-950">PO Total</span>
                 <span className="text-gray-950">
-                  {formatCurrency(poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
-                    sum + (line.qty_ordered * line.unit_price), 0) || 0)}
+                  {formatCurrency(poComparisonData.poData.total || 
+                    poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                      sum + (line.qty_ordered * line.unit_price), 0) || 0)}
                 </span>
               </div>
               <div className="flex justify-between text-sm font-semibold pt-1 border-t">
-                <span className={`${(total - (poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
-                  sum + (line.qty_ordered * line.unit_price), 0) || 0)) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
+                <span className={`${(total - (poComparisonData.poData.total || 
+                  poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                    sum + (line.qty_ordered * line.unit_price), 0) || 0)) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
                   Variance
                 </span>
-                <span className={`${(total - (poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
-                  sum + (line.qty_ordered * line.unit_price), 0) || 0)) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
-                  {formatCurrency(Math.abs(total - (poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
-                    sum + (line.qty_ordered * line.unit_price), 0) || 0)))}
-                  {total !== (poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
-                    sum + (line.qty_ordered * line.unit_price), 0) || 0) && 
-                    ` (${Math.abs(((total - (poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
-                      sum + (line.qty_ordered * line.unit_price), 0) || 0)) / 
-                      (poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
-                        sum + (line.qty_ordered * line.unit_price), 0) || 1)) * 100).toFixed(1)}%)`}
+                <span className={`${(total - (poComparisonData.poData.total || 
+                  poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                    sum + (line.qty_ordered * line.unit_price), 0) || 0)) !== 0 ? 'text-red-600' : 'text-green-600'}`}>
+                  {formatCurrency(Math.abs(total - (poComparisonData.poData.total || 
+                    poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                      sum + (line.qty_ordered * line.unit_price), 0) || 0)))}
+                  {total !== (poComparisonData.poData.total || 
+                    poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                      sum + (line.qty_ordered * line.unit_price), 0) || 0) && 
+                    ` (${Math.abs(((total - (poComparisonData.poData.total || 
+                      poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                        sum + (line.qty_ordered * line.unit_price), 0) || 0)) / 
+                      (poComparisonData.poData.total || 
+                        poComparisonData.poData.po_lines?.reduce((sum: number, line: any) => 
+                          sum + (line.qty_ordered * line.unit_price), 0) || 1)) * 100).toFixed(1)}%)`}
                 </span>
               </div>
             </>

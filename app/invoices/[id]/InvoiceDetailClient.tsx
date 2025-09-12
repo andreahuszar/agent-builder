@@ -97,9 +97,10 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   // Use the actual invoice total (includes tax, shipping, discount)
   const invoiceTotal = invoice.total || 0;
   
-  // Calculate variance for diagnostic banner using actual total
-  const poTotal = poComparisonData?.poData?.po_lines?.reduce((sum: number, line: any) => 
-    sum + (line.qty_ordered * line.unit_price), 0) || 0;
+  // Calculate variance for diagnostic banner using actual total (including tax)
+  const poTotal = poComparisonData?.poData?.total || 
+    poComparisonData?.poData?.po_lines?.reduce((sum: number, line: any) => 
+      sum + (line.qty_ordered * line.unit_price), 0) || 0;
   const varianceAmount = poComparisonData?.poData ? invoiceTotal - poTotal : null;
 
   const renderContent = () => {
