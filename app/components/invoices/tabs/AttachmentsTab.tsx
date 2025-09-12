@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { FileText, Download, Eye, Upload, File, Image, FileSpreadsheet, X, Paperclip } from 'lucide-react';
+import type { LayoutMode } from './InvoiceTabs';
 
 interface Attachment {
   id: string;
@@ -16,11 +17,25 @@ interface Attachment {
 interface AttachmentsTabProps {
   invoiceId: string;
   attachments: Attachment[];
+  layoutMode?: LayoutMode;
 }
 
-export function AttachmentsTab({ invoiceId, attachments }: AttachmentsTabProps) {
+export function AttachmentsTab({ invoiceId, attachments, layoutMode = 'large' }: AttachmentsTabProps) {
   const [selectedAttachment, setSelectedAttachment] = useState<Attachment | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  
+  // Get grid classes based on layout mode
+  const getGridCols = () => {
+    switch (layoutMode) {
+      case 'compact':
+        return 'grid-cols-1';
+      case 'medium':
+        return 'grid-cols-1 sm:grid-cols-2';
+      case 'large':
+      default:
+        return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
+    }
+  };
 
   const getFileIcon = (mediaType: string | undefined) => {
     if (!mediaType) {
@@ -137,12 +152,12 @@ export function AttachmentsTab({ invoiceId, attachments }: AttachmentsTabProps) 
   return (
     <div className="h-full flex flex-col bg-white">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 bg-gray-50">
+      <div className="relative flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
         <div className="flex items-center gap-2">
           <Paperclip className="h-4 w-4 text-purple-600" />
           <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">ATTACHMENTS</h3>
         </div>
-        <label className="relative cursor-pointer">
+        <label className="absolute right-4 top-1/2 -translate-y-1/2 cursor-pointer">
           <input
             type="file"
             className="sr-only"
@@ -150,8 +165,8 @@ export function AttachmentsTab({ invoiceId, attachments }: AttachmentsTabProps) 
             disabled={isUploading}
             accept=".pdf,.png,.jpg,.jpeg,.gif,.xlsx,.xls,.csv"
           />
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors">
-            <Upload className="h-4 w-4" />
+          <div className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors">
+            <Upload className="h-3.5 w-3.5" />
             <span>{isUploading ? 'Uploading...' : 'Add File'}</span>
           </div>
         </label>
@@ -160,7 +175,7 @@ export function AttachmentsTab({ invoiceId, attachments }: AttachmentsTabProps) 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
       {/* Attachments Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className={`grid ${getGridCols()} gap-4`}>
         {attachments.map((attachment, index) => (
           <div
             key={attachment.id || `attachment-${index}-${attachment.filename}`}

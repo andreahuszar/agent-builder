@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { FileText, Package, GitCompare, Paperclip, Clock, Check, AlertTriangle, CheckCircle, List } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { DetailsTab } from './DetailsTab';
@@ -12,6 +12,7 @@ import { ActivityTab } from './ActivityTab';
 import { InvoiceValidator } from '@/app/utils/validationService';
 
 export type TabId = 'details' | 'line-items' | 'matching' | 'attachments' | 'activity';
+export type LayoutMode = 'compact' | 'medium' | 'large';
 
 interface InvoiceTabsProps {
   invoiceId: string;
@@ -40,6 +41,12 @@ export function InvoiceTabs({
 }: InvoiceTabsProps) {
   const [activeTab, setActiveTab] = useState<TabId>('details');
   const [isClient, setIsClient] = useState(false);
+  const [isDynamicallyCompact, setIsDynamicallyCompact] = useState(false);
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('large');
+  const tabContainerRef = useRef<HTMLDivElement>(null);
+  
+  // Combine prop-based and dynamic compact modes
+  const shouldBeCompact = compactMode || isDynamicallyCompact;
 
   // Load from localStorage after mount to avoid hydration mismatch
   useEffect(() => {
@@ -58,6 +65,48 @@ export function InvoiceTabs({
       localStorage.setItem(`active-tab-${storageKey}`, activeTab);
     }
   }, [activeTab, storageKey, isClient]);
+
+  // Set up ResizeObserver for dynamic compact mode
+  useEffect(() => {
+    if (!tabContainerRef.current || typeof window === 'undefined') return;
+
+    const COMPACT_THRESHOLD = 550; // Switch to compact mode below 550px
+    const MEDIUM_THRESHOLD = 700; // Switch to medium mode below 700px
+    
+    const checkWidth = () => {
+      if (tabContainerRef.current) {
+        const width = tabContainerRef.current.offsetWidth;
+        setIsDynamicallyCompact(width < COMPACT_THRESHOLD);
+        
+        // Set layout mode for content
+        if (width < COMPACT_THRESHOLD) {
+          setLayoutMode('compact');
+        } else if (width < MEDIUM_THRESHOLD) {
+          setLayoutMode('medium');
+        } else {
+          setLayoutMode('large');
+        }
+      }
+    };
+
+    // Initial check
+    checkWidth();
+
+    // Set up ResizeObserver
+    const resizeObserver = new ResizeObserver(() => {
+      checkWidth();
+    });
+
+    resizeObserver.observe(tabContainerRef.current);
+
+    // Also listen to window resize for viewport changes
+    window.addEventListener('resize', checkWidth);
+
+    return () => {
+      resizeObserver.disconnect();
+      window.removeEventListener('resize', checkWidth);
+    };
+  }, []);
 
   // Build validation issues same way as MatchingTab does
   const validationIssues = React.useMemo(() => {
@@ -127,7 +176,7 @@ export function InvoiceTabs({
     },
     {
       id: 'line-items' as TabId,
-      label: 'Line Items',
+      label: 'Items',
       icon: Package,
       count: invoiceData?.lines?.length,
     },
@@ -157,7 +206,7 @@ export function InvoiceTabs({
         key={tab.id}
         onClick={() => setActiveTab(tab.id)}
         className={`
-          group relative min-w-0 flex-1 py-3 px-4 text-center text-sm font-medium 
+          group relative flex-1 py-3 px-3 text-center text-sm font-medium 
           transition-colors focus:z-10
           ${tab.id === 'matching' && tab.hasIssues
             ? 'text-red-700 hover:text-red-700'
@@ -167,21 +216,21 @@ export function InvoiceTabs({
           }
         `}
       >
-        <div className={`relative flex items-center justify-center ${compactMode ? 'gap-1.5' : 'gap-2'}`}>
-          <tab.icon className={`h-4 w-4 ${
+        <div className={`relative flex items-center justify-center ${shouldBeCompact ? 'gap-1.5' : 'gap-2'}`}>
+          <tab.icon className={`h-4 w-4 flex-shrink-0 ${
             tab.id === 'matching' && tab.hasIssues 
               ? 'text-red-700' 
               : activeTab === tab.id 
               ? 'text-purple-900' 
               : 'text-gray-700'
           }`} />
-          {!compactMode && <span>{tab.label}</span>}
+          {!shouldBeCompact && <span className="whitespace-nowrap">{tab.label}</span>}
           
           {/* Special handling for Matching tab */}
           {tab.id === 'matching' && (
             tab.hasIssues ? (
               <span className={`
-                inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium rounded-full min-w-[20px]
+                inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium rounded-full min-w-[20px] flex-shrink-0
                 ${activeTab === tab.id
                   ? 'bg-red-100 text-red-800'
                   : 'bg-red-50 text-red-700'
@@ -191,7 +240,7 @@ export function InvoiceTabs({
               </span>
             ) : (
               <span className={`
-                inline-flex items-center justify-center p-0.5 rounded-full
+                inline-flex items-center justify-center p-0.5 rounded-full flex-shrink-0
                 ${activeTab === tab.id
                   ? 'bg-green-100 text-green-800'
                   : 'bg-green-50 text-green-700'
@@ -204,7 +253,7 @@ export function InvoiceTabs({
           
           {/* Regular count badges for other tabs */}
           {tab.id !== 'matching' && tab.count !== undefined && tab.count > 0 && (
-            <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium rounded-full min-w-[20px] bg-purple-100 text-purple-900">
+            <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium rounded-full min-w-[20px] bg-purple-100 text-purple-900 flex-shrink-0">
               {tab.count}
             </span>
           )}
@@ -220,7 +269,7 @@ export function InvoiceTabs({
       </button>
     );
 
-    if (compactMode) {
+    if (shouldBeCompact) {
       return (
         <Tooltip.Root key={tab.id}>
           <Tooltip.Trigger asChild>
@@ -246,7 +295,7 @@ export function InvoiceTabs({
     <Tooltip.Provider>
       <div className="flex flex-col h-full w-full bg-white overflow-hidden">
         {/* Tab Navigation */}
-        <div className="border-b border-gray-200 flex-shrink-0">
+        <div className="border-b border-gray-200 flex-shrink-0" ref={tabContainerRef}>
           <nav className="flex -mb-px" aria-label="Tabs">
             {tabs.map((tab) => renderTabButton(tab))}
           </nav>
@@ -258,6 +307,7 @@ export function InvoiceTabs({
           <DetailsTab
             invoiceData={invoiceData}
             onUpdate={onDataUpdate}
+            layoutMode={layoutMode}
           />
         )}
         {activeTab === 'line-items' && (
@@ -292,6 +342,7 @@ export function InvoiceTabs({
           <AttachmentsTab
             invoiceId={invoiceId}
             attachments={attachments || []}
+            layoutMode={layoutMode}
           />
         )}
         {activeTab === 'activity' && (

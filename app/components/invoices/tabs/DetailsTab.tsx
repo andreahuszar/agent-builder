@@ -21,7 +21,9 @@ import {
   Check,
   Brain,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  FileText,
+  Package
 } from 'lucide-react';
 import { EditableField } from '../editing/EditableField';
 import { ValidationIndicator, ValidationSummaryBadge } from '../ValidationIndicator';
@@ -29,17 +31,45 @@ import { FieldConfidenceIndicator } from '../FieldConfidenceIndicator';
 import { InvoiceValidator, ValidationResult } from '@/app/utils/validationService';
 import { COST_CENTER_OPTIONS, LEDGER_OPTIONS } from '@/lib/constants/accountingCodes';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import type { LayoutMode } from './InvoiceTabs';
 
 interface DetailsTabProps {
   invoiceData: any;
   onUpdate?: (data: any) => void;
+  layoutMode?: LayoutMode;
 }
 
-export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
+export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: DetailsTabProps) {
   // Calculate totals from line items for accuracy
   const calculatedSubtotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + (line.net_amount || 0), 0) || 0;
   const calculatedTaxTotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + ((line.line_total || 0) - (line.net_amount || 0)), 0) || 0;
   const calculatedTotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + (line.line_total || 0), 0) || 0;
+  
+  // Get grid classes based on layout mode
+  const getGridCols = () => {
+    switch (layoutMode) {
+      case 'compact':
+        return 'grid-cols-1';
+      case 'medium':
+        return 'grid-cols-1 sm:grid-cols-2';
+      case 'large':
+      default:
+        return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
+    }
+  };
+  
+  // Get column span classes for full-width items
+  const getFullSpan = () => {
+    switch (layoutMode) {
+      case 'compact':
+        return '';
+      case 'medium':
+        return 'sm:col-span-2';
+      case 'large':
+      default:
+        return 'sm:col-span-2 lg:col-span-3';
+    }
+  };
 
   const [isEditing, setIsEditing] = useState(false);
   const [editedData, setEditedData] = useState(invoiceData);
@@ -184,7 +214,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
             </div>
           </div>
           <div className="px-6 py-4 bg-white">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`grid ${getGridCols()} gap-4`}>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Invoice Number
@@ -318,7 +348,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
           </div>
           <div className="px-6 py-4 bg-white">
             {/* First Row: Subtotal, Currency, Tax Rate */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`grid ${getGridCols()} gap-4`}>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Subtotal
@@ -373,7 +403,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
             </div>
             
             {/* Second Row: Tax Amount, Shipping/Freight, Discount */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+            <div className={`grid ${getGridCols()} gap-4 mt-4`}>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Tax Amount
@@ -424,7 +454,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
             
             {/* Third Row: Other charges if present */}
             {invoiceData.other_charges_total > 0 && (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+              <div className={`grid ${getGridCols()} gap-4 mt-4`}>
                 <div>
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                     Other Charges
@@ -444,7 +474,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
             )}
             {/* Invoice Total Row */}
             <div className="mt-4 pt-4 border-t border-gray-100">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              <div className={`grid ${getGridCols()} gap-4`}>
                 <div>
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                     Invoice Total
@@ -499,7 +529,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
             </div>
           </div>
           <div className="px-6 py-4 bg-white">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`grid ${getGridCols()} gap-4`}>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Payment Method
@@ -553,7 +583,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                 )}
               </div>
               {invoiceData.vendor_address_snapshot && (
-                <div className="md:col-span-2 lg:col-span-3">
+                <div className={getFullSpan()}>
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">Billing Address</label>
                   <p className="text-sm font-medium text-gray-950">
                     {typeof invoiceData.vendor_address_snapshot === 'string' 
@@ -563,7 +593,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                 </div>
               )}
               {invoiceData.payment_bank_details && Object.keys(invoiceData.payment_bank_details).some(key => invoiceData.payment_bank_details[key]) && (
-                <div className="md:col-span-2 lg:col-span-3 mt-3">
+                <div className={`${getFullSpan()} mt-3`}>
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-2 min-h-[20px]">Bank Details</label>
                   <div className="bg-gray-50 rounded-md p-3 space-y-2">
                     {invoiceData.payment_bank_details.bank_name && (
@@ -634,7 +664,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
             </div>
           </div>
           <div className="px-6 py-4 bg-white">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className={`grid ${getGridCols()} gap-4`}>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Ledger Account
@@ -699,7 +729,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                 </div>
               )}
               {invoiceData.accounting_notes && (
-                <div className="md:col-span-2 lg:col-span-3">
+                <div className={getFullSpan()}>
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">Accounting Notes</label>
                   {isEditing ? (
                     <EditableField
@@ -714,7 +744,7 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
                 </div>
               )}
               {invoiceData.ai_classification_reasoning && !isEditing && (
-                <div className="md:col-span-2 lg:col-span-3">
+                <div className={getFullSpan()}>
                   <button
                     onClick={() => setShowAIReasoning(!showAIReasoning)}
                     className="flex items-center gap-2 text-xs font-medium text-gray-600 hover:text-gray-800 transition-colors mb-2"
@@ -735,33 +765,74 @@ export function DetailsTab({ invoiceData, onUpdate }: DetailsTabProps) {
           </div>
         </div>
 
-        {/* Document Links Section - Only show if there are linked documents */}
-        {invoiceData.po_numbers_cached && invoiceData.po_numbers_cached.length > 0 && (
-          <div>
-            <div className="px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
-              <div className="flex items-center gap-2">
-                <Link2 className="h-4 w-4 text-purple-600" />
-                <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Document Links</h3>
-              </div>
+        {/* Document Links Section */}
+        <div>
+          <div className="relative px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-purple-600" />
+              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Document Links</h3>
             </div>
-            <div className="px-6 py-4 bg-white">
-              <div>
-                <label className="block text-xs font-medium text-gray-700 mb-2">Linked Purchase Orders</label>
-                <div className="flex flex-wrap gap-2">
-                  {invoiceData.po_numbers_cached.map((poNumber: string) => (
-                    <span
-                      key={poNumber}
-                      className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                    >
-                      <Hash className="h-3 w-3 mr-1" />
-                      {poNumber}
-                    </span>
-                  ))}
-                </div>
-              </div>
-            </div>
+            {/* Link Document Button - positioned absolutely */}
+            <button 
+              className="absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
+              onClick={() => {/* No functionality yet */}}
+            >
+              <Link2 className="h-3.5 w-3.5" />
+              <span>Link Document</span>
+            </button>
           </div>
-        )}
+          <div className="px-6 py-4 bg-white">
+            {/* Check if any documents are linked */}
+            {(invoiceData.po_numbers_cached?.length > 0 || invoiceData.gr_numbers_cached?.length > 0) ? (
+              <div className="space-y-4">
+                {/* Purchase Orders Section */}
+                {invoiceData.po_numbers_cached?.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-2">Purchase Orders</label>
+                    <div className="flex flex-wrap gap-2">
+                      {invoiceData.po_numbers_cached.map((poNumber: string) => (
+                        <span
+                          key={poNumber}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
+                        >
+                          <Hash className="h-3 w-3 mr-1" />
+                          {poNumber}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Goods Receipts Section */}
+                {invoiceData.gr_numbers_cached?.length > 0 && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-700 mb-2">Goods Receipts</label>
+                    <div className="flex flex-wrap gap-2">
+                      {invoiceData.gr_numbers_cached.map((grNumber: string) => (
+                        <span
+                          key={grNumber}
+                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
+                        >
+                          <Package className="h-3 w-3 mr-1" />
+                          {grNumber}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* Empty State */
+              <div className="flex flex-col items-center justify-center py-8">
+                <FileText className="h-10 w-10 text-gray-400 mb-3" />
+                <p className="text-sm font-medium text-gray-950 mb-1">No Linked Documents</p>
+                <p className="text-xs text-gray-500 text-center max-w-sm">
+                  No purchase orders or goods receipts have been linked to this invoice yet.
+                </p>
+              </div>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Floating Action Button */}

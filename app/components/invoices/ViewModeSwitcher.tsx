@@ -10,6 +10,7 @@ interface ViewModeSwitcherProps {
   onModeChange: (mode: ViewMode) => void;
   hasGR?: boolean;
   hasSES?: boolean;
+  hasPO?: boolean;
 }
 
 export function ViewModeSwitcher({
@@ -17,8 +18,9 @@ export function ViewModeSwitcher({
   onModeChange,
   hasGR = false,
   hasSES = false,
+  hasPO = false,
 }: ViewModeSwitcherProps) {
-  const modes: { value: ViewMode; label: string; icon: React.ReactNode; disabled?: boolean }[] = [
+  const modes: { value: ViewMode; label: string; icon: React.ReactNode; disabled?: boolean; tooltip?: string }[] = [
     {
       value: 'review',
       label: 'Review',
@@ -28,12 +30,15 @@ export function ViewModeSwitcher({
       value: '2-up',
       label: '2-up',
       icon: <Columns2 className="h-4 w-4" />,
+      disabled: !hasPO, // Disable if no PO attached
+      tooltip: !hasPO ? 'No Purchase Order attached for comparison' : undefined,
     },
     {
       value: '3-up',
       label: '3-up',
       icon: <Columns3 className="h-4 w-4" />,
-      disabled: !hasGR && !hasSES, // Only enable if we have receipts
+      disabled: !hasPO || (!hasGR && !hasSES), // Disable if no PO or no receipts
+      tooltip: !hasPO ? 'No Purchase Order attached for comparison' : (!hasGR && !hasSES) ? 'No receipts available for 3-up view' : undefined,
     },
   ];
 
@@ -53,7 +58,7 @@ export function ViewModeSwitcher({
               : 'text-gray-950 hover:bg-gray-100'
             }
           `}
-          title={mode.disabled ? 'No receipts available for 3-up view' : `Switch to ${mode.label} view`}
+          title={mode.tooltip || (mode.disabled ? 'Not available' : `Switch to ${mode.label} view`)}
         >
           {mode.icon}
           <span>{mode.label}</span>

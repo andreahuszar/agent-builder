@@ -15,6 +15,14 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
   const [viewMode, setViewMode] = useState<ViewMode>('review');
   const [hasGR, setHasGR] = useState(false);
   const [hasSES, setHasSES] = useState(false);
+  const [hasPO, setHasPO] = useState(false);
+
+  // Check for PO attachment
+  useEffect(() => {
+    // Check if there's a PO attached (either through po_id or po_numbers_cached)
+    const poAttached = !!(initialInvoice?.po_id || (initialInvoice?.po_numbers_cached && initialInvoice.po_numbers_cached.length > 0));
+    setHasPO(poAttached);
+  }, [initialInvoice]);
 
   // Check for GR/SES data from match results
   useEffect(() => {
@@ -39,6 +47,7 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
       onModeChange={setViewMode}
       hasGR={hasGR}
       hasSES={hasSES}
+      hasPO={hasPO}
     />
   );
 

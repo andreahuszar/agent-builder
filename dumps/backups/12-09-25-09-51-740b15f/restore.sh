@@ -1,6 +1,6 @@
 #!/bin/bash
-# Restore script for backup 11-09-25-18-01-e67ee38
-# Generated: 2025-09-11T17:01:11.818Z
+# Restore script for backup 12-09-25-09-51-740b15f
+# Generated: 2025-09-12T08:51:47.087Z
 
 set -e
 
@@ -12,7 +12,7 @@ DB_USER="postgres"
 
 echo "🔄 Database Restore Script"
 echo "========================"
-echo "Backup: 11-09-25-18-01-e67ee38"
+echo "Backup: 12-09-25-09-51-740b15f"
 echo "Database: $DB_NAME"
 echo ""
 echo "⚠️  WARNING: This will DROP and RECREATE the database!"

@@ -71,7 +71,7 @@ function InvoiceProcessingContent({ currentView = 'dashboard' }: InvoiceProcessi
             <InvoicesClient 
               initialInvoices={invoices}
               renderAddButton={(onClick) => (
-                <div className="mb-6">
+                <div className="mb-3">
                   <h1 className="text-2xl font-bold text-gray-950">Invoices</h1>
                 </div>
               )}

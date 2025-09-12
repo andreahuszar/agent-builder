@@ -158,7 +158,7 @@ export function ResizablePanel({
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className={`
-          ${isHorizontal ? 'w-1 cursor-col-resize' : 'h-1 cursor-row-resize'}
+          ${isHorizontal ? 'w-0.5 cursor-col-resize' : 'h-0.5 cursor-row-resize'}
           transition-colors relative
           ${isDragging || wasDragged || isHovered 
             ? 'bg-purple-400 hover:bg-purple-500' 
