@@ -60,6 +60,71 @@ async function forceSchemaSync() {
       },
       {
         table: 'invoice_headers',
+        column: 'cost_center',
+        sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS cost_center VARCHAR(100)'
+      },
+      {
+        table: 'invoice_headers',
+        column: 'cost_center_name',
+        sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS cost_center_name VARCHAR(255)'
+      },
+      {
+        table: 'invoice_headers',
+        column: 'gl_code',
+        sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS gl_code VARCHAR(50)'
+      },
+      {
+        table: 'invoice_headers',
+        column: 'department',
+        sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS department VARCHAR(100)'
+      },
+      {
+        table: 'invoice_headers',
+        column: 'ledger',
+        sql: "ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS ledger VARCHAR(50) DEFAULT 'Accounts Payable'"
+      },
+      {
+        table: 'invoice_headers',
+        column: 'accounting_notes',
+        sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS accounting_notes TEXT'
+      },
+      {
+        table: 'invoice_headers',
+        column: 'ai_classification_confidence',
+        sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS ai_classification_confidence DECIMAL(3,2)'
+      },
+      {
+        table: 'invoice_headers',
+        column: 'ai_classification_reasoning',
+        sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS ai_classification_reasoning TEXT'
+      },
+      {
+        table: 'invoice_headers',
+        column: 'extraction_field_confidences',
+        sql: "ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS extraction_field_confidences JSONB DEFAULT '{}'"
+      },
+      {
+        table: 'invoice_headers',
+        column: 'is_manually_edited',
+        sql: "ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS is_manually_edited JSONB DEFAULT '{}'"
+      },
+      {
+        table: 'invoice_headers',
+        column: 'payment_bank_details',
+        sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS payment_bank_details JSONB'
+      },
+      {
+        table: 'invoice_headers',
+        column: 'processing_started_at',
+        sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS processing_started_at TIMESTAMP'
+      },
+      {
+        table: 'invoice_headers',
+        column: 'processing_completed_at',
+        sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS processing_completed_at TIMESTAMP'
+      },
+      {
+        table: 'invoice_headers',
         column: 'payment_method',
         sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS payment_method VARCHAR(50)'
       },
@@ -181,7 +246,7 @@ async function forceSchemaSync() {
       }
     ];
 
-    console.log(`📝 Applying ${alterations.length} schema updates...`);
+    console.log(`📝 Checking and applying up to ${alterations.length} schema updates...`);
 
     for (const alteration of alterations) {
       try {
