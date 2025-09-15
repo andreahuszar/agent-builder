@@ -658,7 +658,7 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
                                 className="bg-gray-900 text-white px-2 py-1 rounded text-xs max-w-xs z-50"
                                 sideOffset={5}
                               >
-                                Bank details differ from vendor's registered account
+                                Bank details differ from vendor&apos;s registered account
                                 <Tooltip.Arrow className="fill-gray-900" />
                               </Tooltip.Content>
                             </Tooltip.Portal>

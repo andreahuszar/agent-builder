@@ -120,7 +120,7 @@ export function VendorsTable({
                 <td colSpan={Object.values(visibleColumns).filter(Boolean).length + 1} className="px-6 py-12 text-center">
                   <p className="text-gray-500">No vendors found</p>
                   <p className="mt-2 text-sm text-gray-400">
-                    Click "Add Vendor" to create your first vendor
+                    Click &quot;Add Vendor&quot; to create your first vendor
                   </p>
                 </td>
               </tr>
