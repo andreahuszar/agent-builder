@@ -92,11 +92,36 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
     const date = new Date(dateString);
-    return date.toLocaleDateString('en-US', { 
-      year: 'numeric', 
-      month: 'short', 
-      day: 'numeric' 
+    return date.toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
     });
+  };
+
+  // Calculate aging for due date
+  const getAgingInfo = (dueDate: string) => {
+    if (!dueDate) return null;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(dueDate);
+    due.setHours(0, 0, 0, 0);
+
+    const diffTime = due.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+    if (diffDays > 30) {
+      return { text: `${diffDays}d left`, color: 'bg-green-50 text-green-700 border-green-200' };
+    } else if (diffDays > 7) {
+      return { text: `${diffDays}d left`, color: 'bg-yellow-50 text-yellow-700 border-yellow-200' };
+    } else if (diffDays > 0) {
+      return { text: `${diffDays}d left`, color: 'bg-orange-50 text-orange-700 border-orange-200' };
+    } else if (diffDays === 0) {
+      return { text: 'Due today', color: 'bg-orange-50 text-orange-700 border-orange-200' };
+    } else {
+      return { text: `${Math.abs(diffDays)}d overdue`, color: 'bg-red-50 text-red-700 border-red-200' };
+    }
   };
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -265,7 +290,17 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
                     type="date"
                   />
                 ) : (
-                  <p className="text-sm font-medium text-gray-950">{formatDate(invoiceData.due_date)}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-gray-950">{formatDate(invoiceData.due_date)}</p>
+                    {(() => {
+                      const aging = getAgingInfo(invoiceData.due_date);
+                      return aging ? (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${aging.color}`}>
+                          {aging.text}
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
                 )}
               </div>
               <div>
@@ -581,7 +616,17 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
                     type="date"
                   />
                 ) : (
-                  <p className="text-sm font-medium text-gray-950">{formatDate(invoiceData.due_date)}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-gray-950">{formatDate(invoiceData.due_date)}</p>
+                    {(() => {
+                      const aging = getAgingInfo(invoiceData.due_date);
+                      return aging ? (
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${aging.color}`}>
+                          {aging.text}
+                        </span>
+                      ) : null;
+                    })()}
+                  </div>
                 )}
               </div>
               {invoiceData.vendor_address_snapshot && (
