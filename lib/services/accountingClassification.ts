@@ -205,7 +205,7 @@ export async function classifyInvoice(invoice: InvoiceData): Promise<Classificat
   try {
     // First, try AI classification
     const prompt = buildClassificationPrompt(invoice);
-    const aiResponse = await AnthropicService.sendMessage([
+    const aiResponse = await (AnthropicService as any).sendMessage([
       { role: 'user', content: prompt }
     ]);
     

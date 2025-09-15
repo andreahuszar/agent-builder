@@ -574,7 +574,7 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
                 </label>
                 <p className="text-sm font-medium text-gray-950">
                   {invoiceData.payment_method 
-                    ? invoiceData.payment_method.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+                    ? invoiceData.payment_method.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
                     : 'Not specified'
                   }
                 </p>

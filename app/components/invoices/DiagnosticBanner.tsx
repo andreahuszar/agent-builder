@@ -47,7 +47,7 @@ export function DiagnosticBanner({
 
   // Calculate variance percentage
   const getVarianceInfo = () => {
-    if (!poTotal || varianceAmount === null) return null;
+    if (!poTotal || varianceAmount === null || varianceAmount === undefined) return null;
     const percentage = Math.abs((varianceAmount / poTotal) * 100);
     return {
       percentage,

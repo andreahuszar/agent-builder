@@ -340,7 +340,7 @@ export class AnthropicService {
         extractedData.totals = {
           subtotal: extractedData.invoice_headers.subtotal,
           tax: extractedData.invoice_headers.tax_total || 0,
-          taxRate: extractedData.invoice_headers.tax_rate || null,
+          taxRate: extractedData.invoice_headers.tax_rate || undefined,
           discount: extractedData.invoice_headers.discount_total || 0,
           shipping: extractedData.invoice_headers.shipping_total || 0,
           otherCharges: extractedData.invoice_headers.other_charges_total || 0,

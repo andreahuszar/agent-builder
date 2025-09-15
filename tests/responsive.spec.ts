@@ -14,7 +14,7 @@ test.describe('Responsive Visual Tests', () => {
       await viewport.testResponsiveComponent(
         sidebar,
         'sidebar-navigation',
-        ViewportHelpers.STANDARD_VIEWPORTS
+        [...ViewportHelpers.STANDARD_VIEWPORTS]
       );
     });
 
@@ -28,7 +28,7 @@ test.describe('Responsive Visual Tests', () => {
       await viewport.testResponsiveComponent(
         navPills,
         'navigation-pills',
-        ViewportHelpers.STANDARD_VIEWPORTS
+        [...ViewportHelpers.STANDARD_VIEWPORTS]
       );
     });
 
@@ -42,7 +42,7 @@ test.describe('Responsive Visual Tests', () => {
       await viewport.testResponsiveComponent(
         header,
         'header-layout',
-        ViewportHelpers.STANDARD_VIEWPORTS
+        [...ViewportHelpers.STANDARD_VIEWPORTS]
       );
     });
   });
@@ -59,7 +59,7 @@ test.describe('Responsive Visual Tests', () => {
       await viewport.testResponsiveComponent(
         mainContent,
         'main-content-workspace',
-        ViewportHelpers.STANDARD_VIEWPORTS
+        [...ViewportHelpers.STANDARD_VIEWPORTS]
       );
     });
 
@@ -75,7 +75,7 @@ test.describe('Responsive Visual Tests', () => {
       await viewport.testResponsiveComponent(
         mainContent,
         'main-content-invoices',
-        ViewportHelpers.STANDARD_VIEWPORTS
+        [...ViewportHelpers.STANDARD_VIEWPORTS]
       );
     });
 
@@ -91,7 +91,7 @@ test.describe('Responsive Visual Tests', () => {
       await viewport.testResponsiveComponent(
         mainContent,
         'main-content-purchase-orders',
-        ViewportHelpers.STANDARD_VIEWPORTS
+        [...ViewportHelpers.STANDARD_VIEWPORTS]
       );
     });
 
@@ -106,7 +106,7 @@ test.describe('Responsive Visual Tests', () => {
       await viewport.testResponsiveComponent(
         mainContent,
         'main-content-helpdesk',
-        ViewportHelpers.STANDARD_VIEWPORTS
+        [...ViewportHelpers.STANDARD_VIEWPORTS]
       );
     });
 
@@ -121,7 +121,7 @@ test.describe('Responsive Visual Tests', () => {
       await viewport.testResponsiveComponent(
         mainContent,
         'main-content-settings',
-        ViewportHelpers.STANDARD_VIEWPORTS
+        [...ViewportHelpers.STANDARD_VIEWPORTS]
       );
     });
   });
@@ -136,7 +136,7 @@ test.describe('Responsive Visual Tests', () => {
       await viewport.testResponsiveComponent(
         userMenuArea,
         'user-menu-button',
-        ViewportHelpers.STANDARD_VIEWPORTS
+        [...ViewportHelpers.STANDARD_VIEWPORTS]
       );
     });
 

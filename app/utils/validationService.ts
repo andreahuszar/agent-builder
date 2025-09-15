@@ -137,7 +137,8 @@ export class InvoiceValidator {
 
   // Amount validations
   private validateAmounts() {
-    const { total, subtotal, tax_total, shipping_total, other_charges_total, discount_total } = this.invoice;
+    const { total, subtotal, tax_total, shipping_total, discount_total } = this.invoice;
+    const other_charges_total = (this.invoice as any).other_charges_total;
     
     if (total !== undefined && subtotal !== undefined && tax_total !== undefined) {
       // Calculate expected total including ALL components (shipping, other charges, discounts)
@@ -271,7 +272,7 @@ export class InvoiceValidator {
 
     // Only show variance warning if match_status is 'exception' AND we don't have other validation warnings
     // This prevents duplicate warnings when the exception is due to other issues like bank details
-    if (match_status === 'exception' && !this.invoice.validation_warnings?.length) {
+    if (match_status === 'exception' && !(this.invoice as any).validation_warnings?.length) {
       // Try to calculate the actual variance if we have PO data
       // In a real system, we'd fetch the PO total, but for now we'll just show the general message
       // Since we don't have direct access to PO total here, we'll make it clear it's an exception

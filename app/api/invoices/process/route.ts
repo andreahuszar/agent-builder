@@ -692,8 +692,8 @@ function normalizeExtractionResult(result: InvoiceExtractionResult) {
     total: normalizeNumber(headers?.total || legacyTotals?.total) || 0,
     currency: normalizeCurrency(headers?.currency || legacyTotals?.currency),
     paymentTerms: headers?.payment_terms_text || result.paymentTerms || 'Net 30',
-    paymentMethod: headers?.payment_method || null,
-    paymentBankDetails: headers?.payment_bank_details || null,
+    paymentMethod: (headers as any)?.payment_method || null,
+    paymentBankDetails: (headers as any)?.payment_bank_details || null,
     poNumbers: normalizePONumbers(headers?.po_numbers_cached?.join(',') || legacyInvoice?.poNumber),
     lineItems: result.invoice_lines?.map((line: any) => ({
       description: line.description || '',
