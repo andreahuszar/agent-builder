@@ -192,6 +192,11 @@ async function forceSchemaSync() {
       // PO headers
       {
         table: 'po_headers',
+        column: 'total',
+        sql: 'ALTER TABLE po_headers ADD COLUMN IF NOT EXISTS total DECIMAL(18,4)'
+      },
+      {
+        table: 'po_headers',
         column: 'subtotal',
         sql: 'ALTER TABLE po_headers ADD COLUMN IF NOT EXISTS subtotal DECIMAL(12,2)'
       },
