@@ -555,8 +555,8 @@ export async function POST(request: NextRequest) {
         ai_classification_confidence: extractionResult.ai_classification_confidence || null,
         ai_classification_reasoning: extractionResult.ai_classification_reasoning || null,
         // Payment method fields - use vendor's preferences if extraction doesn't provide them
-        payment_method: extractionResult.invoice_headers?.payment_method || vendor.preferred_payment_method || null,
-        payment_bank_details: extractionResult.invoice_headers?.payment_bank_details || vendorBankDetails || null,
+        payment_method: (extractionResult.invoice_headers as any)?.payment_method || vendor.preferred_payment_method || null,
+        payment_bank_details: (extractionResult.invoice_headers as any)?.payment_bank_details || vendorBankDetails || null,
         // Field confidence tracking
         extraction_field_confidences: extractionResult.field_confidences || {},
         is_manually_edited: {},
