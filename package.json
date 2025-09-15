@@ -27,7 +27,11 @@
     "db:production:seed-sample": "node scripts/seed-production-sample-data.js",
     "db:production:migrate": "node scripts/production-migration.js",
     "db:production:wipe": "node scripts/wipe-production.js",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate",
+    "check:build": "prisma generate && next build",
+    "check:types": "tsc --noEmit",
+    "check:all": "npm run check:types && npm run lint",
+    "pre-push": "./scripts/pre-push-check.sh"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.60.0",
