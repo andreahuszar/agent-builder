@@ -561,7 +561,7 @@ export async function POST(request: NextRequest) {
         extraction_field_confidences: extractionResult.field_confidences || {},
         is_manually_edited: {},
         // Validation warnings
-        validation_warnings: validationWarnings.length > 0 ? validationWarnings : null
+        validation_warnings: validationWarnings.length > 0 ? validationWarnings : undefined
       }
     });
     
