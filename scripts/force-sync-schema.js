@@ -11,10 +11,17 @@ async function forceSchemaSync() {
   const connectionString = process.env.DATABASE_URL;
 
   if (!connectionString) {
-    console.log('⚠️  No DATABASE_URL found.');
+    console.log('⚠️  No DATABASE_URL found. Skipping schema sync.');
     return;
   }
 
+  // Skip if running locally (safety check)
+  if (connectionString.includes('localhost') || connectionString.includes('127.0.0.1')) {
+    console.log('⚠️  Local database detected. Skipping schema sync.');
+    return;
+  }
+
+  console.log('🚀 Running database schema sync for Railway...');
   const client = new Client({ connectionString });
 
   try {
