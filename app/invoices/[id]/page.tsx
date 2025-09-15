@@ -18,7 +18,8 @@ async function getInvoiceDataPrisma(id: string) {
       include: {
         vendors: {
           include: {
-            vendor_bank_accounts_vendor_bank_accounts_vendor_idTovendors: true
+            vendor_bank_accounts_vendor_bank_accounts_vendor_idTovendors: true,
+            vendor_bank_accounts_vendors_default_bank_account_idTovendor_bank_accounts: true
           }
         },
         invoice_lines: {
@@ -127,12 +128,23 @@ async function getInvoiceDataPrisma(id: string) {
       ai_classification_reasoning: invoiceHeader.ai_classification_reasoning,
       extraction_field_confidences: invoiceHeader.extraction_field_confidences as Record<string, number> || {},
       is_manually_edited: invoiceHeader.is_manually_edited as Record<string, boolean> || {},
-      // Payment information
-      payment_method: invoiceHeader.payment_method,
-      payment_bank_details: invoiceHeader.payment_bank_details as any || null,
+      // Payment information - use vendor's preferences if invoice doesn't have them
+      payment_method: invoiceHeader.payment_method || invoiceHeader.vendors?.preferred_payment_method || null,
+      payment_bank_details: invoiceHeader.payment_bank_details as any ||
+        (invoiceHeader.vendors?.vendor_bank_accounts_vendors_default_bank_account_idTovendor_bank_accounts ? {
+          bank_name: invoiceHeader.vendors.vendor_bank_accounts_vendors_default_bank_account_idTovendor_bank_accounts.bank_name,
+          account_name: invoiceHeader.vendors.vendor_bank_accounts_vendors_default_bank_account_idTovendor_bank_accounts.account_name,
+          account_number: invoiceHeader.vendors.vendor_bank_accounts_vendors_default_bank_account_idTovendor_bank_accounts.account_number,
+          iban: invoiceHeader.vendors.vendor_bank_accounts_vendors_default_bank_account_idTovendor_bank_accounts.iban,
+          swift_bic: invoiceHeader.vendors.vendor_bank_accounts_vendors_default_bank_account_idTovendor_bank_accounts.swift_bic,
+          sort_code: invoiceHeader.vendors.vendor_bank_accounts_vendors_default_bank_account_idTovendor_bank_accounts.sort_code,
+          routing_number: invoiceHeader.vendors.vendor_bank_accounts_vendors_default_bank_account_idTovendor_bank_accounts.routing_number
+        } : null),
       // Include lines in the invoice object
       lines: lines,
       poTotal: poTotal,
+      // Include validation warnings from database
+      validation_warnings: invoiceHeader.validation_warnings as any || null,
       // Include attachments
       attachments: attachments.map(att => ({
         id: att.id,

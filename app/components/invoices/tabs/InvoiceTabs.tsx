@@ -128,31 +128,45 @@ export function InvoiceTabs({
     
     // Check for uninvoiced PO lines
     if (poComparisonData?.unmatchedPoLines && poComparisonData.unmatchedPoLines.length > 0) {
-      poComparisonData.unmatchedPoLines.forEach((item: any) => {
-        issues.push({ severity: 'error', type: 'uninvoiced' });
-      });
+      // Count once for all uninvoiced lines (not per line)
+      issues.push({ severity: 'error', type: 'uninvoiced' });
     }
     
-    // Count match results that are actual issues
+    // Count match results that are actual issues (avoid duplicates)
+    const processedLines = new Set<string>(); // Track processed lines
+    let hasHeaderVariance = false;
+    let lineVarianceCount = 0;
+    
     matchResults?.forEach((r: any) => {
-      // Count variances that are not within tolerance
-      if (!r.within_tolerance) {
-        issues.push({ severity: 'error' });
+      // Skip header-level TOTAL_VARIANCE_EXCEEDED if we have line-level issues
+      if (r.explanation_code === 'TOTAL_VARIANCE_EXCEEDED' && !r.invoice_line_id) {
+        hasHeaderVariance = true;
+        return; // We'll add this later only if no line issues
       }
-      // Count specific error codes
+      
+      // Count line variances only once per line
+      if (r.invoice_line_id && !r.within_tolerance && !processedLines.has(r.invoice_line_id)) {
+        processedLines.add(r.invoice_line_id);
+        lineVarianceCount++;
+        issues.push({ severity: 'error', type: 'variance' });
+      }
+      
+      // Count specific error codes (but avoid duplicates)
       if (r.explanation_code === 'NO_PO') {
-        issues.push({ severity: 'error' });
-      }
-      if (r.explanation_code === 'OVER_TOLERANCE' && !r.within_tolerance) {
-        issues.push({ severity: 'error' });
+        issues.push({ severity: 'error', type: 'no_po' });
       }
     });
+    
+    // Only add header variance if there are no line-level variances
+    if (hasHeaderVariance && lineVarianceCount === 0) {
+      issues.push({ severity: 'error', type: 'header_variance' });
+    }
     
     // Get validation errors from invoice data
     if (invoiceData) {
       const validator = new InvoiceValidator(invoiceData);
       const validationResults = validator.validate();
-      
+
       // Add validation errors with their actual severity
       validationResults.errors.forEach(err => {
         issues.push({ severity: err.severity || 'error' });
@@ -161,7 +175,14 @@ export function InvoiceTabs({
         issues.push({ severity: warn.severity || 'warning' });
       });
     }
-    
+
+    // Add database validation warnings/errors (like bank details changes)
+    if (invoiceData?.validation_warnings && Array.isArray(invoiceData.validation_warnings)) {
+      invoiceData.validation_warnings.forEach((warning: any) => {
+        issues.push({ severity: warning.severity || 'warning', type: 'database_validation' });
+      });
+    }
+
     return issues;
   }, [matchResults, invoiceData, poComparisonData]);
   

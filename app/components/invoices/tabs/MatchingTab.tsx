@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { AlertTriangle, RefreshCw } from 'lucide-react';
 import { 
   ValidationCard, 
@@ -10,6 +10,7 @@ import {
   ValidationCategory
 } from '../ValidationCard';
 import { InvoiceValidator } from '@/app/utils/validationService';
+import { PurchaseOrderDrawer } from '../../purchase-orders/PurchaseOrderDrawer';
 
 interface MatchResult {
   id: string;
@@ -38,6 +39,9 @@ interface MatchingTabProps {
 }
 
 export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, approvalLimit = 2500, poComparisonData }: MatchingTabProps) {
+  const [selectedPO, setSelectedPO] = useState<any>(null);
+  const [loadingPO, setLoadingPO] = useState(false);
+  
   // Check if this is a Non-PO vendor (only if vendor is verified in master data)
   const isNonPOVendor = invoiceData?.vendor_requires_po === false && invoiceData?.vendor_is_verified === true;
   
@@ -59,6 +63,38 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
       delivery: [],
     };
     
+    // Add database validation warnings if they exist
+    if (invoiceData?.validation_warnings && Array.isArray(invoiceData.validation_warnings)) {
+      invoiceData.validation_warnings.forEach((warning: any, idx: number) => {
+        const category = warning.category || 'risk';
+        let detailsText = warning.details;
+
+        // Format details if it's an object
+        if (warning.details && typeof warning.details === 'object') {
+          const parts = [];
+          if (warning.details.expected_bank) {
+            parts.push(`Expected: ${warning.details.expected_bank}`);
+          }
+          if (warning.details.received_bank) {
+            parts.push(`Received: ${warning.details.received_bank}`);
+          }
+          if (warning.details.action) {
+            parts.push(warning.details.action);
+          }
+          detailsText = parts.join('. ');
+        }
+
+        issues[category as ValidationCategory].push({
+          id: `db-warning-${idx}`,
+          field: warning.field,
+          message: warning.message,
+          details: detailsText,
+          severity: warning.severity || 'warning',
+          category: category as ValidationCategory,
+        });
+      });
+    }
+
     // If this is a Non-PO vendor, skip PO-related checks
     if (isNonPOVendor) {
       // Only add non-PO related validations
@@ -250,44 +286,84 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
     // Track if we've already added certain issues to avoid duplicates
     let hasAddedMissingReceipt = false;
     let hasAddedNoPO = false;
+    const processedLines = new Set<string>();  // Track which lines we've already processed
+    const TOLERANCE_LIMIT = 5; // Default 5% tolerance
 
     matchResults.forEach((result, index) => {
       const lineDesc = result.invoice_line_id 
         ? lines.find(l => l.id === result.invoice_line_id)?.description 
         : 'Header Level';
-
-      // Amount variances
-      if (result.amount_variance && Math.abs(result.amount_variance) > 0.01) {
-        issues.financial.push({
-          id: `${result.id}-amount`,
-          field: 'amount',
-          lineNumber: result.invoice_line_id ? lines.findIndex(l => l.id === result.invoice_line_id) + 1 : undefined,
-          message: `Amount variance detected${result.invoice_line_id ? ` on line item` : ''}`,
-          details: lineDesc,
-          actualValue: 'Invoice amount',
-          expectedValue: 'PO amount',
-          variance: result.amount_variance,
-          severity: result.within_tolerance ? 'warning' : 'error',
-          category: 'financial',
-          action: result.matched_po_line_id ? {
-            label: 'View PO',
-            onClick: () => console.log('View PO', result.matched_po_line_id),
-          } : undefined,
-        });
+      
+      // Skip header-level TOTAL_VARIANCE_EXCEEDED if we have line-level issues
+      if (result.explanation_code === 'TOTAL_VARIANCE_EXCEEDED' && !result.invoice_line_id) {
+        const hasLineIssues = matchResults.some(r => r.invoice_line_id && r.amount_variance && Math.abs(r.amount_variance) > 0.01);
+        if (hasLineIssues) {
+          return; // Skip this header-level entry
+        }
       }
 
-      // Price variances
-      if (result.price_variance && Math.abs(result.price_variance) > 0.01) {
+      // Skip if we've already processed this line (avoid duplicate price/amount variance)
+      if (result.invoice_line_id && processedLines.has(result.invoice_line_id)) {
+        return;
+      }
+
+      // Find corresponding invoice and PO line data
+      const invoiceLine = result.invoice_line_id ? lines.find(l => l.id === result.invoice_line_id) : null;
+      const poLine = result.matched_po_line_id && poComparisonData?.poData?.po_lines 
+        ? poComparisonData.poData.po_lines.find((pl: any) => pl.id === result.matched_po_line_id)
+        : null;
+
+      // Calculate actual amounts and percentages
+      const invAmount = invoiceLine ? (invoiceLine.qty * invoiceLine.unit_price) : (invoiceData?.total || 0);
+      const poAmount = poLine ? (poLine.qty_ordered * poLine.unit_price) : (poComparisonData?.poData?.total || 0);
+      const actualVariancePercent = poAmount > 0 ? Math.abs((result.amount_variance || 0) / poAmount * 100) : 0;
+
+      // Handle amount/price variances (consolidate into one message per line)
+      if (result.amount_variance && Math.abs(result.amount_variance) > 0.01) {
+        const message = result.invoice_line_id 
+          ? `Line ${lines.findIndex(l => l.id === result.invoice_line_id) + 1}: ${actualVariancePercent.toFixed(1)}% variance detected`
+          : `Total invoice variance: ${actualVariancePercent.toFixed(1)}%`;
+        
+        const details = result.invoice_line_id
+          ? `${lineDesc} - ${actualVariancePercent.toFixed(1)}% variance ${actualVariancePercent > TOLERANCE_LIMIT ? `(exceeds ${TOLERANCE_LIMIT}% tolerance)` : ''}`
+          : `Overall invoice variance of ${actualVariancePercent.toFixed(1)}% ${actualVariancePercent > TOLERANCE_LIMIT ? `exceeds ${TOLERANCE_LIMIT}% tolerance limit` : 'is within tolerance'}`;
+
         issues.financial.push({
-          id: `${result.id}-price`,
-          field: 'unit_price',
+          id: `${result.id}-variance`,
+          field: 'amount',
           lineNumber: result.invoice_line_id ? lines.findIndex(l => l.id === result.invoice_line_id) + 1 : undefined,
-          message: `Unit price mismatch${result.invoice_line_id ? ` on line item` : ''}`,
-          details: lineDesc,
-          variance: result.price_variance,
+          message,
+          details,
+          actualValue: invAmount ? `$${invAmount.toFixed(2)}` : 'Invoice amount',
+          expectedValue: poAmount ? `$${poAmount.toFixed(2)}` : 'PO amount',
+          variance: actualVariancePercent,  // Now showing percentage instead of dollar amount
           severity: result.within_tolerance ? 'warning' : 'error',
           category: 'financial',
+          action: (result.matched_po_line_id || poComparisonData?.poData) ? {
+            label: 'View PO',
+            onClick: async () => {
+              if (!poComparisonData?.poData) return;
+              setLoadingPO(true);
+              try {
+                // Fetch full PO data
+                const response = await fetch(`/api/purchase-orders/${poComparisonData.poData.po_number}`);
+                if (response.ok) {
+                  const poData = await response.json();
+                  setSelectedPO(poData);
+                }
+              } catch (error) {
+                console.error('Error fetching PO:', error);
+              } finally {
+                setLoadingPO(false);
+              }
+            },
+          } : undefined,
         });
+
+        // Mark this line as processed
+        if (result.invoice_line_id) {
+          processedLines.add(result.invoice_line_id);
+        }
       }
 
       // Quantity variances
@@ -366,14 +442,15 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
     return issues;
   }, [matchResults, lines, invoiceData, poComparisonData, approvalLimit]);
 
-  // Check if all validations passed
+  // Check if all validations passed (no errors or warnings)
   const allPassed = Object.values(validationIssues).every(
-    categoryIssues => categoryIssues.filter(i => i.severity === 'error').length === 0
+    categoryIssues => categoryIssues.length === 0
   );
 
   // Special display for Non-PO vendors
   if (isNonPOVendor) {
     return (
+      <>
       <div className="h-full flex flex-col bg-white">
         {/* Header */}
         <div className="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
@@ -429,6 +506,16 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
           )}
         </div>
       </div>
+      
+      {/* Purchase Order Drawer */}
+      {selectedPO && (
+        <PurchaseOrderDrawer
+          purchaseOrderId={selectedPO.id}
+          purchaseOrder={selectedPO}
+          onClose={() => setSelectedPO(null)}
+        />
+      )}
+      </>
     );
   }
 
@@ -437,6 +524,7 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
 
   if (matchResults.length === 0 && !hasValidationIssues) {
     return (
+      <>
       <div className="h-full flex flex-col bg-white">
         {/* Header */}
         <div className="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
@@ -458,10 +546,21 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
           </div>
         </div>
       </div>
+      
+      {/* Purchase Order Drawer */}
+      {selectedPO && (
+        <PurchaseOrderDrawer
+          purchaseOrderId={selectedPO.id}
+          purchaseOrder={selectedPO}
+          onClose={() => setSelectedPO(null)}
+        />
+      )}
+      </>
     );
   }
 
   return (
+    <>
     <div className="h-full flex flex-col bg-white">
       {/* Header */}
       <div className="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
@@ -541,5 +640,15 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
         </ValidationCardContainer>
       </div>
     </div>
+
+    {/* Purchase Order Drawer */}
+    {selectedPO && (
+      <PurchaseOrderDrawer
+        purchaseOrderId={selectedPO.id}
+        purchaseOrder={selectedPO}
+        onClose={() => setSelectedPO(null)}
+      />
+    )}
+    </>
   );
 }

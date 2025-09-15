@@ -58,7 +58,7 @@ const categoryConfig: Record<ValidationCategory, {
     borderColor: 'border-red-200',
   },
   process: {
-    title: 'Missing Documents',
+    title: 'Process Issues',
     icon: FileX,
     color: 'text-orange-700',
     bgColor: 'bg-orange-50',
@@ -121,37 +121,49 @@ const severityConfig: Record<ValidationSeverity, {
   },
 };
 
-export function ValidationCard({ 
-  category, 
-  issues, 
+export function ValidationCard({
+  category,
+  issues,
   title,
-  defaultExpanded = false 
+  defaultExpanded = false
 }: ValidationCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
-  
+
   const config = categoryConfig[category];
   const Icon = config.icon;
-  
+
   // Group issues by severity
   const errorCount = issues.filter(i => i.severity === 'error').length;
   const warningCount = issues.filter(i => i.severity === 'warning').length;
   const infoCount = issues.filter(i => i.severity === 'info').length;
-  
+
+  // Determine if we should use error styling for risk category
+  const hasErrors = errorCount > 0;
+  const useErrorStyling = category === 'risk' && hasErrors;
+
+  // Override colors for risk category with errors
+  const displayConfig = useErrorStyling ? {
+    ...config,
+    color: 'text-red-700',
+    bgColor: 'bg-red-50',
+    borderColor: 'border-red-200',
+  } : config;
+
   if (issues.length === 0) {
     return null;
   }
 
   return (
-    <div className={`rounded-lg border ${config.borderColor} ${config.bgColor} overflow-hidden`}>
+    <div className={`rounded-lg border ${displayConfig.borderColor} ${displayConfig.bgColor} overflow-hidden`}>
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
         className={`w-full px-4 py-3 flex items-center justify-between hover:bg-opacity-70 transition-colors`}
       >
         <div className="flex items-center gap-3">
-          <Icon className={`h-5 w-5 ${config.color}`} />
+          <Icon className={`h-5 w-5 ${useErrorStyling ? 'text-red-600' : displayConfig.color}`} />
           <div className="text-left">
-            <h3 className={`font-medium ${config.color}`}>
+            <h3 className={`font-medium text-purple-700`}>
               {title || config.title}
             </h3>
             <div className="flex items-center gap-3 mt-0.5">
@@ -173,8 +185,8 @@ export function ValidationCard({
             </div>
           </div>
         </div>
-        <ChevronDown 
-          className={`h-4 w-4 ${config.color} transition-transform ${
+        <ChevronDown
+          className={`h-4 w-4 text-purple-700 transition-transform ${
             isExpanded ? 'rotate-180' : ''
           }`}
         />

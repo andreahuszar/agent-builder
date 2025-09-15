@@ -257,23 +257,76 @@ export async function POST(request: NextRequest) {
       });
     } else {
       console.log('Found existing vendor:', vendor.id);
-      
-      // Check if existing vendor has bank accounts and if we have bank details from invoice
+    }
+
+    // Track if bank details changed (will be used for validation warnings)
+    let bankDetailsChanged = false;
+    let expectedBankName = null;
+    let receivedBankName = null;
+
+    // Check if existing vendor has bank accounts and if we have bank details from invoice
+    if (vendor) {
       const bankDetails = normalized.paymentBankDetails;
       const hasBankDetails = bankDetails && (
-        bankDetails.bank_name || 
-        bankDetails.iban || 
+        bankDetails.bank_name ||
+        bankDetails.iban ||
         bankDetails.account_number
       );
-      
-      if (hasBankDetails) {
+
+      if (hasBankDetails && vendor.id !== (vendor as any)._justCreated) {
         // Check if vendor already has bank accounts
-        const existingBankAccounts = await prisma.vendor_bank_accounts.count({
+        const existingBankAccounts = await prisma.vendor_bank_accounts.findMany({
           where: { vendor_id: vendor.id }
         });
-        
-        // Only create bank account if vendor doesn't have any
-        if (existingBankAccounts === 0) {
+
+        // Function to compare bank details
+        const isSameBankAccount = (existing: any, newDetails: any) => {
+          // Compare key identifiers
+          if (existing.account_number && newDetails.account_number) {
+            return existing.account_number === newDetails.account_number;
+          }
+          if (existing.iban && newDetails.iban) {
+            return existing.iban === newDetails.iban;
+          }
+          if (existing.routing_number && newDetails.routing_number &&
+              existing.account_number && newDetails.account_number) {
+            return existing.routing_number === newDetails.routing_number &&
+                   existing.account_number === newDetails.account_number;
+          }
+          // If we can't definitively compare, assume different
+          return false;
+        };
+
+        // Check if bank details match any existing account
+        let matchFound = false;
+
+        if (existingBankAccounts.length > 0) {
+          matchFound = existingBankAccounts.some(account =>
+            isSameBankAccount(account, bankDetails)
+          );
+
+          if (!matchFound) {
+            bankDetailsChanged = true;
+            // Get the default bank account for comparison
+            const defaultAccount = vendor.default_bank_account_id
+              ? existingBankAccounts.find(a => a.id === vendor.default_bank_account_id)
+              : existingBankAccounts[0];
+
+            if (defaultAccount) {
+              expectedBankName = defaultAccount.bank_name;
+              receivedBankName = bankDetails.bank_name || 'Unknown Bank';
+            }
+
+            console.log('Bank details changed detected for vendor:', {
+              vendorId: vendor.id,
+              existingBanks: existingBankAccounts.map(a => a.bank_name),
+              newBank: bankDetails.bank_name
+            });
+          }
+        }
+
+        // Only create bank account if vendor doesn't have any OR if details changed
+        if (existingBankAccounts.length === 0 || bankDetailsChanged) {
           // Create masked account number (show last 4 digits)
           let maskedAccountNumber = '****';
           if (bankDetails.account_number) {
@@ -300,29 +353,58 @@ export async function POST(request: NextRequest) {
               swift_bic: bankDetails.swift_bic || null,
               sort_code: bankDetails.sort_code || null,
               routing_number: bankDetails.routing_number || null,
-              is_default: true
+              is_default: existingBankAccounts.length === 0 // Only set as default if it's the first account
             }
           });
 
-          // Update vendor with default bank account and payment method
-          await prisma.vendors.update({
-            where: { id: vendor.id },
-            data: { 
-              default_bank_account_id: bankAccount.id,
-              preferred_payment_method: vendor.preferred_payment_method || 'bank_transfer'
-            }
-          });
+          // Only update vendor with default bank account if it's their first account
+          if (existingBankAccounts.length === 0) {
+            await prisma.vendors.update({
+              where: { id: vendor.id },
+              data: {
+                default_bank_account_id: bankAccount.id,
+                preferred_payment_method: vendor.preferred_payment_method || 'bank_transfer'
+              }
+            });
+          }
 
-          console.log('Created bank account for existing vendor:', {
+          console.log(bankDetailsChanged ? 'Bank details changed - created new bank account:' : 'Created bank account for existing vendor:', {
             vendorId: vendor.id,
             bankAccountId: bankAccount.id,
             bankName: bankAccount.bank_name,
-            masked: bankAccount.account_number_masked
+            masked: bankAccount.account_number_masked,
+            isDefault: existingBankAccounts.length === 0,
+            changed: bankDetailsChanged
           });
         }
       }
     }
-    
+
+    // Fetch vendor's default bank account details if they have a preferred payment method
+    let vendorBankDetails = null;
+    if (vendor.preferred_payment_method === 'bank_transfer' && vendor.default_bank_account_id) {
+      const defaultBankAccount = await prisma.vendor_bank_accounts.findUnique({
+        where: { id: vendor.default_bank_account_id }
+      });
+
+      if (defaultBankAccount) {
+        vendorBankDetails = {
+          bank_name: defaultBankAccount.bank_name,
+          account_name: defaultBankAccount.account_name,
+          account_number: defaultBankAccount.account_number,
+          iban: defaultBankAccount.iban,
+          swift_bic: defaultBankAccount.swift_bic,
+          sort_code: defaultBankAccount.sort_code,
+          routing_number: defaultBankAccount.routing_number
+        };
+        console.log('Found vendor default bank account:', {
+          vendorId: vendor.id,
+          bankName: defaultBankAccount.bank_name,
+          accountMasked: defaultBankAccount.account_number_masked
+        });
+      }
+    }
+
     // Get or create payment terms
     let paymentTermsId = vendor.payment_terms_id;
     if (!paymentTermsId) {
@@ -419,7 +501,23 @@ export async function POST(request: NextRequest) {
     // When there's a discrepancy, prefer the extracted total from the AI as it's more reliable
     // The AI reads the actual total from the invoice, which is the source of truth
     const total = (hasSignificantDiscrepancy && extractedTotal > 0) ? extractedTotal : (extractedTotal || calculatedTotal);
-    
+
+    // Build validation warnings
+    const validationWarnings = [];
+    if (bankDetailsChanged && expectedBankName && receivedBankName) {
+      validationWarnings.push({
+        field: 'payment_bank_details',
+        message: 'Bank details on invoice differ from vendor\'s registered bank account',
+        severity: 'warning',
+        category: 'risk',
+        details: {
+          expected_bank: expectedBankName,
+          received_bank: receivedBankName,
+          action: 'New bank account added to vendor profile'
+        }
+      });
+    }
+
     const invoiceHeader = await prisma.invoice_headers.create({
       data: {
         id: invoiceId,
@@ -456,12 +554,14 @@ export async function POST(request: NextRequest) {
         department: extractionResult.department || null,
         ai_classification_confidence: extractionResult.ai_classification_confidence || null,
         ai_classification_reasoning: extractionResult.ai_classification_reasoning || null,
-        // Payment method fields
-        payment_method: extractionResult.invoice_headers?.payment_method || null,
-        payment_bank_details: extractionResult.invoice_headers?.payment_bank_details || null,
+        // Payment method fields - use vendor's preferences if extraction doesn't provide them
+        payment_method: extractionResult.invoice_headers?.payment_method || vendor.preferred_payment_method || null,
+        payment_bank_details: extractionResult.invoice_headers?.payment_bank_details || vendorBankDetails || null,
         // Field confidence tracking
         extraction_field_confidences: extractionResult.field_confidences || {},
-        is_manually_edited: {}
+        is_manually_edited: {},
+        // Validation warnings
+        validation_warnings: validationWarnings.length > 0 ? validationWarnings : null
       }
     });
     

@@ -267,6 +267,36 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
   const poNumber = getPOStatus();
 
+  // Calculate exceptions count - should match what InvoiceTabs shows
+  const calculateExceptionsCount = () => {
+    let count = 0;
+
+    // Check match results for variances that are not within tolerance
+    matchResults?.forEach((r: any) => {
+      if (!r.within_tolerance && r.explanation_code !== 'PERFECT_MATCH') {
+        count++;
+      }
+    });
+
+    // Add database validation warnings/errors
+    if (invoice.validation_warnings && Array.isArray(invoice.validation_warnings)) {
+      invoice.validation_warnings.forEach((warning: any) => {
+        if (warning.severity === 'error') {
+          count++;
+        }
+      });
+    }
+
+    // Check for other validation issues (vendor not verified, etc)
+    if (invoice.vendor_is_verified === false) {
+      count++;
+    }
+
+    return count;
+  };
+
+  const exceptionsCount = calculateExceptionsCount();
+
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
       {/* Diagnostic Banner */}
@@ -275,15 +305,17 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         currency={invoice.currency}
         poNumber={poNumber}
         matchStatus={invoice.match_status}
-        matchResults={grData?.isPartial && matchResults.length === 0 ? 
+        matchResults={grData?.isPartial && matchResults.length === 0 ?
           // Create synthetic match result to indicate partial GR when matching hasn't run
-          [{ explanation_code: 'PARTIAL_RECEIPT', gr_qty_received: grData.totalReceived, po_qty_ordered: grData.totalOrdered }] : 
+          [{ explanation_code: 'PARTIAL_RECEIPT', gr_qty_received: grData.totalReceived, po_qty_ordered: grData.totalOrdered }] :
           matchResults}
         hasGR={hasGR}
         hasSES={hasSES}
         varianceAmount={varianceAmount}
         poTotal={poTotal || null}
         helpdeskTicketRef={invoice.helpdesk_ticket_ref || `TICKET-${invoice.id ? parseInt(invoice.id.substring(0, 6), 16) % 10000 + 380000 : '380000'}`}
+        exceptionsCount={exceptionsCount}
+        validationWarnings={invoice.validation_warnings}
       />
       
       {/* Main Content Area */}

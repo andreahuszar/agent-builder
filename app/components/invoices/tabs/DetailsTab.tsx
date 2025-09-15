@@ -2,13 +2,13 @@
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { formatVendorAddress } from '@/app/lib/addressFormatter';
-import { 
-  Save, 
-  Edit2, 
-  X, 
-  File, 
-  Coins, 
-  CreditCard, 
+import {
+  Save,
+  Edit2,
+  X,
+  File,
+  Coins,
+  CreditCard,
   Calendar,
   Building2,
   User,
@@ -32,6 +32,7 @@ import { FieldConfidenceIndicator } from '../FieldConfidenceIndicator';
 import { InvoiceValidator, ValidationResult } from '@/app/utils/validationService';
 import { COST_CENTER_OPTIONS, LEDGER_OPTIONS } from '@/lib/constants/accountingCodes';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import { Badge } from '@/app/components/ui/badge';
 import type { LayoutMode } from './InvoiceTabs';
 
 interface DetailsTabProps {
@@ -595,6 +596,31 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
                 <div className={`${getFullSpan()} mt-3`}>
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-2 min-h-[20px]">Bank Details</label>
                   <div className="bg-gray-50 rounded-md p-3 space-y-2">
+                    {/* Check if bank details are unverified */}
+                    {invoiceData.validation_warnings?.some((w: any) =>
+                      w.field === 'payment_bank_details' && w.category === 'risk'
+                    ) && (
+                      <div className="flex items-center gap-2 mb-2">
+                        <Tooltip.Provider>
+                          <Tooltip.Root>
+                            <Tooltip.Trigger asChild>
+                              <Badge variant="destructive" className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100 cursor-help">
+                                Unverified
+                              </Badge>
+                            </Tooltip.Trigger>
+                            <Tooltip.Portal>
+                              <Tooltip.Content
+                                className="bg-gray-900 text-white px-2 py-1 rounded text-xs max-w-xs z-50"
+                                sideOffset={5}
+                              >
+                                Bank details differ from vendor's registered account
+                                <Tooltip.Arrow className="fill-gray-900" />
+                              </Tooltip.Content>
+                            </Tooltip.Portal>
+                          </Tooltip.Root>
+                        </Tooltip.Provider>
+                      </div>
+                    )}
                     {invoiceData.payment_bank_details.bank_name && (
                       <div className="flex gap-2">
                         <span className="text-xs font-medium text-gray-600 min-w-[100px]">Bank Name:</span>

@@ -15,6 +15,8 @@ interface DiagnosticBannerProps {
   varianceAmount?: number | null;
   poTotal?: number | null;
   helpdeskTicketRef?: string | null;
+  exceptionsCount?: number;
+  validationWarnings?: any[];
   className?: string;
 }
 
@@ -29,6 +31,8 @@ export function DiagnosticBanner({
   varianceAmount,
   poTotal,
   helpdeskTicketRef,
+  exceptionsCount = 0,
+  validationWarnings = [],
   className = '',
 }: DiagnosticBannerProps) {
   // Format currency in compact form
@@ -147,29 +151,39 @@ export function DiagnosticBanner({
           <span>{receiptStatus.label}</span>
         </div>
 
-        {/* Variance Indicator */}
-        {poNumber && varianceInfo && (
+        {/* Variance Indicator - Only show for PO-based invoices */}
+        {poNumber && poNumber !== 'N/A' && poNumber !== '"N/A"' && varianceInfo && (
           <div className={`
             inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
             ${varianceInfo.isPerfectMatch
               ? 'bg-green-50 text-green-700'
-              : varianceInfo.isWithinTolerance 
-                ? 'bg-green-50 text-green-700' 
-                : varianceInfo.percentage > 10 
-                  ? 'bg-red-50 text-red-700'
-                  : 'bg-amber-50 text-amber-700'
+              : varianceInfo.isWithinTolerance
+                ? 'bg-green-50 text-green-700'
+                : 'bg-red-50 text-red-700'
             }
           `}>
-            {varianceInfo.isPerfectMatch || varianceInfo.isWithinTolerance ? (
+            {varianceInfo.isPerfectMatch ? (
+              <Check className="h-3 w-3" />
+            ) : varianceInfo.isWithinTolerance ? (
               <Check className="h-3 w-3" />
             ) : (
               <AlertTriangle className="h-3 w-3" />
             )}
             <span>
-              {varianceInfo.isPerfectMatch 
-                ? 'Perfect Match' 
-                : `${varianceInfo.percentage.toFixed(1)}% variance`}
+              {varianceInfo.isPerfectMatch
+                ? 'Perfect Match'
+                : varianceInfo.isWithinTolerance
+                  ? 'Within Tolerance'
+                  : `${varianceInfo.percentage.toFixed(1)}% variance`}
             </span>
+          </div>
+        )}
+
+        {/* Exceptions Count - Show when there are exceptions */}
+        {exceptionsCount > 0 && (
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+            <AlertTriangle className="h-3 w-3" />
+            <span>{exceptionsCount} Exception{exceptionsCount !== 1 ? 's' : ''}</span>
           </div>
         )}
 
