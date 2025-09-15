@@ -4,8 +4,8 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "prisma generate && node scripts/force-sync-schema.js && next build",
-    "start": "next start",
+    "build": "prisma generate && next build",
+    "start": "node scripts/force-sync-schema.js && next start",
     "deploy": "node scripts/force-sync-schema.js",
     "db:migrate:sql": "node scripts/migrate-sql.js",
     "lint": "next lint",

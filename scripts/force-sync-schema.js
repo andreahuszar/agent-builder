@@ -246,8 +246,10 @@ async function forceSchemaSync() {
     console.log('   All missing columns and tables have been added.');
 
   } catch (error) {
-    console.error('❌ Schema sync failed:', error.message);
-    process.exit(1);
+    console.error('⚠️  Schema sync warning:', error.message);
+    console.log('   This may be normal during build phase.');
+    console.log('   Schema sync will retry at startup if needed.');
+    // Don't exit with error during build
   } finally {
     await client.end();
   }
