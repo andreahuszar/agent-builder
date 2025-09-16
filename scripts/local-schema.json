@@ -1,0 +1,6777 @@
+{
+  "extractedAt": "2025-09-16T08:54:10.324Z",
+  "database": "xelix_invoice_dev",
+  "enums": {
+    "approval_status": "{not_required,pending,in_progress,approved,rejected,escalated}",
+    "doc_type": "{PO,GR,INV,SES}",
+    "gr_status": "{posted,reversed}",
+    "hold_reason_code": "{MATCH,POLICY,COMPLIANCE,VENDOR_CHANGE,TAX}",
+    "invoice_status": "{draft,processing,validating,requires_review,in_approval,pending_approval,approved,ready_for_payment,approved_ready_for_payment,posted,paid,void,on_hold}",
+    "invoice_type": "{invoice,credit_memo,debit_memo}",
+    "match_rule": "{2-way-PO,2-way-GR,3-way}",
+    "match_status": "{not_matched,non_po,matched,within_tolerance,exception}",
+    "po_status": "{draft,approved,closed,canceled}",
+    "po_type": "{standard,blanket,service,release}",
+    "tax_treatment_code": "{STANDARD,ZERO_RATED,EXEMPT,REVERSE_CHARGE,SELF_BILLED}",
+    "validation_category": "{financial,process,compliance,risk,data_quality}",
+    "validation_rule_type": "{required_field,amount_variance,date_consistency,tax_calculation,duplicate_detection,vendor_verification,po_matching,receipt_matching,budget_impact,approval_limit,custom}",
+    "validation_severity": "{error,warning,info}",
+    "work_item_status": "{queued,in_progress,done,blocked}",
+    "work_stage": "{ingest,extract_index,match,non_po,post}",
+    "workflow_status": "{pending,approved,rejected,skipped}"
+  },
+  "tables": {
+    "agent_runs": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "agent_code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "work_item_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "input_json",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "output_json",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "finished_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "success",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "error",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "agent_runs_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "agent_runs_work_item_id_fkey",
+          "column": "work_item_id",
+          "referencedTable": "work_items",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "approval_policies": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "priority",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "true"
+        },
+        {
+          "name": "vendor_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "currency",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 3,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "min_amount",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "max_amount",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "non_po_only",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "false"
+        },
+        {
+          "name": "match_json",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "approver_group_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "sequence",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": true,
+          "default": "1"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "approval_policies_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "approval_policies_approver_group_id_fkey",
+          "column": "approver_group_id",
+          "referencedTable": "approver_groups",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "approval_policies_vendor_id_fkey",
+          "column": "vendor_id",
+          "referencedTable": "vendors",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "approvals": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "doc_type",
+          "type": "USER-DEFINED",
+          "customType": "doc_type",
+          "udtName": "doc_type",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "doc_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "step",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "USER-DEFINED",
+          "customType": "workflow_status",
+          "udtName": "workflow_status",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "assigned_to",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "note",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "acted_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "approvals_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "approvals_assigned_to_fkey",
+          "column": "assigned_to",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "approver_group_members": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "group_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "user_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "level",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "approver_group_members_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "approver_group_members_group_id_fkey",
+          "column": "group_id",
+          "referencedTable": "approver_groups",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "approver_group_members_user_id_fkey",
+          "column": "user_id",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ],
+      "uniqueConstraints": [
+        {
+          "name": "unique_group_level",
+          "columns": [
+            "group_id",
+            "level"
+          ]
+        },
+        {
+          "name": "unique_group_member",
+          "columns": [
+            "group_id",
+            "user_id"
+          ]
+        }
+      ]
+    },
+    "approver_groups": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "approver_groups_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "uniqueConstraints": [
+        {
+          "name": "approver_groups_name_key",
+          "columns": [
+            "name"
+          ]
+        }
+      ]
+    },
+    "attachments": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "doc_type",
+          "type": "USER-DEFINED",
+          "customType": "doc_type",
+          "udtName": "doc_type",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "doc_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "filename",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "media_type",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "storage_url",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "source",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "sha256",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 64,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "attachments_pkey",
+        "columns": [
+          "id"
+        ]
+      }
+    },
+    "audit_events": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "doc_type",
+          "type": "USER-DEFINED",
+          "customType": "doc_type",
+          "udtName": "doc_type",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "doc_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "event_type",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "by_user_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "payload_json",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": {
+        "name": "audit_events_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "audit_events_by_user_id_fkey",
+          "column": "by_user_id",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "cost_centers": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "cost_centers_pkey",
+        "columns": [
+          "id"
+        ]
+      }
+    },
+    "external_refs": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "doc_type",
+          "type": "USER-DEFINED",
+          "customType": "doc_type",
+          "udtName": "doc_type",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "doc_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "system_code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "external_id",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "external_refs_pkey",
+        "columns": [
+          "id"
+        ]
+      }
+    },
+    "gr_headers": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "gr_number",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "po_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "receipt_date",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "received_by_user_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "USER-DEFINED",
+          "customType": "gr_status",
+          "udtName": "gr_status",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "reference",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "carrier",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "gr_headers_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "gr_headers_po_id_fkey",
+          "column": "po_id",
+          "referencedTable": "po_headers",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "gr_headers_received_by_user_id_fkey",
+          "column": "received_by_user_id",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ],
+      "uniqueConstraints": [
+        {
+          "name": "gr_headers_gr_number_key",
+          "columns": [
+            "gr_number"
+          ]
+        }
+      ]
+    },
+    "gr_lines": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "gr_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "po_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "qty_received",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 6,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "qty_rejected",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 6,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "uom",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "storage_location",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "reject_reason_code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "gr_lines_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "gr_lines_gr_id_fkey",
+          "column": "gr_id",
+          "referencedTable": "gr_headers",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "gr_lines_po_line_id_fkey",
+          "column": "po_line_id",
+          "referencedTable": "po_lines",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "invoice_headers": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "type",
+          "type": "USER-DEFINED",
+          "customType": "invoice_type",
+          "udtName": "invoice_type",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "vendor_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "invoice_number",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "invoice_date",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "due_date",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "currency",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 3,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "home_currency",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 3,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "fx_rate",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 8,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "subtotal",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "discount_total",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "tax_total",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "shipping_total",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "other_charges_total",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "withholding_tax_total",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "rounding_diff",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "total",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "paid_amount",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": "0"
+        },
+        {
+          "name": "payment_terms_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "bill_to_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "ship_to_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "vendor_bank_account_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "vendor_name_snapshot",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "vendor_tax_id_snapshot",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "vendor_address_snapshot",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "terms_text",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "tax_point_date",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "po_numbers_cached",
+          "type": "ARRAY",
+          "customType": "text[]",
+          "udtName": "_text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "tax_inclusive",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "false"
+        },
+        {
+          "name": "tax_treatment_code",
+          "type": "USER-DEFINED",
+          "customType": "tax_treatment_code",
+          "udtName": "tax_treatment_code",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "self_billed",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "false"
+        },
+        {
+          "name": "early_pay_discount_offered_percent",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 7,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "early_pay_discount_deadline",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "early_pay_discount_taken_amount",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "prepayment_reference",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "references_invoice_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "revision",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": true,
+          "default": "1"
+        },
+        {
+          "name": "supersedes_invoice_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "fingerprint_sha256",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 64,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "USER-DEFINED",
+          "customType": "invoice_status",
+          "udtName": "invoice_status",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "match_status",
+          "type": "USER-DEFINED",
+          "customType": "match_status",
+          "udtName": "match_status",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "'not_matched'::match_status"
+        },
+        {
+          "name": "hold_reason",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "hold_reason_code",
+          "type": "USER-DEFINED",
+          "customType": "hold_reason_code",
+          "udtName": "hold_reason_code",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "updated_by",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "approval_status",
+          "type": "USER-DEFINED",
+          "customType": "approval_status",
+          "udtName": "approval_status",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "'not_required'::approval_status"
+        },
+        {
+          "name": "gr_numbers_cached",
+          "type": "ARRAY",
+          "customType": "text[]",
+          "udtName": "_text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "po_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "bill_to_snapshot",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ship_to_snapshot",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "assigned_to_user_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "helpdesk_ticket_ref",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "validation_errors",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "validation_warnings",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "'[]'::jsonb"
+        },
+        {
+          "name": "confidence_score",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 5,
+          "scale": 2,
+          "nullable": true,
+          "default": "100.00"
+        },
+        {
+          "name": "fraud_risk_score",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 5,
+          "scale": 2,
+          "nullable": true,
+          "default": "0.00"
+        },
+        {
+          "name": "processing_started_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "processing_completed_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ledger",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "'Accounts Payable'::character varying"
+        },
+        {
+          "name": "tax_rate_percent",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 9,
+          "scale": 6,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "cost_center",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "cost_center_name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "gl_code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "department",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "accounting_notes",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ai_classification_confidence",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 3,
+          "scale": 2,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ai_classification_reasoning",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "extraction_field_confidences",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "'{}'::jsonb"
+        },
+        {
+          "name": "is_manually_edited",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "'{}'::jsonb"
+        },
+        {
+          "name": "payment_method",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "payment_bank_details",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "extracted_total",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "total_discrepancy",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": {
+        "name": "invoice_headers_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "invoice_headers_assigned_to_user_id_fkey",
+          "column": "assigned_to_user_id",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_headers_bill_to_id_fkey",
+          "column": "bill_to_id",
+          "referencedTable": "org_entities",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_headers_created_by_fkey",
+          "column": "created_by",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_headers_payment_terms_id_fkey",
+          "column": "payment_terms_id",
+          "referencedTable": "payment_terms",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_headers_references_invoice_id_fkey",
+          "column": "references_invoice_id",
+          "referencedTable": "invoice_headers",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_headers_ship_to_id_fkey",
+          "column": "ship_to_id",
+          "referencedTable": "ship_to_sites",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_headers_supersedes_invoice_id_fkey",
+          "column": "supersedes_invoice_id",
+          "referencedTable": "invoice_headers",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_headers_updated_by_fkey",
+          "column": "updated_by",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_headers_vendor_bank_account_id_fkey",
+          "column": "vendor_bank_account_id",
+          "referencedTable": "vendor_bank_accounts",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_headers_vendor_id_fkey",
+          "column": "vendor_id",
+          "referencedTable": "vendors",
+          "referencedColumn": "id"
+        }
+      ],
+      "uniqueConstraints": [
+        {
+          "name": "invoice_headers_vendor_id_invoice_number_key",
+          "columns": [
+            "vendor_id",
+            "invoice_number"
+          ]
+        }
+      ]
+    },
+    "invoice_line_distributions": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "invoice_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "cost_center",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "gl_account",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "project_code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "amount",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "percent",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 7,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "invoice_line_distributions_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "invoice_line_distributions_invoice_line_id_fkey",
+          "column": "invoice_line_id",
+          "referencedTable": "invoice_lines",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "invoice_line_receipts": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "invoice_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "gr_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ses_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "qty_applied",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 6,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "amount_applied",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "invoice_line_receipts_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "invoice_line_receipts_gr_line_id_fkey",
+          "column": "gr_line_id",
+          "referencedTable": "gr_lines",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_line_receipts_invoice_line_id_fkey",
+          "column": "invoice_line_id",
+          "referencedTable": "invoice_lines",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_line_receipts_ses_line_id_fkey",
+          "column": "ses_line_id",
+          "referencedTable": "ses_lines",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "invoice_line_taxes": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "invoice_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "tax_rate_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "base_amount",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "tax_amount",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "invoice_line_taxes_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "invoice_line_taxes_invoice_line_id_fkey",
+          "column": "invoice_line_id",
+          "referencedTable": "invoice_lines",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_line_taxes_tax_rate_id_fkey",
+          "column": "tax_rate_id",
+          "referencedTable": "tax_rates",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "invoice_lines": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "invoice_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "line_no",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "item_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "uom",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "qty",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 6,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "unit_price",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "discount_percent",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 7,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "discount_amount",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "extended_amount",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "net_amount",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "tax_rate_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "tax_amount",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "line_total",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "cost_center",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "project_code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "gl_account",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "po_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "gr_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ses_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "orig_uom",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "normalized_qty",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 6,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "normalized_unit_price",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 6,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "service_period_start",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "service_period_end",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "po_number_snapshot",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "po_line_no_snapshot",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "gr_number_snapshot",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "gr_line_no_snapshot",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "tax_rate_percent",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 9,
+          "scale": 6,
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": {
+        "name": "invoice_lines_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "invoice_lines_gr_line_id_fkey",
+          "column": "gr_line_id",
+          "referencedTable": "gr_lines",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_lines_invoice_id_fkey",
+          "column": "invoice_id",
+          "referencedTable": "invoice_headers",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_lines_item_id_fkey",
+          "column": "item_id",
+          "referencedTable": "items",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_lines_po_line_id_fkey",
+          "column": "po_line_id",
+          "referencedTable": "po_lines",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_lines_ses_line_id_fkey",
+          "column": "ses_line_id",
+          "referencedTable": "ses_lines",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_lines_tax_rate_id_fkey",
+          "column": "tax_rate_id",
+          "referencedTable": "tax_rates",
+          "referencedColumn": "id"
+        }
+      ],
+      "uniqueConstraints": [
+        {
+          "name": "unique_invoice_line_no",
+          "columns": [
+            "invoice_id",
+            "line_no"
+          ]
+        }
+      ]
+    },
+    "invoice_status_history": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "invoice_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "old_status",
+          "type": "USER-DEFINED",
+          "customType": "invoice_status",
+          "udtName": "invoice_status",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "new_status",
+          "type": "USER-DEFINED",
+          "customType": "invoice_status",
+          "udtName": "invoice_status",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "changed_by",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "invoice_status_history_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "invoice_status_history_changed_by_fkey",
+          "column": "changed_by",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_status_history_invoice_id_fkey",
+          "column": "invoice_id",
+          "referencedTable": "invoice_headers",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "invoice_validations": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "invoice_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "validation_rule_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "field_name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "line_number",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "severity",
+          "type": "USER-DEFINED",
+          "customType": "validation_severity",
+          "udtName": "validation_severity",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "category",
+          "type": "USER-DEFINED",
+          "customType": "validation_category",
+          "udtName": "validation_category",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "is_valid",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "message",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "details",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "'{}'::jsonb"
+        },
+        {
+          "name": "expected_value",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "actual_value",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "variance_amount",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "variance_percent",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 7,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "is_resolved",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "false"
+        },
+        {
+          "name": "resolved_by",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "resolved_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "resolution_notes",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "invoice_validations_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "invoice_validations_invoice_id_fkey",
+          "column": "invoice_id",
+          "referencedTable": "invoice_headers",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_validations_resolved_by_fkey",
+          "column": "resolved_by",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "invoice_validations_validation_rule_id_fkey",
+          "column": "validation_rule_id",
+          "referencedTable": "validation_rules",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "items": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "sku",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "uom",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "tax_class_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "true"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "items_pkey",
+        "columns": [
+          "id"
+        ]
+      }
+    },
+    "match_results": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "invoice_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "invoice_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "level",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "rule_applied",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "matched_po_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "matched_gr_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "matched_ses_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "qty_variance",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 6,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "price_variance",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 6,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "amount_variance",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "within_tolerance",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "tolerance_profile_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "explanation_code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "match_results_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "match_results_invoice_id_fkey",
+          "column": "invoice_id",
+          "referencedTable": "invoice_headers",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "match_results_invoice_line_id_fkey",
+          "column": "invoice_line_id",
+          "referencedTable": "invoice_lines",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "match_results_matched_gr_line_id_fkey",
+          "column": "matched_gr_line_id",
+          "referencedTable": "gr_lines",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "match_results_matched_po_line_id_fkey",
+          "column": "matched_po_line_id",
+          "referencedTable": "po_lines",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "match_results_matched_ses_line_id_fkey",
+          "column": "matched_ses_line_id",
+          "referencedTable": "ses_lines",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "match_results_tolerance_profile_id_fkey",
+          "column": "tolerance_profile_id",
+          "referencedTable": "tolerance_profiles",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "org_entities": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "legal_name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "tax_id",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "address_lines",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "default_currency",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 3,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "org_entities_pkey",
+        "columns": [
+          "id"
+        ]
+      }
+    },
+    "payment_terms": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "net_days",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "discount_percent",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 7,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "discount_days",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "payment_terms_pkey",
+        "columns": [
+          "id"
+        ]
+      }
+    },
+    "po_headers": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "po_number",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "vendor_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "po_type",
+          "type": "USER-DEFINED",
+          "customType": "po_type",
+          "udtName": "po_type",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "parent_po_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "order_date",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "currency",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 3,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "bill_to_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "ship_to_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "payment_terms_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "expected_match_rule",
+          "type": "USER-DEFINED",
+          "customType": "match_rule",
+          "udtName": "match_rule",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "USER-DEFINED",
+          "customType": "po_status",
+          "udtName": "po_status",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "buyer_user_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "subtotal",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "tax_total",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "total",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": {
+        "name": "po_headers_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "po_headers_bill_to_id_fkey",
+          "column": "bill_to_id",
+          "referencedTable": "org_entities",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "po_headers_buyer_user_id_fkey",
+          "column": "buyer_user_id",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "po_headers_parent_po_id_fkey",
+          "column": "parent_po_id",
+          "referencedTable": "po_headers",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "po_headers_payment_terms_id_fkey",
+          "column": "payment_terms_id",
+          "referencedTable": "payment_terms",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "po_headers_ship_to_id_fkey",
+          "column": "ship_to_id",
+          "referencedTable": "ship_to_sites",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "po_headers_vendor_id_fkey",
+          "column": "vendor_id",
+          "referencedTable": "vendors",
+          "referencedColumn": "id"
+        }
+      ],
+      "uniqueConstraints": [
+        {
+          "name": "po_headers_po_number_key",
+          "columns": [
+            "po_number"
+          ]
+        }
+      ]
+    },
+    "po_lines": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "po_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "line_no",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "item_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "uom",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "qty_ordered",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 6,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "unit_price",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "tax_rate_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "cost_center",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "project_code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "gl_account",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "need_by_date",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "allow_over_receipt_pct",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 7,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "allow_over_invoice_pct",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 7,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "po_lines_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "po_lines_item_id_fkey",
+          "column": "item_id",
+          "referencedTable": "items",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "po_lines_po_id_fkey",
+          "column": "po_id",
+          "referencedTable": "po_headers",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "po_lines_tax_rate_id_fkey",
+          "column": "tax_rate_id",
+          "referencedTable": "tax_rates",
+          "referencedColumn": "id"
+        }
+      ],
+      "uniqueConstraints": [
+        {
+          "name": "unique_po_line_no",
+          "columns": [
+            "po_id",
+            "line_no"
+          ]
+        }
+      ]
+    },
+    "projects": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "projects_pkey",
+        "columns": [
+          "id"
+        ]
+      }
+    },
+    "schema_migrations": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": false,
+          "default": "nextval('schema_migrations_id_seq'::regclass)"
+        },
+        {
+          "name": "filename",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "checksum",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 64,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "applied_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "execution_time_ms",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "success",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "true"
+        },
+        {
+          "name": "error_message",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "rolled_back",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "false"
+        },
+        {
+          "name": "rolled_back_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": {
+        "name": "schema_migrations_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "uniqueConstraints": [
+        {
+          "name": "schema_migrations_filename_key",
+          "columns": [
+            "filename"
+          ]
+        }
+      ]
+    },
+    "ses_headers": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "po_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "service_period_start",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "service_period_end",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "approved_by_user_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "USER-DEFINED",
+          "customType": "gr_status",
+          "udtName": "gr_status",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "ses_headers_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "ses_headers_approved_by_user_id_fkey",
+          "column": "approved_by_user_id",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "ses_headers_po_id_fkey",
+          "column": "po_id",
+          "referencedTable": "po_headers",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "ses_lines": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "ses_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "po_line_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "amount_accepted",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "ses_lines_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "ses_lines_po_line_id_fkey",
+          "column": "po_line_id",
+          "referencedTable": "po_lines",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "ses_lines_ses_id_fkey",
+          "column": "ses_id",
+          "referencedTable": "ses_headers",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "ship_to_sites": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "org_entity_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "address_lines",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "ship_to_sites_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "ship_to_sites_org_entity_id_fkey",
+          "column": "org_entity_id",
+          "referencedTable": "org_entities",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "source_files": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "filename",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "media_type",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "storage_url",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "sha256",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 64,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "extracted_json",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "ocr_confidence",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 5,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "source_files_pkey",
+        "columns": [
+          "id"
+        ]
+      }
+    },
+    "tax_rates": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "rate_percent",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 9,
+          "scale": 6,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "valid_from",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "valid_to",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "tax_rates_pkey",
+        "columns": [
+          "id"
+        ]
+      }
+    },
+    "test_migrations": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 30,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "concat('test_', to_char(now(), 'YYYYMMDDHH24MISS'::text), '_', substr(md5((random())::text), 1, 6))"
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "value",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "createdAt",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updatedAt",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "test_migrations_pkey",
+        "columns": [
+          "id"
+        ]
+      }
+    },
+    "tolerance_profiles": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "price_tolerance_pct",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 7,
+          "scale": 4,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "qty_tolerance_pct",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 7,
+          "scale": 4,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "amount_tolerance_abs",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "tax_tolerance_abs",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "rounding_tolerance_abs",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "match_rule",
+          "type": "USER-DEFINED",
+          "customType": "match_rule",
+          "udtName": "match_rule",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "tolerance_profiles_pkey",
+        "columns": [
+          "id"
+        ]
+      }
+    },
+    "uom_conversions": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "item_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "from_uom",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "to_uom",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "factor",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 9,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "valid_from",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "valid_to",
+          "type": "date",
+          "customType": null,
+          "udtName": "date",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "uom_conversions_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "uom_conversions_item_id_fkey",
+          "column": "item_id",
+          "referencedTable": "items",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "users": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "email",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "users_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "uniqueConstraints": [
+        {
+          "name": "users_email_key",
+          "columns": [
+            "email"
+          ]
+        }
+      ]
+    },
+    "validation_rules": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "customType": null,
+          "udtName": "text",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "rule_type",
+          "type": "USER-DEFINED",
+          "customType": "validation_rule_type",
+          "udtName": "validation_rule_type",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "category",
+          "type": "USER-DEFINED",
+          "customType": "validation_category",
+          "udtName": "validation_category",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "severity",
+          "type": "USER-DEFINED",
+          "customType": "validation_severity",
+          "udtName": "validation_severity",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "is_active",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "true"
+        },
+        {
+          "name": "config",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "'{}'::jsonb"
+        },
+        {
+          "name": "tolerance_percent",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 7,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "tolerance_amount",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 18,
+          "scale": 4,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "validation_rules_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "uniqueConstraints": [
+        {
+          "name": "validation_rules_code_key",
+          "columns": [
+            "code"
+          ]
+        }
+      ]
+    },
+    "validation_runs": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "invoice_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "run_type",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "triggered_by",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "total_rules_checked",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "errors_found",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "warnings_found",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "info_found",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": false,
+          "default": "0"
+        },
+        {
+          "name": "confidence_score",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 5,
+          "scale": 2,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "fraud_risk_score",
+          "type": "numeric",
+          "customType": null,
+          "udtName": "numeric",
+          "maxLength": null,
+          "precision": 5,
+          "scale": 2,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "now()"
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "duration_ms",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "validation_runs_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "validation_runs_invoice_id_fkey",
+          "column": "invoice_id",
+          "referencedTable": "invoice_headers",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "validation_runs_triggered_by_fkey",
+          "column": "triggered_by",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "vendor_bank_accounts": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "vendor_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "bank_name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "iban",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "swift_bic",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "account_number_masked",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "is_default",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "false"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "account_name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "account_number",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "sort_code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "routing_number",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 20,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": {
+        "name": "vendor_bank_accounts_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "vendor_bank_accounts_vendor_id_fkey",
+          "column": "vendor_id",
+          "referencedTable": "vendors",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "vendors": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "name",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 255,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "tax_id",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "country_code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 2,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "default_currency",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 3,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "payment_terms_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "default_bank_account_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "tolerance_profile_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "requires_po",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "true"
+        },
+        {
+          "name": "is_blocked_for_payment",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "false"
+        },
+        {
+          "name": "w9_on_file",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "true"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "is_verified",
+          "type": "boolean",
+          "customType": null,
+          "udtName": "bool",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "false"
+        },
+        {
+          "name": "preferred_payment_method",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 50,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        }
+      ],
+      "primaryKey": {
+        "name": "vendors_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "vendors_default_bank_account_id_fkey",
+          "column": "default_bank_account_id",
+          "referencedTable": "vendor_bank_accounts",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "vendors_payment_terms_id_fkey",
+          "column": "payment_terms_id",
+          "referencedTable": "payment_terms",
+          "referencedColumn": "id"
+        },
+        {
+          "name": "vendors_tolerance_profile_id_fkey",
+          "column": "tolerance_profile_id",
+          "referencedTable": "tolerance_profiles",
+          "referencedColumn": "id"
+        }
+      ]
+    },
+    "work_items": {
+      "columns": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": "gen_random_uuid()"
+        },
+        {
+          "name": "doc_type",
+          "type": "USER-DEFINED",
+          "customType": "doc_type",
+          "udtName": "doc_type",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "doc_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "stage",
+          "type": "USER-DEFINED",
+          "customType": "work_stage",
+          "udtName": "work_stage",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "status",
+          "type": "USER-DEFINED",
+          "customType": "work_item_status",
+          "udtName": "work_item_status",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": false,
+          "default": null
+        },
+        {
+          "name": "priority",
+          "type": "integer",
+          "customType": null,
+          "udtName": "int4",
+          "maxLength": null,
+          "precision": 32,
+          "scale": 0,
+          "nullable": true,
+          "default": "3"
+        },
+        {
+          "name": "assigned_to_user_id",
+          "type": "uuid",
+          "customType": null,
+          "udtName": "uuid",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "assigned_to_agent_code",
+          "type": "character varying",
+          "customType": null,
+          "udtName": "varchar",
+          "maxLength": 100,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "due_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "result_json",
+          "type": "jsonb",
+          "customType": null,
+          "udtName": "jsonb",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": null
+        },
+        {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "customType": null,
+          "udtName": "timestamptz",
+          "maxLength": null,
+          "precision": null,
+          "scale": null,
+          "nullable": true,
+          "default": "now()"
+        }
+      ],
+      "primaryKey": {
+        "name": "work_items_pkey",
+        "columns": [
+          "id"
+        ]
+      },
+      "foreignKeys": [
+        {
+          "name": "work_items_assigned_to_user_id_fkey",
+          "column": "assigned_to_user_id",
+          "referencedTable": "users",
+          "referencedColumn": "id"
+        }
+      ]
+    }
+  },
+  "indexes": {
+    "agent_runs": [
+      {
+        "name": "idx_agent_runs_agent_code",
+        "definition": "CREATE INDEX idx_agent_runs_agent_code ON public.agent_runs USING btree (agent_code)"
+      },
+      {
+        "name": "idx_agent_runs_started_at",
+        "definition": "CREATE INDEX idx_agent_runs_started_at ON public.agent_runs USING btree (started_at)"
+      },
+      {
+        "name": "idx_agent_runs_work_item_id",
+        "definition": "CREATE INDEX idx_agent_runs_work_item_id ON public.agent_runs USING btree (work_item_id)"
+      }
+    ],
+    "approval_policies": [
+      {
+        "name": "idx_approval_policies_active",
+        "definition": "CREATE INDEX idx_approval_policies_active ON public.approval_policies USING btree (active)"
+      },
+      {
+        "name": "idx_approval_policies_priority",
+        "definition": "CREATE INDEX idx_approval_policies_priority ON public.approval_policies USING btree (priority)"
+      },
+      {
+        "name": "idx_approval_policies_vendor_id",
+        "definition": "CREATE INDEX idx_approval_policies_vendor_id ON public.approval_policies USING btree (vendor_id)"
+      }
+    ],
+    "approvals": [
+      {
+        "name": "idx_approvals_doc_type_doc_id",
+        "definition": "CREATE INDEX idx_approvals_doc_type_doc_id ON public.approvals USING btree (doc_type, doc_id)"
+      },
+      {
+        "name": "idx_approvals_status",
+        "definition": "CREATE INDEX idx_approvals_status ON public.approvals USING btree (status)"
+      }
+    ],
+    "approver_group_members": [
+      {
+        "name": "idx_approver_group_members_group_id",
+        "definition": "CREATE INDEX idx_approver_group_members_group_id ON public.approver_group_members USING btree (group_id)"
+      },
+      {
+        "name": "idx_approver_group_members_group_level",
+        "definition": "CREATE INDEX idx_approver_group_members_group_level ON public.approver_group_members USING btree (group_id, level)"
+      },
+      {
+        "name": "idx_approver_group_members_user_id",
+        "definition": "CREATE INDEX idx_approver_group_members_user_id ON public.approver_group_members USING btree (user_id)"
+      },
+      {
+        "name": "unique_group_level",
+        "definition": "CREATE UNIQUE INDEX unique_group_level ON public.approver_group_members USING btree (group_id, level)"
+      },
+      {
+        "name": "unique_group_member",
+        "definition": "CREATE UNIQUE INDEX unique_group_member ON public.approver_group_members USING btree (group_id, user_id)"
+      }
+    ],
+    "approver_groups": [
+      {
+        "name": "approver_groups_name_key",
+        "definition": "CREATE UNIQUE INDEX approver_groups_name_key ON public.approver_groups USING btree (name)"
+      }
+    ],
+    "attachments": [
+      {
+        "name": "idx_attachments_doc_type_doc_id",
+        "definition": "CREATE INDEX idx_attachments_doc_type_doc_id ON public.attachments USING btree (doc_type, doc_id)"
+      },
+      {
+        "name": "idx_attachments_sha256",
+        "definition": "CREATE INDEX idx_attachments_sha256 ON public.attachments USING btree (sha256)"
+      }
+    ],
+    "audit_events": [
+      {
+        "name": "idx_audit_events_at",
+        "definition": "CREATE INDEX idx_audit_events_at ON public.audit_events USING btree (at)"
+      },
+      {
+        "name": "idx_audit_events_doc_type_doc_id",
+        "definition": "CREATE INDEX idx_audit_events_doc_type_doc_id ON public.audit_events USING btree (doc_type, doc_id)"
+      },
+      {
+        "name": "idx_audit_events_event_type",
+        "definition": "CREATE INDEX idx_audit_events_event_type ON public.audit_events USING btree (event_type)"
+      }
+    ],
+    "cost_centers": [
+      {
+        "name": "idx_cost_centers_code",
+        "definition": "CREATE INDEX idx_cost_centers_code ON public.cost_centers USING btree (code)"
+      }
+    ],
+    "external_refs": [
+      {
+        "name": "idx_external_refs_doc_type_doc_id",
+        "definition": "CREATE INDEX idx_external_refs_doc_type_doc_id ON public.external_refs USING btree (doc_type, doc_id)"
+      },
+      {
+        "name": "idx_external_refs_external_id",
+        "definition": "CREATE INDEX idx_external_refs_external_id ON public.external_refs USING btree (external_id)"
+      },
+      {
+        "name": "idx_external_refs_system_code",
+        "definition": "CREATE INDEX idx_external_refs_system_code ON public.external_refs USING btree (system_code)"
+      }
+    ],
+    "gr_headers": [
+      {
+        "name": "gr_headers_gr_number_key",
+        "definition": "CREATE UNIQUE INDEX gr_headers_gr_number_key ON public.gr_headers USING btree (gr_number)"
+      },
+      {
+        "name": "idx_gr_headers_gr_number",
+        "definition": "CREATE INDEX idx_gr_headers_gr_number ON public.gr_headers USING btree (gr_number)"
+      },
+      {
+        "name": "idx_gr_headers_po_id",
+        "definition": "CREATE INDEX idx_gr_headers_po_id ON public.gr_headers USING btree (po_id)"
+      },
+      {
+        "name": "idx_gr_headers_receipt_date",
+        "definition": "CREATE INDEX idx_gr_headers_receipt_date ON public.gr_headers USING btree (receipt_date)"
+      },
+      {
+        "name": "idx_gr_headers_status",
+        "definition": "CREATE INDEX idx_gr_headers_status ON public.gr_headers USING btree (status)"
+      }
+    ],
+    "gr_lines": [
+      {
+        "name": "idx_gr_lines_gr_id",
+        "definition": "CREATE INDEX idx_gr_lines_gr_id ON public.gr_lines USING btree (gr_id)"
+      },
+      {
+        "name": "idx_gr_lines_po_line_id",
+        "definition": "CREATE INDEX idx_gr_lines_po_line_id ON public.gr_lines USING btree (po_line_id)"
+      }
+    ],
+    "invoice_headers": [
+      {
+        "name": "idx_invoice_date_status",
+        "definition": "CREATE INDEX idx_invoice_date_status ON public.invoice_headers USING btree (invoice_date, status)"
+      },
+      {
+        "name": "idx_invoice_headers_accounting",
+        "definition": "CREATE INDEX idx_invoice_headers_accounting ON public.invoice_headers USING btree (cost_center, gl_code, ledger) WHERE (cost_center IS NOT NULL)"
+      },
+      {
+        "name": "idx_invoice_headers_approval_status",
+        "definition": "CREATE INDEX idx_invoice_headers_approval_status ON public.invoice_headers USING btree (approval_status) WHERE (approval_status <> 'not_required'::approval_status)"
+      },
+      {
+        "name": "idx_invoice_headers_assigned_to",
+        "definition": "CREATE INDEX idx_invoice_headers_assigned_to ON public.invoice_headers USING btree (assigned_to_user_id)"
+      },
+      {
+        "name": "idx_invoice_headers_confidence",
+        "definition": "CREATE INDEX idx_invoice_headers_confidence ON public.invoice_headers USING btree (confidence_score)"
+      },
+      {
+        "name": "idx_invoice_headers_cost_center",
+        "definition": "CREATE INDEX idx_invoice_headers_cost_center ON public.invoice_headers USING btree (cost_center) WHERE (cost_center IS NOT NULL)"
+      },
+      {
+        "name": "idx_invoice_headers_created_at",
+        "definition": "CREATE INDEX idx_invoice_headers_created_at ON public.invoice_headers USING btree (created_at DESC)"
+      },
+      {
+        "name": "idx_invoice_headers_department",
+        "definition": "CREATE INDEX idx_invoice_headers_department ON public.invoice_headers USING btree (department) WHERE (department IS NOT NULL)"
+      },
+      {
+        "name": "idx_invoice_headers_due_date",
+        "definition": "CREATE INDEX idx_invoice_headers_due_date ON public.invoice_headers USING btree (due_date)"
+      },
+      {
+        "name": "idx_invoice_headers_gr_numbers_cached",
+        "definition": "CREATE INDEX idx_invoice_headers_gr_numbers_cached ON public.invoice_headers USING gin (gr_numbers_cached)"
+      },
+      {
+        "name": "idx_invoice_headers_has_errors",
+        "definition": "CREATE INDEX idx_invoice_headers_has_errors ON public.invoice_headers USING btree (((jsonb_array_length(validation_errors) > 0)))"
+      },
+      {
+        "name": "idx_invoice_headers_helpdesk_ticket",
+        "definition": "CREATE INDEX idx_invoice_headers_helpdesk_ticket ON public.invoice_headers USING btree (helpdesk_ticket_ref) WHERE (helpdesk_ticket_ref IS NOT NULL)"
+      },
+      {
+        "name": "idx_invoice_headers_invoice_date",
+        "definition": "CREATE INDEX idx_invoice_headers_invoice_date ON public.invoice_headers USING btree (invoice_date)"
+      },
+      {
+        "name": "idx_invoice_headers_match_status",
+        "definition": "CREATE INDEX idx_invoice_headers_match_status ON public.invoice_headers USING btree (match_status)"
+      },
+      {
+        "name": "idx_invoice_headers_payment_method",
+        "definition": "CREATE INDEX idx_invoice_headers_payment_method ON public.invoice_headers USING btree (payment_method)"
+      },
+      {
+        "name": "idx_invoice_headers_po_numbers",
+        "definition": "CREATE INDEX idx_invoice_headers_po_numbers ON public.invoice_headers USING gin (po_numbers_cached)"
+      },
+      {
+        "name": "idx_invoice_headers_po_numbers_cached",
+        "definition": "CREATE INDEX idx_invoice_headers_po_numbers_cached ON public.invoice_headers USING gin (po_numbers_cached)"
+      },
+      {
+        "name": "idx_invoice_headers_status",
+        "definition": "CREATE INDEX idx_invoice_headers_status ON public.invoice_headers USING btree (status)"
+      },
+      {
+        "name": "idx_invoice_headers_vendor_id",
+        "definition": "CREATE INDEX idx_invoice_headers_vendor_id ON public.invoice_headers USING btree (vendor_id)"
+      },
+      {
+        "name": "idx_invoice_headers_vendor_id_invoice_date",
+        "definition": "CREATE INDEX idx_invoice_headers_vendor_id_invoice_date ON public.invoice_headers USING btree (vendor_id, invoice_date)"
+      },
+      {
+        "name": "idx_invoice_vendor_status",
+        "definition": "CREATE INDEX idx_invoice_vendor_status ON public.invoice_headers USING btree (vendor_id, status)"
+      },
+      {
+        "name": "invoice_headers_vendor_id_invoice_number_key",
+        "definition": "CREATE UNIQUE INDEX invoice_headers_vendor_id_invoice_number_key ON public.invoice_headers USING btree (vendor_id, invoice_number)"
+      }
+    ],
+    "invoice_line_distributions": [
+      {
+        "name": "idx_invoice_line_distributions_cost_center",
+        "definition": "CREATE INDEX idx_invoice_line_distributions_cost_center ON public.invoice_line_distributions USING btree (cost_center)"
+      },
+      {
+        "name": "idx_invoice_line_distributions_gl_account",
+        "definition": "CREATE INDEX idx_invoice_line_distributions_gl_account ON public.invoice_line_distributions USING btree (gl_account)"
+      },
+      {
+        "name": "idx_invoice_line_distributions_invoice_line_id",
+        "definition": "CREATE INDEX idx_invoice_line_distributions_invoice_line_id ON public.invoice_line_distributions USING btree (invoice_line_id)"
+      }
+    ],
+    "invoice_line_receipts": [
+      {
+        "name": "idx_invoice_line_receipts_gr_line_id",
+        "definition": "CREATE INDEX idx_invoice_line_receipts_gr_line_id ON public.invoice_line_receipts USING btree (gr_line_id)"
+      },
+      {
+        "name": "idx_invoice_line_receipts_invoice_line_id",
+        "definition": "CREATE INDEX idx_invoice_line_receipts_invoice_line_id ON public.invoice_line_receipts USING btree (invoice_line_id)"
+      },
+      {
+        "name": "idx_invoice_line_receipts_ses_line_id",
+        "definition": "CREATE INDEX idx_invoice_line_receipts_ses_line_id ON public.invoice_line_receipts USING btree (ses_line_id)"
+      }
+    ],
+    "invoice_line_taxes": [
+      {
+        "name": "idx_invoice_line_taxes_invoice_line_id",
+        "definition": "CREATE INDEX idx_invoice_line_taxes_invoice_line_id ON public.invoice_line_taxes USING btree (invoice_line_id)"
+      }
+    ],
+    "invoice_lines": [
+      {
+        "name": "idx_invoice_lines_cost_center",
+        "definition": "CREATE INDEX idx_invoice_lines_cost_center ON public.invoice_lines USING btree (cost_center)"
+      },
+      {
+        "name": "idx_invoice_lines_gr_line_id",
+        "definition": "CREATE INDEX idx_invoice_lines_gr_line_id ON public.invoice_lines USING btree (gr_line_id)"
+      },
+      {
+        "name": "idx_invoice_lines_invoice_id",
+        "definition": "CREATE INDEX idx_invoice_lines_invoice_id ON public.invoice_lines USING btree (invoice_id)"
+      },
+      {
+        "name": "idx_invoice_lines_invoice_id_line_no",
+        "definition": "CREATE INDEX idx_invoice_lines_invoice_id_line_no ON public.invoice_lines USING btree (invoice_id, line_no)"
+      },
+      {
+        "name": "idx_invoice_lines_po_line_id",
+        "definition": "CREATE INDEX idx_invoice_lines_po_line_id ON public.invoice_lines USING btree (po_line_id)"
+      },
+      {
+        "name": "idx_invoice_lines_project_code",
+        "definition": "CREATE INDEX idx_invoice_lines_project_code ON public.invoice_lines USING btree (project_code)"
+      },
+      {
+        "name": "idx_invoice_lines_ses_line_id",
+        "definition": "CREATE INDEX idx_invoice_lines_ses_line_id ON public.invoice_lines USING btree (ses_line_id)"
+      },
+      {
+        "name": "unique_invoice_line_no",
+        "definition": "CREATE UNIQUE INDEX unique_invoice_line_no ON public.invoice_lines USING btree (invoice_id, line_no)"
+      }
+    ],
+    "invoice_status_history": [
+      {
+        "name": "idx_invoice_status_history_invoice",
+        "definition": "CREATE INDEX idx_invoice_status_history_invoice ON public.invoice_status_history USING btree (invoice_id, created_at DESC)"
+      }
+    ],
+    "invoice_validations": [
+      {
+        "name": "idx_invoice_validations_category",
+        "definition": "CREATE INDEX idx_invoice_validations_category ON public.invoice_validations USING btree (category)"
+      },
+      {
+        "name": "idx_invoice_validations_invoice_id",
+        "definition": "CREATE INDEX idx_invoice_validations_invoice_id ON public.invoice_validations USING btree (invoice_id)"
+      },
+      {
+        "name": "idx_invoice_validations_severity",
+        "definition": "CREATE INDEX idx_invoice_validations_severity ON public.invoice_validations USING btree (severity) WHERE (NOT is_resolved)"
+      },
+      {
+        "name": "idx_invoice_validations_unresolved",
+        "definition": "CREATE INDEX idx_invoice_validations_unresolved ON public.invoice_validations USING btree (invoice_id) WHERE (NOT is_resolved)"
+      }
+    ],
+    "items": [
+      {
+        "name": "idx_items_description",
+        "definition": "CREATE INDEX idx_items_description ON public.items USING btree (description)"
+      },
+      {
+        "name": "idx_items_sku",
+        "definition": "CREATE INDEX idx_items_sku ON public.items USING btree (sku)"
+      }
+    ],
+    "match_results": [
+      {
+        "name": "idx_match_invoice_tolerance",
+        "definition": "CREATE INDEX idx_match_invoice_tolerance ON public.match_results USING btree (invoice_id, within_tolerance)"
+      },
+      {
+        "name": "idx_match_results_explanation_code",
+        "definition": "CREATE INDEX idx_match_results_explanation_code ON public.match_results USING btree (explanation_code)"
+      },
+      {
+        "name": "idx_match_results_gr_line_id",
+        "definition": "CREATE INDEX idx_match_results_gr_line_id ON public.match_results USING btree (matched_gr_line_id)"
+      },
+      {
+        "name": "idx_match_results_invoice_id",
+        "definition": "CREATE INDEX idx_match_results_invoice_id ON public.match_results USING btree (invoice_id)"
+      },
+      {
+        "name": "idx_match_results_invoice_line_id",
+        "definition": "CREATE INDEX idx_match_results_invoice_line_id ON public.match_results USING btree (invoice_line_id)"
+      },
+      {
+        "name": "idx_match_results_po_line_id",
+        "definition": "CREATE INDEX idx_match_results_po_line_id ON public.match_results USING btree (matched_po_line_id)"
+      },
+      {
+        "name": "idx_match_results_within_tolerance",
+        "definition": "CREATE INDEX idx_match_results_within_tolerance ON public.match_results USING btree (within_tolerance)"
+      }
+    ],
+    "payment_terms": [
+      {
+        "name": "idx_payment_terms_name",
+        "definition": "CREATE INDEX idx_payment_terms_name ON public.payment_terms USING btree (name)"
+      }
+    ],
+    "po_headers": [
+      {
+        "name": "idx_po_headers_order_date",
+        "definition": "CREATE INDEX idx_po_headers_order_date ON public.po_headers USING btree (order_date)"
+      },
+      {
+        "name": "idx_po_headers_po_number",
+        "definition": "CREATE INDEX idx_po_headers_po_number ON public.po_headers USING btree (po_number)"
+      },
+      {
+        "name": "idx_po_headers_status",
+        "definition": "CREATE INDEX idx_po_headers_status ON public.po_headers USING btree (status)"
+      },
+      {
+        "name": "idx_po_headers_vendor_id",
+        "definition": "CREATE INDEX idx_po_headers_vendor_id ON public.po_headers USING btree (vendor_id)"
+      },
+      {
+        "name": "idx_po_vendor_status",
+        "definition": "CREATE INDEX idx_po_vendor_status ON public.po_headers USING btree (vendor_id, status)"
+      },
+      {
+        "name": "po_headers_po_number_key",
+        "definition": "CREATE UNIQUE INDEX po_headers_po_number_key ON public.po_headers USING btree (po_number)"
+      }
+    ],
+    "po_lines": [
+      {
+        "name": "idx_po_lines_item_id",
+        "definition": "CREATE INDEX idx_po_lines_item_id ON public.po_lines USING btree (item_id)"
+      },
+      {
+        "name": "idx_po_lines_po_id",
+        "definition": "CREATE INDEX idx_po_lines_po_id ON public.po_lines USING btree (po_id)"
+      },
+      {
+        "name": "idx_po_lines_po_id_line_no",
+        "definition": "CREATE INDEX idx_po_lines_po_id_line_no ON public.po_lines USING btree (po_id, line_no)"
+      },
+      {
+        "name": "idx_po_lines_status",
+        "definition": "CREATE INDEX idx_po_lines_status ON public.po_lines USING btree (status)"
+      },
+      {
+        "name": "unique_po_line_no",
+        "definition": "CREATE UNIQUE INDEX unique_po_line_no ON public.po_lines USING btree (po_id, line_no)"
+      }
+    ],
+    "projects": [
+      {
+        "name": "idx_projects_code",
+        "definition": "CREATE INDEX idx_projects_code ON public.projects USING btree (code)"
+      }
+    ],
+    "schema_migrations": [
+      {
+        "name": "idx_schema_migrations_filename",
+        "definition": "CREATE INDEX idx_schema_migrations_filename ON public.schema_migrations USING btree (filename)"
+      },
+      {
+        "name": "idx_schema_migrations_rolled_back",
+        "definition": "CREATE INDEX idx_schema_migrations_rolled_back ON public.schema_migrations USING btree (rolled_back) WHERE (rolled_back = true)"
+      },
+      {
+        "name": "idx_schema_migrations_success",
+        "definition": "CREATE INDEX idx_schema_migrations_success ON public.schema_migrations USING btree (success) WHERE (success = false)"
+      },
+      {
+        "name": "schema_migrations_filename_key",
+        "definition": "CREATE UNIQUE INDEX schema_migrations_filename_key ON public.schema_migrations USING btree (filename)"
+      }
+    ],
+    "ses_headers": [
+      {
+        "name": "idx_ses_headers_po_id",
+        "definition": "CREATE INDEX idx_ses_headers_po_id ON public.ses_headers USING btree (po_id)"
+      },
+      {
+        "name": "idx_ses_headers_service_period",
+        "definition": "CREATE INDEX idx_ses_headers_service_period ON public.ses_headers USING btree (service_period_start, service_period_end)"
+      },
+      {
+        "name": "idx_ses_headers_status",
+        "definition": "CREATE INDEX idx_ses_headers_status ON public.ses_headers USING btree (status)"
+      }
+    ],
+    "ses_lines": [
+      {
+        "name": "idx_ses_lines_po_line_id",
+        "definition": "CREATE INDEX idx_ses_lines_po_line_id ON public.ses_lines USING btree (po_line_id)"
+      },
+      {
+        "name": "idx_ses_lines_ses_id",
+        "definition": "CREATE INDEX idx_ses_lines_ses_id ON public.ses_lines USING btree (ses_id)"
+      }
+    ],
+    "ship_to_sites": [
+      {
+        "name": "idx_ship_to_sites_org_entity_id",
+        "definition": "CREATE INDEX idx_ship_to_sites_org_entity_id ON public.ship_to_sites USING btree (org_entity_id)"
+      }
+    ],
+    "source_files": [
+      {
+        "name": "idx_source_files_sha256",
+        "definition": "CREATE INDEX idx_source_files_sha256 ON public.source_files USING btree (sha256)"
+      }
+    ],
+    "tax_rates": [
+      {
+        "name": "idx_tax_rates_code",
+        "definition": "CREATE INDEX idx_tax_rates_code ON public.tax_rates USING btree (code)"
+      },
+      {
+        "name": "idx_tax_rates_valid_from",
+        "definition": "CREATE INDEX idx_tax_rates_valid_from ON public.tax_rates USING btree (valid_from)"
+      },
+      {
+        "name": "idx_tax_rates_valid_to",
+        "definition": "CREATE INDEX idx_tax_rates_valid_to ON public.tax_rates USING btree (valid_to)"
+      }
+    ],
+    "uom_conversions": [
+      {
+        "name": "idx_uom_conversions_from_to",
+        "definition": "CREATE INDEX idx_uom_conversions_from_to ON public.uom_conversions USING btree (from_uom, to_uom)"
+      },
+      {
+        "name": "idx_uom_conversions_item_id",
+        "definition": "CREATE INDEX idx_uom_conversions_item_id ON public.uom_conversions USING btree (item_id)"
+      },
+      {
+        "name": "idx_uom_conversions_validity",
+        "definition": "CREATE INDEX idx_uom_conversions_validity ON public.uom_conversions USING btree (valid_from, valid_to)"
+      }
+    ],
+    "users": [
+      {
+        "name": "users_email_key",
+        "definition": "CREATE UNIQUE INDEX users_email_key ON public.users USING btree (email)"
+      }
+    ],
+    "validation_rules": [
+      {
+        "name": "validation_rules_code_key",
+        "definition": "CREATE UNIQUE INDEX validation_rules_code_key ON public.validation_rules USING btree (code)"
+      }
+    ],
+    "validation_runs": [
+      {
+        "name": "idx_validation_runs_completed",
+        "definition": "CREATE INDEX idx_validation_runs_completed ON public.validation_runs USING btree (completed_at DESC)"
+      },
+      {
+        "name": "idx_validation_runs_invoice_id",
+        "definition": "CREATE INDEX idx_validation_runs_invoice_id ON public.validation_runs USING btree (invoice_id)"
+      }
+    ],
+    "vendor_bank_accounts": [
+      {
+        "name": "idx_vendor_bank_accounts_is_default",
+        "definition": "CREATE INDEX idx_vendor_bank_accounts_is_default ON public.vendor_bank_accounts USING btree (is_default)"
+      },
+      {
+        "name": "idx_vendor_bank_accounts_vendor_id",
+        "definition": "CREATE INDEX idx_vendor_bank_accounts_vendor_id ON public.vendor_bank_accounts USING btree (vendor_id)"
+      },
+      {
+        "name": "unique_default_bank_account",
+        "definition": "CREATE UNIQUE INDEX unique_default_bank_account ON public.vendor_bank_accounts USING btree (vendor_id) WHERE (is_default = true)"
+      }
+    ],
+    "vendors": [
+      {
+        "name": "idx_vendors_active",
+        "definition": "CREATE INDEX idx_vendors_active ON public.vendors USING btree (active)"
+      },
+      {
+        "name": "idx_vendors_is_verified",
+        "definition": "CREATE INDEX idx_vendors_is_verified ON public.vendors USING btree (is_verified)"
+      },
+      {
+        "name": "idx_vendors_name",
+        "definition": "CREATE INDEX idx_vendors_name ON public.vendors USING btree (name)"
+      },
+      {
+        "name": "idx_vendors_payment_terms_id",
+        "definition": "CREATE INDEX idx_vendors_payment_terms_id ON public.vendors USING btree (payment_terms_id)"
+      },
+      {
+        "name": "idx_vendors_preferred_payment_method",
+        "definition": "CREATE INDEX idx_vendors_preferred_payment_method ON public.vendors USING btree (preferred_payment_method)"
+      },
+      {
+        "name": "idx_vendors_requires_po",
+        "definition": "CREATE INDEX idx_vendors_requires_po ON public.vendors USING btree (requires_po)"
+      },
+      {
+        "name": "idx_vendors_tolerance_profile_id",
+        "definition": "CREATE INDEX idx_vendors_tolerance_profile_id ON public.vendors USING btree (tolerance_profile_id)"
+      }
+    ],
+    "work_items": [
+      {
+        "name": "idx_work_items_assigned_to_agent_code",
+        "definition": "CREATE INDEX idx_work_items_assigned_to_agent_code ON public.work_items USING btree (assigned_to_agent_code)"
+      },
+      {
+        "name": "idx_work_items_assigned_to_user_id",
+        "definition": "CREATE INDEX idx_work_items_assigned_to_user_id ON public.work_items USING btree (assigned_to_user_id)"
+      },
+      {
+        "name": "idx_work_items_due_at",
+        "definition": "CREATE INDEX idx_work_items_due_at ON public.work_items USING btree (due_at)"
+      },
+      {
+        "name": "idx_work_items_priority",
+        "definition": "CREATE INDEX idx_work_items_priority ON public.work_items USING btree (priority)"
+      },
+      {
+        "name": "idx_work_items_stage",
+        "definition": "CREATE INDEX idx_work_items_stage ON public.work_items USING btree (stage)"
+      },
+      {
+        "name": "idx_work_items_status",
+        "definition": "CREATE INDEX idx_work_items_status ON public.work_items USING btree (status)"
+      }
+    ]
+  },
+  "constraints": {}
+}
