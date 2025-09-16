@@ -39,8 +39,8 @@ export function DeletePODialog({
   isLoading = false,
 }: DeletePODialogProps) {
   const [confirmText, setConfirmText] = useState('');
-  const [showCascadeWarning, setShowCascadeWarning] = useState(false);
 
+  // If dependencies are already known, show cascade warning directly
   const hasDependencies = dependencies && (
     dependencies.goodsReceipts > 0 ||
     dependencies.serviceEntrySheets > 0 ||
@@ -48,11 +48,7 @@ export function DeletePODialog({
   );
 
   const handleInitialConfirm = () => {
-    if (hasDependencies) {
-      setShowCascadeWarning(true);
-    } else {
-      onConfirm();
-    }
+    onConfirm();
   };
 
   const handleCascadeConfirm = () => {
@@ -63,11 +59,11 @@ export function DeletePODialog({
 
   const handleClose = () => {
     setConfirmText('');
-    setShowCascadeWarning(false);
     onClose();
   };
 
-  if (showCascadeWarning && hasDependencies) {
+  // Show cascade warning dialog if we have dependencies
+  if (hasDependencies) {
     return (
       <Dialog open={isOpen} onOpenChange={handleClose}>
         <DialogContent className="sm:max-w-[500px]">
@@ -141,8 +137,9 @@ export function DeletePODialog({
     );
   }
 
+  // Show initial confirmation dialog only if no dependencies are known yet
   return (
-    <Dialog open={isOpen && !showCascadeWarning} onOpenChange={handleClose}>
+    <Dialog open={isOpen && !hasDependencies} onOpenChange={handleClose}>
       <DialogContent className="sm:max-w-[425px]">
         <DialogHeader>
           <DialogTitle>Confirm Deletion</DialogTitle>

@@ -75,6 +75,7 @@ export default function PurchaseOrdersClient({
         if (data.hasDependencies) {
           // Set dependencies for cascade warning
           setDeleteDependencies(data.dependencies);
+          setIsDeleting(false); // Stop loading, show cascade dialog
         } else {
           // No dependencies, deletion successful
           setPurchaseOrders(prevOrders => prevOrders.filter(order => order.id !== deletingPO.id));
