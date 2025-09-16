@@ -1,7 +1,21 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { Clock, CheckCircle, Users, AlertCircle, RefreshCw } from "lucide-react"
+import {
+  Clock,
+  CheckCircle,
+  Users,
+  AlertCircle,
+  RefreshCw,
+  Calendar,
+  TrendingUp,
+  Target,
+  DollarSign,
+  AlertTriangle,
+  FileText,
+  Coins,
+  ArrowRight
+} from "lucide-react"
 import { generateDashboardData, DashboardData } from '../dashboard/synthetic-data'
 import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/app/components/ui/card'
@@ -102,14 +116,24 @@ export default function LaunchpadClient() {
 
   if (!data) return null
 
+  // Get time-based greeting
+  const getGreeting = () => {
+    const hour = new Date().getHours()
+    if (hour < 12) return "Good morning"
+    if (hour < 17) return "Good afternoon"
+    return "Good evening"
+  }
+
+  const greeting = getGreeting()
+
   return (
     <div className="w-full p-4 sm:px-6 lg:px-8">
       {/* Header with Controls */}
       <div className="mb-4">
         <div className="flex items-end justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-950">Launchpad</h1>
-            <p className="text-sm text-gray-950">Your invoice processing hub for quick actions and insights</p>
+            <h1 className="text-2xl font-bold text-gray-950">{greeting}, Caroline</h1>
+            <p className="text-sm text-gray-950">Here's your invoice processing overview for today</p>
           </div>
           <div className="flex items-center gap-3">
             <select
@@ -136,72 +160,100 @@ export default function LaunchpadClient() {
         </div>
       </div>
 
-      {/* Performance KPIs */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="transition-all duration-200 border border-gray-200 hover:border-gray-300 hover:shadow-sm">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gray-600">Avg Processing Time</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-0.5">2.3 days</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    <span className="text-green-600 font-medium">↓ 15%</span> from last month
-                  </p>
-                </div>
-                <div className="p-1.5 rounded-full bg-blue-100">
-                  <Clock className="h-4 w-4 text-blue-600" />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
 
-          <Card className="transition-all duration-200 border border-gray-200 hover:border-gray-300 hover:shadow-sm">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gray-600">SLA Compliance</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-0.5">94.2%</p>
-                  <p className="text-xs text-gray-500 mt-1">Above 90% target</p>
+      {/* Payment Priority */}
+      <div className="mb-6">
+        <Card className="border border-gray-200">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Coins className="h-5 w-5 text-purple-900" />
+              <h2 className="text-base font-semibold text-gray-950">Payment Priority</h2>
+            </div>
+            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
+              {/* Due Today */}
+              <button
+                className="relative bg-white rounded-lg px-2.5 py-2 border border-gray-200 hover:bg-purple-50 hover:-translate-y-px hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                tabIndex={0}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1 rounded bg-purple-100 group-hover:bg-purple-200 transition-colors">
+                      <Calendar className="h-3 w-3 text-purple-600" />
+                    </div>
+                    <p className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Due Today</p>
+                  </div>
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1 text-xs font-medium text-white bg-orange-500 rounded">23</span>
                 </div>
-                <div className="p-1.5 rounded-full bg-green-100">
-                  <CheckCircle className="h-4 w-4 text-green-600" />
+                <div className="flex items-center justify-between">
+                  <p className="text-lg font-bold text-gray-950">£45,680</p>
+                  <ArrowRight className="h-4 w-4 text-purple-900 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity mr-1" />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </button>
 
-          <Card className="transition-all duration-200 border border-gray-200 hover:border-gray-300 hover:shadow-sm">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gray-600">Active Users</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-0.5">12</p>
-                  <p className="text-xs text-gray-500 mt-1">Processing invoices</p>
+              {/* Discount Expiring */}
+              <button
+                className="relative bg-white rounded-lg px-2.5 py-2 border border-gray-200 hover:bg-purple-50 hover:-translate-y-px hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                tabIndex={0}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1 rounded bg-purple-100 group-hover:bg-purple-200 transition-colors">
+                      <Target className="h-3 w-3 text-purple-600" />
+                    </div>
+                    <p className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Discount Expiring</p>
+                  </div>
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1 text-xs font-medium text-white bg-gray-500 rounded">5</span>
                 </div>
-                <div className="p-1.5 rounded-full bg-purple-100">
-                  <Users className="h-4 w-4 text-purple-600" />
+                <div className="flex items-center justify-between">
+                  <p className="text-lg font-bold text-gray-950">£12,340</p>
+                  <ArrowRight className="h-4 w-4 text-purple-900 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity mr-1" />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
+              </button>
 
-          <Card className="transition-all duration-200 border border-gray-200 hover:border-gray-300 hover:shadow-sm">
-            <CardContent className="p-3">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-gray-600">Exception Rate</p>
-                  <p className="text-2xl font-bold text-gray-900 mt-0.5">5.8%</p>
-                  <p className="text-xs text-gray-500 mt-1">
-                    <span className="text-red-600 font-medium">↑ 2%</span> vs target
-                  </p>
+              {/* Overdue */}
+              <button
+                className="relative bg-white rounded-lg px-2.5 py-2 border border-gray-200 hover:bg-purple-50 hover:-translate-y-px hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                tabIndex={0}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1 rounded bg-purple-100 group-hover:bg-purple-200 transition-colors">
+                      <AlertTriangle className="h-3 w-3 text-purple-600" />
+                    </div>
+                    <p className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Overdue</p>
+                  </div>
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1 text-xs font-medium text-white bg-red-500 rounded">8</span>
                 </div>
-                <div className="p-1.5 rounded-full bg-orange-100">
-                  <AlertCircle className="h-4 w-4 text-orange-600" />
+                <div className="flex items-center justify-between">
+                  <p className="text-lg font-bold text-gray-950">£28,950</p>
+                  <ArrowRight className="h-4 w-4 text-purple-900 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity mr-1" />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+              </button>
+
+              {/* On Hold */}
+              <button
+                className="relative bg-white rounded-lg px-2.5 py-2 border border-gray-200 hover:bg-purple-50 hover:-translate-y-px hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                tabIndex={0}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <div className="p-1 rounded bg-purple-100 group-hover:bg-purple-200 transition-colors">
+                      <Clock className="h-3 w-3 text-purple-600" />
+                    </div>
+                    <p className="text-xs font-semibold text-gray-950 uppercase tracking-wide">On Hold</p>
+                  </div>
+                  <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1 text-xs font-medium text-white bg-purple-900 rounded">15</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <p className="text-lg font-bold text-gray-950">£67,200</p>
+                  <ArrowRight className="h-4 w-4 text-purple-900 opacity-0 group-hover:opacity-100 group-focus:opacity-100 transition-opacity mr-1" />
+                </div>
+              </button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
 
       {/* SLA Performance Section */}
       <div className="mt-6">

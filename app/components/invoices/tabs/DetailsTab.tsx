@@ -350,8 +350,8 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
               {invoiceData.vendor_tax_id_snapshot && (
                 <div>
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                    Vendor Tax ID
-                    <FieldConfidenceIndicator 
+                    Vendor No.
+                    <FieldConfidenceIndicator
                       fieldName="vendor_tax_id_snapshot"
                       confidence={invoiceData.extraction_field_confidences?.vendor_tax_id_snapshot}
                       isManuallyEdited={invoiceData.is_manually_edited?.vendor_tax_id_snapshot}

@@ -163,7 +163,7 @@ export function ValidationCard({
         <div className="flex items-center gap-3">
           <Icon className={`h-5 w-5 ${useErrorStyling ? 'text-red-600' : displayConfig.color}`} />
           <div className="flex items-center gap-4">
-            <h3 className={`font-medium text-purple-700`}>
+            <h3 className={`font-medium text-gray-950`}>
               {title || config.title}
             </h3>
             <div className="flex items-center gap-3">
@@ -186,7 +186,7 @@ export function ValidationCard({
           </div>
         </div>
         <ChevronDown
-          className={`h-4 w-4 text-purple-700 transition-transform ${
+          className={`h-4 w-4 text-gray-950 transition-transform ${
             isExpanded ? 'rotate-180' : ''
           }`}
         />
