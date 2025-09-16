@@ -2,6 +2,13 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 
+// Extend Window interface for PDF.js library loaded from CDN
+declare global {
+  interface Window {
+    pdfjsLib?: any;
+  }
+}
+
 interface PDFViewerProps {
   url: string;
   zoom: number;
@@ -27,7 +34,6 @@ export function PDFViewer({ url, zoom, rotation, onLoad, onError }: PDFViewerPro
     // Dynamically load PDF.js to avoid SSR issues
     const loadPdfJs = async () => {
       try {
-        // @ts-expect-error: pdfjsLib is added to window by script
         if (window.pdfjsLib) {
           // Already loaded
           setPdfjsLib(window.pdfjsLib);
@@ -40,7 +46,6 @@ export function PDFViewer({ url, zoom, rotation, onLoad, onError }: PDFViewerPro
         script.async = true;
 
         script.onload = () => {
-          // @ts-expect-error: pdfjsLib is added to window by script
           const pdfjs = window.pdfjsLib;
           if (pdfjs) {
             pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
