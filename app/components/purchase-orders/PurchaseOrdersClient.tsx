@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { PurchaseOrderTable } from './PurchaseOrderTable';
 import { PurchaseOrderDrawer } from './PurchaseOrderDrawer';
+import { DeletePODialog } from './DeletePODialog';
 
 interface PurchaseOrder {
   id: string;
@@ -19,13 +20,16 @@ interface PurchaseOrdersClientProps {
   renderAddButton?: (onClick: () => void) => React.ReactNode;
 }
 
-export default function PurchaseOrdersClient({ 
-  initialPurchaseOrders, 
-  renderAddButton 
+export default function PurchaseOrdersClient({
+  initialPurchaseOrders,
+  renderAddButton
 }: PurchaseOrdersClientProps) {
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>(initialPurchaseOrders);
   const [loading, setLoading] = useState(false);
   const [selectedPO, setSelectedPO] = useState<PurchaseOrder | null>(null);
+  const [deletingPO, setDeletingPO] = useState<PurchaseOrder | null>(null);
+  const [deleteDependencies, setDeleteDependencies] = useState<any>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchPurchaseOrders = async () => {
     setLoading(true);
@@ -48,44 +52,85 @@ export default function PurchaseOrdersClient({
   };
 
   const handleDeletePurchaseOrder = async (poId: string) => {
-    // Find the PO to get its number for the confirmation message
+    // Find the PO to get its number
     const po = purchaseOrders.find(p => p.id === poId);
     if (!po) return;
 
-    // Show confirmation dialog
-    const confirmMessage = `Are you sure you want to delete Purchase Order ${po.po_number}? This action cannot be undone.`;
-    if (!confirm(confirmMessage)) {
-      return;
-    }
+    setDeletingPO(po);
+    setDeleteDependencies(null);
+  };
 
+  const handleDeleteConfirm = async () => {
+    if (!deletingPO) return;
+
+    setIsDeleting(true);
     try {
-      const response = await fetch(`/api/purchase-orders?id=${poId}`, {
+      const response = await fetch(`/api/purchase-orders?id=${deletingPO.id}`, {
         method: 'DELETE',
       });
 
       const data = await response.json();
 
       if (response.ok) {
-        // Remove the deleted PO from the list
-        setPurchaseOrders(prevOrders => prevOrders.filter(order => order.id !== poId));
-
-        // Show success message (you could replace this with a toast notification)
-        console.log('Purchase Order deleted successfully:', data.message);
-      } else {
-        // Show validation message (not an error, just a business rule)
-        if (response.status === 400) {
-          // This is a validation failure (e.g., has dependencies), not an error
-          console.log('Purchase Order deletion blocked:', data.error);
+        if (data.hasDependencies) {
+          // Set dependencies for cascade warning
+          setDeleteDependencies(data.dependencies);
         } else {
-          // This is an actual error
-          console.error('Failed to delete purchase order:', data.error);
+          // No dependencies, deletion successful
+          setPurchaseOrders(prevOrders => prevOrders.filter(order => order.id !== deletingPO.id));
+          console.log('Purchase Order deleted successfully:', data.message);
+          setDeletingPO(null);
         }
+      } else {
+        console.error('Failed to delete purchase order:', data.error);
         alert(data.error);
+        setDeletingPO(null);
       }
     } catch (error) {
       console.error('Error deleting purchase order:', error);
       alert('An error occurred while deleting the Purchase Order. Please try again.');
+      setDeletingPO(null);
+    } finally {
+      setIsDeleting(false);
     }
+  };
+
+  const handleForceDelete = async () => {
+    if (!deletingPO) return;
+
+    setIsDeleting(true);
+    try {
+      const response = await fetch(`/api/purchase-orders?id=${deletingPO.id}&force=true`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setPurchaseOrders(prevOrders => prevOrders.filter(order => order.id !== deletingPO.id));
+        console.log('Purchase Order and dependencies deleted successfully:', data.message);
+        setDeletingPO(null);
+        setDeleteDependencies(null);
+      } else {
+        console.error('Failed to delete purchase order:', data.error);
+        alert(data.error);
+        setDeletingPO(null);
+        setDeleteDependencies(null);
+      }
+    } catch (error) {
+      console.error('Error deleting purchase order:', error);
+      alert('An error occurred while deleting the Purchase Order. Please try again.');
+      setDeletingPO(null);
+      setDeleteDependencies(null);
+    } finally {
+      setIsDeleting(false);
+    }
+  };
+
+  const handleDeleteCancel = () => {
+    setDeletingPO(null);
+    setDeleteDependencies(null);
+    setIsDeleting(false);
   };
 
   const handleRowClick = (po: PurchaseOrder) => {
@@ -150,6 +195,17 @@ export default function PurchaseOrdersClient({
           onCancel={handleCancel}
         />
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <DeletePODialog
+        isOpen={deletingPO !== null}
+        onClose={handleDeleteCancel}
+        onConfirm={handleDeleteConfirm}
+        onForceConfirm={handleForceDelete}
+        poNumber={deletingPO?.po_number || ''}
+        dependencies={deleteDependencies}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

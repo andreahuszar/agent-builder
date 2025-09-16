@@ -51,9 +51,10 @@ export async function GET(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    // Get PO ID from search params
+    // Get PO ID and force flag from search params
     const { searchParams } = new URL(request.url);
     const poId = searchParams.get('id');
+    const force = searchParams.get('force') === 'true';
 
     if (!poId) {
       return NextResponse.json(
@@ -64,7 +65,10 @@ export async function DELETE(request: NextRequest) {
 
     // Check if PO exists
     const existingPO = await prisma.po_headers.findUnique({
-      where: { id: poId }
+      where: { id: poId },
+      include: {
+        po_lines: true
+      }
     });
 
     if (!existingPO) {
@@ -75,48 +79,88 @@ export async function DELETE(request: NextRequest) {
     }
 
     // Check for dependent records
-    const grHeaders = await prisma.gr_headers.findFirst({
-      where: { po_id: poId }
-    });
+    const [grHeaders, sesHeaders, invoiceLines] = await Promise.all([
+      prisma.gr_headers.findMany({
+        where: { po_id: poId },
+        include: {
+          gr_lines: true
+        }
+      }),
+      prisma.ses_headers.findMany({
+        where: { po_id: poId },
+        include: {
+          ses_lines: true
+        }
+      }),
+      prisma.invoice_lines.findMany({
+        where: {
+          OR: [
+            { po_line_id: { in: existingPO.po_lines.map(l => l.id) } },
+            { po_number_snapshot: existingPO.po_number }
+          ]
+        }
+      })
+    ]);
 
-    if (grHeaders) {
-      return NextResponse.json(
-        { error: 'Cannot delete Purchase Order: It has associated Goods Receipts' },
-        { status: 400 }
-      );
+    const hasDependencies = grHeaders.length > 0 || sesHeaders.length > 0 || invoiceLines.length > 0;
+
+    // If there are dependencies and force is not true, return dependency details
+    if (hasDependencies && !force) {
+      return NextResponse.json({
+        hasDependencies: true,
+        dependencies: {
+          goodsReceipts: grHeaders.length,
+          goodsReceiptLines: grHeaders.reduce((sum, gr) => sum + gr.gr_lines.length, 0),
+          serviceEntrySheets: sesHeaders.length,
+          serviceEntryLines: sesHeaders.reduce((sum, ses) => sum + ses.ses_lines.length, 0),
+          invoiceLines: invoiceLines.length
+        },
+        message: 'This Purchase Order has dependent records. Deleting it will also delete all associated records.',
+        requiresConfirmation: true
+      }, { status: 200 });
     }
 
-    const sesHeaders = await prisma.ses_headers.findFirst({
-      where: { po_id: poId }
-    });
-
-    if (sesHeaders) {
-      return NextResponse.json(
-        { error: 'Cannot delete Purchase Order: It has associated Service Entry Sheets' },
-        { status: 400 }
-      );
-    }
-
-    // Check if any invoice lines reference this PO
-    const invoiceLines = await prisma.invoice_lines.findFirst({
-      where: {
-        OR: [
-          { po_line_id: { in: await prisma.po_lines.findMany({ where: { po_id: poId }, select: { id: true } }).then(lines => lines.map(l => l.id)) } },
-          { po_number_snapshot: existingPO.po_number }
-        ]
-      }
-    });
-
-    if (invoiceLines) {
-      return NextResponse.json(
-        { error: 'Cannot delete Purchase Order: It has associated Invoice Lines' },
-        { status: 400 }
-      );
-    }
-
-    // Use a transaction to ensure all deletes succeed or none do
+    // Perform cascade deletion in a transaction
     await prisma.$transaction(async (tx) => {
-      // Delete PO lines first
+      // Clear invoice line references (set to null instead of deleting invoice lines)
+      if (invoiceLines.length > 0) {
+        await tx.invoice_lines.updateMany({
+          where: {
+            id: { in: invoiceLines.map(il => il.id) }
+          },
+          data: {
+            po_line_id: null,
+            gr_line_id: null,
+            ses_line_id: null
+          }
+        });
+      }
+
+      // Delete SES lines and headers
+      if (sesHeaders.length > 0) {
+        await tx.ses_lines.deleteMany({
+          where: {
+            ses_id: { in: sesHeaders.map(ses => ses.id) }
+          }
+        });
+        await tx.ses_headers.deleteMany({
+          where: { id: { in: sesHeaders.map(ses => ses.id) } }
+        });
+      }
+
+      // Delete GR lines and headers
+      if (grHeaders.length > 0) {
+        await tx.gr_lines.deleteMany({
+          where: {
+            gr_id: { in: grHeaders.map(gr => gr.id) }
+          }
+        });
+        await tx.gr_headers.deleteMany({
+          where: { id: { in: grHeaders.map(gr => gr.id) } }
+        });
+      }
+
+      // Delete PO lines
       await tx.po_lines.deleteMany({
         where: { po_id: poId }
       });
@@ -127,11 +171,20 @@ export async function DELETE(request: NextRequest) {
       });
     });
 
-    console.log(`Successfully deleted purchase order: ${existingPO.po_number}`);
+    console.log(`Successfully deleted purchase order: ${existingPO.po_number}${
+      hasDependencies ? ' (with cascade deletion of dependent records)' : ''
+    }`);
 
     return NextResponse.json({
       success: true,
-      message: `Purchase Order ${existingPO.po_number} deleted successfully`
+      message: `Purchase Order ${existingPO.po_number} deleted successfully${
+        hasDependencies ? ' along with all dependent records' : ''
+      }`,
+      deletedDependencies: hasDependencies ? {
+        goodsReceipts: grHeaders.length,
+        serviceEntrySheets: sesHeaders.length,
+        invoiceLinesUpdated: invoiceLines.length
+      } : null
     });
 
   } catch (error) {
