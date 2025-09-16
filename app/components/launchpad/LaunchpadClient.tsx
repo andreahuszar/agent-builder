@@ -162,17 +162,17 @@ export default function LaunchpadClient() {
 
 
       {/* Payment Priority */}
-      <div className="mb-6">
+      <div className="mb-6 mt-6">
         <Card className="border border-gray-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-4">
-              <Coins className="h-5 w-5 text-purple-900" />
+              <Coins className="h-4 w-4 text-purple-900" />
               <h2 className="text-base font-semibold text-gray-950">Payment Priority</h2>
             </div>
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               {/* Due Today */}
               <button
-                className="relative bg-white rounded-lg px-2.5 py-2 border border-gray-200 hover:bg-purple-50 hover:-translate-y-px hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                className="relative bg-white rounded-lg px-2.5 py-2 border border-gray-200 hover:bg-purple-50 hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
                 tabIndex={0}
               >
                 <div className="flex items-center justify-between mb-1">
@@ -192,7 +192,7 @@ export default function LaunchpadClient() {
 
               {/* Discount Expiring */}
               <button
-                className="relative bg-white rounded-lg px-2.5 py-2 border border-gray-200 hover:bg-purple-50 hover:-translate-y-px hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                className="relative bg-white rounded-lg px-2.5 py-2 border border-gray-200 hover:bg-purple-50 hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
                 tabIndex={0}
               >
                 <div className="flex items-center justify-between mb-1">
@@ -212,7 +212,7 @@ export default function LaunchpadClient() {
 
               {/* Overdue */}
               <button
-                className="relative bg-white rounded-lg px-2.5 py-2 border border-gray-200 hover:bg-purple-50 hover:-translate-y-px hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                className="relative bg-white rounded-lg px-2.5 py-2 border border-gray-200 hover:bg-purple-50 hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
                 tabIndex={0}
               >
                 <div className="flex items-center justify-between mb-1">
@@ -232,7 +232,7 @@ export default function LaunchpadClient() {
 
               {/* On Hold */}
               <button
-                className="relative bg-white rounded-lg px-2.5 py-2 border border-gray-200 hover:bg-purple-50 hover:-translate-y-px hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                className="relative bg-white rounded-lg px-2.5 py-2 border border-gray-200 hover:bg-purple-50 hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
                 tabIndex={0}
               >
                 <div className="flex items-center justify-between mb-1">
