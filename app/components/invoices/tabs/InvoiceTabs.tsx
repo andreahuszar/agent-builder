@@ -48,23 +48,11 @@ export function InvoiceTabs({
   // Combine prop-based and dynamic compact modes
   const shouldBeCompact = compactMode || isDynamicallyCompact;
 
-  // Load from localStorage after mount to avoid hydration mismatch
+  // Set isClient flag after mount to avoid hydration mismatch
   useEffect(() => {
     setIsClient(true);
-    if (storageKey && typeof window !== 'undefined') {
-      const stored = localStorage.getItem(`active-tab-${storageKey}`);
-      if (stored && ['details', 'line-items', 'matching', 'attachments', 'activity'].includes(stored)) {
-        setActiveTab(stored as TabId);
-      }
-    }
-  }, [storageKey]);
-
-  // Save to localStorage when tab changes
-  useEffect(() => {
-    if (isClient && storageKey && typeof window !== 'undefined') {
-      localStorage.setItem(`active-tab-${storageKey}`, activeTab);
-    }
-  }, [activeTab, storageKey, isClient]);
+    // Always default to 'details' tab - don't load from localStorage
+  }, []);
 
   // Set up ResizeObserver for dynamic compact mode
   useEffect(() => {
