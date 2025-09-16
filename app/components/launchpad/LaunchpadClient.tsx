@@ -103,15 +103,14 @@ export default function LaunchpadClient() {
   if (!data) return null
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="p-6 space-y-6">
-        {/* Header Section */}
-        <div className="flex items-center justify-between">
+    <div className="w-full p-4 sm:px-6 lg:px-8">
+      {/* Header with Controls */}
+      <div className="mb-4">
+        <div className="flex items-end justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Launchpad</h1>
-            <p className="text-gray-600 mt-1">Your central hub for quick actions and insights</p>
+            <h1 className="text-2xl font-bold text-gray-950">Launchpad</h1>
+            <p className="text-sm text-gray-950">Your invoice processing hub for quick actions and insights</p>
           </div>
-
           <div className="flex items-center gap-3">
             <select
               value={dateRange}
@@ -135,10 +134,11 @@ export default function LaunchpadClient() {
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Performance KPIs */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <Card className="transition-all duration-200 border border-gray-200 hover:border-gray-300 hover:shadow-sm">
+      {/* Performance KPIs */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="transition-all duration-200 border border-gray-200 hover:border-gray-300 hover:shadow-sm">
             <CardContent className="p-3">
               <div className="flex items-center justify-between">
                 <div>
@@ -203,23 +203,28 @@ export default function LaunchpadClient() {
           </Card>
         </div>
 
-        {/* SLA Performance Section */}
+      {/* SLA Performance Section */}
+      <div className="mt-6">
         <SLAPerformanceSection
           data={data}
           formatCurrency={formatCurrency}
           formatNumber={formatNumber}
           COLORS={COLORS}
         />
+      </div>
 
-        {/* Processing Time Breakdown */}
+      {/* Processing Time Breakdown */}
+      <div className="mt-6">
         <ProcessingTimeBreakdown
           data={data}
           formatCurrency={formatCurrency}
           formatNumber={formatNumber}
           COLORS={COLORS}
         />
+      </div>
 
-        {/* Invoice Matching Analytics */}
+      {/* Invoice Matching Analytics */}
+      <div className="mt-6">
         <InvoiceMatchingAnalytics
           data={data}
           formatCurrency={formatCurrency}
