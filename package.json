@@ -10,6 +10,7 @@
     "db:migrate:sql": "node scripts/migrate-sql.js",
     "db:sync:enhanced": "node scripts/extract-local-schema.js && node scripts/force-sync-schema-v2.js",
     "db:sync:dry-run": "node scripts/force-sync-schema-v2.js --dry-run",
+    "db:validate": "node scripts/validate-schema.js",
     "lint": "next lint",
     "test:visual": "playwright test",
     "test:visual:update": "playwright test --update-snapshots",
