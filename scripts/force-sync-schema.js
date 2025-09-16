@@ -188,6 +188,16 @@ async function forceSchemaSync() {
         column: 'invoice_document_snapshot',
         sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS invoice_document_snapshot JSONB'
       },
+      {
+        table: 'invoice_headers',
+        column: 'extracted_total',
+        sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS extracted_total DECIMAL(18,4)'
+      },
+      {
+        table: 'invoice_headers',
+        column: 'total_discrepancy',
+        sql: 'ALTER TABLE invoice_headers ADD COLUMN IF NOT EXISTS total_discrepancy DECIMAL(18,4)'
+      },
 
       // PO headers
       {
