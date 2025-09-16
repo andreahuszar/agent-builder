@@ -237,10 +237,19 @@ async function syncSchema(dryRun = false) {
     const localSchemaPath = path.join(__dirname, 'local-schema.json');
     if (!fs.existsSync(localSchemaPath)) {
       log('❌ Local schema file not found. Please run extract-local-schema.js first.', 'red');
+      log('   Run: npm run db:sync:enhanced', 'yellow');
       return;
     }
 
     const localSchema = JSON.parse(fs.readFileSync(localSchemaPath, 'utf8'));
+
+    // Validate schema structure
+    if (!localSchema.tables || !localSchema.enums) {
+      log('❌ Invalid local schema structure. Please regenerate it.', 'red');
+      log('   Run: node scripts/extract-local-schema.js', 'yellow');
+      return;
+    }
+
     log(`\n📋 Loaded local schema (${Object.keys(localSchema.tables).length} tables)`, 'green');
 
     // Get remote schema
@@ -256,17 +265,21 @@ async function syncSchema(dryRun = false) {
     // 1. Check for missing enums
     log('\n🔧 Checking enums...', 'cyan');
     for (const [enumName, values] of Object.entries(localSchema.enums)) {
+      // Ensure values is an array
+      const localVals = Array.isArray(values) ? values : [];
+
       if (!remoteSchema.enums[enumName]) {
-        changes.enums.create.push({ name: enumName, values });
+        changes.enums.create.push({ name: enumName, values: localVals });
       } else {
         // Check if enum values match
-        const localValues = values.sort().join(',');
-        const remoteValues = remoteSchema.enums[enumName].sort().join(',');
+        const remoteVals = Array.isArray(remoteSchema.enums[enumName]) ? remoteSchema.enums[enumName] : [];
+        const localValues = [...localVals].sort().join(',');
+        const remoteValues = [...remoteVals].sort().join(',');
         if (localValues !== remoteValues) {
           changes.enums.modify.push({
             name: enumName,
-            localValues: values,
-            remoteValues: remoteSchema.enums[enumName]
+            localValues: localVals,
+            remoteValues: remoteVals
           });
         }
       }
