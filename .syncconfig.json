@@ -1,0 +1,56 @@
+{
+  "batchSize": 1000,
+  "excludeTables": [
+    "_prisma_migrations",
+    "test_migration",
+    "test_migrations",
+    "schema_migrations",
+    "temp_tables",
+    "backup_tables"
+  ],
+  "dateFields": {
+    "default": "created_at",
+    "audit_events": "at",
+    "invoice_status_history": "created_at",
+    "approvals": "decided_at",
+    "po_headers": "created_at",
+    "invoice_headers": "created_at",
+    "invoice_lines": "created_at",
+    "vendor_masters": "created_at",
+    "grn_headers": "created_at",
+    "grn_lines": "created_at",
+    "payment_headers": "created_at",
+    "payment_lines": "created_at",
+    "ses_headers": "created_at",
+    "ses_lines": "created_at"
+  },
+  "syncBehavior": {
+    "onConflict": "DO NOTHING",
+    "createBackup": true,
+    "requireConfirmation": true,
+    "verboseLogging": false
+  },
+  "syncGroups": {
+    "vendors": ["vendor_masters", "vendor_contacts", "vendor_bank_accounts"],
+    "invoices": ["invoice_headers", "invoice_lines", "invoice_status_history"],
+    "purchase_orders": ["po_headers", "po_lines"],
+    "goods_receipts": ["grn_headers", "grn_lines"],
+    "service_entries": ["ses_headers", "ses_lines"],
+    "payments": ["payment_headers", "payment_lines"],
+    "audit": ["audit_events", "approvals"]
+  },
+  "priorityOrder": [
+    "users",
+    "vendor_masters",
+    "po_headers",
+    "po_lines",
+    "grn_headers",
+    "grn_lines",
+    "ses_headers",
+    "ses_lines",
+    "invoice_headers",
+    "invoice_lines",
+    "payment_headers",
+    "payment_lines"
+  ]
+}
