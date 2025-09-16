@@ -1,12 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import * as pdfjsLib from 'pdfjs-dist';
-
-// Configure PDF.js worker from local file
-if (typeof window !== 'undefined') {
-  pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.js';
-}
 
 interface PDFViewerProps {
   url: string;
@@ -24,18 +18,64 @@ export function PDFViewer({ url, zoom, rotation, onLoad, onError }: PDFViewerPro
   const [pageNumPending, setPageNumPending] = useState<number | null>(null);
   const renderTaskRef = useRef<any>(null);
   const isRenderingRef = useRef(false);
+  const [pdfjsLib, setPdfjsLib] = useState<any>(null);
+
+  // Load PDF.js library on client side only
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    // Dynamically load PDF.js to avoid SSR issues
+    const loadPdfJs = async () => {
+      try {
+        // @ts-ignore
+        if (window.pdfjsLib) {
+          // Already loaded
+          setPdfjsLib(window.pdfjsLib);
+          return;
+        }
+
+        // Create script tag to load PDF.js (legacy version for script tag usage)
+        const script = document.createElement('script');
+        script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+        script.async = true;
+
+        script.onload = () => {
+          // @ts-ignore
+          const pdfjs = window.pdfjsLib;
+          if (pdfjs) {
+            pdfjs.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+            setPdfjsLib(pdfjs);
+          }
+        };
+
+        script.onerror = () => {
+          console.error('Failed to load PDF.js');
+          if (onError) onError();
+        };
+
+        document.head.appendChild(script);
+      } catch (error) {
+        console.error('Error setting up PDF.js:', error);
+        if (onError) onError();
+      }
+    };
+
+    loadPdfJs();
+  }, [onError]);
 
   // Load PDF document
   useEffect(() => {
+    if (!pdfjsLib || !url) return;
+
     let isMounted = true;
-    
+
     const loadPdf = async () => {
       try {
         const loadingTask = pdfjsLib.getDocument(url);
         const pdf = await loadingTask.promise;
-        
+
         if (!isMounted) return;
-        
+
         setPdfDoc(pdf);
         setPageNum(1);
         if (onLoad) onLoad();
@@ -46,16 +86,16 @@ export function PDFViewer({ url, zoom, rotation, onLoad, onError }: PDFViewerPro
     };
 
     loadPdf();
-    
+
     return () => {
       isMounted = false;
     };
-  }, [url, onLoad, onError]);
+  }, [url, pdfjsLib, onLoad, onError]);
 
   // Render a specific page
   const renderPage = useCallback(async (num: number, pdf: any, currentZoom: number, currentRotation: number) => {
     if (!pdf || !canvasRef.current) return;
-    
+
     // If already rendering, queue this request
     if (isRenderingRef.current) {
       setPageNumPending(num);
@@ -85,7 +125,7 @@ export function PDFViewer({ url, zoom, rotation, onLoad, onError }: PDFViewerPro
 
       // Get device pixel ratio for high DPI displays
       const devicePixelRatio = window.devicePixelRatio || 1;
-      
+
       // Apply device pixel ratio to scale for sharper rendering
       const scale = currentZoom * devicePixelRatio;
 
@@ -94,13 +134,13 @@ export function PDFViewer({ url, zoom, rotation, onLoad, onError }: PDFViewerPro
 
       const canvas = canvasRef.current;
       const context = canvas.getContext('2d');
-      
+
       if (!context) return;
 
       // Set canvas dimensions with device pixel ratio
       canvas.height = viewport.height;
       canvas.width = viewport.width;
-      
+
       // Set CSS dimensions to maintain original size
       canvas.style.width = `${viewport.width / devicePixelRatio}px`;
       canvas.style.height = `${viewport.height / devicePixelRatio}px`;
@@ -110,7 +150,7 @@ export function PDFViewer({ url, zoom, rotation, onLoad, onError }: PDFViewerPro
         canvasContext: context,
         viewport: viewport,
       };
-      
+
       renderTaskRef.current = page.render(renderContext);
       await renderTaskRef.current.promise;
       renderTaskRef.current = null;
@@ -157,6 +197,17 @@ export function PDFViewer({ url, zoom, rotation, onLoad, onError }: PDFViewerPro
       isRenderingRef.current = false;
     };
   }, []);
+
+  if (!pdfjsLib) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900 mx-auto mb-2"></div>
+          <p className="text-sm text-gray-950">Loading PDF viewer...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex items-start justify-center min-h-full overflow-auto">

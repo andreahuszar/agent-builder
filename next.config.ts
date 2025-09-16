@@ -20,7 +20,7 @@ const nextConfig: NextConfig = {
       // Don't try to bundle native modules
       config.externalsPresets = { ...config.externalsPresets, node: true };
     }
-    
+
     return config;
   },
   

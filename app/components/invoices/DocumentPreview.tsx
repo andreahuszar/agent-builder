@@ -1,22 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import dynamic from 'next/dynamic';
 import { ZoomIn, ZoomOut, RotateCw, Maximize2, Download, FileText } from 'lucide-react';
 import { FakeInvoiceDocument } from './FakeInvoiceDocument';
-
-// Dynamically import PDFViewer to avoid SSR issues
-const PDFViewer = dynamic(() => import('./PDFViewer').then(mod => mod.PDFViewer), {
-  ssr: false,
-  loading: () => (
-    <div className="flex items-center justify-center h-full">
-      <div className="text-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-900 mx-auto mb-2"></div>
-        <p className="text-sm text-gray-950">Loading PDF viewer...</p>
-      </div>
-    </div>
-  ),
-});
+import { PDFViewer } from './PDFViewer';
 
 interface DocumentPreviewProps {
   invoiceId: string;
