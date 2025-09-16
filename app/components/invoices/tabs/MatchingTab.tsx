@@ -485,21 +485,18 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
               <ValidationCard
                 category="financial"
                 issues={validationIssues.financial}
-                defaultExpanded={validationIssues.financial.length === 1}
               />
             )}
             {validationIssues.compliance.length > 0 && (
               <ValidationCard
                 category="compliance"
                 issues={validationIssues.compliance}
-                defaultExpanded={validationIssues.compliance.length === 1}
               />
             )}
             {validationIssues.data_quality.length > 0 && (
               <ValidationCard
                 category="data_quality"
                 issues={validationIssues.data_quality}
-                defaultExpanded={validationIssues.data_quality.length === 1}
               />
             )}
             </ValidationCardContainer>
@@ -597,42 +594,36 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
               <ValidationCard
                 category="financial"
                 issues={validationIssues.financial}
-                defaultExpanded={validationIssues.financial.length === 1}
               />
             )}
             {validationIssues.process.length > 0 && (
               <ValidationCard
                 category="process"
                 issues={validationIssues.process}
-                defaultExpanded={validationIssues.process.length === 1}
               />
             )}
             {validationIssues.compliance.length > 0 && (
               <ValidationCard
                 category="compliance"
                 issues={validationIssues.compliance}
-                defaultExpanded={validationIssues.compliance.length === 1}
               />
             )}
             {validationIssues.risk.length > 0 && (
               <ValidationCard
                 category="risk"
                 issues={validationIssues.risk}
-                defaultExpanded={validationIssues.risk.length === 1}
               />
             )}
             {validationIssues.data_quality.length > 0 && (
               <ValidationCard
                 category="data_quality"
                 issues={validationIssues.data_quality}
-                defaultExpanded={validationIssues.data_quality.length === 1}
               />
             )}
             {validationIssues.delivery.length > 0 && (
               <ValidationCard
                 category="delivery"
                 issues={validationIssues.delivery}
-                defaultExpanded={validationIssues.delivery.length === 1}
               />
             )}
           </>

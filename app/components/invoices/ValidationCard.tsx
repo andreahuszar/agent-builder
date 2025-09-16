@@ -60,9 +60,9 @@ const categoryConfig: Record<ValidationCategory, {
   process: {
     title: 'Process Issues',
     icon: FileX,
-    color: 'text-orange-700',
-    bgColor: 'bg-orange-50',
-    borderColor: 'border-orange-200',
+    color: 'text-purple-700',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-200',
   },
   compliance: {
     title: 'Compliance Issues',
@@ -74,23 +74,23 @@ const categoryConfig: Record<ValidationCategory, {
   risk: {
     title: 'Risk Indicators',
     icon: AlertTriangle,
-    color: 'text-amber-700',
-    bgColor: 'bg-amber-50',
-    borderColor: 'border-amber-200',
+    color: 'text-purple-700',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-200',
   },
   data_quality: {
     title: 'Data Quality',
     icon: Database,
-    color: 'text-blue-700',
-    bgColor: 'bg-blue-50',
-    borderColor: 'border-blue-200',
+    color: 'text-purple-700',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-200',
   },
   delivery: {
     title: 'Delivery Issues',
     icon: Truck,
-    color: 'text-indigo-700',
-    bgColor: 'bg-indigo-50',
-    borderColor: 'border-indigo-200',
+    color: 'text-purple-700',
+    bgColor: 'bg-purple-50',
+    borderColor: 'border-purple-200',
   },
 };
 
@@ -125,7 +125,7 @@ export function ValidationCard({
   category,
   issues,
   title,
-  defaultExpanded = false
+  defaultExpanded = true
 }: ValidationCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -158,15 +158,15 @@ export function ValidationCard({
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`w-full px-4 py-3 flex items-center justify-between hover:bg-opacity-70 transition-colors`}
+        className={`w-full px-4 py-2 flex items-center justify-between hover:bg-opacity-70 transition-colors`}
       >
         <div className="flex items-center gap-3">
           <Icon className={`h-5 w-5 ${useErrorStyling ? 'text-red-600' : displayConfig.color}`} />
-          <div className="text-left">
+          <div className="flex items-center gap-4">
             <h3 className={`font-medium text-purple-700`}>
               {title || config.title}
             </h3>
-            <div className="flex items-center gap-3 mt-0.5">
+            <div className="flex items-center gap-3">
               {errorCount > 0 && (
                 <span className="text-xs text-red-600">
                   {errorCount} error{errorCount !== 1 ? 's' : ''}
