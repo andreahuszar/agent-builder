@@ -48,8 +48,38 @@ export default function PurchaseOrdersClient({
   };
 
   const handleDeletePurchaseOrder = async (poId: string) => {
-    // TODO: Implement delete functionality
-    console.log('Delete purchase order:', poId);
+    // Find the PO to get its number for the confirmation message
+    const po = purchaseOrders.find(p => p.id === poId);
+    if (!po) return;
+
+    // Show confirmation dialog
+    const confirmMessage = `Are you sure you want to delete Purchase Order ${po.po_number}? This action cannot be undone.`;
+    if (!confirm(confirmMessage)) {
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/purchase-orders?id=${poId}`, {
+        method: 'DELETE',
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Remove the deleted PO from the list
+        setPurchaseOrders(prevOrders => prevOrders.filter(order => order.id !== poId));
+
+        // Show success message (you could replace this with a toast notification)
+        console.log('Purchase Order deleted successfully:', data.message);
+      } else {
+        // Show error message
+        console.error('Failed to delete purchase order:', data.error);
+        alert(`Failed to delete Purchase Order: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error deleting purchase order:', error);
+      alert('An error occurred while deleting the Purchase Order. Please try again.');
+    }
   };
 
   const handleRowClick = (po: PurchaseOrder) => {

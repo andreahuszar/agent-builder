@@ -48,3 +48,54 @@ export async function GET(request: NextRequest) {
     );
   }
 }
+
+export async function DELETE(request: NextRequest) {
+  try {
+    // Get PO ID from search params
+    const { searchParams } = new URL(request.url);
+    const poId = searchParams.get('id');
+
+    if (!poId) {
+      return NextResponse.json(
+        { error: 'Purchase Order ID is required' },
+        { status: 400 }
+      );
+    }
+
+    // Check if PO exists
+    const existingPO = await prisma.po_headers.findUnique({
+      where: { id: poId }
+    });
+
+    if (!existingPO) {
+      return NextResponse.json(
+        { error: 'Purchase Order not found' },
+        { status: 404 }
+      );
+    }
+
+    // Delete PO lines first (due to foreign key constraints)
+    await prisma.po_lines.deleteMany({
+      where: { po_id: poId }
+    });
+
+    // Delete the PO header
+    await prisma.po_headers.delete({
+      where: { id: poId }
+    });
+
+    console.log(`Successfully deleted purchase order: ${existingPO.po_number}`);
+
+    return NextResponse.json({
+      success: true,
+      message: `Purchase Order ${existingPO.po_number} deleted successfully`
+    });
+
+  } catch (error) {
+    console.error('Error deleting purchase order:', error);
+    return NextResponse.json(
+      { error: 'Failed to delete purchase order' },
+      { status: 500 }
+    );
+  }
+}
