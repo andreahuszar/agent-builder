@@ -8,6 +8,7 @@ import { ApprovalsClient } from './approvals/ApprovalsClient';
 import { EscalationsClient } from './escalations/EscalationsClient';
 import { GoodsReceiptsClient } from './goods-receipts/GoodsReceiptsClient';
 import DashboardClient from './dashboard/DashboardClient';
+import LaunchpadClient from './launchpad/LaunchpadClient';
 import { Plus, Search, Filter } from 'lucide-react';
 
 interface InvoiceProcessingContentProps {
@@ -15,7 +16,7 @@ interface InvoiceProcessingContentProps {
   currentModule?: string;
 }
 
-function InvoiceProcessingContent({ currentView = 'dashboard' }: InvoiceProcessingContentProps) {
+function InvoiceProcessingContent({ currentView = 'launchpad' }: InvoiceProcessingContentProps) {
   const [invoices, setInvoices] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -60,6 +61,7 @@ function InvoiceProcessingContent({ currentView = 'dashboard' }: InvoiceProcessi
 
   return (
     <>
+      {currentView === 'launchpad' && <LaunchpadClient />}
       {currentView === 'dashboard' && <DashboardClient />}
       {currentView === 'invoices' && (
         <div className="w-full p-4 sm:px-6 lg:px-8">
