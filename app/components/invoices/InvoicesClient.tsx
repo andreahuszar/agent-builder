@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Upload } from 'lucide-react';
 import { InvoiceTable } from './InvoiceTable';
 import { UploadDialog } from './UploadDialog';
+import { ArchiveInvoiceDialog } from './ArchiveInvoiceDialog';
 import InvoicePipeline from './InvoicePipeline';
 import { calculatePipelineCounts, PipelineStage } from '@/app/utils/pipelineCalculations';
 import { PurchaseOrderDrawer } from '../purchase-orders/PurchaseOrderDrawer';
@@ -41,6 +42,8 @@ export default function InvoicesClient({ initialInvoices, renderAddButton, rende
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [selectedPO, setSelectedPO] = useState<any>(null);
   const [loadingPO, setLoadingPO] = useState(false);
+  const [archivingInvoice, setArchivingInvoice] = useState<{ id: string; number: string } | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
   const router = useRouter();
 
   // Calculate pipeline stages when invoices change
@@ -119,34 +122,52 @@ export default function InvoicesClient({ initialInvoices, renderAddButton, rende
   }, []);
 
   const handleDelete = useCallback(async (invoiceId: string) => {
-    // Simple confirmation dialog
-    if (!confirm('Are you sure you want to delete this invoice? This action cannot be undone.')) {
-      return;
-    }
+    // Find invoice to get invoice number
+    const invoice = invoices.find(inv => inv.id === invoiceId);
+    if (!invoice) return;
 
+    // Set the invoice to be archived
+    setArchivingInvoice({ id: invoiceId, number: invoice.invoice_number });
+  }, [invoices]);
+
+  const handleArchiveConfirm = useCallback(async () => {
+    if (!archivingInvoice) return;
+
+    setIsArchiving(true);
     try {
-      const response = await fetch(`/api/invoices/${invoiceId}`, {
+      const response = await fetch(`/api/invoices/${archivingInvoice.id}`, {
         method: 'DELETE',
       });
 
       if (response.ok) {
         // Optimistically update the UI
-        setInvoices(prev => prev.filter(inv => inv.id !== invoiceId));
+        setInvoices(prev => prev.filter(inv => inv.id !== archivingInvoice.id));
+        // Clear the archiving state
+        setArchivingInvoice(null);
         // Optionally refresh to ensure consistency
         await refreshInvoices();
       } else {
         const error = await response.json();
-        alert(`Failed to delete invoice: ${error.error || 'Unknown error'}`);
+        alert(`Failed to archive invoice: ${error.error || 'Unknown error'}`);
+        setArchivingInvoice(null);
         // Refresh to restore correct state
         await refreshInvoices();
       }
     } catch (error) {
-      console.error('Error deleting invoice:', error);
-      alert('Failed to delete invoice. Please try again.');
+      console.error('Error archiving invoice:', error);
+      alert('Failed to archive invoice. Please try again.');
+      setArchivingInvoice(null);
       // Refresh to restore correct state
       await refreshInvoices();
+    } finally {
+      setIsArchiving(false);
     }
-  }, [refreshInvoices]);
+  }, [archivingInvoice, refreshInvoices]);
+
+  const handleArchiveCancel = useCallback(() => {
+    setArchivingInvoice(null);
+    setIsArchiving(false);
+  }, []);
 
   const handlePOClick = useCallback(async (poNumber: string) => {
     setLoadingPO(true);
@@ -199,6 +220,15 @@ export default function InvoicesClient({ initialInvoices, renderAddButton, rende
           onClose={() => setSelectedPO(null)}
         />
       )}
+
+      {/* Archive Confirmation Dialog */}
+      <ArchiveInvoiceDialog
+        isOpen={archivingInvoice !== null}
+        onClose={handleArchiveCancel}
+        onConfirm={handleArchiveConfirm}
+        invoiceNumber={archivingInvoice?.number || ''}
+        isLoading={isArchiving}
+      />
     </>
   );
 }
