@@ -146,6 +146,32 @@ pg_restore -h localhost -p 5433 -U postgres -d xelix_invoice_dev backup.dump
 - **Convention**: `XXX_description.sql` (e.g., `091_add_invoice_field.sql`)
 - **Full Guide**: See `MIGRATION_SAFETY_REPORT.md` for templates and detailed instructions
 
+## Database Schema Synchronization (Railway)
+**IMPORTANT**: We have an enhanced schema sync system that automatically detects and fixes ALL database differences between local and Railway.
+
+### How It Works
+1. **`scripts/extract-local-schema.js`** - Extracts complete local database schema (tables, columns, enums, indexes)
+2. **`scripts/force-sync-schema-v2.js`** - Compares local vs remote and automatically applies missing elements
+3. **`scripts/validate-schema.js`** - Validates that schemas match (for CI/CD or manual checks)
+
+### Commands
+- `npm run db:sync:enhanced` - Extract local schema and sync to remote (Railway)
+- `npm run db:sync:dry-run` - Preview what changes would be made without applying
+- `npm run db:validate` - Compare local vs remote schemas and report differences
+
+### When to Use
+- **After local schema changes**: Run `npm run db:sync:enhanced` to sync Railway
+- **Before deployment**: Schema sync runs automatically via `npm run deploy`
+- **To check status**: Run `DATABASE_URL=$RAILWAY_URL npm run db:validate`
+
+### What It Syncs
+- ✅ All missing enums and enum values
+- ✅ All missing tables with proper structure
+- ✅ All missing columns with correct types and defaults
+- ✅ All missing indexes for performance
+
+**Note**: This replaces manual column additions in `force-sync-schema.js` (old version)
+
 ## Key Commands
 
 ### Application
