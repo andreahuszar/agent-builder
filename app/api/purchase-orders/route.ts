@@ -74,14 +74,57 @@ export async function DELETE(request: NextRequest) {
       );
     }
 
-    // Delete PO lines first (due to foreign key constraints)
-    await prisma.po_lines.deleteMany({
+    // Check for dependent records
+    const grHeaders = await prisma.gr_headers.findFirst({
       where: { po_id: poId }
     });
 
-    // Delete the PO header
-    await prisma.po_headers.delete({
-      where: { id: poId }
+    if (grHeaders) {
+      return NextResponse.json(
+        { error: 'Cannot delete Purchase Order: It has associated Goods Receipts' },
+        { status: 400 }
+      );
+    }
+
+    const sesHeaders = await prisma.ses_headers.findFirst({
+      where: { po_id: poId }
+    });
+
+    if (sesHeaders) {
+      return NextResponse.json(
+        { error: 'Cannot delete Purchase Order: It has associated Service Entry Sheets' },
+        { status: 400 }
+      );
+    }
+
+    // Check if any invoice lines reference this PO
+    const invoiceLines = await prisma.invoice_lines.findFirst({
+      where: {
+        OR: [
+          { po_line_id: { in: await prisma.po_lines.findMany({ where: { po_id: poId }, select: { id: true } }).then(lines => lines.map(l => l.id)) } },
+          { po_number_snapshot: existingPO.po_number }
+        ]
+      }
+    });
+
+    if (invoiceLines) {
+      return NextResponse.json(
+        { error: 'Cannot delete Purchase Order: It has associated Invoice Lines' },
+        { status: 400 }
+      );
+    }
+
+    // Use a transaction to ensure all deletes succeed or none do
+    await prisma.$transaction(async (tx) => {
+      // Delete PO lines first
+      await tx.po_lines.deleteMany({
+        where: { po_id: poId }
+      });
+
+      // Delete the PO header
+      await tx.po_headers.delete({
+        where: { id: poId }
+      });
     });
 
     console.log(`Successfully deleted purchase order: ${existingPO.po_number}`);
