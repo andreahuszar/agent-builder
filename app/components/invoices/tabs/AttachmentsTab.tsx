@@ -139,8 +139,8 @@ export function AttachmentsTab({ invoiceId, attachments, layoutMode = 'large' }:
             disabled={isUploading}
             accept=".pdf,.png,.jpg,.jpeg,.gif,.xlsx,.xls,.csv"
           />
-          <div className="inline-flex items-center gap-2 px-4 py-2 bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors">
-            <Upload className="h-4 w-4" />
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors">
+            <Upload className="h-3.5 w-3.5" />
             <span>{isUploading ? 'Uploading...' : 'Upload Attachment'}</span>
           </div>
         </label>
