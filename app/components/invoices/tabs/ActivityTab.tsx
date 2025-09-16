@@ -43,46 +43,29 @@ export function ActivityTab({ invoiceId }: ActivityTabProps) {
     switch (eventType) {
       case 'created':
       case 'uploaded':
-        return <Upload className="h-4 w-4" />;
+        return <Upload className="h-4 w-4 text-purple-700" />;
       case 'edited':
       case 'updated':
-        return <Edit className="h-4 w-4" />;
+        return <Edit className="h-4 w-4 text-purple-700" />;
       case 'approved':
-        return <Check className="h-4 w-4" />;
+        return <Check className="h-4 w-4 text-purple-700" />;
       case 'rejected':
-        return <X className="h-4 w-4" />;
+        return <X className="h-4 w-4 text-purple-700" />;
       case 'matched':
       case 'rerun_matching':
-        return <RefreshCw className="h-4 w-4" />;
+        return <RefreshCw className="h-4 w-4 text-purple-700" />;
       case 'linked_po':
-        return <Link className="h-4 w-4" />;
+        return <Link className="h-4 w-4 text-purple-700" />;
       case 'posted':
-        return <FileCheck className="h-4 w-4" />;
+        return <FileCheck className="h-4 w-4 text-purple-700" />;
       default:
-        return <Clock className="h-4 w-4" />;
+        return <Clock className="h-4 w-4 text-purple-700" />;
     }
   };
 
   const getEventColor = (eventType: string) => {
-    switch (eventType) {
-      case 'created':
-      case 'uploaded':
-        return 'bg-blue-100 text-blue-800';
-      case 'edited':
-      case 'updated':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'approved':
-        return 'bg-green-100 text-green-800';
-      case 'rejected':
-        return 'bg-red-100 text-red-800';
-      case 'matched':
-      case 'rerun_matching':
-        return 'bg-purple-100 text-purple-800';
-      case 'posted':
-        return 'bg-indigo-100 text-indigo-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
+    // All nodes now have light purple background with dark purple text
+    return 'bg-purple-100';
   };
 
   const formatEventDescription = (event: AuditEvent) => {
