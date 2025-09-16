@@ -172,6 +172,120 @@ pg_restore -h localhost -p 5433 -U postgres -d xelix_invoice_dev backup.dump
 
 **Note**: This replaces manual column additions in `force-sync-schema.js` (old version)
 
+## Database Data Synchronization
+
+### Full Data Sync (Recommended)
+**ENHANCED**: Complete data replication with ID preservation for accurate foreign key relationships.
+
+#### Overview
+The full sync system creates an exact copy of data from local to Railway, preserving all IDs and relationships. This ensures perfect data integrity and is the recommended approach for syncing complex relational data.
+
+#### Key Features
+- **ID Preservation**: Maintains exact IDs for perfect foreign key relationships
+- **Schema Validation**: Checks compatibility before syncing
+- **Dollar Quoting**: Safely handles complex JSON/JSONB data
+- **Clean Slate Option**: TRUNCATE CASCADE for complete replacement
+- **Batch Processing**: Efficient handling of large datasets
+- **Selective Sync**: Sync specific invoices with related data
+
+#### Commands
+- `npm run db:sync:full` - Full data sync with ID preservation
+- `npm run db:sync:full:dry` - Preview sync without making changes
+- `npm run db:sync:full:clean` - Clean slate sync (TRUNCATE CASCADE first)
+- `npm run db:sync:verify` - Detailed verification of what would sync
+
+#### Examples
+```bash
+# Sync specific invoices with all related data
+npm run db:sync:full -- --invoices "INV-2025-0001,INV-2025-0002"
+
+# Clean slate sync (removes all target data first)
+npm run db:sync:full:clean
+
+# Preview what would be synced
+npm run db:sync:full:dry
+
+# Sync specific tables only
+npm run db:sync:full -- --tables "invoice_headers,invoice_lines"
+```
+
+### Incremental Sync (Legacy)
+**NOTE**: The incremental sync system has known issues with ID preservation. Use Full Data Sync instead.
+
+#### Commands (kept for backwards compatibility)
+- `npm run db:sync:data` - Interactive incremental sync (only new records)
+- `npm run db:sync:data:dry-run` - Preview what would be synced without making changes
+- `npm run db:sync:data:full` - Full sync (ignores sync history, syncs all records)
+- `npm run db:sync:info` - View table dependencies and sync order
+- `npm run db:sync:status` - Check sync history and statistics
+
+
+### Configuration (.syncconfig.json)
+The sync system uses a configuration file at `.syncconfig.json`:
+```json
+{
+  "batchSize": 1000,           // Records per batch
+  "excludeTables": [],          // Tables to never sync
+  "dateFields": {               // Custom date field mapping per table
+    "default": "created_at",
+    "audit_events": "at"
+  },
+  "syncBehavior": {
+    "onConflict": "DO NOTHING", // Conflict resolution strategy
+    "createBackup": true,        // Auto-backup before sync
+    "requireConfirmation": true  // Ask before syncing
+  }
+}
+```
+
+### How It Works
+1. **Dependency Analysis**: Analyzes foreign key relationships to determine correct sync order
+2. **Change Detection**: Identifies records created/modified since last sync
+3. **Plan Generation**: Creates execution plan showing what will be synced
+4. **User Confirmation**: Shows plan and asks for confirmation (unless --force)
+5. **Backup Creation**: Optionally backs up target database
+6. **Batch Processing**: Syncs data in batches to handle large datasets
+7. **Progress Tracking**: Updates sync state and shows real-time progress
+8. **History Recording**: Saves sync session details for future reference
+
+### Sync State Management
+The system maintains sync state in `.sync-state.json`:
+- Tracks last successful sync timestamp
+- Records sync history with statistics
+- Maintains per-table sync timestamps
+- Stores error information for debugging
+
+### Safety Features
+- **Dry Run Mode**: Test sync without making changes
+- **Automatic Backups**: Creates backup before syncing
+- **Dependency Validation**: Ensures foreign keys won't be violated
+- **Transaction Safety**: Uses transactions for atomic operations
+- **Duplicate Prevention**: ON CONFLICT handling prevents duplicates
+- **Error Recovery**: Continues on non-critical errors with --force
+
+### Best Practices
+1. **Always run dry-run first**: `npm run db:sync:data:dry-run`
+2. **Check dependencies**: `npm run db:sync:info` before first sync
+3. **Start small**: Test with specific tables first
+4. **Monitor sync history**: `npm run db:sync:status` regularly
+5. **Keep backups**: Don't skip backups for production syncs
+6. **Use date ranges**: For large datasets, sync in date chunks
+
+### Setup
+The Railway database URL is automatically loaded from `.env.local`:
+```bash
+# Add to .env.local file:
+RAILWAY_DATABASE_URL=postgresql://user:pass@host.railway.app:port/database
+```
+Get this URL from Railway Dashboard → PostgreSQL Service → Variables → DATABASE_URL_PUBLIC
+
+### Troubleshooting
+- **Circular dependencies**: System warns and handles them automatically
+- **Missing RAILWAY_DATABASE_URL**: Add to `.env.local` file (auto-loaded)
+- **Permission errors**: Ensure write permissions on production database
+- **Large datasets**: Reduce batch size in .syncconfig.json
+- **Sync failures**: Check .sync-state.json for detailed error logs
+
 ## Key Commands
 
 ### Application
