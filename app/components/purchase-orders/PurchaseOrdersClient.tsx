@@ -72,9 +72,15 @@ export default function PurchaseOrdersClient({
         // Show success message (you could replace this with a toast notification)
         console.log('Purchase Order deleted successfully:', data.message);
       } else {
-        // Show error message
-        console.error('Failed to delete purchase order:', data.error);
-        alert(`Failed to delete Purchase Order: ${data.error}`);
+        // Show validation message (not an error, just a business rule)
+        if (response.status === 400) {
+          // This is a validation failure (e.g., has dependencies), not an error
+          console.log('Purchase Order deletion blocked:', data.error);
+        } else {
+          // This is an actual error
+          console.error('Failed to delete purchase order:', data.error);
+        }
+        alert(data.error);
       }
     } catch (error) {
       console.error('Error deleting purchase order:', error);
