@@ -1,0 +1,515 @@
+--
+-- PostgreSQL database dump
+--
+
+\restrict iYoqmLIt73UfeG6cmdbMBApPmDeWzRgJjciclFdhr2u25YoL8p6sRRhGRoVAdOY
+
+-- Dumped from database version 16.10
+-- Dumped by pg_dump version 16.10
+
+SET statement_timeout = 0;
+SET lock_timeout = 0;
+SET idle_in_transaction_session_timeout = 0;
+SET client_encoding = 'UTF8';
+SET standard_conforming_strings = on;
+SELECT pg_catalog.set_config('search_path', '', false);
+SET check_function_bodies = false;
+SET xmloption = content;
+SET client_min_messages = warning;
+SET row_security = off;
+
+--
+-- Data for Name: users; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.users VALUES ('11111111-1111-1111-1111-111111111111', 'John Smith', 'john.smith@xelix.com', '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.users VALUES ('22222222-2222-2222-2222-222222222222', 'Jane Doe', 'jane.doe@xelix.com', '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.users VALUES ('33333333-3333-3333-3333-333333333333', 'Bob Johnson', 'bob.johnson@xelix.com', '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+
+
+--
+-- Data for Name: work_items; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.work_items VALUES ('c1111111-1111-1111-1111-111111111111', 'INV', '71111111-1111-1111-1111-111111111111', 'extract_index', 'done', 3, NULL, 'EXTRACT_AGENT', NULL, NULL, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.work_items VALUES ('c2222222-2222-2222-2222-222222222222', 'INV', '71111111-1111-1111-1111-111111111111', 'match', 'queued', 3, NULL, 'MATCH_AGENT', NULL, NULL, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.work_items VALUES ('c3333333-3333-3333-3333-333333333333', 'INV', '71111111-1111-1111-1111-111111111111', 'post', 'queued', 3, NULL, NULL, NULL, NULL, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+
+
+--
+-- Data for Name: agent_runs; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: approver_groups; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.approver_groups VALUES ('91111111-1111-1111-1111-111111111111', 'Finance Approvers', '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.approver_groups VALUES ('92222222-2222-2222-2222-222222222222', 'IT Approvers', '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+
+
+--
+-- Data for Name: payment_terms; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.payment_terms VALUES ('a1111111-1111-1111-1111-111111111111', 'Net 30', 30, NULL, NULL, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.payment_terms VALUES ('a2222222-2222-2222-2222-222222222222', '2/10 Net 30', 30, 2.0000, 10, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+
+
+--
+-- Data for Name: tolerance_profiles; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.tolerance_profiles VALUES ('b1111111-1111-1111-1111-111111111111', 'Standard Tolerance', 2.0000, 5.0000, 100.0000, 10.0000, 1.0000, '3-way', '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.tolerance_profiles VALUES ('b2222222-2222-2222-2222-222222222222', 'Strict Tolerance', 0.5000, 1.0000, 10.0000, 1.0000, 0.1000, '3-way', '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+
+
+--
+-- Data for Name: vendor_bank_accounts; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.vendor_bank_accounts VALUES ('d1111111-1111-1111-1111-111111111111', 'c1111111-1111-1111-1111-111111111111', 'First National Bank', NULL, NULL, '****1234', true, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00', NULL, NULL, NULL, NULL);
+INSERT INTO public.vendor_bank_accounts VALUES ('d2222222-2222-2222-2222-222222222222', 'c2222222-2222-2222-2222-222222222222', 'Chase Bank', NULL, NULL, '****5678', true, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00', NULL, NULL, NULL, NULL);
+INSERT INTO public.vendor_bank_accounts VALUES ('3a9f1637-649e-4662-bd13-dab742520636', '07422216-68a8-435f-92ff-215b8cd743e7', 'Continental Bank EU', 'DE12 3456 7890 1234 5678 90', 'CONTEU2LXXX', '****5678', true, '2025-09-11 16:34:16.201+00', '2025-09-11 16:34:16.201+00', 'Brookstone Supplies Ltd', '12345678', '20-00-00', NULL);
+INSERT INTO public.vendor_bank_accounts VALUES ('22025001-1111-1111-1111-111111111111', '12025001-1111-1111-1111-111111111111', 'Silicon Valley Bank', 'US12345678901234567890', 'SVBKUS6S', '****4321', true, '2025-09-12 10:31:13.681955+00', '2025-09-12 10:31:13.681955+00', 'TechPro Solutions Inc.', '987654321', NULL, '121140399');
+INSERT INTO public.vendor_bank_accounts VALUES ('22025003-3333-3333-3333-333333333333', '12025001-1111-1111-1111-111111111111', 'Wells Fargo Bank', NULL, 'WFBIUS6S', '****6777', false, '2025-09-15 09:35:20.027189+00', '2025-09-15 09:35:20.027189+00', 'TechPro Solutions Inc.', '555666777', NULL, '121000248');
+
+
+--
+-- Data for Name: vendors; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.vendors VALUES ('c1111111-1111-1111-1111-111111111111', 'Acme Office Supplies', '12-3456789', 'US', 'USD', 'a1111111-1111-1111-1111-111111111111', 'd1111111-1111-1111-1111-111111111111', 'b1111111-1111-1111-1111-111111111111', true, false, NULL, true, '2025-09-09 13:29:46.65678+00', '2025-09-11 13:29:20.867363+00', true, 'bank_transfer');
+INSERT INTO public.vendors VALUES ('c2222222-2222-2222-2222-222222222222', 'Global IT Services', '98-7654321', 'US', 'USD', 'a2222222-2222-2222-2222-222222222222', 'd2222222-2222-2222-2222-222222222222', 'b2222222-2222-2222-2222-222222222222', true, false, NULL, true, '2025-09-09 13:29:46.65678+00', '2025-09-11 13:29:20.867363+00', true, 'bank_transfer');
+INSERT INTO public.vendors VALUES ('07422216-68a8-435f-92ff-215b8cd743e7', 'Brookstone Supplies Ltd', 'GB123456789', 'GB', 'EUR', 'a2222222-2222-2222-2222-222222222222', '3a9f1637-649e-4662-bd13-dab742520636', NULL, true, false, NULL, true, '2025-09-11 16:34:16.191+00', '2025-09-11 16:34:16.177205+00', false, 'bank_transfer');
+INSERT INTO public.vendors VALUES ('12025001-1111-1111-1111-111111111111', 'TechPro Solutions Inc.', '45-6789012', 'US', 'USD', 'a1111111-1111-1111-1111-111111111111', '22025001-1111-1111-1111-111111111111', NULL, true, false, NULL, true, '2025-09-12 10:31:13.662467+00', '2025-09-12 10:31:13.684865+00', true, 'bank_transfer');
+
+
+--
+-- Data for Name: approval_policies; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.approval_policies VALUES ('b1111111-1111-1111-1111-111111111111', 'Standard Invoice Approval < $10000', 1, true, NULL, 'USD', 0.0000, 10000.0000, false, NULL, '91111111-1111-1111-1111-111111111111', 1, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.approval_policies VALUES ('b2222222-2222-2222-2222-222222222222', 'High Value Invoice Approval >= $10000', 2, true, NULL, 'USD', 10000.0000, NULL, false, NULL, '91111111-1111-1111-1111-111111111111', 1, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+
+
+--
+-- Data for Name: approvals; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: approver_group_members; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.approver_group_members VALUES ('a1111111-1111-1111-1111-111111111111', '91111111-1111-1111-1111-111111111111', '11111111-1111-1111-1111-111111111111', 1, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.approver_group_members VALUES ('a2222222-2222-2222-2222-222222222222', '91111111-1111-1111-1111-111111111111', '22222222-2222-2222-2222-222222222222', 2, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+
+
+--
+-- Data for Name: attachments; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.attachments VALUES ('957d0065-495f-468d-a365-3caf9f18f29c', 'INV', '87c5e57b-28de-4ca0-bbef-635d83a139ea', 'Invoice_INV-2025-0910-004.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1758012820806-aa2c0c55.pdf', 'upload', 'aa2c0c551da7ff9fa89f3c105214a07698d24557ffa1a662d76cdb1002a9e429', '2025-09-16 08:53:40.883+00', '2025-09-16 08:54:03.370064+00');
+INSERT INTO public.attachments VALUES ('fe2c5a1a-56e5-49b6-bfd4-a881c12c6410', 'INV', 'fdfb0bec-3e11-4eb7-9e3a-110942dc1ea0', 'Invoice_INV-2025-0910-004.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757504984839-aa2c0c55.pdf', 'upload', 'aa2c0c551da7ff9fa89f3c105214a07698d24557ffa1a662d76cdb1002a9e429', '2025-09-10 11:49:44.864+00', '2025-09-10 11:49:44.864+00');
+INSERT INTO public.attachments VALUES ('781a98d9-9f1c-422a-a0fb-6eec9113b423', 'INV', '6343c3fa-96cb-4383-860a-d60e91688cbf', 'Invoice_INV-2025-0910-004.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757505145265-aa2c0c55.pdf', 'upload', 'aa2c0c551da7ff9fa89f3c105214a07698d24557ffa1a662d76cdb1002a9e429', '2025-09-10 11:52:25.33+00', '2025-09-10 11:52:25.33+00');
+INSERT INTO public.attachments VALUES ('46329da2-7827-45e3-93bb-fc6d93f397f4', 'INV', '27eafe49-43e1-4a7e-9dc2-ad153a4ab4b5', 'Invoice_INV-2025-0910-004.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757505240741-aa2c0c55.pdf', 'upload', 'aa2c0c551da7ff9fa89f3c105214a07698d24557ffa1a662d76cdb1002a9e429', '2025-09-10 11:54:00.791+00', '2025-09-10 11:54:00.791+00');
+INSERT INTO public.attachments VALUES ('09a8ee64-f3ca-40fa-9e19-ceaf507293d7', 'INV', 'a8a89c1c-3cea-4829-8caa-6b7027129b3d', 'Invoice_INV-2025-0910-004.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757505392769-aa2c0c55.pdf', 'upload', 'aa2c0c551da7ff9fa89f3c105214a07698d24557ffa1a662d76cdb1002a9e429', '2025-09-10 11:56:32.809+00', '2025-09-10 11:56:32.809+00');
+INSERT INTO public.attachments VALUES ('eec375e3-885d-4367-aa7b-c02714f366c3', 'INV', 'a46966d0-8dc8-4f34-a964-afdecd160afa', 'Invoice_INV-2025-0910-004.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757510446522-aa2c0c55.pdf', 'upload', 'aa2c0c551da7ff9fa89f3c105214a07698d24557ffa1a662d76cdb1002a9e429', '2025-09-10 13:20:46.555+00', '2025-09-10 13:20:46.555+00');
+INSERT INTO public.attachments VALUES ('45b5261f-f639-4e43-baaa-66b781c44112', 'INV', 'e4b5c576-1b84-4030-9977-b328d7a72952', 'Invoice_INV-2025-0910-004.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757581146328-aa2c0c55.pdf', 'upload', 'aa2c0c551da7ff9fa89f3c105214a07698d24557ffa1a662d76cdb1002a9e429', '2025-09-11 09:06:05.707003+00', '2025-09-11 09:06:05.707003+00');
+INSERT INTO public.attachments VALUES ('ff03e0e0-0a7f-4664-adfd-767b2d2ffcce', 'INV', '3a6d5a69-a5e9-4c04-9881-4793758df025', 'Invoice_INV-2025-0901-2825.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757595669273-da009e49.pdf', 'upload', 'da009e49c0a3b7824a9781803c9a7953c7bc4fe00145fb7d5a1256772bd752b9', '2025-09-11 13:01:09.296+00', '2025-09-11 13:01:09.296+00');
+INSERT INTO public.attachments VALUES ('f11bfcb5-041f-44d3-b297-0a8ba880af29', 'INV', '0b582160-5479-4172-af1d-1da860313114', 'Invoice_INV-2025-0910-003.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757603381594-91cc5a6b.pdf', 'upload', '91cc5a6bd77f988e2cc1f4795c5f84db72046304185152edaec5d510da9d5400', '2025-09-11 15:09:41.617+00', '2025-09-11 15:09:41.617+00');
+
+
+--
+-- Data for Name: audit_events; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.audit_events VALUES ('48909b5c-9bb0-445d-9964-a8d93960d93b', 'PO', '11111111-1111-1111-1111-111111111111', 'PO_CREATED', NULL, '2025-09-09 13:29:46.65678+00', NULL);
+INSERT INTO public.audit_events VALUES ('c440e6dc-475f-4aa6-8c66-0501fa7762c8', 'PO', '12222222-2222-2222-2222-222222222222', 'PO_CREATED', NULL, '2025-09-09 13:29:46.65678+00', NULL);
+INSERT INTO public.audit_events VALUES ('e676338d-bf6a-4f35-ad9b-50a190b8d994', 'INV', '71111111-1111-1111-1111-111111111111', 'INVOICE_CREATED', NULL, '2025-09-09 13:29:46.65678+00', NULL);
+INSERT INTO public.audit_events VALUES ('f3a1c7da-25f7-489d-8b90-421b8e2b592f', 'INV', '72222222-2222-2222-2222-222222222222', 'INVOICE_CREATED', NULL, '2025-09-09 13:29:46.65678+00', NULL);
+INSERT INTO public.audit_events VALUES ('520dba37-6ec4-4625-a205-b122e98d876e', 'INV', '73333333-3333-3333-3333-333333333333', 'INVOICE_CREATED', NULL, '2025-09-09 13:29:46.65678+00', NULL);
+INSERT INTO public.audit_events VALUES ('50ed048c-345c-40e7-af9b-4b27da1e6157', 'INV', '72222222-2222-2222-2222-222222222222', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 13:29:47.246699+00', '{"new_match_status": "within_tolerance", "old_match_status": "not_matched"}');
+INSERT INTO public.audit_events VALUES ('f921c3b2-c506-4348-ad0a-b755fba84215', 'INV', '73333333-3333-3333-3333-333333333333', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 13:29:47.246699+00', '{"new_match_status": "within_tolerance", "old_match_status": "not_matched"}');
+INSERT INTO public.audit_events VALUES ('80abb159-6341-474c-8c61-4f2aa79807cb', 'INV', '71111111-1111-1111-1111-111111111111', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 13:29:47.246699+00', '{"new_match_status": "within_tolerance", "old_match_status": "not_matched"}');
+INSERT INTO public.audit_events VALUES ('e7e8dddb-5b8d-458e-b708-b7dd669a9b48', 'INV', '72222222-2222-2222-2222-222222222222', 'INVOICE_STATUS_CHANGED', NULL, '2025-09-09 13:29:47.414382+00', '{"new_status": "processing", "old_status": "draft"}');
+INSERT INTO public.audit_events VALUES ('84c18cb5-5e38-4705-927e-5b802e220bf6', 'INV', '73333333-3333-3333-3333-333333333333', 'INVOICE_STATUS_CHANGED', NULL, '2025-09-09 13:29:47.414382+00', '{"new_status": "processing", "old_status": "draft"}');
+INSERT INTO public.audit_events VALUES ('a0990c7b-aae9-4b24-a74e-cf91454ecb3d', 'INV', '71111111-1111-1111-1111-111111111111', 'INVOICE_STATUS_CHANGED', NULL, '2025-09-09 13:29:47.414382+00', '{"new_status": "processing", "old_status": "draft"}');
+INSERT INTO public.audit_events VALUES ('bb433e95-a4ed-4acb-a10c-c50c1355893f', 'INV', '72222222-2222-2222-2222-222222222222', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 13:29:47.530586+00', '{"new_match_status": "not_matched", "old_match_status": "within_tolerance"}');
+INSERT INTO public.audit_events VALUES ('10481dde-fa7e-450e-94da-f5cfe3e1a82a', 'INV', '73333333-3333-3333-3333-333333333333', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 13:29:47.530586+00', '{"new_match_status": "not_matched", "old_match_status": "within_tolerance"}');
+INSERT INTO public.audit_events VALUES ('f300e442-79d9-41c4-b915-e4f4d1e27644', 'INV', '71111111-1111-1111-1111-111111111111', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 13:29:47.530586+00', '{"new_match_status": "not_matched", "old_match_status": "within_tolerance"}');
+INSERT INTO public.audit_events VALUES ('88418bd6-afde-41e6-aa9e-6106bf0515b3', 'INV', '72222222-2222-2222-2222-222222222222', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 13:29:47.539438+00', '{"new_match_status": "exception", "old_match_status": "not_matched"}');
+INSERT INTO public.audit_events VALUES ('861674a7-976c-4930-b969-9448cae4eeee', 'INV', '73333333-3333-3333-3333-333333333333', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 13:29:47.539438+00', '{"new_match_status": "exception", "old_match_status": "not_matched"}');
+INSERT INTO public.audit_events VALUES ('787698e1-7a43-4514-8cd7-7ef0a0694096', 'INV', '71111111-1111-1111-1111-111111111111', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 13:29:47.539438+00', '{"new_match_status": "exception", "old_match_status": "not_matched"}');
+INSERT INTO public.audit_events VALUES ('a87491c3-91b4-4e6c-8a33-ffdf030a75c5', 'INV', '4ff4bb9f-f2ce-4317-8984-8bf2bf26119f', 'INVOICE_CREATED', NULL, '2025-09-09 14:05:57.426715+00', NULL);
+INSERT INTO public.audit_events VALUES ('de92b63c-e916-45cc-acf2-629614cf4a15', 'INV', '5ac739ae-16b5-4ddb-bd44-2c5faf23bddf', 'INVOICE_CREATED', NULL, '2025-09-09 14:05:57.477279+00', NULL);
+INSERT INTO public.audit_events VALUES ('101f35ab-3fb6-40b3-88ea-a117c865e727', 'INV', '75c92f6b-0f78-4282-ad09-6849159bb1ea', 'INVOICE_CREATED', NULL, '2025-09-09 14:05:57.486347+00', NULL);
+INSERT INTO public.audit_events VALUES ('5da731e2-606a-4f19-abc7-a6322569a10c', 'INV', '90644784-1f29-4d8f-a45d-363b6bfd01b4', 'INVOICE_CREATED', NULL, '2025-09-09 14:05:57.493269+00', NULL);
+INSERT INTO public.audit_events VALUES ('91c11baa-57d2-4911-b655-5470933568bc', 'INV', '0d9ea0b2-1dd6-432e-a24d-f42532b3c981', 'INVOICE_CREATED', NULL, '2025-09-09 14:05:57.500336+00', NULL);
+INSERT INTO public.audit_events VALUES ('60774697-79fb-43c1-9447-8c78996c24da', 'INV', '35eef961-f927-4b0d-812a-28cdcf67065d', 'INVOICE_CREATED', NULL, '2025-09-09 14:05:57.509072+00', NULL);
+INSERT INTO public.audit_events VALUES ('8238e0dc-4a9a-4efc-9b4e-30c027a1c387', 'INV', 'f1109708-d6a6-4a61-ba16-5a830a218d6e', 'INVOICE_CREATED', NULL, '2025-09-09 14:05:57.515408+00', NULL);
+INSERT INTO public.audit_events VALUES ('0bdcf000-a3b0-4930-97a2-0ce8e07ab559', 'INV', 'd48f1d8f-eb78-4df1-9dde-d044074cb821', 'INVOICE_CREATED', NULL, '2025-09-09 14:05:57.52008+00', NULL);
+INSERT INTO public.audit_events VALUES ('75889e9d-01e7-478e-acfe-0019bfc177e3', 'INV', 'fc894f21-02d1-400e-a513-57d4483a8f64', 'INVOICE_CREATED', NULL, '2025-09-09 14:05:57.525824+00', NULL);
+INSERT INTO public.audit_events VALUES ('fe79b71f-89e5-43a6-bbe4-b3f95a9f347c', 'INV', '85f2cbb7-ca4b-47f0-ba9c-5ae86b5cda2a', 'INVOICE_CREATED', NULL, '2025-09-09 14:05:57.531017+00', NULL);
+INSERT INTO public.audit_events VALUES ('41c2456c-99de-4c8d-a759-2e41a02ee947', 'INV', '8893cd69-62d9-44c7-932b-adfdae5ad496', 'INVOICE_CREATED', NULL, '2025-09-09 14:05:57.536362+00', NULL);
+INSERT INTO public.audit_events VALUES ('010ad3fd-7d63-4a3b-aef9-12cb953022ce', 'INV', '187995da-4714-490c-81b1-d495543e7013', 'INVOICE_CREATED', NULL, '2025-09-09 14:05:57.541316+00', NULL);
+INSERT INTO public.audit_events VALUES ('8c8d3bea-634f-4bed-bd89-03c5c233db59', 'INV', '11100001-1111-1111-1111-111111111111', 'INVOICE_CREATED', NULL, '2025-09-09 14:10:00.351676+00', NULL);
+INSERT INTO public.audit_events VALUES ('e842a12e-fa11-497c-a5c1-41a554837f81', 'INV', '11100002-2222-2222-2222-222222222222', 'INVOICE_CREATED', NULL, '2025-09-09 14:10:00.374619+00', NULL);
+INSERT INTO public.audit_events VALUES ('93a747c2-3978-4049-a58a-3edc8da0c9ff', 'INV', '11100004-4444-4444-4444-444444444444', 'INVOICE_CREATED', NULL, '2025-09-09 14:10:00.377972+00', NULL);
+INSERT INTO public.audit_events VALUES ('95793dae-5bae-45f0-900a-1cad38424fa3', 'INV', '11100005-5555-5555-5555-555555555555', 'INVOICE_CREATED', NULL, '2025-09-09 14:10:00.379259+00', NULL);
+INSERT INTO public.audit_events VALUES ('fdb78323-103e-462d-b266-16c73a0b7b86', 'INV', '11100006-6666-6666-6666-666666666666', 'INVOICE_CREATED', NULL, '2025-09-09 14:10:00.381117+00', NULL);
+INSERT INTO public.audit_events VALUES ('07ac7534-4660-44f8-806e-6e2f7433862d', 'INV', '11100007-7777-7777-7777-777777777777', 'INVOICE_CREATED', NULL, '2025-09-09 14:10:00.382693+00', NULL);
+INSERT INTO public.audit_events VALUES ('627bb18f-4a2d-42aa-b8ef-536d42e9f18a', 'INV', '11100008-8888-8888-8888-888888888888', 'INVOICE_CREATED', NULL, '2025-09-09 14:10:00.384081+00', NULL);
+INSERT INTO public.audit_events VALUES ('6c440d0e-96ec-4259-93bc-5c8934f995d1', 'INV', '11100009-9999-9999-9999-999999999999', 'INVOICE_CREATED', NULL, '2025-09-09 14:10:00.385066+00', NULL);
+INSERT INTO public.audit_events VALUES ('3f5871d7-b006-449f-a606-909798944f00', 'INV', '11100010-aaaa-aaaa-aaaa-aaaaaaaaaaaa', 'INVOICE_CREATED', NULL, '2025-09-09 14:10:00.385954+00', NULL);
+INSERT INTO public.audit_events VALUES ('03d055ac-919f-49e0-96bc-faa2f9e15219', 'INV', '11100011-bbbb-bbbb-bbbb-bbbbbbbbbbbb', 'INVOICE_CREATED', NULL, '2025-09-09 14:10:00.387081+00', NULL);
+INSERT INTO public.audit_events VALUES ('3662475f-860e-45a0-a74e-f6f87c02f5e1', 'INV', '11100001-1111-1111-1111-111111111111', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 14:10:18.687031+00', '{"new_match_status": "exception", "old_match_status": "not_matched"}');
+INSERT INTO public.audit_events VALUES ('ed3d75c7-3281-4a29-bf92-01a60f7b5228', 'INV', '11100002-2222-2222-2222-222222222222', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 14:10:18.687031+00', '{"new_match_status": "exception", "old_match_status": "not_matched"}');
+INSERT INTO public.audit_events VALUES ('03893339-fe8c-4f41-8ac4-01c13d962536', 'INV', '11100005-5555-5555-5555-555555555555', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 14:10:18.687031+00', '{"new_match_status": "exception", "old_match_status": "not_matched"}');
+INSERT INTO public.audit_events VALUES ('57a257d9-f1ae-4b94-845d-d36d5f3db893', 'INV', '11100004-4444-4444-4444-444444444444', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 14:10:18.709925+00', '{"new_match_status": "matched", "old_match_status": "exception"}');
+INSERT INTO public.audit_events VALUES ('cc861b16-7399-4715-a30c-d4ea532f8d02', 'INV', '11100007-7777-7777-7777-777777777777', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 14:10:18.709925+00', '{"new_match_status": "matched", "old_match_status": "within_tolerance"}');
+INSERT INTO public.audit_events VALUES ('b83f38eb-adc4-4872-8ba7-91a1283dc580', 'INV', '11100009-9999-9999-9999-999999999999', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 14:10:18.709925+00', '{"new_match_status": "matched", "old_match_status": "within_tolerance"}');
+INSERT INTO public.audit_events VALUES ('bc418d60-d4ec-4cb1-98dc-95aafcbb28af', 'INV', '11100001-1111-1111-1111-111111111111', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 14:10:18.709925+00', '{"new_match_status": "matched", "old_match_status": "exception"}');
+INSERT INTO public.audit_events VALUES ('16d43fb2-8e38-4d42-8a1b-5de95bd21838', 'INV', '11100002-2222-2222-2222-222222222222', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 14:10:18.709925+00', '{"new_match_status": "matched", "old_match_status": "exception"}');
+INSERT INTO public.audit_events VALUES ('535ceff3-e0be-4d70-a2ab-d9c4b0e1e32e', 'INV', '11100005-5555-5555-5555-555555555555', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-09 14:10:18.709925+00', '{"new_match_status": "matched", "old_match_status": "exception"}');
+INSERT INTO public.audit_events VALUES ('6cd864fb-fa2d-46ef-841b-481e28b7d950', 'INV', '11100001-1111-1111-1111-111111111111', 'INVOICE_CREATED', NULL, '2025-09-09 14:11:47.118185+00', NULL);
+INSERT INTO public.audit_events VALUES ('05b7dae1-8d5c-4ec0-91a7-da2469743cb7', 'INV', '11100002-2222-2222-2222-222222222222', 'INVOICE_CREATED', NULL, '2025-09-09 14:11:47.118185+00', NULL);
+INSERT INTO public.audit_events VALUES ('17456114-31dd-4f0f-aff7-188be609b6a4', 'INV', '11100003-3333-3333-3333-333333333333', 'INVOICE_CREATED', NULL, '2025-09-09 14:11:47.118185+00', NULL);
+INSERT INTO public.audit_events VALUES ('46c61657-6a26-458d-b719-aeaea3fadb29', 'INV', '11100004-4444-4444-4444-444444444444', 'INVOICE_CREATED', NULL, '2025-09-09 14:11:47.118185+00', NULL);
+INSERT INTO public.audit_events VALUES ('891929c0-815b-4646-bc43-da484eebdb27', 'INV', '11100005-5555-5555-5555-555555555555', 'INVOICE_CREATED', NULL, '2025-09-09 14:11:47.118185+00', NULL);
+INSERT INTO public.audit_events VALUES ('ee1b338e-37ff-487a-9971-38b5861cc0e6', 'INV', '11100006-6666-6666-6666-666666666666', 'INVOICE_CREATED', NULL, '2025-09-09 14:11:47.118185+00', NULL);
+INSERT INTO public.audit_events VALUES ('86b49e3f-8a1b-474f-8a92-7591072f910f', 'INV', '11100007-7777-7777-7777-777777777777', 'INVOICE_CREATED', NULL, '2025-09-09 14:11:47.118185+00', NULL);
+INSERT INTO public.audit_events VALUES ('ee5fbf32-b506-4369-a90e-86a43675ae90', 'INV', '11100008-8888-8888-8888-888888888888', 'INVOICE_CREATED', NULL, '2025-09-09 14:11:47.118185+00', NULL);
+INSERT INTO public.audit_events VALUES ('83a0cdff-f944-4b83-98b6-9018015ba9bc', 'INV', '11100009-9999-9999-9999-999999999999', 'INVOICE_CREATED', NULL, '2025-09-09 14:11:47.118185+00', NULL);
+INSERT INTO public.audit_events VALUES ('cd5f0794-81e8-4e68-890b-0421cf7ae85c', 'INV', '11100010-1010-1010-1010-101010101010', 'INVOICE_CREATED', NULL, '2025-09-09 14:11:47.118185+00', NULL);
+INSERT INTO public.audit_events VALUES ('de03b97b-bba7-4a88-bd78-235a84211a37', 'INV', 'ac4208e4-80f9-47ec-be74-484bbd22a1cf', 'INVOICE_CREATED', NULL, '2025-09-10 08:46:41.784408+00', NULL);
+INSERT INTO public.audit_events VALUES ('2f0f1e66-d324-47a6-94a1-c3444eb20478', 'INV', '8f2f33cf-e0de-4281-afde-ff690fe7d59f', 'INVOICE_CREATED', NULL, '2025-09-10 08:51:21.458326+00', NULL);
+INSERT INTO public.audit_events VALUES ('c5acb342-2913-4d0e-a88c-f66ee2c7e47a', 'INV', '51a87b49-6395-4acb-b2c4-c6fbea334f45', 'INVOICE_CREATED', NULL, '2025-09-10 08:53:39.769579+00', NULL);
+INSERT INTO public.audit_events VALUES ('f2ecc65d-c44a-423e-9e87-1e3059511891', 'INV', 'fcd69272-817e-4ec8-afa9-37a8d7b5dd95', 'INVOICE_CREATED', NULL, '2025-09-10 08:57:10.697294+00', NULL);
+INSERT INTO public.audit_events VALUES ('9ce7f6a9-74bd-43ac-bcda-629cb3b1e2f8', 'INV', '589f9a42-b2ce-4321-9fdf-aa3b6b0fca62', 'INVOICE_CREATED', NULL, '2025-09-10 09:05:39.456645+00', NULL);
+INSERT INTO public.audit_events VALUES ('c214935e-bc08-48de-aa20-0596beea5e37', 'INV', 'ae8b0b09-38f7-46d4-949b-f3b8cfbcf225', 'INVOICE_CREATED', NULL, '2025-09-10 09:13:15.867976+00', NULL);
+INSERT INTO public.audit_events VALUES ('0ed93d2b-1aa5-4277-b3a2-ca328d80f6d0', 'INV', '58b49e74-e8dc-48b0-9eaa-cf4402bf9f8d', 'INVOICE_CREATED', NULL, '2025-09-10 09:27:10.516584+00', NULL);
+INSERT INTO public.audit_events VALUES ('787b3c18-30fe-4be1-8aa2-8b9e37371411', 'INV', '4a410692-61b5-4781-a1a1-a9369ba418a7', 'INVOICE_CREATED', NULL, '2025-09-10 10:10:15.478707+00', NULL);
+INSERT INTO public.audit_events VALUES ('fd0b1827-8a25-442f-8797-4953f4e43fba', 'INV', '4a410692-61b5-4781-a1a1-a9369ba418a7', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-10 10:29:56.417053+00', '{"new_match_status": "non_po", "old_match_status": "not_matched"}');
+INSERT INTO public.audit_events VALUES ('1607c66d-2649-473d-8abe-10a6850d27e7', 'INV', '37ebc0d8-952e-4c83-ab81-bc33a86af7f3', 'INVOICE_CREATED', NULL, '2025-09-10 11:59:29.606436+00', NULL);
+INSERT INTO public.audit_events VALUES ('40360c64-2fb3-4873-bf94-c5de012a7940', 'INV', 'c27db77a-68e0-48a3-8ed2-2dfe6c00750b', 'INVOICE_CREATED', NULL, '2025-09-10 12:05:45.715726+00', NULL);
+INSERT INTO public.audit_events VALUES ('eb53b241-804f-4908-ad4b-932a996f7fd1', 'INV', '1c040d75-72b5-44b9-971d-9fbb53e79093', 'INVOICE_CREATED', NULL, '2025-09-10 12:09:22.535677+00', NULL);
+INSERT INTO public.audit_events VALUES ('72aafcc3-30a4-4580-8a4b-d6d91667807e', 'INV', 'e4b5c576-1b84-4030-9977-b328d7a72952', 'INVOICE_CREATED', NULL, '2025-09-10 13:25:04.225438+00', NULL);
+INSERT INTO public.audit_events VALUES ('21ceb288-9d9b-4e70-8554-7ffe232aee70', 'INV', 'e4b5c576-1b84-4030-9977-b328d7a72952', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-10 13:37:30.206725+00', '{"new_match_status": "non_po", "old_match_status": "not_matched"}');
+INSERT INTO public.audit_events VALUES ('c34f10a1-cd8b-4935-8d76-d1412993a6c0', 'INV', '15548de4-e852-4a8d-8f67-71494c7ca92b', 'INVOICE_CREATED', NULL, '2025-09-11 08:59:17.527408+00', NULL);
+INSERT INTO public.audit_events VALUES ('d523bf4d-adf9-47b6-a715-5922bf7f72a6', 'INV', 'd19c7f8a-da4b-4592-bc5b-190e49d5229f', 'INVOICE_CREATED', NULL, '2025-09-11 09:08:06.368835+00', NULL);
+INSERT INTO public.audit_events VALUES ('f5875034-e143-4140-a7d8-5a3cd93a6c7d', 'INV', '30b63306-e02f-4edc-9b53-d3237528ddcc', 'INVOICE_CREATED', NULL, '2025-09-11 09:17:58.632244+00', NULL);
+INSERT INTO public.audit_events VALUES ('e8204723-04f8-425c-ad4c-620eb9aab18a', 'INV', 'b606002b-30c7-4900-bbe7-b6ebf86be0e2', 'INVOICE_CREATED', NULL, '2025-09-11 12:12:39.875862+00', NULL);
+INSERT INTO public.audit_events VALUES ('171cdc4e-2ebb-4192-a628-b880159aae39', 'INV', 'a444a8f2-10f7-48a5-9ef9-d2566edb424b', 'INVOICE_CREATED', NULL, '2025-09-11 13:11:32.907393+00', NULL);
+INSERT INTO public.audit_events VALUES ('5f5bbbf9-6fe2-4d15-b36f-698040feec73', 'INV', '8cc15a34-552e-4f18-b43c-2838f8c5346a', 'INVOICE_CREATED', NULL, '2025-09-11 15:14:49.064582+00', NULL);
+INSERT INTO public.audit_events VALUES ('d7645b7b-02a5-46be-9d7e-851ad588c31a', 'INV', 'e29fc17f-7648-4359-a1e3-9f6e7525bbf0', 'INVOICE_CREATED', NULL, '2025-09-11 15:30:13.874895+00', NULL);
+INSERT INTO public.audit_events VALUES ('9d5f8d89-47a9-4551-b2e5-e18f02757e59', 'INV', '1f6f4b0d-8129-4baa-aba9-06db8d1ee777', 'INVOICE_CREATED', NULL, '2025-09-11 15:39:35.076984+00', NULL);
+INSERT INTO public.audit_events VALUES ('46c4249c-4c7d-41f2-ad38-02857fd9a66f', 'INV', 'b8f0bb0c-a67b-4313-b45a-9c1a888c7bcc', 'INVOICE_CREATED', NULL, '2025-09-11 15:49:42.057969+00', NULL);
+INSERT INTO public.audit_events VALUES ('60ac23b6-b8ad-4881-bfc6-d12a26038a61', 'INV', '9cb8a0f6-0098-45c1-9a45-88ad5faf9f21', 'INVOICE_CREATED', NULL, '2025-09-11 16:20:51.977247+00', NULL);
+INSERT INTO public.audit_events VALUES ('4b15d23c-1c94-4a32-ac66-38a52a030dc4', 'INV', 'a9f762f3-39b0-4dd9-94f2-5c90b7666687', 'INVOICE_CREATED', NULL, '2025-09-11 16:34:16.241253+00', NULL);
+INSERT INTO public.audit_events VALUES ('54948ec3-c97e-4968-a363-0b8d7ecf06f8', 'PO', '32025001-1111-1111-1111-111111111111', 'PO_CREATED', NULL, '2025-09-12 10:31:13.702093+00', NULL);
+INSERT INTO public.audit_events VALUES ('81144b49-59c7-464f-9530-d0358d485536', 'INV', '52025001-1111-1111-1111-111111111111', 'INVOICE_CREATED', NULL, '2025-09-12 10:31:13.722503+00', NULL);
+INSERT INTO public.audit_events VALUES ('9eb5ad51-00f8-4956-a69a-25dfe9aa8aaa', 'INV', '52025001-1111-1111-1111-111111111111', 'INVOICE_STATUS_CHANGED', NULL, '2025-09-12 10:31:13.7496+00', '{"new_status": "ready_for_payment", "old_status": "processing"}');
+INSERT INTO public.audit_events VALUES ('8c16b69c-9165-4363-be81-bbe0a0c7eb8e', 'INV', '24bbf3a0-9a65-497b-adb5-2c0c7bf3aa6c', 'INVOICE_CREATED', NULL, '2025-09-12 10:59:11.896277+00', NULL);
+INSERT INTO public.audit_events VALUES ('85b69ee8-bbda-4c74-bb86-9f418be790fe', 'INV', 'd2988c2a-8d7e-49ce-b93d-06981dd7533d', 'INVOICE_CREATED', NULL, '2025-09-12 12:39:38.414014+00', NULL);
+INSERT INTO public.audit_events VALUES ('58549b8d-7a73-4482-bdbc-4374eff07878', 'PO', '32025002-2222-2222-2222-222222222222', 'PO_CREATED', NULL, '2025-09-12 16:00:31.695231+00', NULL);
+INSERT INTO public.audit_events VALUES ('7e5761ef-98ac-4598-b38e-41f7b7c6dce2', 'INV', '52025002-2222-2222-2222-222222222222', 'INVOICE_CREATED', NULL, '2025-09-12 16:00:31.695231+00', NULL);
+INSERT INTO public.audit_events VALUES ('dbf7e419-34c3-44b9-a1dd-3609fe91389d', 'INV', '52025002-2222-2222-2222-222222222222', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-12 16:28:26.227919+00', '{"new_match_status": "exception", "old_match_status": "not_matched"}');
+INSERT INTO public.audit_events VALUES ('236b13e5-59ba-41cc-a376-a930e9730bd5', 'INV', '52025003-3333-3333-3333-333333333333', 'INVOICE_CREATED', NULL, '2025-09-15 09:35:20.027189+00', NULL);
+INSERT INTO public.audit_events VALUES ('9801e78c-8afb-4872-8270-dca142d588cd', 'PO', '32025003-3333-3333-3333-333333333333', 'PO_CREATED', NULL, '2025-09-15 09:35:20.027189+00', NULL);
+INSERT INTO public.audit_events VALUES ('40962ef7-06d4-4410-8f7f-1c86d20348a0', 'INV', '52025003-3333-3333-3333-333333333333', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-15 10:13:48.995457+00', '{"new_match_status": "matched", "old_match_status": "not_matched"}');
+INSERT INTO public.audit_events VALUES ('ef9d3cfe-40ea-4a1a-98d1-368bf40803a3', 'INV', '52025003-3333-3333-3333-333333333333', 'INVOICE_MATCH_STATUS_CHANGED', NULL, '2025-09-15 10:31:35.256321+00', '{"new_match_status": "exception", "old_match_status": "matched"}');
+INSERT INTO public.audit_events VALUES ('2d9ecce8-61a8-497b-948f-02552dc134cd', 'INV', '52025003-3333-3333-3333-333333333333', 'INVOICE_STATUS_CHANGED', NULL, '2025-09-15 11:09:36.666288+00', '{"new_status": "requires_review", "old_status": "draft"}');
+INSERT INTO public.audit_events VALUES ('fd7b0a67-9d4c-4467-91fc-c040baa128f3', 'INV', '68593591-dc16-41ef-a933-154b91ebc387', 'INVOICE_CREATED', NULL, '2025-09-15 14:08:57.825842+00', NULL);
+INSERT INTO public.audit_events VALUES ('d8abaa82-cc6b-4724-8a12-dafac65ad948', 'INV', '5f249daa-4e58-4a90-a2d5-fa2bb474d950', 'INVOICE_CREATED', NULL, '2025-09-15 16:35:44.143259+00', NULL);
+INSERT INTO public.audit_events VALUES ('811ed108-f158-47a0-badc-b8dd9b7194be', 'INV', '2f98ffdf-6bf0-47c7-95e2-75dfa0e13331', 'INVOICE_CREATED', NULL, '2025-09-16 07:47:35.73315+00', NULL);
+INSERT INTO public.audit_events VALUES ('d45afa79-1e78-4f82-a9b2-6b1efc117852', 'INV', '68c645d5-ff35-4304-917d-cc01e533f32e', 'INVOICE_CREATED', NULL, '2025-09-16 08:09:33.304191+00', NULL);
+INSERT INTO public.audit_events VALUES ('807b2a31-fe1a-4867-b3c1-db6655fcf3ba', 'INV', '4d86594a-563a-460a-81de-68296083ff32', 'INVOICE_CREATED', NULL, '2025-09-16 08:19:31.370674+00', NULL);
+INSERT INTO public.audit_events VALUES ('99851ac2-f62d-4ed2-ac1a-0a7cb3d98048', 'INV', '87c5e57b-28de-4ca0-bbef-635d83a139ea', 'INVOICE_CREATED', NULL, '2025-09-16 08:54:00.822455+00', NULL);
+
+
+--
+-- Data for Name: cost_centers; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: external_refs; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: org_entities; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.org_entities VALUES ('81111111-1111-1111-1111-111111111111', 'Xelix Corporation', '11-1111111', '{"zip": "94105", "city": "San Francisco", "line1": "123 Main St", "line2": "Suite 100", "state": "CA", "country": "US"}', 'USD', '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+
+
+--
+-- Data for Name: ship_to_sites; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.ship_to_sites VALUES ('91111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111', 'Main Office', '{"zip": "94105", "city": "San Francisco", "line1": "123 Main St", "line2": "Suite 100", "state": "CA", "country": "US"}', '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.ship_to_sites VALUES ('92222222-2222-2222-2222-222222222222', '81111111-1111-1111-1111-111111111111', 'Warehouse', '{"zip": "94607", "city": "Oakland", "line1": "456 Industrial Blvd", "state": "CA", "country": "US"}', '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+
+
+--
+-- Data for Name: po_headers; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.po_headers VALUES ('32025001-1111-1111-1111-111111111111', 'PO-2025-0001', '12025001-1111-1111-1111-111111111111', 'standard', NULL, '2025-01-10', 'USD', '81111111-1111-1111-1111-111111111111', '91111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', '2-way-PO', 'approved', NULL, '2025-09-12 10:31:13.702093+00', '2025-09-12 11:59:07.171515+00', 10500.0000, 761.2500, 11261.2500);
+INSERT INTO public.po_headers VALUES ('32025002-2222-2222-2222-222222222222', 'PO-2025-0002', '12025001-1111-1111-1111-111111111111', 'standard', NULL, '2025-01-11', 'USD', '81111111-1111-1111-1111-111111111111', '91111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', NULL, 'approved', NULL, '2025-09-12 16:00:31.695231+00', '2025-09-12 16:00:31.695231+00', 5850.0000, 424.1300, 6274.1300);
+INSERT INTO public.po_headers VALUES ('32025003-3333-3333-3333-333333333333', 'PO-2025-0003', '12025001-1111-1111-1111-111111111111', 'standard', NULL, '2025-01-01', 'USD', '81111111-1111-1111-1111-111111111111', '91111111-1111-1111-1111-111111111111', 'a1111111-1111-1111-1111-111111111111', '2-way-PO', 'approved', NULL, '2025-09-15 09:35:20.027189+00', '2025-09-15 10:13:48.995457+00', 2000.0000, 160.0000, 2160.0000);
+
+
+--
+-- Data for Name: gr_headers; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: items; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.items VALUES ('f1111111-1111-1111-1111-111111111111', 'LAP-001', 'Dell Laptop Computer', 'EA', NULL, true, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.items VALUES ('f2222222-2222-2222-2222-222222222222', 'MON-001', 'Dell 27" Monitor', 'EA', NULL, true, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.items VALUES ('f3333333-3333-3333-3333-333333333333', 'SVC-001', 'IT Consulting Services', 'HR', NULL, true, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.items VALUES ('f4444444-4444-4444-4444-444444444444', 'PAPER-001', 'Copy Paper A4', 'BX', NULL, true, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+
+
+--
+-- Data for Name: tax_rates; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.tax_rates VALUES ('e1111111-1111-1111-1111-111111111111', 'US-CA-STATE', 7.250000, '2024-01-01', NULL, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.tax_rates VALUES ('e2222222-2222-2222-2222-222222222222', 'US-CA-COUNTY', 1.000000, '2024-01-01', NULL, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+INSERT INTO public.tax_rates VALUES ('e3333333-3333-3333-3333-333333333333', 'TAX-EXEMPT', 0.000000, '2024-01-01', NULL, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:46.65678+00');
+
+
+--
+-- Data for Name: po_lines; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.po_lines VALUES ('42025001-1111-1111-1111-111111111111', '32025001-1111-1111-1111-111111111111', 1, 'f1111111-1111-1111-1111-111111111111', 'Dell Laptop Computer - Core i7, 16GB RAM, 512GB SSD', 'EA', 5.000000, 1200.0000, 'e1111111-1111-1111-1111-111111111111', 'IT-001', NULL, '62400', NULL, 'open', NULL, NULL, '2025-09-12 10:31:13.71385+00', '2025-09-12 10:31:13.71385+00');
+INSERT INTO public.po_lines VALUES ('42025002-2222-2222-2222-222222222222', '32025001-1111-1111-1111-111111111111', 2, 'f2222222-2222-2222-2222-222222222222', 'Dell 27" 4K Monitor - USB-C, DisplayPort, HDMI', 'EA', 10.000000, 450.0000, 'e1111111-1111-1111-1111-111111111111', 'IT-001', NULL, '62400', NULL, 'open', NULL, NULL, '2025-09-12 10:31:13.721519+00', '2025-09-12 10:31:13.721519+00');
+INSERT INTO public.po_lines VALUES ('42025002-1111-2222-3333-444444444444', '32025002-2222-2222-2222-222222222222', 1, NULL, 'Consulting Services - Business Analysis and System Design', 'Hours', 15.000000, 150.0000, 'e1111111-1111-1111-1111-111111111111', NULL, NULL, NULL, NULL, 'open', NULL, NULL, '2025-09-12 16:00:31.695231+00', '2025-09-12 16:00:31.695231+00');
+INSERT INTO public.po_lines VALUES ('42025002-2222-3333-4444-555555555555', '32025002-2222-2222-2222-222222222222', 2, NULL, 'Training Services - End User Training and Documentation', 'Hours', 8.000000, 200.0000, 'e1111111-1111-1111-1111-111111111111', NULL, NULL, NULL, NULL, 'open', NULL, NULL, '2025-09-12 16:00:31.695231+00', '2025-09-12 16:00:31.695231+00');
+INSERT INTO public.po_lines VALUES ('42025002-3333-4444-5555-666666666666', '32025002-2222-2222-2222-222222222222', 3, NULL, 'Documentation Services - Technical Documentation and User Guides', 'Hours', 20.000000, 100.0000, 'e1111111-1111-1111-1111-111111111111', NULL, NULL, NULL, NULL, 'open', NULL, NULL, '2025-09-12 16:00:31.695231+00', '2025-09-12 16:00:31.695231+00');
+INSERT INTO public.po_lines VALUES ('42025003-3333-3333-3333-333333333331', '32025003-3333-3333-3333-333333333333', 1, NULL, 'Software License Renewal - Annual', 'LICENSE', 4.000000, 500.0000, 'e1111111-1111-1111-1111-111111111111', NULL, NULL, NULL, NULL, 'approved', NULL, NULL, '2025-09-15 09:35:20.027189+00', '2025-09-15 10:13:48.995457+00');
+
+
+--
+-- Data for Name: gr_lines; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: invoice_headers; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.invoice_headers VALUES ('52025003-3333-3333-3333-333333333333', 'invoice', '12025001-1111-1111-1111-111111111111', 'INV-2025-0003', '2025-09-10', '2025-11-10', 'USD', NULL, NULL, 2000.0000, NULL, 160.0000, NULL, NULL, NULL, NULL, 2160.0000, 0.0000, 'a1111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111', NULL, NULL, 'TechPro Solutions Inc.', '45-6789012', '{"city": "San Francisco", "line1": "123 Main Street", "line2": "Suite 500", "state": "CA", "country": "US", "postal_code": "94105"}', 'Net 30', NULL, '{PO-2025-0003}', false, NULL, false, NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, 'requires_review', 'exception', NULL, NULL, '2025-09-15 09:35:20.027189+00', '2025-09-15 11:26:55.374274+00', NULL, NULL, 'not_required', NULL, '32025003-3333-3333-3333-333333333333', NULL, NULL, NULL, NULL, '[]', '[{"field": "payment_bank_details", "details": {"action": "New bank account added to vendor profile", "expected_bank": "Silicon Valley Bank", "received_bank": "Wells Fargo Bank"}, "message": "Bank details on invoice differ from vendor''s registered bank account", "category": "risk", "severity": "error"}]', 100.00, 0.00, NULL, NULL, 'Accounts Payable', 8.000000, 'CC-001', 'Software & Licenses', '5100-SOFTWARE', NULL, NULL, NULL, NULL, '{}', '{}', 'bank_transfer', '{"bank_name": "Wells Fargo Bank", "swift_bic": "WFBIUS6S", "account_name": "TechPro Solutions Inc.", "account_number": "555666777", "routing_number": "121000248"}', NULL, NULL);
+INSERT INTO public.invoice_headers VALUES ('87c5e57b-28de-4ca0-bbef-635d83a139ea', 'invoice', '07422216-68a8-435f-92ff-215b8cd743e7', 'INV-2025-0910-004', '2025-09-10', '2025-10-10', 'EUR', NULL, NULL, 606.0000, 60.6000, 108.3800, 25.0000, 0.0000, NULL, NULL, 678.7800, 0.0000, 'a2222222-2222-2222-2222-222222222222', '81111111-1111-1111-1111-111111111111', NULL, NULL, 'Brookstone Supplies Ltd', 'GB123456789', '"10 Bishopsgate, London, EC2N 4AY, United Kingdom"', 'Net 30 days', NULL, NULL, false, NULL, false, NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, 'draft', 'not_matched', NULL, NULL, '2025-09-16 08:54:00.822+00', '2025-09-16 08:54:03.340811+00', NULL, NULL, 'not_required', NULL, NULL, NULL, NULL, NULL, NULL, '[]', '[]', 100.00, 0.00, NULL, NULL, 'Accounts Payable', 19.000000, 'OPS-300', 'Operations', '6300', 'Operations', NULL, 0.95, 'Outdoor camping equipment and supplies for operational use, standard vendor invoice with clear payment terms', '{"total": 100, "currency": 100, "due_date": 100, "subtotal": 100, "tax_rate": 100, "tax_total": 100, "invoice_date": 100, "discount_total": 100, "invoice_number": 100, "shipping_total": 100, "po_numbers_cached": 100, "payment_terms_text": 100, "other_charges_total": 100, "vendor_name_snapshot": 100, "vendor_tax_id_snapshot": 100, "vendor_address_snapshot": 100}', '{}', 'bank_transfer', '{"iban": "DE12 3456 7890 1234 5678 90", "bank_name": "Continental Bank EU", "sort_code": "20-00-00", "swift_bic": "CONTEU2LXXX", "account_name": "Brookstone Supplies Ltd", "account_number": "12345678", "routing_number": null}', 678.7800, NULL);
+INSERT INTO public.invoice_headers VALUES ('52025001-1111-1111-1111-111111111111', 'invoice', '12025001-1111-1111-1111-111111111111', 'INV-2025-0001', '2025-09-01', '2025-10-15', 'USD', NULL, NULL, 10500.0000, 0.0000, 761.2500, 0.0000, NULL, NULL, NULL, 11261.2500, 0.0000, 'a1111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111', '91111111-1111-1111-1111-111111111111', '22025001-1111-1111-1111-111111111111', 'TechPro Solutions Inc.', '45-6789012', '{"zip": "95110", "city": "San Jose", "line1": "2000 Technology Drive", "line2": "Suite 500", "state": "CA", "country": "US"}', NULL, NULL, '{PO-2025-0001}', false, NULL, false, NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, 'ready_for_payment', 'matched', NULL, NULL, '2025-09-12 10:31:13.722503+00', '2025-09-15 11:26:55.374274+00', NULL, NULL, 'not_required', NULL, '32025001-1111-1111-1111-111111111111', '{"tax_id": "11-1111111", "address": {"zip": "94105", "city": "San Francisco", "line1": "123 Main St", "line2": "Suite 100", "state": "CA", "country": "US"}, "legal_name": "Xelix Corporation"}', NULL, NULL, NULL, '[]', '[]', 100.00, 0.00, NULL, NULL, 'Accounts Payable', 7.250000, 'IT-001', 'Information Technology', '62400', 'IT', NULL, NULL, NULL, '{}', '{}', 'bank_transfer', '{"iban": "US12345678901234567890", "bank_name": "Silicon Valley Bank", "swift_bic": "SVBKUS6S", "account_name": "TechPro Solutions Inc.", "account_number": "987654321", "routing_number": "121140399"}', NULL, NULL);
+INSERT INTO public.invoice_headers VALUES ('52025002-2222-2222-2222-222222222222', 'invoice', '12025001-1111-1111-1111-111111111111', 'INV-2025-0002', '2025-09-05', '2025-09-20', 'USD', NULL, NULL, 6225.0000, NULL, 451.3100, NULL, NULL, NULL, NULL, 6676.3100, 0.0000, 'a1111111-1111-1111-1111-111111111111', '81111111-1111-1111-1111-111111111111', '91111111-1111-1111-1111-111111111111', NULL, 'TechPro Solutions Inc.', '45-6789012', '{"zip": "94105", "city": "San Francisco", "line1": "123 Main Street", "line2": "Suite 500", "state": "CA", "country": "USA"}', NULL, NULL, '{PO-2025-0002}', false, NULL, false, NULL, NULL, NULL, NULL, NULL, 1, NULL, NULL, 'requires_review', 'exception', NULL, NULL, '2025-09-12 16:00:31.695231+00', '2025-09-15 11:26:55.374274+00', NULL, NULL, 'not_required', NULL, '32025002-2222-2222-2222-222222222222', '{"company": {"name": "Acme Corporation", "address": {"zip": "95110", "city": "San Jose", "line1": "456 Tech Park", "state": "CA", "country": "USA"}}}', NULL, NULL, NULL, '[]', '[]', 100.00, 0.00, NULL, NULL, 'Accounts Payable', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '{}', '{}', NULL, NULL, NULL, NULL);
+
+
+--
+-- Data for Name: ses_headers; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: ses_lines; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: invoice_lines; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.invoice_lines VALUES ('24eb63fc-9878-4396-a05a-4fa49e460e3f', '87c5e57b-28de-4ca0-bbef-635d83a139ea', 1, 'Lightweight 2-Person Camping Tent', NULL, 'EA', 3.000000, 129.0000, NULL, NULL, NULL, 387.0000, NULL, 73.5300, 387.0000, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-09-16 08:54:03.341+00', '2025-09-16 08:54:03.341+00', 19.000000);
+INSERT INTO public.invoice_lines VALUES ('e1f83aed-3d3d-4652-90e5-035d6f1e3e3a', '87c5e57b-28de-4ca0-bbef-635d83a139ea', 2, 'LED Headlamp (300 lm), rechargeable', NULL, 'EA', 6.000000, 18.5000, NULL, NULL, NULL, 111.0000, NULL, 21.0900, 111.0000, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-09-16 08:54:03.341+00', '2025-09-16 08:54:03.341+00', 19.000000);
+INSERT INTO public.invoice_lines VALUES ('1cc97150-3bb6-4641-805a-9a86fff865dc', '87c5e57b-28de-4ca0-bbef-635d83a139ea', 3, 'Titanium Cookset (pot, pan, lid)', NULL, 'EA', 2.000000, 54.0000, NULL, NULL, NULL, 108.0000, NULL, 20.5200, 108.0000, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-09-16 08:54:03.341+00', '2025-09-16 08:54:03.341+00', 19.000000);
+INSERT INTO public.invoice_lines VALUES ('62025001-1111-1111-1111-111111111111', '52025001-1111-1111-1111-111111111111', 1, 'Dell Laptop Computer - Core i7, 16GB RAM, 512GB SSD', 'f1111111-1111-1111-1111-111111111111', 'EA', 5.000000, 1200.0000, NULL, NULL, 6000.0000, 6000.0000, 'e1111111-1111-1111-1111-111111111111', 435.0000, 6000.0000, 'IT-001', NULL, '62400', '42025001-1111-1111-1111-111111111111', NULL, NULL, NULL, 5.000000, 1200.000000, NULL, NULL, 'PO-2025-0001', 1, NULL, NULL, '2025-09-12 10:31:13.735429+00', '2025-09-12 11:48:49.378088+00', 7.250000);
+INSERT INTO public.invoice_lines VALUES ('62025002-2222-2222-2222-222222222222', '52025001-1111-1111-1111-111111111111', 2, 'Dell 27" 4K Monitor - USB-C, DisplayPort, HDMI', 'f2222222-2222-2222-2222-222222222222', 'EA', 10.000000, 450.0000, NULL, NULL, 4500.0000, 4500.0000, 'e1111111-1111-1111-1111-111111111111', 326.2500, 4500.0000, 'IT-001', NULL, '62400', '42025002-2222-2222-2222-222222222222', NULL, NULL, NULL, 10.000000, 450.000000, NULL, NULL, 'PO-2025-0001', 2, NULL, NULL, '2025-09-12 10:31:13.747075+00', '2025-09-12 11:48:49.378088+00', 7.250000);
+INSERT INTO public.invoice_lines VALUES ('62025002-1111-2222-3333-444444444444', '52025002-2222-2222-2222-222222222222', 1, 'Consulting Services - Business Analysis and System Design', NULL, 'Hours', 15.000000, 175.0000, NULL, NULL, NULL, 2625.0000, NULL, 190.3100, 2625.0000, NULL, NULL, NULL, '42025002-1111-2222-3333-444444444444', NULL, NULL, NULL, 15.000000, 175.000000, NULL, NULL, NULL, NULL, NULL, NULL, '2025-09-12 16:00:31.695231+00', '2025-09-12 16:00:31.695231+00', NULL);
+INSERT INTO public.invoice_lines VALUES ('62025002-2222-3333-4444-555555555555', '52025002-2222-2222-2222-222222222222', 2, 'Training Services - End User Training and Documentation', NULL, 'Hours', 8.000000, 200.0000, NULL, NULL, NULL, 1600.0000, NULL, 116.0000, 1600.0000, NULL, NULL, NULL, '42025002-2222-3333-4444-555555555555', NULL, NULL, NULL, 8.000000, 200.000000, NULL, NULL, NULL, NULL, NULL, NULL, '2025-09-12 16:00:31.695231+00', '2025-09-12 16:00:31.695231+00', NULL);
+INSERT INTO public.invoice_lines VALUES ('62025002-3333-4444-5555-666666666666', '52025002-2222-2222-2222-222222222222', 3, 'Documentation Services - Technical Documentation and User Guides', NULL, 'Hours', 20.000000, 100.0000, NULL, NULL, NULL, 2000.0000, NULL, 145.0000, 2000.0000, NULL, NULL, NULL, '42025002-3333-4444-5555-666666666666', NULL, NULL, NULL, 20.000000, 100.000000, NULL, NULL, NULL, NULL, NULL, NULL, '2025-09-12 16:00:31.695231+00', '2025-09-12 16:00:31.695231+00', NULL);
+INSERT INTO public.invoice_lines VALUES ('62025003-3333-3333-3333-333333333331', '52025003-3333-3333-3333-333333333333', 1, 'Software License Renewal - Annual', NULL, 'LICENSE', 4.000000, 500.0000, NULL, NULL, NULL, 2000.0000, NULL, NULL, 2000.0000, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, '2025-09-15 09:35:20.027189+00', '2025-09-15 10:23:47.883969+00', NULL);
+
+
+--
+-- Data for Name: invoice_line_distributions; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: invoice_line_receipts; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: invoice_line_taxes; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: invoice_status_history; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.invoice_status_history VALUES ('8e0fcdb4-b6bb-4395-83bd-a9f13cdb2e38', '52025001-1111-1111-1111-111111111111', 'processing', 'ready_for_payment', NULL, NULL, '2025-09-12 10:31:13.7496+00');
+INSERT INTO public.invoice_status_history VALUES ('ad3da47f-66d9-46b9-a046-9202d8b4ecce', '52025003-3333-3333-3333-333333333333', 'draft', 'requires_review', NULL, NULL, '2025-09-15 11:09:36.666288+00');
+INSERT INTO public.invoice_status_history VALUES ('7244e701-3cad-4b35-bb12-f355621032a9', '87c5e57b-28de-4ca0-bbef-635d83a139ea', NULL, 'draft', NULL, 'Invoice created from AI extraction', '2025-09-16 08:54:03.382+00');
+
+
+--
+-- Data for Name: validation_rules; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.validation_rules VALUES ('0a7337e3-0c30-4136-81cd-1f43118ba4b6', 'AMT_VAR_PO', 'PO Amount Variance', 'Invoice amount varies from PO amount', 'amount_variance', 'financial', 'error', true, '{"tolerance_amount": 100.00, "tolerance_percent": 5.0}', NULL, NULL, '2025-09-09 13:29:47.375072+00', '2025-09-09 13:29:47.375072+00');
+INSERT INTO public.validation_rules VALUES ('879843b0-2c45-4fe2-99f5-b41b2faaf625', 'TAX_CALC', 'Tax Calculation', 'Tax amount calculation verification', 'tax_calculation', 'financial', 'error', true, '{"tolerance_amount": 1.00}', NULL, NULL, '2025-09-09 13:29:47.375072+00', '2025-09-09 13:29:47.375072+00');
+INSERT INTO public.validation_rules VALUES ('9b40f523-de4a-4f9e-9772-3fb5f66221e9', 'BUDGET_IMPACT', 'Budget Impact', 'Invoice exceeds budget threshold', 'budget_impact', 'financial', 'warning', true, '{"threshold_percent": 90.0}', NULL, NULL, '2025-09-09 13:29:47.375072+00', '2025-09-09 13:29:47.375072+00');
+INSERT INTO public.validation_rules VALUES ('fd9f4f39-6531-4bb0-b66c-a633ed796d22', 'REQ_FIELDS', 'Required Fields', 'Check for missing required fields', 'required_field', 'process', 'error', true, '{"required_fields": ["invoice_number", "vendor_id", "total", "due_date"]}', NULL, NULL, '2025-09-09 13:29:47.375072+00', '2025-09-09 13:29:47.375072+00');
+INSERT INTO public.validation_rules VALUES ('b6fe0e06-bf0c-4298-9e3b-9e82df56ed43', 'DATE_CONSISTENCY', 'Date Consistency', 'Due date before invoice date', 'date_consistency', 'data_quality', 'warning', true, '{}', NULL, NULL, '2025-09-09 13:29:47.375072+00', '2025-09-09 13:29:47.375072+00');
+INSERT INTO public.validation_rules VALUES ('99e5736b-24b6-4534-bc48-085b948aae82', 'PO_MATCH', 'PO Matching', 'Invoice requires PO matching', 'po_matching', 'process', 'error', true, '{"require_po_for_amount_above": 1000.00}', NULL, NULL, '2025-09-09 13:29:47.375072+00', '2025-09-09 13:29:47.375072+00');
+INSERT INTO public.validation_rules VALUES ('87991738-9933-4a2d-89a8-97fad386c289', 'RECEIPT_MATCH', 'Receipt Matching', 'Invoice requires goods receipt', 'receipt_matching', 'process', 'warning', true, '{"require_gr_for_goods": true}', NULL, NULL, '2025-09-09 13:29:47.375072+00', '2025-09-09 13:29:47.375072+00');
+INSERT INTO public.validation_rules VALUES ('e2512aa1-b684-4cee-9dcd-88c2b2b3d51a', 'DUPLICATE_INV', 'Duplicate Invoice', 'Potential duplicate invoice detected', 'duplicate_detection', 'risk', 'error', true, '{"date_range_days": 30, "similarity_threshold": 0.95}', NULL, NULL, '2025-09-09 13:29:47.375072+00', '2025-09-09 13:29:47.375072+00');
+INSERT INTO public.validation_rules VALUES ('5f9714be-9355-4200-ae1d-2ca379ba2459', 'VENDOR_VERIFY', 'Vendor Verification', 'Vendor information mismatch', 'vendor_verification', 'risk', 'warning', true, '{"check_tax_id": true, "check_bank_account": true}', NULL, NULL, '2025-09-09 13:29:47.375072+00', '2025-09-09 13:29:47.375072+00');
+INSERT INTO public.validation_rules VALUES ('d2dedeb5-866c-47b6-b4ca-6e55cba01a3f', 'FRAUD_PATTERN', 'Fraud Pattern Detection', 'Suspicious pattern detected', 'custom', 'risk', 'warning', true, '{"patterns": ["round_numbers", "sequential_gaps", "unusual_timing"]}', NULL, NULL, '2025-09-09 13:29:47.375072+00', '2025-09-09 13:29:47.375072+00');
+INSERT INTO public.validation_rules VALUES ('19d41a46-9bac-4662-a8c2-c52ad4c838b5', 'APPROVAL_LIMIT', 'Approval Limit', 'Invoice exceeds approval authority', 'approval_limit', 'compliance', 'error', true, '{"limits": {"manager": 50000, "director": 100000, "standard": 10000}}', NULL, NULL, '2025-09-09 13:29:47.375072+00', '2025-09-09 13:29:47.375072+00');
+INSERT INTO public.validation_rules VALUES ('2554033b-872d-43ff-b070-b0cdfcf3a8b0', 'TAX_COMPLIANCE', 'Tax Compliance', 'Missing tax information', 'custom', 'compliance', 'warning', true, '{"require_w9": true, "require_tax_id": true}', NULL, NULL, '2025-09-09 13:29:47.375072+00', '2025-09-09 13:29:47.375072+00');
+
+
+--
+-- Data for Name: invoice_validations; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: match_results; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.match_results VALUES ('72025001-1111-1111-1111-111111111111', '52025001-1111-1111-1111-111111111111', '62025001-1111-1111-1111-111111111111', 'line', '2-way-PO', '42025001-1111-1111-1111-111111111111', NULL, NULL, 0.000000, 0.000000, 0.0000, true, NULL, 'PERFECT_MATCH', '2025-09-12 11:33:12.832316+00');
+INSERT INTO public.match_results VALUES ('72025002-2222-2222-2222-222222222222', '52025001-1111-1111-1111-111111111111', '62025002-2222-2222-2222-222222222222', 'line', '2-way-PO', '42025002-2222-2222-2222-222222222222', NULL, NULL, 0.000000, 0.000000, 0.0000, true, NULL, 'PERFECT_MATCH', '2025-09-12 11:38:37.50692+00');
+INSERT INTO public.match_results VALUES ('72025000-0000-0000-0000-000000000000', '52025001-1111-1111-1111-111111111111', NULL, 'header', '2-way-PO', NULL, NULL, NULL, 0.000000, 0.000000, 0.0000, true, NULL, 'PERFECT_MATCH', '2025-09-12 11:39:28.04181+00');
+INSERT INTO public.match_results VALUES ('72025002-1111-2222-3333-444444444444', '52025002-2222-2222-2222-222222222222', '62025002-1111-2222-3333-444444444444', 'line', '2-way', '42025002-1111-2222-3333-444444444444', NULL, NULL, 0.000000, 25.000000, 375.0000, false, NULL, 'PRICE_MISMATCH', '2025-09-12 16:00:31.695231+00');
+INSERT INTO public.match_results VALUES ('72025002-2222-3333-4444-555555555555', '52025002-2222-2222-2222-222222222222', '62025002-2222-3333-4444-555555555555', 'line', '2-way', '42025002-2222-3333-4444-555555555555', NULL, NULL, 0.000000, 0.000000, 0.0000, true, NULL, 'MATCHED', '2025-09-12 16:00:31.695231+00');
+INSERT INTO public.match_results VALUES ('72025002-3333-4444-5555-666666666666', '52025002-2222-2222-2222-222222222222', '62025002-3333-4444-5555-666666666666', 'line', '2-way', '42025002-3333-4444-5555-666666666666', NULL, NULL, 0.000000, 0.000000, 0.0000, true, NULL, 'MATCHED', '2025-09-12 16:00:31.695231+00');
+INSERT INTO public.match_results VALUES ('72025002-4444-5555-6666-777777777777', '52025002-2222-2222-2222-222222222222', NULL, 'header', '2-way', NULL, NULL, NULL, 0.000000, 0.000000, 402.1800, false, NULL, 'TOTAL_VARIANCE_EXCEEDED', '2025-09-12 16:00:31.695231+00');
+INSERT INTO public.match_results VALUES ('72025003-3333-3333-3333-333333333331', '52025003-3333-3333-3333-333333333333', '62025003-3333-3333-3333-333333333331', 'LINE', '2-way-PO', '42025003-3333-3333-3333-333333333331', NULL, NULL, 0.000000, 0.000000, 0.0000, true, 'b1111111-1111-1111-1111-111111111111', 'PERFECT_MATCH', '2025-09-15 09:35:20.027189+00');
+INSERT INTO public.match_results VALUES ('72025003-3333-3333-3333-333333333332', '52025003-3333-3333-3333-333333333333', NULL, 'HEADER', '2-way-PO', NULL, NULL, NULL, 0.000000, 0.000000, 0.0000, true, 'b1111111-1111-1111-1111-111111111111', 'PERFECT_MATCH', '2025-09-15 09:35:20.027189+00');
+
+
+--
+-- Data for Name: projects; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Data for Name: schema_migrations; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.schema_migrations VALUES (1, '001_migration_tracking.sql', 'fdd7a35c1dcffcce0f4a97ceb40f3550f90537d5111061c1bd4f5342efae374f', '2025-09-09 13:29:46.493004+00', 10, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (2, '000_cleanup.sql', '5747735b47bf55c5b8c78e1f9f85d9e73a4ac33e89b3e20076c536e3804ca3fb', '2025-09-09 13:29:46.535124+00', 35, false, 'SKIP_MIGRATION: Cleanup requires explicit permission', false, NULL);
+INSERT INTO public.schema_migrations VALUES (3, '001_enums.sql', 'a9f91f9453f02afa2f83e4882c3463593f220755f5db7c3bf3f5e7ed3e66887c', '2025-09-09 13:29:46.541997+00', 3, false, 'type "po_status" already exists', false, NULL);
+INSERT INTO public.schema_migrations VALUES (4, '010_core_tables.sql', '31a2714556e1b4a75d8477b3ff416736a21b72c22260ae835d78b812dffada85', '2025-09-09 13:29:46.555228+00', 6, false, 'relation "payment_terms" already exists', false, NULL);
+INSERT INTO public.schema_migrations VALUES (5, '020_constraints.sql', '00ab1d028690f7d31222c47a615c854e820c16ec184fdf78c45bbd0af1315761', '2025-09-09 13:29:46.568463+00', 7, false, 'relation "unique_po_line_no" already exists', false, NULL);
+INSERT INTO public.schema_migrations VALUES (6, '030_indexes.sql', '9df5ee7664c140b1a6c3c65dac12fa1533b2411f395e888f3cd9940c8373aeef', '2025-09-09 13:29:46.586472+00', 9, false, 'relation "idx_ship_to_sites_org_entity_id" already exists', false, NULL);
+INSERT INTO public.schema_migrations VALUES (7, '040_views.sql', 'f2bed178bdacd39c9344a84d2827335235ac34079b2eef689691ff8d8286858a', '2025-09-09 13:29:46.607945+00', 16, false, 'cannot change name of view column "outstanding_amount" to "approval_status"', false, NULL);
+INSERT INTO public.schema_migrations VALUES (8, '050_triggers.sql', '24d03f38b7d0b233a1a39ee9916bf6e7eb30bef6c86e6ec9298a5c6ac5523f38', '2025-09-09 13:29:46.648808+00', 34, false, 'trigger "maintain_invoice_po_numbers_cache" for relation "invoice_lines" already exists', false, NULL);
+INSERT INTO public.schema_migrations VALUES (9, '060_seed_minimal.sql', '8a32c614954f30d64e00909d6c6a4dd46d96fb1140177c9b83f9433134e3b884', '2025-09-09 13:29:47.230298+00', 574, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (10, '070_sample_functions.sql', 'de09c5327723897ff1d7ea5adbade9fb50eb7dab39bc1482d7f7c6a9842e05e5', '2025-09-09 13:29:47.242525+00', 7, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (11, '080_critical_fixes.sql', '87eedb3e86bdbf2f5a545183da46b1c50c029c5c4ca500793959bd9b7b311c50', '2025-09-09 13:29:47.290759+00', 44, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (12, '090_missing_indexes.sql', '4fc7a0096fa988b33a220ee93c0d596c0ac053c2f16a75f4fd29a62d8b72ff4e', '2025-09-09 13:29:47.338492+00', 44, false, 'column "assigned_to" does not exist', false, NULL);
+INSERT INTO public.schema_migrations VALUES (13, '095_test_migrations_table.sql', '72f6139f469da9e601b27b57ec93ea3d7705db8a7591e47b272a53bf7a7bc2f0', '2025-09-09 13:29:47.352884+00', 12, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (14, '100_add_invoice_assigned_to.sql', '571595cfade4bea060f90c025f22f5ef939d174474434370e2ea2ff8dac97edb', '2025-09-09 13:29:47.360147+00', 5, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (15, '110_add_validation_fields.sql', 'df0f79428b6b68e246970a6bda13f35a0f36c27523efbdc66aec452712683758', '2025-09-09 13:29:47.372738+00', 10, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (16, '111_create_validation_tables.sql', '21e2f800524564a5eae1c8beadb8a20d7d1bcfbcef28ca6994a9acf951f006f1', '2025-09-09 13:29:47.409003+00', 33, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (17, '112_update_invoice_statuses_simple.sql', 'f628cfde559009054401950cd820fa850ba97217d81b483b27cc8c215007157f', '2025-09-09 13:29:47.412741+00', 1, false, 'type "approval_status" already exists', false, NULL);
+INSERT INTO public.schema_migrations VALUES (18, '112a_update_draft_status.sql', '2abdb076c88da90eeef1c6aabf939de64294a189ed2cb7d0c969e12b40596c30', '2025-09-09 13:29:47.417723+00', 3, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (19, '113_seed_enhanced_invoices.sql', '4123c63e48ec2a73fa7ad58f176f728bb330a0a5ab71363d4fef605d3178da96', '2025-09-09 13:29:47.500596+00', 78, false, 'new row for relation "invoice_headers" violates check constraint "check_invoice_dates"', false, NULL);
+INSERT INTO public.schema_migrations VALUES (20, '114_add_missing_line_items.sql', '748ecae765719eefbf4e9b364f311f043782fbfa36936a146cc8df9091513dc9', '2025-09-09 13:29:47.50811+00', 5, false, 'insert or update on table "invoice_lines" violates foreign key constraint "invoice_lines_invoice_id_fkey"', false, NULL);
+INSERT INTO public.schema_migrations VALUES (21, '115_add_remaining_line_items.sql', 'e55e5c1071ee3c4d3737642291c90fe4d0a54e62b3c2bfdd3281475d4d734bc3', '2025-09-09 13:29:47.511398+00', 1, false, 'insert or update on table "invoice_lines" violates foreign key constraint "invoice_lines_invoice_id_fkey"', false, NULL);
+INSERT INTO public.schema_migrations VALUES (22, '116_update_match_status_and_add_exception_invoices.sql', '94a225555dac74fb94c7030086cb71294fc8092c2016b92712b5a98601e5f995', '2025-09-09 13:29:47.520097+00', 7, false, 'invalid input syntax for type uuid: "v0000001-0000-0000-0000-000000000001"', false, NULL);
+INSERT INTO public.schema_migrations VALUES (23, '117_fixed_exception_invoices.sql', 'f26d3b504e71dd44a7177282b122c92497be697b9ffdfb561314ecae2e27fcdb', '2025-09-09 13:29:47.524041+00', 2, false, 'null value in column "type" of relation "invoice_headers" violates not-null constraint', false, NULL);
+INSERT INTO public.schema_migrations VALUES (24, '120_seed_purchase_orders_and_receipts.sql', 'db0e2a4f7bbfcf8dff03943e35355c4be0705ccecdbb3013c8a6bbde62648b17', '2025-09-09 13:29:47.528631+00', 3, false, 'update or delete on table "ses_lines" violates foreign key constraint "invoice_lines_ses_line_id_fkey" on table "invoice_lines"', false, NULL);
+INSERT INTO public.schema_migrations VALUES (25, '121_create_match_results_for_all_po_invoices.sql', '40304b68bf10c7e387ede6dee1afca9cac060cf96927bb698924de8965fc20b8', '2025-09-09 13:29:47.537218+00', 7, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (26, '122_create_more_matching_po_lines.sql', '56980ecf1f57471d3161e4b93119cc1deba3d21f691b06c763e9969f3ace36be', '2025-09-09 13:29:47.542489+00', 3, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (27, '123_create_missing_pos.sql', 'df6f18e4fd4afaf56a5a1b95790b8e5f5f9c410590afdd21bbdb6de038496c46', '2025-09-09 13:29:47.549241+00', 5, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (28, '091_add_electricity_vendor.sql', '011d6063eae308924bc77c0dfd260ebf4f846e3552e34737e88c4d208edbb117', '2025-09-09 13:29:47.551929+00', 1, false, 'invalid input value for enum match_status: "non_po"', false, NULL);
+INSERT INTO public.schema_migrations VALUES (29, '092_update_match_function_nonpo.sql', 'f946f2988393fa35e5dd0f16595f0ff46c8b3302878c79a1837dadd66ba11ba1', '2025-09-09 13:29:47.55677+00', 3, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (30, '093_add_ledger_field.sql', 'cc7f5c642fcceda5bf807139942579bf2e6facfd704efc500822549413cbb9c4', '2025-09-09 13:29:47.561261+00', 3, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (31, '124_update_invoice_dates_2025.sql', '1f13a61992089890b9d637cdaa049acf321be1b3d46ed5032e9d233ec15916b2', '2025-09-09 13:29:47.566871+00', 4, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (32, '125_add_vendor_verification.sql', '91b594a6829b9abcd5f561679d19d2570c889c2f28c4e696c18f9f78e7846eb4', '2025-09-09 13:29:47.569948+00', 1, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (33, '126_add_gr_numbers_cached.sql', '1833c09f7da9f7d8375ace6de550fc635b165805980a11a33d96aed39a577ea7', '2025-09-09 13:29:47.57217+00', 1, false, 'syntax error at or near "RAISE"', false, NULL);
+INSERT INTO public.schema_migrations VALUES (34, '200_add_tax_rate_percent.sql', '85051ae002852c5fdb618ca89563272cac4920b10eb0c52bd122aefe8f2405f4', '2025-09-10 08:40:50.295321+00', 56, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (35, '201_add_accounting_classification.sql', '0c15bc0bcb6a406971c9457af057b905cfe9c502b7daf6ca51991c1934b06df5', '2025-09-10 10:59:10.646132+00', 2, false, 'syntax error at or near "LIMIT"', false, NULL);
+INSERT INTO public.schema_migrations VALUES (36, '100_add_field_confidence_tracking.sql', 'd78a86c93f17f5a081abc6e72a972111f1814ee249f49afe97d4b07ba93481f2', '2025-09-10 13:13:00.64596+00', 15, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (37, '202_add_payment_method_fields.sql', '864f4e51d2b753d076c975468657da92dee512c60d02b4e2f3ba7ead89bade91', '2025-09-11 12:54:09.069908+00', 50, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (38, '203_add_vendor_payment_method.sql', '824c30e937ff2023fd77571444de313801f5de2e1d95cad727ef5af86da5f73d', '2025-09-11 13:29:20.956205+00', 90, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (39, '120_add_total_tracking_fields.sql', 'd32dd1e51583f0265e95508c5fadb72f5e2cbf6060d01c19dbcf744cd847a330', '2025-09-11 15:04:46.315002+00', 19, true, NULL, false, NULL);
+INSERT INTO public.schema_migrations VALUES (40, '130_fix_invoice_totals_trigger.sql', 'a145d0d4e22d0598053de97b3c095d124c3d379ca8b81413076e2f15db3cc169', '2025-09-11 15:35:24.285021+00', 47, true, NULL, false, NULL);
+
+
+--
+-- Data for Name: source_files; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.source_files VALUES ('fdfb0bec-3e11-4eb7-9e3a-110942dc1ea0', 'Invoice_INV-2025-0910-004.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757504984839-aa2c0c55.pdf', 'aa2c0c551da7ff9fa89f3c105214a07698d24557ffa1a662d76cdb1002a9e429', NULL, NULL, '2025-09-10 11:49:44.841+00', '2025-09-10 11:49:44.841+00');
+INSERT INTO public.source_files VALUES ('6343c3fa-96cb-4383-860a-d60e91688cbf', 'Invoice_INV-2025-0910-004.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757505145265-aa2c0c55.pdf', 'aa2c0c551da7ff9fa89f3c105214a07698d24557ffa1a662d76cdb1002a9e429', NULL, NULL, '2025-09-10 11:52:25.291+00', '2025-09-10 11:52:25.291+00');
+INSERT INTO public.source_files VALUES ('27eafe49-43e1-4a7e-9dc2-ad153a4ab4b5', 'Invoice_INV-2025-0910-004.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757505240741-aa2c0c55.pdf', 'aa2c0c551da7ff9fa89f3c105214a07698d24557ffa1a662d76cdb1002a9e429', NULL, NULL, '2025-09-10 11:54:00.755+00', '2025-09-10 11:54:00.755+00');
+INSERT INTO public.source_files VALUES ('a8a89c1c-3cea-4829-8caa-6b7027129b3d', 'Invoice_INV-2025-0910-004.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757505392769-aa2c0c55.pdf', 'aa2c0c551da7ff9fa89f3c105214a07698d24557ffa1a662d76cdb1002a9e429', NULL, NULL, '2025-09-10 11:56:32.778+00', '2025-09-10 11:56:32.778+00');
+INSERT INTO public.source_files VALUES ('a46966d0-8dc8-4f34-a964-afdecd160afa', 'Invoice_INV-2025-0910-004.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757510446522-aa2c0c55.pdf', 'aa2c0c551da7ff9fa89f3c105214a07698d24557ffa1a662d76cdb1002a9e429', NULL, NULL, '2025-09-10 13:20:46.524+00', '2025-09-10 13:20:46.524+00');
+INSERT INTO public.source_files VALUES ('3a6d5a69-a5e9-4c04-9881-4793758df025', 'Invoice_INV-2025-0901-2825.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757595669273-da009e49.pdf', 'da009e49c0a3b7824a9781803c9a7953c7bc4fe00145fb7d5a1256772bd752b9', NULL, NULL, '2025-09-11 13:01:09.281+00', '2025-09-11 13:01:09.281+00');
+INSERT INTO public.source_files VALUES ('0b582160-5479-4172-af1d-1da860313114', 'Invoice_INV-2025-0910-003.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1757603381594-91cc5a6b.pdf', '91cc5a6bd77f988e2cc1f4795c5f84db72046304185152edaec5d510da9d5400', NULL, NULL, '2025-09-11 15:09:41.596+00', '2025-09-11 15:09:41.596+00');
+INSERT INTO public.source_files VALUES ('67ac6aab-1bba-443b-94f6-b222fda1f0b0', 'Invoice_INV-2025-0910-004.pdf', 'application/pdf', '/Users/dariuszgralak/Projects/xelix-inv-processing-full-poc/xelix-inv-processing-full-poc/uploads/1758012820806-aa2c0c55.pdf', 'aa2c0c551da7ff9fa89f3c105214a07698d24557ffa1a662d76cdb1002a9e429', NULL, NULL, '2025-09-16 08:53:40.824+00', '2025-09-16 08:53:40.824+00');
+
+
+--
+-- Data for Name: test_migrations; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.test_migrations VALUES ('test_20250909132947_3a9502', 'Initial Setup', 'Migration applied successfully', '2025-09-09 13:29:47.340653+00', '2025-09-09 13:29:47.340653+00');
+
+
+--
+-- Data for Name: uom_conversions; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+INSERT INTO public.uom_conversions VALUES ('71111111-1111-1111-1111-111111111111', 'f4444444-4444-4444-4444-444444444444', 'RM', 'BX', 0.100000000, '2024-01-01', NULL, '2025-09-09 13:29:46.65678+00', '2025-09-09 13:29:47.246699+00');
+
+
+--
+-- Data for Name: validation_runs; Type: TABLE DATA; Schema: public; Owner: -
+--
+
+
+
+--
+-- Name: schema_migrations_id_seq; Type: SEQUENCE SET; Schema: public; Owner: -
+--
+
+SELECT pg_catalog.setval('public.schema_migrations_id_seq', 40, true);
+
+
+--
+-- PostgreSQL database dump complete
+--
+
+\unrestrict iYoqmLIt73UfeG6cmdbMBApPmDeWzRgJjciclFdhr2u25YoL8p6sRRhGRoVAdOY
+

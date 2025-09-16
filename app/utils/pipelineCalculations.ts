@@ -19,6 +19,9 @@ export interface Invoice {
   match_status?: string;
   approval_status?: string;
   assigned_to?: string;
+  po_numbers_cached?: string[];
+  vendor_requires_po?: boolean;
+  vendor_is_verified?: boolean;
 }
 
 // Calculate invoice counts for each pipeline stage
@@ -58,28 +61,39 @@ export const calculatePipelineCounts = (invoices: Invoice[]): PipelineStage[] =>
   invoices.forEach(invoice => {
     const status = invoice.status?.toLowerCase() || 'pending';
     const matchStatus = invoice.match_status?.toLowerCase() || '';
-    
+
+    // Check if invoice is missing PO when it should have one
+    const hasPO = invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0;
+    const isVerifiedNonPOVendor = invoice.vendor_requires_po === false && invoice.vendor_is_verified === true;
+    const isMissingRequiredPO = !hasPO && !isVerifiedNonPOVendor;
+
     // Determine which stage the invoice belongs to
     let stageIndex = -1;
-    
-    // Check if it's an exception (has issues or specific exception statuses)
-    if (stages[1].statuses.includes(status) || 
-        matchStatus === 'unmatched' || 
-        matchStatus === 'partial' ||
-        matchStatus === 'exception' ||  // Added check for 'exception' match_status
-        status === 'rejected' ||
-        status === 'void') {
-      stageIndex = 1; // EXCEPTIONS
+
+    // Check for exceptions first - missing PO takes priority
+    if (isMissingRequiredPO) {
+      stageIndex = 1; // EXCEPTIONS - missing required PO
     }
-    // Check if it's pending approval
+    // Then check if it's in a specific status-based stage
+    else if (stages[0].statuses.includes(status)) {
+      stageIndex = 0; // PROCESSING
+    }
+    else if (stages[1].statuses.includes(status) || status === 'rejected' || status === 'void') {
+      stageIndex = 1; // EXCEPTIONS - based on status
+    }
     else if (stages[2].statuses.includes(status)) {
       stageIndex = 2; // APPROVAL
     }
-    // Check if it's payment ready
     else if (stages[3].statuses.includes(status) || status === 'paid') {
       stageIndex = 3; // PAYMENT READY
     }
-    // Default to processing for all other statuses (including when no status)
+    // If no status match but has exception match_status, put in exceptions
+    else if (matchStatus === 'unmatched' ||
+             matchStatus === 'partial' ||
+             matchStatus === 'exception') {
+      stageIndex = 1; // EXCEPTIONS - based on match_status
+    }
+    // Default to processing for all other cases
     else {
       stageIndex = 0; // PROCESSING
     }
