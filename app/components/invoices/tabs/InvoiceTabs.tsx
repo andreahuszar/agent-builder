@@ -119,7 +119,7 @@ export function InvoiceTabs({
     }
     
     // Add approval limit check - but only for invoices that aren't already approved/paid
-    const approvedStatuses = ['approved', 'paid', 'completed', 'closed', 'ready_for_payment'];
+    const approvedStatuses = ['approved', 'paid', 'completed', 'closed', 'ready_for_payment', 'approved_ready_for_payment'];
     const isAlreadyApproved = invoiceData?.status && approvedStatuses.includes(invoiceData.status.toLowerCase());
     
     if (invoiceData?.total && invoiceData.total > approvalLimit && !isAlreadyApproved) {

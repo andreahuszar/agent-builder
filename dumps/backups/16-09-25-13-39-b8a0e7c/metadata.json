@@ -1,0 +1,19 @@
+{
+  "timestamp": "2025-09-16T12:39:11.092Z",
+  "timestampFormatted": "16-09-25-13-39",
+  "gitCommit": "b8a0e7c",
+  "database": "xelix_invoice_dev",
+  "host": "127.0.0.1:5433",
+  "postgresVersion": "16.10",
+  "statistics": {
+    "tables": 40,
+    "rows": 242,
+    "size": "13 MB"
+  },
+  "files": {
+    "schema": "schema.sql",
+    "data": "data.sql",
+    "full": "full.dump"
+  },
+  "description": "Post sync fixes - all data correctly synced with Railway"
+}
