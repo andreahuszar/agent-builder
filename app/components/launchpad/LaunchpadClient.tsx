@@ -14,12 +14,17 @@ import {
   AlertTriangle,
   FileText,
   Coins,
-  ArrowRight
+  ArrowRight,
+  Building2,
+  Truck,
+  UserCheck,
+  Send
 } from "lucide-react"
 import { generateDashboardData, DashboardData } from '../dashboard/synthetic-data'
 import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/app/components/ui/card'
 import { ProcessingTimeBreakdown, SLAPerformanceSection, InvoiceMatchingAnalytics } from '../dashboard/PerformanceAnalyticsSection'
+import DueNext7DaysSparkline from './DueNext7DaysSparkline'
 
 // Modern fintech color palette
 const COLORS = {
@@ -254,6 +259,140 @@ export default function LaunchpadClient() {
         </Card>
       </div>
 
+      {/* Due Next 7 Days Sparkline */}
+      <DueNext7DaysSparkline
+        onOpenQueue={() => {
+          // Navigate to invoices filtered by due date
+          console.log('Opening queue for invoices due in next 7 days');
+        }}
+      />
+
+      {/* Blocked By Section - Half Width */}
+      <div className="mb-6">
+        <div className="lg:w-1/2">
+          <Card className="border border-gray-200">
+            <CardContent className="p-4">
+              <div className="flex items-center gap-2 mb-4">
+                <AlertCircle className="h-4 w-4 text-purple-900" />
+                <h2 className="text-base font-semibold text-gray-950">Invoices Blocked By</h2>
+              </div>
+              <div className="grid gap-3 md:grid-cols-2">
+                {/* Approvers */}
+                <button
+                  className="relative bg-white rounded-lg px-3 py-3 border border-gray-200 hover:bg-purple-50 hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                  tabIndex={0}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <UserCheck className="h-4 w-4 text-purple-600" />
+                      <p className="text-sm font-semibold text-gray-950">Approvers</p>
+                    </div>
+                    <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 text-sm font-medium text-gray-950 bg-gray-100 rounded">23</span>
+                  </div>
+                  <div className="space-y-1 mb-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-700">Median wait:</span>
+                      <span className="font-medium text-gray-950">3.2 days</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-700">Top blocker:</span>
+                      <span className="font-medium text-gray-950">Sarah Mitchell (8)</span>
+                    </div>
+                  </div>
+                  <button className="w-full flex items-center justify-center gap-1.5 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 rounded transition-colors group-hover:bg-purple-200">
+                    <Send className="h-3 w-3" />
+                    Send Digest
+                  </button>
+                </button>
+
+                {/* Vendors */}
+                <button
+                  className="relative bg-white rounded-lg px-3 py-3 border border-gray-200 hover:bg-purple-50 hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                  tabIndex={0}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Building2 className="h-4 w-4 text-purple-600" />
+                      <p className="text-sm font-semibold text-gray-950">Vendors</p>
+                    </div>
+                    <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 text-sm font-medium text-gray-950 bg-gray-100 rounded">12</span>
+                  </div>
+                  <div className="space-y-1 mb-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-700">Median wait:</span>
+                      <span className="font-medium text-gray-950">5.1 days</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-700">Top blocker:</span>
+                      <span className="font-medium text-gray-950">Acme Corp Ltd (4)</span>
+                    </div>
+                  </div>
+                  <button className="w-full flex items-center justify-center gap-1.5 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 rounded transition-colors group-hover:bg-purple-200">
+                    <Send className="h-3 w-3" />
+                    Chase Response
+                  </button>
+                </button>
+
+                {/* Receiving */}
+                <button
+                  className="relative bg-white rounded-lg px-3 py-3 border border-gray-200 hover:bg-purple-50 hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                  tabIndex={0}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Truck className="h-4 w-4 text-purple-600" />
+                      <p className="text-sm font-semibold text-gray-950">Receiving</p>
+                    </div>
+                    <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 text-sm font-medium text-gray-950 bg-gray-100 rounded">18</span>
+                  </div>
+                  <div className="space-y-1 mb-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-700">Median wait:</span>
+                      <span className="font-medium text-gray-950">2.8 days</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-700">Top blocker:</span>
+                      <span className="font-medium text-gray-950">Goods In Team (7)</span>
+                    </div>
+                  </div>
+                  <button className="w-full flex items-center justify-center gap-1.5 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 rounded transition-colors group-hover:bg-purple-200">
+                    <Send className="h-3 w-3" />
+                    Request GR
+                  </button>
+                </button>
+
+                {/* AP Internal */}
+                <button
+                  className="relative bg-white rounded-lg px-3 py-3 border border-gray-200 hover:bg-purple-50 hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                  tabIndex={0}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Users className="h-4 w-4 text-purple-600" />
+                      <p className="text-sm font-semibold text-gray-950">AP Internal</p>
+                    </div>
+                    <span className="inline-flex items-center justify-center min-w-[24px] h-6 px-1.5 text-sm font-medium text-gray-950 bg-gray-100 rounded">9</span>
+                  </div>
+                  <div className="space-y-1 mb-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-700">Median wait:</span>
+                      <span className="font-medium text-gray-950">1.5 days</span>
+                    </div>
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-gray-700">Top blocker:</span>
+                      <span className="font-medium text-gray-950">Data Entry (5)</span>
+                    </div>
+                  </div>
+                  <button className="w-full flex items-center justify-center gap-1.5 px-2 py-1 text-xs font-medium text-purple-700 bg-purple-100 hover:bg-purple-200 rounded transition-colors group-hover:bg-purple-200">
+                    <Send className="h-3 w-3" />
+                    Reassign Tasks
+                  </button>
+                </button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
 
       {/* SLA Performance Section */}
       <div className="mt-6">
