@@ -278,9 +278,10 @@ export default function LaunchpadClient() {
               </div>
               <div className="grid gap-3 md:grid-cols-2">
                 {/* Approvers */}
-                <button
+                <div
                   className="relative bg-white rounded-lg px-3 py-3 border border-gray-200 hover:bg-purple-50 hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
                   tabIndex={0}
+                  role="button"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -303,12 +304,13 @@ export default function LaunchpadClient() {
                     <Send className="h-3 w-3" />
                     Send Digest
                   </button>
-                </button>
+                </div>
 
                 {/* Vendors */}
-                <button
+                <div
                   className="relative bg-white rounded-lg px-3 py-3 border border-gray-200 hover:bg-purple-50 hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
                   tabIndex={0}
+                  role="button"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -331,12 +333,13 @@ export default function LaunchpadClient() {
                     <Send className="h-3 w-3" />
                     Chase Response
                   </button>
-                </button>
+                </div>
 
                 {/* Receiving */}
-                <button
+                <div
                   className="relative bg-white rounded-lg px-3 py-3 border border-gray-200 hover:bg-purple-50 hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
                   tabIndex={0}
+                  role="button"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -359,12 +362,13 @@ export default function LaunchpadClient() {
                     <Send className="h-3 w-3" />
                     Request GR
                   </button>
-                </button>
+                </div>
 
                 {/* AP Internal */}
-                <button
+                <div
                   className="relative bg-white rounded-lg px-3 py-3 border border-gray-200 hover:bg-purple-50 hover:shadow-sm transition-all duration-200 cursor-pointer group text-left focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
                   tabIndex={0}
+                  role="button"
                 >
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -387,7 +391,7 @@ export default function LaunchpadClient() {
                     <Send className="h-3 w-3" />
                     Reassign Tasks
                   </button>
-                </button>
+                </div>
               </div>
             </CardContent>
           </Card>
