@@ -24,12 +24,19 @@ import {
   Minus,
   FileUp,
   Search,
-  Download
+  Download,
+  Star,
+  Zap,
+  Info,
+  LayoutDashboard,
+  Columns3
 } from "lucide-react"
 import { generateDashboardData, DashboardData } from '../dashboard/synthetic-data'
 import { cn } from '@/lib/utils'
 import { Card, CardContent } from '@/app/components/ui/card'
 import DueNext7DaysSparkline from './DueNext7DaysSparkline'
+import KanbanBoard from './KanbanBoard'
+import LightningActions from './LightningActions'
 
 // Modern fintech color palette
 const COLORS = {
@@ -54,6 +61,8 @@ export default function LaunchpadClient() {
   const [activeSection, setActiveSection] = useState<string | null>(null)
   const [showCommandPalette, setShowCommandPalette] = useState(false)
   const [hoveredAgingIndex, setHoveredAgingIndex] = useState<number | null>(null)
+  const [hoveredVendorIndex, setHoveredVendorIndex] = useState<number | null>(null)
+  const [activeView, setActiveView] = useState<'dashboard' | 'kanban' | 'lightning'>('dashboard')
 
   // Load dashboard data
   useEffect(() => {
@@ -437,22 +446,60 @@ export default function LaunchpadClient() {
               <option value="90">Last 90 days</option>
             </select>
 
-            <button
-              onClick={handleRefresh}
-              disabled={refreshing}
-              className={cn(
-                "p-2 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors",
-                refreshing && "opacity-50 cursor-not-allowed"
-              )}
-            >
-              <RefreshCw className={cn("h-4 w-4", refreshing && "animate-spin")} />
-            </button>
+            {/* View Switcher */}
+            <div className="inline-flex rounded-md shadow-sm" role="group">
+              <button
+                type="button"
+                onClick={() => setActiveView('dashboard')}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium border transition-all",
+                  "rounded-l-md",
+                  activeView === 'dashboard'
+                    ? "bg-purple-900 text-white border-purple-900 z-10"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                )}
+                title="Dashboard View"
+              >
+                <LayoutDashboard className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView('kanban')}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium border-t border-b transition-all",
+                  "-ml-px",
+                  activeView === 'kanban'
+                    ? "bg-purple-900 text-white border-purple-900 z-10"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                )}
+                title="Kanban View"
+              >
+                <Columns3 className="h-4 w-4" />
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveView('lightning')}
+                className={cn(
+                  "px-3 py-2 text-sm font-medium border transition-all",
+                  "rounded-r-md -ml-px",
+                  activeView === 'lightning'
+                    ? "bg-purple-900 text-white border-purple-900 z-10"
+                    : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                )}
+                title="Lightning View"
+              >
+                <Zap className="h-4 w-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Payment Priority */}
-      <div className="mb-6 mt-6">
+      {/* Dashboard View */}
+      {activeView === 'dashboard' && (
+        <>
+          {/* Payment Priority */}
+          <div className="mb-6 mt-6">
         <Card className="border border-gray-200">
           <CardContent className="p-4">
             <div className="flex items-center gap-2 mb-4">
@@ -1101,6 +1148,7 @@ export default function LaunchpadClient() {
         </Card>
       </div>
 
+
       {/* Smart Opportunities Section - Full Width */}
       <div className="mb-6">
         <Card className="border border-gray-200">
@@ -1218,6 +1266,18 @@ export default function LaunchpadClient() {
           </CardContent>
         </Card>
       </div>
+        </>
+      )}
+
+      {/* Kanban View */}
+      {activeView === 'kanban' && (
+        <KanbanBoard />
+      )}
+
+      {/* Lightning View */}
+      {activeView === 'lightning' && (
+        <LightningActions />
+      )}
     </div>
   )
 }
