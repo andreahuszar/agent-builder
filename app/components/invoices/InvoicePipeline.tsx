@@ -64,19 +64,8 @@ export default function InvoicePipeline({
             <p className="text-xs text-gray-500">Real-time invoice automation</p>
           </div>
           
-          {/* Agent Status Pills */}
+          {/* Status Pills */}
           <div className="flex items-center gap-2 ml-4">
-            {/* Agent Ready Status */}
-            <div className="flex items-center gap-1.5 px-3 py-1 bg-gray-50 rounded-full">
-              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
-              <span className="text-xs text-gray-700">AI Agents Ready</span>
-            </div>
-            
-            {/* Separator - Only show if collapsed and there are exceptions or approvals */}
-            {!expanded && (stats.exceptions > 0 || stats.approvals > 0) && (
-              <div className="w-px h-4 bg-gray-200 opacity-60" />
-            )}
-            
             {/* Exception & Approval Indicators - Only when collapsed */}
             {!expanded && (
               <>
