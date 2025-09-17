@@ -132,10 +132,19 @@ export function EnhancedInvoiceTable({
   const getStatusColor = (status: string) => {
     const normalizedStatus = status?.toLowerCase() || '';
 
-    if (normalizedStatus.includes('new') || normalizedStatus.includes('draft')) {
+    // Check exact matches first
+    if (normalizedStatus === 'draft' || normalizedStatus === 'new') {
       return 'bg-gray-100 text-gray-700';
     }
-    if (normalizedStatus.includes('process') || normalizedStatus.includes('review')) {
+    if (normalizedStatus === 'requires_review' || normalizedStatus === 'needs_review' || normalizedStatus === 'needs review') {
+      return 'bg-yellow-100 text-yellow-700 border border-yellow-300';
+    }
+    if (normalizedStatus === 'ready_for_payment' || normalizedStatus === 'ready_to_pay' || normalizedStatus === 'ready to pay') {
+      return 'bg-green-100 text-green-700';
+    }
+
+    // Then check for partial matches - but exclude the ones we've already handled
+    if (normalizedStatus.includes('process')) {
       return 'bg-blue-100 text-blue-700';
     }
     if (normalizedStatus.includes('approved') || normalizedStatus.includes('paid') ||
@@ -149,6 +158,7 @@ export function EnhancedInvoiceTable({
     if (normalizedStatus.includes('hold') || normalizedStatus.includes('pending')) {
       return 'bg-yellow-100 text-yellow-700';
     }
+
     return 'bg-gray-100 text-gray-700';
   };
 
@@ -161,7 +171,7 @@ export function EnhancedInvoiceTable({
     if (normalizedStatus === 'partial' || normalizedStatus === 'partial_match') {
       return 'bg-yellow-100 text-yellow-700';
     }
-    if (normalizedStatus === 'exception' || normalizedStatus === 'no_match' || normalizedStatus === 'mismatch') {
+    if (normalizedStatus === 'exception' || normalizedStatus === 'no_match' || normalizedStatus === 'mismatch' || normalizedStatus === 'not_matched') {
       return 'bg-red-100 text-red-700';
     }
     if (normalizedStatus === 'pending' || normalizedStatus === 'in_progress') {
@@ -179,10 +189,10 @@ export function EnhancedInvoiceTable({
         <table className="min-w-full divide-y divide-gray-200">
           <thead>
             <tr>
-              <th scope="col" className="px-6 py-3.5 text-left">
+              <th scope="col" className="px-6 py-1.5 text-left">
                 <button
                   onClick={onToggleAll}
-                  className="p-0.5"
+                  className="p-0"
                 >
                   {allSelected ? (
                     <CheckSquare className="h-4 w-4 text-purple-600" />
@@ -193,7 +203,16 @@ export function EnhancedInvoiceTable({
                   )}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-3.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
+                <button
+                  onClick={() => handleSort('status')}
+                  className="flex items-center gap-1 hover:text-gray-700"
+                >
+                  Status
+                  {getSortIcon('status')}
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('vendor_name_snapshot')}
                   className="flex items-center gap-1 hover:text-gray-700"
@@ -202,7 +221,7 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('vendor_name_snapshot')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-3.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('invoice_number')}
                   className="flex items-center gap-1 hover:text-gray-700"
@@ -211,7 +230,7 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('invoice_number')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-3.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('invoice_date')}
                   className="flex items-center gap-1 hover:text-gray-700"
@@ -220,7 +239,7 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('invoice_date')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-3.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('due_date')}
                   className="flex items-center gap-1 hover:text-gray-700"
@@ -229,7 +248,7 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('due_date')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-3.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('total')}
                   className="flex items-center gap-1 hover:text-gray-700"
@@ -238,7 +257,7 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('total')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-3.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('match_status')}
                   className="flex items-center gap-1 hover:text-gray-700"
@@ -247,13 +266,13 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('match_status')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-3.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
                 PO Number
               </th>
-              <th scope="col" className="px-6 py-3.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
                 GR
               </th>
-              <th scope="col" className="px-6 py-3.5 text-right text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-800">
                 Actions
               </th>
             </tr>
@@ -269,10 +288,10 @@ export function EnhancedInvoiceTable({
                     isSelected ? "bg-purple-50 hover:bg-purple-100" : "hover:bg-gray-50"
                   )}
                 >
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-1.5 whitespace-nowrap">
                     <button
                       onClick={() => onToggleSelection(invoice.id)}
-                      className="p-0.5"
+                      className="p-0"
                     >
                       {isSelected ? (
                         <CheckSquare className="h-4 w-4 text-purple-600" />
@@ -281,95 +300,108 @@ export function EnhancedInvoiceTable({
                       )}
                     </button>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-950 font-medium">
+                  <td className="px-6 py-1.5 whitespace-nowrap">
+                    <span className={cn(
+                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                      getStatusColor(invoice.status)
+                    )}>
+                      {invoice.status === 'requires_review' || invoice.status === 'needs_review' ? 'Needs Review' :
+                       invoice.status === 'ready_for_payment' || invoice.status === 'ready_to_pay' ? 'Ready to Pay' :
+                       invoice.status === 'draft' ? 'Draft' :
+                       invoice.status?.charAt(0).toUpperCase() + invoice.status?.slice(1).replace(/_/g, ' ') || 'Draft'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-1.5 whitespace-nowrap text-sm text-gray-950 font-medium">
                     {invoice.vendor_name_snapshot || '-'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-1.5 whitespace-nowrap">
                     <Link
                       href={`/invoices/${invoice.id}`}
                       className="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
                     >
-                      <FileText className="h-3.5 w-3.5" />
+                      <FileText className="h-3.5 w-3.5 text-purple-700" />
                       {invoice.invoice_number}
                     </Link>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950">
                     {formatDate(invoice.invoice_date)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950">
                     {formatDate(invoice.due_date)}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950">
                     {formatCurrency(invoice.total, invoice.currency)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-1.5 whitespace-nowrap">
                     <span className={cn(
-                      "inline-flex items-center px-2 py-1 rounded-full text-xs font-medium",
+                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
                       getMatchStatusColor(invoice.match_status)
                     )}>
-                      {invoice.match_status || 'Pending'}
+                      {invoice.match_status === 'not_matched' ? 'Exception' :
+                       invoice.match_status === 'matched' ? 'Matched' :
+                       invoice.match_status?.charAt(0).toUpperCase() + invoice.match_status?.slice(1).replace(/_/g, ' ') || 'Pending'}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                     {invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
                       <div className="flex flex-col gap-1">
                         {invoice.po_numbers_cached.map((poNumber) => (
                           <button
                             key={poNumber}
                             onClick={() => onPOClick?.(poNumber)}
-                            className="text-purple-600 hover:text-purple-700 text-left text-xs"
+                            className="text-purple-600 hover:text-purple-700 text-left text-sm font-medium"
                           >
                             {poNumber}
                           </button>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-gray-400">No PO</span>
+                      <span className="text-gray-950 text-sm font-medium">No PO</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.gr_numbers && invoice.gr_numbers.length > 0 ? (
                       <div className="flex flex-col gap-1">
                         {invoice.gr_numbers.map((grNumber) => (
-                          <span key={grNumber} className="text-xs">
+                          <span key={grNumber} className="text-sm font-medium text-gray-950">
                             {grNumber}
                           </span>
                         ))}
                       </div>
                     ) : (
-                      <span className="text-gray-400">No GR</span>
+                      <span className="text-gray-950">No GR</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="px-6 py-1.5 whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1">
                       <button
-                        className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                        className="p-0 hover:bg-gray-100 rounded transition-colors"
                         title="Assign"
                       >
-                        <UserPlus className="h-4 w-4 text-gray-500" />
+                        <UserPlus className="h-4 w-4 text-gray-700" />
                       </button>
                       <button
-                        className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                        className="p-0 hover:bg-gray-100 rounded transition-colors"
                         title="Comment"
                       >
-                        <MessageSquare className="h-4 w-4 text-gray-500" />
+                        <MessageSquare className="h-4 w-4 text-gray-700" />
                       </button>
                       <button
-                        className="p-1.5 hover:bg-gray-100 rounded transition-colors"
+                        className="p-0 hover:bg-gray-100 rounded transition-colors"
                         title="Nudge"
                       >
-                        <Send className="h-4 w-4 text-gray-500" />
+                        <Send className="h-4 w-4 text-gray-700" />
                       </button>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
-                          <button className="p-1.5 hover:bg-gray-100 rounded transition-colors">
-                            <MoreHorizontal className="h-4 w-4 text-gray-500" />
+                          <button className="p-0 hover:bg-gray-100 rounded transition-colors">
+                            <MoreHorizontal className="h-4 w-4 text-gray-700" />
                           </button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuItem>
                             <Link href={`/invoices/${invoice.id}`} className="flex items-center gap-2 w-full">
-                              <FileText className="h-4 w-4" />
+                              <FileText className="h-4 w-4 text-gray-700" />
                               View Details
                             </Link>
                           </DropdownMenuItem>
@@ -386,7 +418,7 @@ export function EnhancedInvoiceTable({
                             onClick={() => onDelete?.(invoice.id)}
                             className="text-red-600"
                           >
-                            <Trash2 className="h-4 w-4 mr-2" />
+                            <Trash2 className="h-4 w-4 mr-2 text-red-600" />
                             Archive
                           </DropdownMenuItem>
                         </DropdownMenuContent>
