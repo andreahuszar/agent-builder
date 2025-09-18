@@ -21,6 +21,12 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/app/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
 interface Invoice {
@@ -471,24 +477,34 @@ export function EnhancedInvoiceTable({
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     <div className="flex items-center justify-end gap-2">
-                      <button
-                        className="p-0 hover:bg-gray-100 rounded transition-colors"
-                        title="Assign"
-                      >
-                        <UserPlus className="h-4 w-4 text-gray-700" />
-                      </button>
-                      <button
-                        className="p-0 hover:bg-gray-100 rounded transition-colors"
-                        title="Comment"
-                      >
-                        <MessageSquare className="h-4 w-4 text-gray-700" />
-                      </button>
-                      <button
-                        className="p-0 hover:bg-gray-100 rounded transition-colors"
-                        title="Nudge"
-                      >
-                        <Send className="h-4 w-4 text-gray-700" />
-                      </button>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              className="p-0 hover:bg-gray-100 rounded transition-colors"
+                            >
+                              <UserPlus className="h-4 w-4 text-gray-700" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-gray-800 text-white border-gray-800">
+                            <p>Assign</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              className="p-0 hover:bg-gray-100 rounded transition-colors"
+                            >
+                              <MessageSquare className="h-4 w-4 text-gray-700" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-gray-800 text-white border-gray-800">
+                            <p>Comment</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
                           <button className="p-0 hover:bg-gray-100 rounded transition-colors">
@@ -498,6 +514,9 @@ export function EnhancedInvoiceTable({
                         <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuItem>
                             Approve
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            Reject
                           </DropdownMenuItem>
                           <DropdownMenuItem>
                             Send for Approval
