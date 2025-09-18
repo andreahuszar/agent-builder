@@ -507,7 +507,7 @@ export function EnhancedInvoiceTable({
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => onDelete?.(invoice.id)}
-                            className="text-red-600"
+                            className="text-red-600 hover:bg-red-50 focus:bg-red-50"
                           >
                             <Trash2 className="h-4 w-4 mr-2 text-red-600" />
                             Archive
