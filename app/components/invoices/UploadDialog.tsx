@@ -140,15 +140,6 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
             Upload an invoice image or PDF to automatically extract and process the data.
           </Dialog.Description>
 
-          {/* What happens next section */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
-            <h3 className="text-sm font-semibold text-gray-950 mb-3">What happens next?</h3>
-            <ol className="space-y-2 text-sm text-gray-950">
-              <li>1. Your invoice will be processed using AI extraction</li>
-              <li>2. Invoice information will be automatically extracted including line items</li>
-            </ol>
-          </div>
-          
           <Dialog.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
@@ -159,8 +150,8 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
             {!file && (
               <div
                 className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                  dragActive 
-                    ? 'border-purple-500 bg-purple-50' 
+                  dragActive
+                    ? 'border-purple-500 bg-purple-50'
                     : 'border-gray-300 hover:border-gray-400'
                 }`}
                 onDrop={handleDrop}
@@ -190,6 +181,15 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
                 />
               </div>
             )}
+
+            {/* What happens next section */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-gray-950 mb-3">What happens next?</h3>
+              <ol className="space-y-2 text-sm text-gray-950">
+                <li>1. Your invoice will be processed using AI extraction</li>
+                <li>2. Invoice information will be automatically extracted including line items</li>
+              </ol>
+            </div>
 
             {/* File Preview */}
             {file && !isLoading && (
