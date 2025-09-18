@@ -609,7 +609,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             <div className="flex items-center gap-2 px-5 py-4 flex-1">
               <Clock className="h-4 w-4 text-purple-900" />
               <span className="text-sm text-gray-950">
-                <span className="font-semibold text-base">{metrics.dueSoon.count}</span> due soon
+                <span className="font-semibold text-lg">{metrics.dueSoon.count}</span> due soon
                 <span className="text-gray-700 ml-1">• {formatValue(metrics.dueSoon.value)}</span>
               </span>
             </div>
@@ -618,7 +618,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             <div className="flex items-center gap-2 px-5 py-4 flex-1">
               <Clock className="h-4 w-4 text-purple-900" />
               <span className="text-sm text-gray-950">
-                <span className="font-semibold text-base">{metrics.overdue.count}</span> overdue
+                <span className="font-semibold text-lg">{metrics.overdue.count}</span> overdue
                 <span className="text-gray-700 ml-1">• {formatValue(metrics.overdue.value)}</span>
               </span>
             </div>
@@ -627,7 +627,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             <div className="flex items-center gap-2 px-5 py-4 flex-1">
               <AlertTriangle className="h-4 w-4 text-red-500" />
               <span className="text-sm text-gray-950 flex-1">
-                <span className="font-semibold text-base">{metrics.openBlocked.count}</span> blocked
+                <span className="font-semibold text-lg">{metrics.openBlocked.count}</span> blocked
                 <span className="text-gray-700 ml-1">• {formatValue(metrics.openBlocked.value)}</span>
               </span>
               {bannerExpanded ? (
@@ -647,7 +647,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             >
               <Clock className="h-4 w-4 text-purple-900" />
               <span className="text-sm text-gray-950">
-                <span className="font-semibold text-base">{metrics.dueSoon.count}</span> due soon
+                <span className="font-semibold text-lg">{metrics.dueSoon.count}</span> due soon
                 <span className="text-gray-700 ml-1">• {formatValue(metrics.dueSoon.value)}</span>
               </span>
             </button>
@@ -659,7 +659,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             >
               <Clock className="h-4 w-4 text-purple-900" />
               <span className="text-sm text-gray-950">
-                <span className="font-semibold text-base">{metrics.overdue.count}</span> overdue
+                <span className="font-semibold text-lg">{metrics.overdue.count}</span> overdue
                 <span className="text-gray-700 ml-1">• {formatValue(metrics.overdue.value)}</span>
               </span>
             </button>
@@ -671,7 +671,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             >
               <AlertTriangle className="h-4 w-4 text-red-500" />
               <span className="text-sm text-gray-950">
-                <span className="font-semibold text-base">{metrics.openBlocked.count}</span> blocked
+                <span className="font-semibold text-lg">{metrics.openBlocked.count}</span> blocked
                 <span className="text-gray-700 ml-1">• {formatValue(metrics.openBlocked.value)}</span>
               </span>
             </button>
@@ -680,12 +680,12 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
 
         {/* Inline Charts Expansion (when chartsInDrawer is OFF) */}
         {!chartsInDrawer && bannerExpanded && (
-          <div className="border-t border-gray-200 relative transition-all duration-300 animate-in slide-in-from-top-2">
+          <div className="border-t border-gray-100 relative transition-all duration-300 animate-in slide-in-from-top-2">
             {/* Charts Grid with vertical dividers aligned to banner sections */}
             <div className="grid grid-cols-1 lg:grid-cols-3 py-4">
               {/* Due Soon Chart */}
-              <div className="px-6">
-                <div className="bg-gray-50 rounded-lg p-4">
+              <div className="px-6 flex">
+                <div className="bg-gray-50 rounded-lg p-4 flex-1 flex flex-col">
                   <InvoiceDueSoonChart
                     invoices={invoices}
                     onBucketClick={(bucket) => {
@@ -696,8 +696,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
               </div>
 
               {/* Overdue Chart */}
-              <div className="px-6">
-                <div className="bg-gray-50 rounded-lg p-4">
+              <div className="px-6 flex">
+                <div className="bg-gray-50 rounded-lg p-4 flex-1 flex flex-col">
                   <InvoiceAgingChart
                     invoices={invoices}
                     onBucketClick={(bucket) => {
@@ -708,8 +708,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
               </div>
 
               {/* Blocked Chart */}
-              <div className="px-6">
-                <div className="bg-gray-50 rounded-lg p-4">
+              <div className="px-6 flex">
+                <div className="bg-gray-50 rounded-lg p-4 flex-1 flex flex-col">
                   <BlockedInvoiceAnalysis
                     invoices={invoices}
                     onCategoryClick={(category) => {
@@ -735,7 +735,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-600" />
               <input
                 type="search"
-                placeholder="Search invoices..."
+                placeholder="Search..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="pl-8 pr-2.5 py-1.5 w-full border border-gray-300 rounded-md text-xs placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"

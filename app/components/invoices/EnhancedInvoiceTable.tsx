@@ -121,6 +121,16 @@ export function EnhancedInvoiceTable({
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
+  const calculateAging = (dueDate: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(dueDate);
+    due.setHours(0, 0, 0, 0);
+    const diffTime = today.getTime() - due.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
   const formatCurrency = (amount: number, currency: string) => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -136,8 +146,8 @@ export function EnhancedInvoiceTable({
     if (normalizedStatus === 'draft' || normalizedStatus === 'new') {
       return 'bg-gray-100 text-gray-700';
     }
-    if (normalizedStatus === 'requires_review' || normalizedStatus === 'needs_review' || normalizedStatus === 'needs review') {
-      return 'bg-yellow-100 text-yellow-700 border border-yellow-300';
+    if (normalizedStatus === 'requires_review' || normalizedStatus === 'needs_review' || normalizedStatus === 'needs review' || normalizedStatus === 'pending') {
+      return 'bg-amber-100 text-amber-700';
     }
     if (normalizedStatus === 'ready_for_payment' || normalizedStatus === 'ready_to_pay' || normalizedStatus === 'ready to pay') {
       return 'bg-green-100 text-green-700';
@@ -155,7 +165,7 @@ export function EnhancedInvoiceTable({
         normalizedStatus.includes('void')) {
       return 'bg-red-100 text-red-700';
     }
-    if (normalizedStatus.includes('hold') || normalizedStatus.includes('pending')) {
+    if (normalizedStatus.includes('hold')) {
       return 'bg-yellow-100 text-yellow-700';
     }
 
@@ -180,8 +190,34 @@ export function EnhancedInvoiceTable({
     return 'bg-gray-100 text-gray-700';
   };
 
+  const getMatchStatusReason = (invoice: Invoice) => {
+    // Mock reasons based on match status and other conditions
+    if (invoice.match_status === 'not_matched') {
+      if (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0) {
+        return 'Missing PO';
+      }
+      if (!invoice.gr_numbers || invoice.gr_numbers.length === 0) {
+        return 'Missing GR';
+      }
+      return 'Price variance';
+    } else if (invoice.match_status === 'partial') {
+      return 'Quantity mismatch';
+    } else if (invoice.match_status === 'matched') {
+      return '-';
+    }
+    return 'Pending review';
+  };
+
   const allSelected = selectedInvoices.size === invoices.length && invoices.length > 0;
   const someSelected = selectedInvoices.size > 0 && selectedInvoices.size < invoices.length;
+
+  // Mock function to generate vendor ID based on vendor name
+  const getVendorId = (vendorName: string | undefined) => {
+    if (!vendorName) return 'VND-000';
+    // Generate a consistent ID based on vendor name
+    const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return `VND-${String(hash % 9000 + 1000).padStart(4, '0')}`;
+  };
 
   return (
     <div className="overflow-hidden bg-white shadow-sm ring-1 ring-gray-900/5 rounded-lg">
@@ -189,7 +225,7 @@ export function EnhancedInvoiceTable({
         <table className="min-w-full divide-y divide-gray-200">
           <thead>
             <tr>
-              <th scope="col" className="px-6 py-1.5 text-left">
+              <th scope="col" className="sticky left-0 z-10 bg-white px-6 py-1.5 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                 <button
                   onClick={onToggleAll}
                   className="p-0"
@@ -211,6 +247,9 @@ export function EnhancedInvoiceTable({
                   Status
                   {getSortIcon('status')}
                 </button>
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                Vendor ID
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
@@ -249,13 +288,28 @@ export function EnhancedInvoiceTable({
                 </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                Aging (days)
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('total')}
-                  className="flex items-center gap-1 hover:text-gray-900"
+                  className="flex items-center gap-1 hover:text-gray-900 justify-end w-full"
                 >
-                  Total
+                  Amount
                   {getSortIcon('total')}
                 </button>
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                Currency
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
+                Net Amount
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                PO Number
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                GR
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
@@ -267,10 +321,7 @@ export function EnhancedInvoiceTable({
                 </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                PO Number
-              </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                GR
+                Reason
               </th>
               <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
                 Actions
@@ -288,7 +339,10 @@ export function EnhancedInvoiceTable({
                     isSelected ? "bg-purple-50 hover:bg-purple-100" : "hover:bg-gray-50"
                   )}
                 >
-                  <td className="px-6 py-1.5 whitespace-nowrap">
+                  <td className={cn(
+                    "sticky left-0 z-10 px-6 py-2.5 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]",
+                    isSelected ? "bg-purple-50" : "bg-white"
+                  )}>
                     <button
                       onClick={() => onToggleSelection(invoice.id)}
                       className="p-0"
@@ -300,21 +354,24 @@ export function EnhancedInvoiceTable({
                       )}
                     </button>
                   </td>
-                  <td className="px-6 py-1.5 whitespace-nowrap">
+                  <td className="px-6 py-2.5 whitespace-nowrap">
                     <span className={cn(
                       "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
                       getStatusColor(invoice.status)
                     )}>
-                      {invoice.status === 'requires_review' || invoice.status === 'needs_review' ? 'Needs Review' :
+                      {invoice.status === 'requires_review' || invoice.status === 'needs_review' || invoice.status?.toLowerCase() === 'pending' ? 'Needs Review' :
                        invoice.status === 'ready_for_payment' || invoice.status === 'ready_to_pay' ? 'Ready to Pay' :
                        invoice.status === 'draft' ? 'Draft' :
                        invoice.status?.charAt(0).toUpperCase() + invoice.status?.slice(1).replace(/_/g, ' ') || 'Draft'}
                     </span>
                   </td>
-                  <td className="px-6 py-1.5 whitespace-nowrap text-sm text-gray-950 font-medium">
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-600 font-mono">
+                    {getVendorId(invoice.vendor_name_snapshot)}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
                     {invoice.vendor_name_snapshot || '-'}
                   </td>
-                  <td className="px-6 py-1.5 whitespace-nowrap">
+                  <td className="px-6 py-2.5 whitespace-nowrap">
                     {/* Check if this is a mock invoice (starts with 'mock-', 'due-', or 'blocked-') */}
                     {invoice.id.startsWith('mock-') || invoice.id.startsWith('due-') || invoice.id.startsWith('blocked-') ? (
                       <span className="text-sm text-gray-950 font-medium">
@@ -329,26 +386,38 @@ export function EnhancedInvoiceTable({
                       </Link>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950">
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {formatDate(invoice.invoice_date)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950">
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {formatDate(invoice.due_date)}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950">
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {(() => {
+                      const aging = calculateAging(invoice.due_date);
+                      if (aging > 0) {
+                        return <span className="text-red-600">{aging}</span>;
+                      } else if (aging === 0) {
+                        return <span className="text-orange-600">Due today</span>;
+                      } else {
+                        return <span className="text-green-600">{Math.abs(aging)}</span>;
+                      }
+                    })()}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-bold text-gray-950 text-right">
                     {formatCurrency(invoice.total, invoice.currency)}
                   </td>
-                  <td className="px-6 py-1.5 whitespace-nowrap">
-                    <span className={cn(
-                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                      getMatchStatusColor(invoice.match_status)
-                    )}>
-                      {invoice.match_status === 'not_matched' ? 'Exception' :
-                       invoice.match_status === 'matched' ? 'Matched' :
-                       invoice.match_status?.charAt(0).toUpperCase() + invoice.match_status?.slice(1).replace(/_/g, ' ') || 'Pending'}
-                    </span>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
+                    {invoice.currency || 'USD'}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
+                    {(() => {
+                      // Mock net amount as 90% of total for demonstration
+                      const netAmount = invoice.total * 0.9;
+                      return formatCurrency(netAmount, invoice.currency);
+                    })()}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium">
                     {invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
                       <div className="flex flex-col gap-1">
                         {invoice.po_numbers_cached.map((poNumber) => (
@@ -374,7 +443,7 @@ export function EnhancedInvoiceTable({
                       <span className="text-gray-950 text-sm font-medium">No PO</span>
                     )}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950">
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.gr_numbers && invoice.gr_numbers.length > 0 ? (
                       <div className="flex flex-col gap-1">
                         {invoice.gr_numbers.map((grNumber) => (
@@ -387,7 +456,20 @@ export function EnhancedInvoiceTable({
                       <span className="text-gray-950">No GR</span>
                     )}
                   </td>
-                  <td className="px-6 py-1.5 whitespace-nowrap">
+                  <td className="px-6 py-2.5 whitespace-nowrap">
+                    <span className={cn(
+                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                      getMatchStatusColor(invoice.match_status)
+                    )}>
+                      {invoice.match_status === 'not_matched' ? 'Exception' :
+                       invoice.match_status === 'matched' ? 'Matched' :
+                       invoice.match_status?.charAt(0).toUpperCase() + invoice.match_status?.slice(1).replace(/_/g, ' ') || 'Pending'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
+                    {getMatchStatusReason(invoice)}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap">
                     <div className="flex items-center justify-end gap-1">
                       <button
                         className="p-0 hover:bg-gray-100 rounded transition-colors"
