@@ -36,6 +36,7 @@ import InvoiceDueSoonChart from './InvoiceDueSoonChart';
 import BlockedInvoiceAnalysis from './BlockedInvoiceAnalysis';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { cn } from '@/lib/utils';
+import { getChartsInDrawerPreference } from '@/app/utils/cookies';
 
 interface Invoice {
   id: string;
@@ -223,7 +224,17 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   const [selectedVendor, setSelectedVendor] = useState('all');
   const [selectedPOType, setSelectedPOType] = useState('all');
 
+  // Interaction mode states
+  const [chartsInDrawer, setChartsInDrawer] = useState(false);
+  const [bannerExpanded, setBannerExpanded] = useState(false);
+
   const router = useRouter();
+
+  // Load charts preference from cookie on mount
+  useEffect(() => {
+    const preference = getChartsInDrawerPreference();
+    setChartsInDrawer(preference);
+  }, []);
 
   // Calculate metrics from invoice data
   const metrics = useMemo(() => {
@@ -469,8 +480,15 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   };
 
   const handleMetricClick = (metric: 'blocked' | 'overdue' | 'dueSoon') => {
-    setSelectedMetric(metric);
-    setSidePanelOpen(true);
+    if (chartsInDrawer) {
+      // Drawer mode (toggle ON)
+      setSelectedMetric(metric);
+      setSidePanelOpen(true);
+    } else {
+      // Inline expansion mode (toggle OFF, default)
+      setBannerExpanded(!bannerExpanded);
+      // Note: ALL charts show regardless of which metric clicked
+    }
   };
 
   const closeSidePanel = () => {
@@ -532,6 +550,55 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             </span>
           </button>
         </div>
+
+        {/* Inline Charts Expansion (when chartsInDrawer is OFF) */}
+        {!chartsInDrawer && bannerExpanded && (
+          <div className="border-t border-gray-200 p-6 transition-all duration-300 animate-in slide-in-from-top-2">
+            {/* Collapse button */}
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={() => setBannerExpanded(false)}
+                className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
+              >
+                <ChevronUp className="h-3 w-3" />
+                Collapse
+              </button>
+            </div>
+
+            {/* Charts Grid */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Due Soon Chart */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <InvoiceDueSoonChart
+                  invoices={invoices}
+                  onBucketClick={(bucket) => {
+                    console.log(`View ${bucket} invoices`);
+                  }}
+                />
+              </div>
+
+              {/* Overdue Chart */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <InvoiceAgingChart
+                  invoices={invoices}
+                  onBucketClick={(bucket) => {
+                    console.log(`View ${bucket} invoices`);
+                  }}
+                />
+              </div>
+
+              {/* Blocked Chart */}
+              <div className="bg-gray-50 rounded-lg p-4">
+                <BlockedInvoiceAnalysis
+                  invoices={invoices}
+                  onCategoryClick={(category) => {
+                    console.log(`View ${category} exceptions`);
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Search bar and filter pills */}
@@ -722,8 +789,9 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
         isLoading={isArchiving}
       />
 
-      {/* Side panel for graphs */}
-      <div className={cn(
+      {/* Side panel for graphs (only when chartsInDrawer is ON) */}
+      {chartsInDrawer && (
+        <div className={cn(
         "fixed inset-y-0 right-0 z-50 w-[480px] bg-white shadow-xl transform transition-transform duration-300 ease-in-out",
         sidePanelOpen ? "translate-x-0" : "translate-x-full"
       )}>
@@ -918,9 +986,10 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
           )}
         </div>
       </div>
+      )}
 
-      {/* Overlay when side panel is open */}
-      {sidePanelOpen && (
+      {/* Overlay when side panel is open (only when chartsInDrawer is ON) */}
+      {chartsInDrawer && sidePanelOpen && (
         <div
           className="fixed inset-0 bg-black bg-opacity-25 z-40 transition-opacity"
           onClick={closeSidePanel}

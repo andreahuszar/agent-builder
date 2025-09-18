@@ -1,7 +1,8 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AppLayout from '@/app/components/AppLayout';
+import { getChartsInDrawerPreference, setChartsInDrawerPreference } from '@/app/utils/cookies';
 
 interface SettingsContentProps {
   currentView?: string;
@@ -9,7 +10,20 @@ interface SettingsContentProps {
 }
 
 function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
-  const [chartsInDrawer, setChartsInDrawer] = useState(false);
+  const [chartsInDrawer, setChartsInDrawerState] = useState(false);
+
+  // Load preference from cookie on mount
+  useEffect(() => {
+    const preference = getChartsInDrawerPreference();
+    setChartsInDrawerState(preference);
+  }, []);
+
+  // Handle toggle change
+  const handleToggleChange = () => {
+    const newValue = !chartsInDrawer;
+    setChartsInDrawerState(newValue);
+    setChartsInDrawerPreference(newValue);
+  };
 
   return (
     <div className="w-full p-4 sm:px-6 lg:px-8">
@@ -65,7 +79,7 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                     <p className="text-xs text-gray-500 mt-1">(on invoice management page)</p>
                   </div>
                   <button
-                    onClick={() => setChartsInDrawer(!chartsInDrawer)}
+                    onClick={handleToggleChange}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
                       chartsInDrawer ? 'bg-purple-600' : 'bg-gray-200'
                     }`}
