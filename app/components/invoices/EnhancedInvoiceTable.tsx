@@ -365,7 +365,7 @@ export function EnhancedInvoiceTable({
                        invoice.status?.charAt(0).toUpperCase() + invoice.status?.slice(1).replace(/_/g, ' ') || 'Draft'}
                     </span>
                   </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-600 font-mono">
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
                     {getVendorId(invoice.vendor_name_snapshot)}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">

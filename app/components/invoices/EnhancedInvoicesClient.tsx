@@ -607,7 +607,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
           // Expandable mode - entire banner is clickable with unified hover
           <div
             onClick={() => setBannerExpanded(!bannerExpanded)}
-            className={`flex items-center divide-x divide-gray-200 cursor-pointer hover:bg-purple-50 transition-colors ${
+            className={`flex items-center divide-x divide-gray-100 cursor-pointer hover:bg-purple-50 transition-colors ${
               bannerExpanded ? 'rounded-t-lg' : 'rounded-lg'
             }`}
           >
@@ -645,7 +645,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
           </div>
         ) : (
           // Drawer mode - individual buttons with separate hover effects
-          <div className="flex items-center divide-x divide-gray-200">
+          <div className="flex items-center divide-x divide-gray-100">
             {/* Due soon metric */}
             <button
               onClick={() => handleMetricClick('dueSoon')}
@@ -727,8 +727,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             </div>
 
             {/* Vertical dividers that align with the banner dividers - now touching top and bottom */}
-            <div className="absolute left-[calc(33.333%-0.5px)] top-0 bottom-0 w-px bg-gray-200 hidden lg:block" />
-            <div className="absolute left-[calc(66.666%-0.5px)] top-0 bottom-0 w-px bg-gray-200 hidden lg:block" />
+            <div className="absolute left-[calc(33.333%-0.5px)] top-0 bottom-0 w-px bg-gray-100 hidden lg:block" />
+            <div className="absolute left-[calc(66.666%-0.5px)] top-0 bottom-0 w-px bg-gray-100 hidden lg:block" />
           </div>
         )}
       </div>
@@ -748,7 +748,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
               />
             </div>
             <button className="px-2.5 py-1.5 bg-white border border-purple-600 text-purple-600 text-xs font-medium rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
-              <Filter className="h-3.5 w-3.5 inline mr-1" />
+              <Filter className="h-3 w-3 inline mr-1" />
               Columns & Filters
             </button>
           </div>
@@ -788,7 +788,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
           </div>
 
           {/* Vertical divider */}
-          <div className="h-5 w-px bg-gray-200" />
+          <div className="h-5 w-px bg-gray-100" />
 
           {/* Other quick filters */}
           {quickFilterOptions.map((filter) => {
