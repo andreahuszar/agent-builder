@@ -8,12 +8,22 @@ import {
   Search,
   Check,
   ChevronDown,
+  ChevronUp,
   Filter,
   UserPlus,
   MessageSquare,
   Send,
   CheckSquare,
-  Square
+  Square,
+  X,
+  AlertTriangle,
+  TrendingUp,
+  Clock,
+  DollarSign,
+  AlertCircle,
+  CheckCircle2,
+  Tag,
+  CalendarClock
 } from 'lucide-react';
 import { EnhancedInvoiceTable } from './EnhancedInvoiceTable';
 import { UploadDialog } from './UploadDialog';
@@ -21,6 +31,10 @@ import { ArchiveInvoiceDialog } from './ArchiveInvoiceDialog';
 import InvoicePipeline from './InvoicePipeline';
 import { calculatePipelineCounts, PipelineStage } from '@/app/utils/pipelineCalculations';
 import { PurchaseOrderDrawer } from '../purchase-orders/PurchaseOrderDrawer';
+import InvoiceAgingChart from './InvoiceAgingChart';
+import InvoiceDueSoonChart from './InvoiceDueSoonChart';
+import BlockedInvoiceAnalysis from './BlockedInvoiceAnalysis';
+import { Card, CardContent } from '@/app/components/ui/card';
 import { cn } from '@/lib/utils';
 
 interface Invoice {
@@ -44,31 +58,150 @@ interface EnhancedInvoicesClientProps {
   initialInvoices: Invoice[];
 }
 
-// Time filter options
-const timeFilters = [
-  { id: 'all', label: 'All time', value: null },
-  { id: '30days', label: 'Last 30 Days', value: 30 },
-  { id: '7days', label: 'Last 7 Days', value: 7 },
-  { id: 'yesterday', label: 'Yesterday', value: 1 },
-  { id: 'today', label: 'Today', value: 0 },
-  { id: 'custom', label: 'Custom range', value: -1 }
+// Quick filter options
+const quickFilterOptions = [
+  { id: 'po-gr-missing', label: 'PO/GR Missing', icon: Tag },
+  { id: 'tolerance', label: '>Tolerance', icon: Tag },
+  { id: 'line-mismatch', label: 'Line Mismatch', icon: Tag },
+  { id: 'overdue', label: 'Overdue', icon: Tag }
 ];
 
-// Exception types from kanban lanes
-const exceptionTypes = [
-  { id: 'all', label: 'All Statuses', value: 'all' },
-  { id: 'exceptions', label: 'All Exceptions', value: 'exceptions' },
-  { id: 'needs-data', label: 'Needs Data', value: 'needs-data' },
-  { id: 'po-gr-mismatch', label: 'PO/GR Mismatch', value: 'po-gr-mismatch' },
-  { id: 'services-no-gr', label: 'Services (No GR)', value: 'services-no-gr' },
-  { id: 'waiting-approver', label: 'Waiting Approver', value: 'waiting-approver' },
-  { id: 'ready-to-pay', label: 'Ready to Pay', value: 'ready-to-pay' },
-  { id: 'on-hold', label: 'On Hold', value: 'on-hold' }
-];
+// Generate mock overdue invoices for demonstration
+const generateMockOverdueInvoices = (): Invoice[] => {
+  const now = new Date();
+  const vendors = ['TechCorp Ltd', 'BuildCo Solutions', 'SupplyCo Global', 'GlobalParts Inc', 'Acme Corp', 'DataSoft Systems', 'CloudNet Services'];
+  const mockInvoices: Invoice[] = [];
+
+  // Generate invoices for different aging buckets - OVERDUE
+  const agingBuckets = [
+    { days: 120, count: 3, minAmount: 8000, maxAmount: 15000 }, // 90+ days overdue
+    { days: 75, count: 4, minAmount: 10000, maxAmount: 20000 }, // 61-90 days overdue
+    { days: 45, count: 5, minAmount: 12000, maxAmount: 25000 }, // 31-60 days overdue
+    { days: 15, count: 11, minAmount: 14000, maxAmount: 30000 }, // 1-30 days overdue
+  ];
+
+  let invoiceCounter = 1;
+
+  agingBuckets.forEach(bucket => {
+    for (let i = 0; i < bucket.count; i++) {
+      const dueDate = new Date(now);
+      dueDate.setDate(dueDate.getDate() - bucket.days - Math.floor(Math.random() * 3));
+
+      const invoiceDate = new Date(dueDate);
+      invoiceDate.setDate(invoiceDate.getDate() - 30);
+
+      mockInvoices.push({
+        id: `mock-${invoiceCounter}`,
+        invoice_number: `INV-2024-${String(1000 + invoiceCounter).padStart(4, '0')}`,
+        vendor_name_snapshot: vendors[Math.floor(Math.random() * vendors.length)],
+        invoice_date: invoiceDate.toISOString().split('T')[0],
+        due_date: dueDate.toISOString().split('T')[0],
+        currency: 'GBP',
+        total: Math.floor(Math.random() * (bucket.maxAmount - bucket.minAmount) + bucket.minAmount),
+        status: bucket.days > 30 ? 'requires_review' : 'pending',
+        match_status: bucket.days > 15 ? 'exception' : 'unmatched',
+        vendor_requires_po: Math.random() > 0.3,
+        vendor_is_verified: true,
+        approval_status: bucket.days > 7 ? 'pending' : 'approved',
+        po_numbers_cached: Math.random() > 0.5 ? [`PO-2024-${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`] : [],
+        gr_numbers: []
+      });
+      invoiceCounter++;
+    }
+  });
+
+  return mockInvoices;
+};
+
+// Generate mock due soon invoices for demonstration
+const generateMockDueSoonInvoices = (): Invoice[] => {
+  const now = new Date();
+  const vendors = ['MegaCorp Industries', 'TechFlow Systems', 'SupplyChain Pro', 'LogiTech Solutions', 'DataCore', 'CloudWave', 'NetSolutions'];
+  const mockInvoices: Invoice[] = [];
+
+  // Generate invoices for different due soon buckets
+  const dueSoonBuckets = [
+    { days: 0, count: 4, minAmount: 8000, maxAmount: 12000 }, // Due today
+    { days: -2, count: 6, minAmount: 10000, maxAmount: 18000 }, // Due in 1-3 days
+    { days: -5, count: 8, minAmount: 12000, maxAmount: 22000 }, // Due in 4-7 days
+    { days: -10, count: 10, minAmount: 14000, maxAmount: 28000 }, // Due in 8-14 days
+    { days: -20, count: 12, minAmount: 16000, maxAmount: 32000 }, // Due in 15-30 days
+  ];
+
+  let invoiceCounter = 2001; // Start from different number to distinguish from overdue
+
+  dueSoonBuckets.forEach(bucket => {
+    for (let i = 0; i < bucket.count; i++) {
+      const dueDate = new Date(now);
+      dueDate.setDate(dueDate.getDate() - bucket.days - Math.floor(Math.random() * 2));
+
+      const invoiceDate = new Date(dueDate);
+      invoiceDate.setDate(invoiceDate.getDate() - 30);
+
+      mockInvoices.push({
+        id: `due-${invoiceCounter}`,
+        invoice_number: `INV-2025-${String(invoiceCounter).padStart(4, '0')}`,
+        vendor_name_snapshot: vendors[Math.floor(Math.random() * vendors.length)],
+        invoice_date: invoiceDate.toISOString().split('T')[0],
+        due_date: dueDate.toISOString().split('T')[0],
+        currency: 'GBP',
+        total: Math.floor(Math.random() * (bucket.maxAmount - bucket.minAmount) + bucket.minAmount),
+        status: 'pending',
+        match_status: 'matched',
+        vendor_requires_po: Math.random() > 0.4,
+        vendor_is_verified: true,
+        approval_status: 'approved',
+        po_numbers_cached: Math.random() > 0.3 ? [`PO-2025-${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`] : [],
+        gr_numbers: []
+      });
+      invoiceCounter++;
+    }
+  });
+
+  return mockInvoices;
+};
+
+// Generate mock blocked invoices for demonstration
+const generateMockBlockedInvoices = (): Invoice[] => {
+  const now = new Date();
+  const vendors = ['TechSupply Co', 'Global Services Inc', 'Industrial Parts Ltd', 'Office Supplies Direct', 'Maintenance Pro', 'Software Solutions GmbH'];
+  const mockInvoices: Invoice[] = [];
+
+  // Generate 5 blocked invoices with different exception reasons
+  for (let i = 1; i <= 5; i++) {
+    const invoiceDate = new Date(now);
+    invoiceDate.setDate(invoiceDate.getDate() - Math.floor(Math.random() * 20 + 5)); // 5-25 days ago
+
+    const dueDate = new Date(invoiceDate);
+    dueDate.setDate(dueDate.getDate() + 30);
+
+    mockInvoices.push({
+      id: `blocked-${i}`,
+      invoice_number: `INV-2025-${String(5000 + i).padStart(4, '0')}`,
+      vendor_name_snapshot: vendors[Math.floor(Math.random() * vendors.length)],
+      invoice_date: invoiceDate.toISOString().split('T')[0],
+      due_date: dueDate.toISOString().split('T')[0],
+      currency: 'GBP',
+      total: Math.floor(Math.random() * 40000 + 5000), // £5k-45k range
+      status: 'requires_review', // Blocked status
+      match_status: 'exception',
+      po_numbers_cached: Math.random() > 0.3 ? [`PO-2025-${String(3000 + i).padStart(4, '0')}`] : [],
+      gr_numbers: Math.random() > 0.5 ? [`GR-2025-${String(2000 + i).padStart(4, '0')}`] : [],
+      created_at: invoiceDate.toISOString(),
+      vendor_requires_po: true,
+      vendor_is_verified: Math.random() > 0.2,
+      vendor_id: `vendor-${Math.floor(Math.random() * 20) + 1}`
+    });
+  }
+
+  return mockInvoices;
+};
 
 export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvoicesClientProps) {
-  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices);
-  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>(initialInvoices);
+  // Combine initial invoices with mock overdue, due soon, and blocked ones for demonstration
+  const combinedInvoices = [...(initialInvoices || []), ...generateMockOverdueInvoices(), ...generateMockDueSoonInvoices(), ...generateMockBlockedInvoices()];
+  const [invoices, setInvoices] = useState<Invoice[]>(combinedInvoices);
+  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>(combinedInvoices);
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
@@ -79,19 +212,71 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   const [archivingInvoice, setArchivingInvoice] = useState<{ id: string; number: string } | null>(null);
   const [isArchiving, setIsArchiving] = useState(false);
 
+  // New states for the updated design
+  const [activeView, setActiveView] = useState<'all' | 'po' | 'non-po' | 'parked'>('all');
+  const [dataCardsExpanded, setDataCardsExpanded] = useState(true);
+  const [activeQuickFilters, setActiveQuickFilters] = useState<Set<string>>(new Set());
+  const [sidePanelOpen, setSidePanelOpen] = useState(false);
+  const [selectedMetric, setSelectedMetric] = useState<'blocked' | 'overdue' | 'dueSoon' | null>(null);
+
   // Filter states
-  const [selectedTimeFilter, setSelectedTimeFilter] = useState('30days');
   const [selectedVendor, setSelectedVendor] = useState('all');
-  const [selectedDueDate, setSelectedDueDate] = useState('all');
-  const [selectedPriority, setSelectedPriority] = useState('all');
-  const [selectedException, setSelectedException] = useState('all');
+  const [selectedPOType, setSelectedPOType] = useState('all');
 
   const router = useRouter();
+
+  // Calculate metrics from invoice data
+  const metrics = useMemo(() => {
+    const now = new Date();
+    const openBlocked = invoices.filter(inv =>
+      inv.status === 'requires_review' || inv.status === 'needs_review'
+    );
+    const overdue = invoices.filter(inv => {
+      const dueDate = new Date(inv.due_date);
+      return dueDate < now && inv.status !== 'paid';
+    });
+    // Due soon: invoices due within next 7 days
+    const dueSoon = invoices.filter(inv => {
+      const dueDate = new Date(inv.due_date);
+      const daysUntilDue = Math.floor((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return daysUntilDue >= 0 && daysUntilDue <= 7 && inv.status !== 'paid';
+    });
+
+    return {
+      openBlocked: { count: openBlocked.length, value: openBlocked.reduce((sum, inv) => sum + inv.total, 0) },
+      overdue: { count: overdue.length, value: overdue.reduce((sum, inv) => sum + inv.total, 0) },
+      dueSoon: { count: dueSoon.length, value: dueSoon.reduce((sum, inv) => sum + inv.total, 0) }
+    };
+  }, [invoices]);
+
+  // Calculate quick filter counts
+  const quickFilterCounts = useMemo(() => {
+    const now = new Date();
+    return {
+      'tolerance': invoices.filter(inv => inv.total > 10000).length, // Combined price/qty tolerance
+      'line-mismatch': Math.floor(Math.random() * 5) + 1, // Mock UOM/line mismatch data
+      'po-gr-missing': invoices.filter(inv => !inv.gr_numbers || inv.gr_numbers.length === 0 || !inv.po_numbers_cached || inv.po_numbers_cached.length === 0).length,
+      'overdue': invoices.filter(inv => {
+        const dueDate = new Date(inv.due_date);
+        return dueDate < now && inv.status !== 'paid';
+      }).length
+    };
+  }, [invoices]);
 
   // Get unique vendors from invoices
   const uniqueVendors = useMemo(() => {
     const vendors = new Set(invoices.map(inv => inv.vendor_name_snapshot).filter(Boolean));
     return Array.from(vendors).sort();
+  }, [invoices]);
+
+  // Calculate view counts
+  const viewCounts = useMemo(() => {
+    return {
+      all: invoices.length,
+      po: invoices.filter(inv => inv.po_numbers_cached && inv.po_numbers_cached.length > 0).length,
+      'non-po': invoices.filter(inv => !inv.po_numbers_cached || inv.po_numbers_cached.length === 0).length,
+      parked: invoices.filter(inv => inv.status === 'on_hold' || inv.status === 'parked').length
+    };
   }, [invoices]);
 
   // Calculate pipeline stages when invoices change
@@ -105,19 +290,35 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   useEffect(() => {
     let filtered = [...invoices];
 
-    // Time filter
-    if (selectedTimeFilter !== 'all' && selectedTimeFilter !== 'custom') {
-      const daysAgo = timeFilters.find(f => f.id === selectedTimeFilter)?.value;
-      if (daysAgo !== null && daysAgo !== undefined && daysAgo >= 0) {
-        const cutoffDate = new Date();
-        cutoffDate.setDate(cutoffDate.getDate() - daysAgo);
-        cutoffDate.setHours(0, 0, 0, 0);
+    // View filter (All, PO, Non-PO, Parked)
+    if (activeView === 'po') {
+      filtered = filtered.filter(inv => inv.po_numbers_cached && inv.po_numbers_cached.length > 0);
+    } else if (activeView === 'non-po') {
+      filtered = filtered.filter(inv => !inv.po_numbers_cached || inv.po_numbers_cached.length === 0);
+    } else if (activeView === 'parked') {
+      filtered = filtered.filter(inv => inv.status === 'on_hold' || inv.status === 'parked');
+    }
 
-        filtered = filtered.filter(invoice => {
-          const invoiceDate = new Date(invoice.invoice_date);
-          return invoiceDate >= cutoffDate;
-        });
-      }
+    // Apply quick filters
+    const now = new Date();
+    if (activeQuickFilters.has('tolerance')) {
+      filtered = filtered.filter(inv => inv.total > 10000); // Price/qty tolerance threshold
+    }
+    if (activeQuickFilters.has('line-mismatch')) {
+      // Mock filter for line mismatches - in real app would check line-level data
+      filtered = filtered.filter(inv => Math.random() > 0.7);
+    }
+    if (activeQuickFilters.has('po-gr-missing')) {
+      filtered = filtered.filter(inv =>
+        !inv.gr_numbers || inv.gr_numbers.length === 0 ||
+        !inv.po_numbers_cached || inv.po_numbers_cached.length === 0
+      );
+    }
+    if (activeQuickFilters.has('overdue')) {
+      filtered = filtered.filter(inv => {
+        const dueDate = new Date(inv.due_date);
+        return dueDate < now && inv.status !== 'paid';
+      });
     }
 
     // Search filter
@@ -137,43 +338,17 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       filtered = filtered.filter(invoice => invoice.vendor_name_snapshot === selectedVendor);
     }
 
-    // Due date filter
-    if (selectedDueDate !== 'all') {
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-
-      filtered = filtered.filter(invoice => {
-        const dueDate = new Date(invoice.due_date);
-        dueDate.setHours(0, 0, 0, 0);
-        const daysDiff = Math.ceil((dueDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-
-        switch(selectedDueDate) {
-          case 'overdue':
-            return daysDiff < 0;
-          case 'today':
-            return daysDiff === 0;
-          case 'week':
-            return daysDiff >= 0 && daysDiff <= 7;
-          case 'month':
-            return daysDiff >= 0 && daysDiff <= 30;
-          default:
-            return true;
-        }
-      });
-    }
-
-    // Exception filter
-    if (selectedException !== 'all') {
-      if (selectedException === 'exceptions') {
-        filtered = filtered.filter(invoice => invoice.match_status === 'exception');
-      } else {
-        // Map exception types to match_status values
-        filtered = filtered.filter(invoice => invoice.status === selectedException);
+    // PO Type filter
+    if (selectedPOType !== 'all') {
+      if (selectedPOType === 'po') {
+        filtered = filtered.filter(invoice => invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0);
+      } else if (selectedPOType === 'non-po') {
+        filtered = filtered.filter(invoice => !invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0);
       }
     }
 
     setFilteredInvoices(filtered);
-  }, [searchQuery, invoices, selectedTimeFilter, selectedVendor, selectedDueDate, selectedPriority, selectedException]);
+  }, [searchQuery, invoices, activeView, selectedVendor, selectedPOType, activeQuickFilters]);
 
   const handleUploadComplete = useCallback((invoiceId: string) => {
     router.push(`/invoices/${invoiceId}`);
@@ -272,114 +447,208 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
     setSelectedInvoices(new Set());
   };
 
+  const toggleQuickFilter = (filterId: string) => {
+    setActiveQuickFilters(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(filterId)) {
+        newSet.delete(filterId);
+      } else {
+        newSet.add(filterId);
+      }
+      return newSet;
+    });
+  };
+
+  const formatValue = (value: number) => {
+    if (value >= 1000000) {
+      return `$${(value / 1000000).toFixed(1)}M`;
+    } else if (value >= 1000) {
+      return `$${(value / 1000).toFixed(0)}K`;
+    }
+    return `$${value.toFixed(0)}`;
+  };
+
+  const handleMetricClick = (metric: 'blocked' | 'overdue' | 'dueSoon') => {
+    setSelectedMetric(metric);
+    setSidePanelOpen(true);
+  };
+
+  const closeSidePanel = () => {
+    setSidePanelOpen(false);
+    setTimeout(() => setSelectedMetric(null), 300);
+  };
+
   return (
     <>
       {/* Header with Add Invoice button */}
-      <div className="mb-4 flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-gray-950">Invoices</h1>
+      <div className="mb-4 flex items-center justify-between">
+        <h1 className="text-2xl font-bold text-gray-950">Invoice Management</h1>
+
         <button
           onClick={() => setUploadDialogOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-purple-900 text-white rounded-md hover:bg-purple-800"
+          className="flex items-center gap-2 px-3 py-1.5 bg-purple-900 text-white text-sm rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
         >
           <Plus className="h-4 w-4" />
           Add Invoice
         </button>
       </div>
 
-      {/* Invoice Pipeline */}
-      <InvoicePipeline
-        stages={pipelineStages}
-        loading={pipelineLoading}
-        onStageClick={() => {}}
-      />
+      {/* Metrics strip bar */}
+      <div className="mb-4 bg-white rounded-lg border border-gray-200 shadow-sm">
+        <div className="flex items-center divide-x divide-gray-200">
+          {/* Due soon metric */}
+          <button
+            onClick={() => handleMetricClick('dueSoon')}
+            className="flex items-center gap-2 px-5 py-4 hover:bg-purple-50 transition-colors flex-1 rounded-l-lg"
+          >
+            <Clock className="h-4 w-4 text-purple-900" />
+            <span className="text-sm text-gray-950">
+              <span className="font-semibold">{metrics.dueSoon.count}</span> due soon
+              <span className="text-gray-600 ml-1">• {formatValue(metrics.dueSoon.value)}</span>
+            </span>
+          </button>
+
+          {/* Overdue value metric */}
+          <button
+            onClick={() => handleMetricClick('overdue')}
+            className="flex items-center gap-2 px-5 py-4 hover:bg-purple-50 transition-colors flex-1"
+          >
+            <Clock className="h-4 w-4 text-purple-900" />
+            <span className="text-sm text-gray-950">
+              <span className="font-semibold">{metrics.overdue.count}</span> overdue
+              <span className="text-gray-600 ml-1">• {formatValue(metrics.overdue.value)}</span>
+            </span>
+          </button>
+
+          {/* Open blocked metric */}
+          <button
+            onClick={() => handleMetricClick('blocked')}
+            className="flex items-center gap-2 px-5 py-4 hover:bg-purple-50 transition-colors flex-1 rounded-r-lg"
+          >
+            <AlertTriangle className="h-4 w-4 text-red-500" />
+            <span className="text-sm text-gray-950">
+              <span className="font-semibold">{metrics.openBlocked.count}</span> blocked
+              <span className="text-gray-600 ml-1">• {formatValue(metrics.openBlocked.value)}</span>
+            </span>
+          </button>
+        </div>
+      </div>
 
       {/* Search bar and filter pills */}
       <div className="mb-4">
-        <div className="flex items-center gap-2">
-          <div className="relative w-48">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500" />
-            <input
-              type="search"
-              placeholder="Search..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9 pr-3 py-2 w-full border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-purple-500"
-            />
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2">
+            <div className="relative w-48">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-600" />
+              <input
+                type="search"
+                placeholder="Search invoices..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 pr-2.5 py-1.5 w-full border border-gray-300 rounded-md text-xs placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+            </div>
+            <button className="px-2.5 py-1.5 bg-white border border-purple-600 text-purple-600 text-xs rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
+              <Filter className="h-3.5 w-3.5 inline mr-1" />
+              Columns & Filters
+            </button>
           </div>
-          <button className="px-3 py-2 bg-white border border-purple-600 text-purple-600 text-sm rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
-            <Filter className="h-4 w-4 inline mr-1.5" />
-            Columns & Filters
-          </button>
 
-          {/* Filter Pills */}
-          <div className="flex items-center gap-2 ml-auto">
-            {/* Vendor Filter */}
+          {/* Quick filter pills with vendor filter first */}
+          <div className="flex items-center gap-1.5">
+            {/* Vendor Filter - First and expandable */}
+            <div className="relative">
+            <button
+              className={cn(
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
+                selectedVendor !== 'all'
+                  ? "bg-purple-100 text-purple-700 border-purple-400"
+                  : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
+              )}
+              style={{
+                minWidth: selectedVendor === 'all' ? '100px' : '140px',
+                maxWidth: selectedVendor === 'all' ? '100px' : '140px'
+              }}
+            >
+              {selectedVendor !== 'all' && (
+                <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
+              )}
+              <span className="truncate flex-1 text-left">{selectedVendor === 'all' ? 'All Vendors' : selectedVendor}</span>
+              <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+            </button>
             <select
               value={selectedVendor}
               onChange={(e) => setSelectedVendor(e.target.value)}
-              className={cn(
-                "px-4 py-2 rounded-full text-sm font-medium transition-colors border appearance-none cursor-pointer",
-                selectedVendor !== 'all'
-                  ? "bg-purple-100 text-purple-900 border-purple-300"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-              )}
+              className="absolute inset-0 opacity-0 cursor-pointer"
             >
               <option value="all">All Vendors</option>
               {uniqueVendors.map(vendor => (
                 <option key={vendor} value={vendor}>{vendor}</option>
               ))}
             </select>
+          </div>
 
-            {/* Due Date Filter */}
-            <select
-              value={selectedDueDate}
-              onChange={(e) => setSelectedDueDate(e.target.value)}
+          {/* PO Type Filter */}
+          <div className="relative">
+            {selectedPOType !== 'all' && (
+              <CheckCircle2 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-green-600 pointer-events-none z-10" />
+            )}
+            <button
               className={cn(
-                "px-4 py-2 rounded-full text-sm font-medium transition-colors border appearance-none cursor-pointer",
-                selectedDueDate !== 'all'
-                  ? "bg-purple-100 text-purple-900 border-purple-300"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative",
+                selectedPOType !== 'all'
+                  ? "bg-purple-100 text-purple-700 border-purple-400"
+                  : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
               )}
+              style={{
+                minWidth: '110px'
+              }}
             >
-              <option value="all">All Due Dates</option>
-              <option value="overdue">Overdue</option>
-              <option value="today">Due Today</option>
-              <option value="week">Due This Week</option>
-              <option value="month">Due This Month</option>
+              <span className={cn(selectedPOType !== 'all' && "pl-4")}>{selectedPOType === 'all' ? 'All Types' : selectedPOType === 'po' ? 'PO' : 'Non-PO'}</span>
+              <ChevronDown className="h-3 w-3 ml-auto" />
+            </button>
+            <select
+              value={selectedPOType}
+              onChange={(e) => setSelectedPOType(e.target.value)}
+              className="absolute inset-0 opacity-0 cursor-pointer"
+              style={{
+                minWidth: '110px'
+              }}
+            >
+              <option value="all">All Types</option>
+              <option value="po">PO</option>
+              <option value="non-po">Non-PO</option>
             </select>
+          </div>
 
-            {/* Priority Filter */}
-            <select
-              value={selectedPriority}
-              onChange={(e) => setSelectedPriority(e.target.value)}
-              className={cn(
-                "px-4 py-2 rounded-full text-sm font-medium transition-colors border appearance-none cursor-pointer",
-                selectedPriority !== 'all'
-                  ? "bg-purple-100 text-purple-900 border-purple-300"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-              )}
-            >
-              <option value="all">All Priorities</option>
-              <option value="high">High Priority</option>
-              <option value="medium">Medium Priority</option>
-              <option value="low">Low Priority</option>
-            </select>
+          {/* Vertical divider */}
+          <div className="h-5 w-px bg-gray-200" />
 
-            {/* Exception Filter */}
-            <select
-              value={selectedException}
-              onChange={(e) => setSelectedException(e.target.value)}
-              className={cn(
-                "px-4 py-2 rounded-full text-sm font-medium transition-colors border appearance-none cursor-pointer",
-                selectedException !== 'all'
-                  ? "bg-purple-100 text-purple-900 border-purple-300"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-              )}
-            >
-              {exceptionTypes.map(type => (
-                <option key={type.id} value={type.value}>{type.label}</option>
-              ))}
-            </select>
+          {/* Other quick filters */}
+          {quickFilterOptions.map((filter) => {
+            const count = quickFilterCounts[filter.id as keyof typeof quickFilterCounts];
+            const isActive = activeQuickFilters.has(filter.id);
+            const Icon = isActive ? CheckCircle2 : filter.icon;
+
+            return (
+              <button
+                key={filter.id}
+                onClick={() => toggleQuickFilter(filter.id)}
+                className={cn(
+                  "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border",
+                  isActive
+                    ? "bg-purple-100 text-purple-700 border-purple-400"
+                    : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
+                )}
+              >
+                <Icon className={cn(
+                  "h-3 w-3",
+                  isActive ? "text-green-600" : ""
+                )} />
+                <span>{filter.label}</span>
+              </button>
+            );
+          })}
           </div>
         </div>
       </div>
@@ -452,6 +721,211 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
         invoiceNumber={archivingInvoice?.number || ''}
         isLoading={isArchiving}
       />
+
+      {/* Side panel for graphs */}
+      <div className={cn(
+        "fixed inset-y-0 right-0 z-50 w-[480px] bg-white shadow-xl transform transition-transform duration-300 ease-in-out",
+        sidePanelOpen ? "translate-x-0" : "translate-x-full"
+      )}>
+        {/* Panel header */}
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
+          <div className="flex items-center gap-2">
+            {(selectedMetric === 'overdue' || selectedMetric === 'dueSoon') && <CalendarClock className="h-5 w-5 text-purple-600" />}
+            <h2 className="text-lg font-semibold text-gray-900">
+              {selectedMetric === 'blocked' && 'Open Blocked Analysis'}
+              {selectedMetric === 'overdue' && 'Overdue Invoices'}
+              {selectedMetric === 'dueSoon' && 'Due Soon Analysis'}
+            </h2>
+          </div>
+          <button
+            onClick={closeSidePanel}
+            className="p-1 hover:bg-gray-100 rounded-md transition-colors"
+          >
+            <X className="h-5 w-5 text-gray-500" />
+          </button>
+        </div>
+
+        {/* Panel content */}
+        <div className="px-6 py-4 overflow-y-auto h-[calc(100vh-80px)]">
+          {selectedMetric === 'overdue' ? (
+            <>
+              <Card className="border border-gray-200">
+                <CardContent className="p-4">
+                  <InvoiceAgingChart
+                    invoices={invoices}
+                    onBucketClick={(bucket) => {
+                      console.log(`View ${bucket} invoices`);
+                      // Could add filtering logic here
+                    }}
+                  />
+                </CardContent>
+              </Card>
+
+              <div className="mt-6">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Analysis Details</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Metric type</span>
+                    <span className="text-sm font-medium text-gray-900">Payment delays</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Last updated</span>
+                    <span className="text-sm font-medium text-gray-900">Just now</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Critical invoices</span>
+                    <span className="text-sm font-medium text-red-600">
+                      {invoices.filter(inv => {
+                        const dueDate = new Date(inv.due_date);
+                        const now = new Date();
+                        const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+                        return daysOverdue > 90 && inv.status !== 'paid';
+                      }).length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">All invoices</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {invoices.filter(inv => {
+                        const dueDate = new Date(inv.due_date);
+                        const now = new Date();
+                        const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+                        return daysOverdue >= 0 && inv.status !== 'paid';
+                      }).length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : selectedMetric === 'dueSoon' ? (
+            <>
+              <Card className="border border-gray-200">
+                <CardContent className="p-4">
+                  <InvoiceDueSoonChart
+                    invoices={invoices}
+                    onBucketClick={(bucket) => {
+                      console.log(`View ${bucket} invoices`);
+                      // Could add filtering logic here
+                    }}
+                  />
+                </CardContent>
+              </Card>
+
+              <div className="mt-6">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Analysis Details</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Metric type</span>
+                    <span className="text-sm font-medium text-gray-900">Upcoming payments</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Last updated</span>
+                    <span className="text-sm font-medium text-gray-900">Just now</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Due today</span>
+                    <span className="text-sm font-medium text-orange-600">
+                      {invoices.filter(inv => {
+                        const dueDate = new Date(inv.due_date);
+                        const now = new Date();
+                        const daysUntilDue = Math.floor((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                        return daysUntilDue === 0 && inv.status !== 'paid';
+                      }).length}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Next 7 days</span>
+                    <span className="text-sm font-medium text-green-600">
+                      {invoices.filter(inv => {
+                        const dueDate = new Date(inv.due_date);
+                        const now = new Date();
+                        const daysUntilDue = Math.floor((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+                        return daysUntilDue >= 0 && daysUntilDue <= 7 && inv.status !== 'paid';
+                      }).length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : selectedMetric === 'blocked' ? (
+            <>
+              <Card className="border border-gray-200">
+                <CardContent className="p-4">
+                  <BlockedInvoiceAnalysis
+                    invoices={invoices}
+                    onCategoryClick={(category) => {
+                      console.log(`View ${category} exceptions`);
+                      // Could add filtering logic here
+                    }}
+                  />
+                </CardContent>
+              </Card>
+
+              <div className="mt-6">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Analysis Details</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Metric type</span>
+                    <span className="text-sm font-medium text-gray-900">Exception handling</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Last updated</span>
+                    <span className="text-sm font-medium text-gray-900">Just now</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Most common issue</span>
+                    <span className="text-sm font-medium text-orange-600">PO/Invoice Mismatch</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Avg resolution time</span>
+                    <span className="text-sm font-medium text-gray-900">3.5 days</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Total blocked</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {invoices.filter(inv => inv.status === 'requires_review' || inv.status === 'needs_review').length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="h-64 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-center">
+                <p className="text-gray-500 text-sm">Graph placeholder</p>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-sm font-medium text-gray-900 mb-3">Details</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Metric type</span>
+                    <span className="text-sm font-medium text-gray-900">
+                      {selectedMetric === 'blocked' && 'Exceptions'}
+                    </span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Last updated</span>
+                    <span className="text-sm font-medium text-gray-900">Just now</span>
+                  </div>
+                  <div className="flex justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">Trend</span>
+                    <span className="text-sm font-medium text-gray-900">↑ Increasing</span>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Overlay when side panel is open */}
+      {sidePanelOpen && (
+        <div
+          className="fixed inset-0 bg-black bg-opacity-25 z-40 transition-opacity"
+          onClick={closeSidePanel}
+        />
+      )}
     </>
   );
 }

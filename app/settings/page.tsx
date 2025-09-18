@@ -1,5 +1,6 @@
 'use client';
 
+import { useState } from 'react';
 import AppLayout from '@/app/components/AppLayout';
 
 interface SettingsContentProps {
@@ -8,6 +9,8 @@ interface SettingsContentProps {
 }
 
 function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
+  const [chartsInDrawer, setChartsInDrawer] = useState(false);
+
   return (
     <div className="w-full p-4 sm:px-6 lg:px-8">
       {currentView === 'automation' ? (
@@ -47,6 +50,34 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                 <div className="flex items-center justify-between rounded bg-gray-50 p-3">
                   <span className="text-sm text-gray-700">Automatic attachment extraction</span>
                   <span className="text-xs text-gray-500">Coming soon</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Display Settings */}
+            <div className="rounded-lg border border-gray-200 bg-white p-6">
+              <h2 className="mb-4 text-lg font-semibold text-gray-900">Display Settings</h2>
+              <p className="mb-4 text-sm text-gray-600">Customize the display of invoice management features</p>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between rounded bg-gray-50 p-4">
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Charts in a drawer</span>
+                    <p className="text-xs text-gray-500 mt-1">(on invoice management page)</p>
+                  </div>
+                  <button
+                    onClick={() => setChartsInDrawer(!chartsInDrawer)}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      chartsInDrawer ? 'bg-purple-600' : 'bg-gray-200'
+                    }`}
+                    aria-pressed={chartsInDrawer}
+                    aria-label="Toggle charts in drawer"
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        chartsInDrawer ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
                 </div>
               </div>
             </div>

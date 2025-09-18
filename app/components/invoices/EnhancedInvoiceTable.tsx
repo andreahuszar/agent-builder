@@ -203,76 +203,76 @@ export function EnhancedInvoiceTable({
                   )}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('status')}
-                  className="flex items-center gap-1 hover:text-gray-700"
+                  className="flex items-center gap-1 hover:text-gray-900"
                 >
                   Status
                   {getSortIcon('status')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('vendor_name_snapshot')}
-                  className="flex items-center gap-1 hover:text-gray-700"
+                  className="flex items-center gap-1 hover:text-gray-900"
                 >
                   Vendor
                   {getSortIcon('vendor_name_snapshot')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('invoice_number')}
-                  className="flex items-center gap-1 hover:text-gray-700"
+                  className="flex items-center gap-1 hover:text-gray-900"
                 >
-                  Invoice
+                  Invoice No.
                   {getSortIcon('invoice_number')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('invoice_date')}
-                  className="flex items-center gap-1 hover:text-gray-700"
+                  className="flex items-center gap-1 hover:text-gray-900"
                 >
                   Invoice Date
                   {getSortIcon('invoice_date')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('due_date')}
-                  className="flex items-center gap-1 hover:text-gray-700"
+                  className="flex items-center gap-1 hover:text-gray-900"
                 >
                   Due Date
                   {getSortIcon('due_date')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('total')}
-                  className="flex items-center gap-1 hover:text-gray-700"
+                  className="flex items-center gap-1 hover:text-gray-900"
                 >
                   Total
                   {getSortIcon('total')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('match_status')}
-                  className="flex items-center gap-1 hover:text-gray-700"
+                  className="flex items-center gap-1 hover:text-gray-900"
                 >
                   Match Status
                   {getSortIcon('match_status')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 PO Number
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 GR
               </th>
-              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
                 Actions
               </th>
             </tr>
@@ -315,13 +315,19 @@ export function EnhancedInvoiceTable({
                     {invoice.vendor_name_snapshot || '-'}
                   </td>
                   <td className="px-6 py-1.5 whitespace-nowrap">
-                    <Link
-                      href={`/invoices/${invoice.id}`}
-                      className="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1"
-                    >
-                      <FileText className="h-3.5 w-3.5 text-purple-700" />
-                      {invoice.invoice_number}
-                    </Link>
+                    {/* Check if this is a mock invoice (starts with 'mock-', 'due-', or 'blocked-') */}
+                    {invoice.id.startsWith('mock-') || invoice.id.startsWith('due-') || invoice.id.startsWith('blocked-') ? (
+                      <span className="text-sm text-gray-950 font-medium">
+                        {invoice.invoice_number}
+                      </span>
+                    ) : (
+                      <Link
+                        href={`/invoices/${invoice.id}`}
+                        className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                      >
+                        {invoice.invoice_number}
+                      </Link>
+                    )}
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950">
                     {formatDate(invoice.invoice_date)}
@@ -346,13 +352,22 @@ export function EnhancedInvoiceTable({
                     {invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
                       <div className="flex flex-col gap-1">
                         {invoice.po_numbers_cached.map((poNumber) => (
-                          <button
-                            key={poNumber}
-                            onClick={() => onPOClick?.(poNumber)}
-                            className="text-purple-600 hover:text-purple-700 text-left text-sm font-medium"
-                          >
-                            {poNumber}
-                          </button>
+                          invoice.id.startsWith('mock-') || invoice.id.startsWith('due-') || invoice.id.startsWith('blocked-') ? (
+                            <span
+                              key={poNumber}
+                              className="text-gray-950 text-sm font-medium"
+                            >
+                              {poNumber}
+                            </span>
+                          ) : (
+                            <button
+                              key={poNumber}
+                              onClick={() => onPOClick?.(poNumber)}
+                              className="text-purple-600 hover:text-purple-700 text-left text-sm font-medium"
+                            >
+                              {poNumber}
+                            </button>
+                          )
                         ))}
                       </div>
                     ) : (
