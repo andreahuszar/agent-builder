@@ -328,7 +328,7 @@ export function EnhancedInvoiceTable({
               </th>
             </tr>
           </thead>
-          <tbody className="divide-y divide-gray-200">
+          <tbody className="divide-y divide-gray-100">
             {sortedInvoices.map((invoice) => {
               const isSelected = selectedInvoices.has(invoice.id);
               return (
