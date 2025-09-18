@@ -144,13 +144,13 @@ export function EnhancedInvoiceTable({
 
     // Check exact matches first
     if (normalizedStatus === 'draft' || normalizedStatus === 'new') {
-      return 'bg-gray-100 text-gray-700';
+      return 'bg-gray-50 text-gray-700 ring-1 ring-gray-200';
     }
     if (normalizedStatus === 'requires_review' || normalizedStatus === 'needs_review' || normalizedStatus === 'needs review' || normalizedStatus === 'pending') {
-      return 'bg-amber-100 text-amber-700';
+      return 'bg-orange-50 text-orange-700 ring-1 ring-orange-200';
     }
     if (normalizedStatus === 'ready_for_payment' || normalizedStatus === 'ready_to_pay' || normalizedStatus === 'ready to pay') {
-      return 'bg-green-100 text-green-700';
+      return 'bg-green-50 text-green-700 ring-1 ring-green-200';
     }
 
     // Then check for partial matches - but exclude the ones we've already handled
@@ -166,7 +166,7 @@ export function EnhancedInvoiceTable({
       return 'bg-red-100 text-red-700';
     }
     if (normalizedStatus.includes('hold')) {
-      return 'bg-yellow-100 text-yellow-700';
+      return 'bg-orange-100 text-orange-700';
     }
 
     return 'bg-gray-100 text-gray-700';
@@ -179,13 +179,13 @@ export function EnhancedInvoiceTable({
       return 'bg-green-100 text-green-700';
     }
     if (normalizedStatus === 'partial' || normalizedStatus === 'partial_match') {
-      return 'bg-yellow-100 text-yellow-700';
+      return 'bg-orange-100 text-orange-700';
     }
     if (normalizedStatus === 'exception' || normalizedStatus === 'no_match' || normalizedStatus === 'mismatch' || normalizedStatus === 'not_matched') {
       return 'bg-red-100 text-red-700';
     }
-    if (normalizedStatus === 'pending' || normalizedStatus === 'in_progress') {
-      return 'bg-blue-100 text-blue-700';
+    if (normalizedStatus === 'pending' || normalizedStatus === 'in_progress' || normalizedStatus === 'needs_review') {
+      return 'bg-orange-100 text-orange-700';
     }
     return 'bg-gray-100 text-gray-700';
   };
@@ -393,7 +393,7 @@ export function EnhancedInvoiceTable({
                     {formatDate(invoice.due_date)}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {(() => {
+                    {typeof window !== 'undefined' ? (() => {
                       const aging = calculateAging(invoice.due_date);
                       if (aging > 0) {
                         return <span className="text-red-600">{aging}</span>;
@@ -402,7 +402,7 @@ export function EnhancedInvoiceTable({
                       } else {
                         return <span className="text-green-600">{Math.abs(aging)}</span>;
                       }
-                    })()}
+                    })() : '-'}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-bold text-gray-950 text-right">
                     {formatCurrency(invoice.total, invoice.currency)}

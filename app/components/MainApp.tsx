@@ -17,7 +17,7 @@ interface InvoiceProcessingContentProps {
   currentModule?: string;
 }
 
-function InvoiceProcessingContent({ currentView = 'launchpad' }: InvoiceProcessingContentProps) {
+function InvoiceProcessingContent({ currentView = 'invoices' }: InvoiceProcessingContentProps) {
   const [invoices, setInvoices] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [loading, setLoading] = useState(false);

@@ -232,13 +232,19 @@ const generateMockBlockedInvoices = (): Invoice[] => {
 };
 
 export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvoicesClientProps) {
-  // Combine initial invoices with mock overdue, due soon, and blocked ones for demonstration
-  const combinedInvoices = [...(initialInvoices || []), ...generateMockOverdueInvoices(), ...generateMockDueSoonInvoices(), ...generateMockBlockedInvoices()];
-  const [invoices, setInvoices] = useState<Invoice[]>(combinedInvoices);
-  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>(combinedInvoices);
+  // Initialize with just the initial invoices first
+  const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices || []);
+  const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>(initialInvoices || []);
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+
+  // Add mock data only on the client side after mount
+  useEffect(() => {
+    const combinedInvoices = [...(initialInvoices || []), ...generateMockOverdueInvoices(), ...generateMockDueSoonInvoices(), ...generateMockBlockedInvoices()];
+    setInvoices(combinedInvoices);
+    setFilteredInvoices(combinedInvoices);
+  }, [initialInvoices]);
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [selectedPO, setSelectedPO] = useState<any>(null);
@@ -741,7 +747,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
                 className="pl-8 pr-2.5 py-1.5 w-full border border-gray-300 rounded-md text-xs placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
               />
             </div>
-            <button className="px-2.5 py-1.5 bg-white border border-purple-600 text-purple-600 text-xs rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
+            <button className="px-2.5 py-1.5 bg-white border border-purple-600 text-purple-600 text-xs font-medium rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
               <Filter className="h-3.5 w-3.5 inline mr-1" />
               Columns & Filters
             </button>

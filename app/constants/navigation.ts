@@ -101,13 +101,13 @@ export const TAB_ITEMS: TabItem[] = [
 // Module-specific pill configurations
 export const MODULE_PILLS: Record<string, TabItem[]> = {
   'invoice-processing': [
-    { id: 'launchpad', label: 'Launchpad', href: '/' },
     { id: 'invoices', label: 'Invoices', href: '/invoices' },
     { id: 'purchase-orders', label: 'Purchase Orders', href: '/purchase-orders' },
     { id: 'goods-receipts', label: 'Goods Receipts', href: '/goods-receipts' },
     { id: 'approvals', label: 'Approvals', href: '/approvals' },
     { id: 'escalations', label: 'Escalations', href: '/escalations' },
-    { id: 'dashboard', label: 'Dashboard', href: '/' },
+    { id: 'dashboard', label: 'Dashboard', href: '/dashboard' },
+    { id: 'launchpad', label: 'Launchpad', href: '/launchpad' },
   ],
   'transactions': [
     { id: 'all', label: 'All Transactions', href: '/transactions' },
