@@ -497,19 +497,13 @@ export function EnhancedInvoiceTable({
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end" className="w-48">
                           <DropdownMenuItem>
-                            <Link href={`/invoices/${invoice.id}`} className="flex items-center gap-2 w-full">
-                              <FileText className="h-4 w-4 text-gray-700" />
-                              View Details
-                            </Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
                             Approve
                           </DropdownMenuItem>
                           <DropdownMenuItem>
-                            Send to Approval
+                            Send for Approval
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            Nudge Approver
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => onDelete?.(invoice.id)}
