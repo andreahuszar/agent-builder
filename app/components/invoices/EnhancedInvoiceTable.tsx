@@ -336,7 +336,7 @@ export function EnhancedInvoiceTable({
                   key={invoice.id}
                   className={cn(
                     "transition-colors",
-                    isSelected ? "bg-purple-50 hover:bg-purple-100" : "hover:bg-gray-50"
+                    isSelected ? "bg-purple-50 hover:bg-purple-100" : "hover:bg-purple-50/70"
                   )}
                 >
                   <td className={cn(
