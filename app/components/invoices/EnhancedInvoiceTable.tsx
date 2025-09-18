@@ -470,7 +470,7 @@ export function EnhancedInvoiceTable({
                     {getMatchStatusReason(invoice)}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-1">
+                    <div className="flex items-center justify-end gap-2">
                       <button
                         className="p-0 hover:bg-gray-100 rounded transition-colors"
                         title="Assign"
