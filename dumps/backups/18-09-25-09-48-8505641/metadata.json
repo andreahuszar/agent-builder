@@ -1,0 +1,19 @@
+{
+  "timestamp": "2025-09-18T08:48:33.828Z",
+  "timestampFormatted": "18-09-25-09-48",
+  "gitCommit": "8505641",
+  "database": "xelix_invoice_dev",
+  "host": "127.0.0.1:5433",
+  "postgresVersion": "16.10",
+  "statistics": {
+    "tables": 40,
+    "rows": 244,
+    "size": "13 MB"
+  },
+  "files": {
+    "schema": "schema.sql",
+    "data": "data.sql",
+    "full": "full.dump"
+  },
+  "description": "Manual backup"
+}

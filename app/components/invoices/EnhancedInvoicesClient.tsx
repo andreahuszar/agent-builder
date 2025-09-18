@@ -37,6 +37,13 @@ import BlockedInvoiceAnalysis from './BlockedInvoiceAnalysis';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { cn } from '@/lib/utils';
 import { getChartsInDrawerPreference } from '@/app/utils/cookies';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/app/components/ui/tooltip';
+import { ToggleGroup, ToggleGroupItem } from '@/app/components/ui/toggle-group';
 
 interface Invoice {
   id: string;
@@ -59,12 +66,38 @@ interface EnhancedInvoicesClientProps {
   initialInvoices: Invoice[];
 }
 
-// Quick filter options
+// Quick filter options with tooltips
 const quickFilterOptions = [
-  { id: 'po-gr-missing', label: 'PO/GR Missing', icon: Tag },
-  { id: 'tolerance', label: '>Tolerance', icon: Tag },
-  { id: 'line-mismatch', label: 'Line Mismatch', icon: Tag },
-  { id: 'overdue', label: 'Overdue', icon: Tag }
+  {
+    id: 'po-missing',
+    label: 'PO Missing',
+    icon: Tag,
+    tooltip: 'Show invoices without purchase orders'
+  },
+  {
+    id: 'tolerance',
+    label: '>Tolerance',
+    icon: Tag,
+    tooltip: 'Show invoices exceeding price/quantity tolerance thresholds'
+  },
+  {
+    id: 'line-mismatch',
+    label: 'Mismatch',
+    icon: Tag,
+    tooltip: 'Show invoices with line-level discrepancies'
+  },
+  {
+    id: 'due-7days',
+    label: '<7 Day Due',
+    icon: Tag,
+    tooltip: 'Show invoices due within 7 days'
+  },
+  {
+    id: 'overdue',
+    label: 'Overdue',
+    icon: Tag,
+    tooltip: 'Show invoices past their due date'
+  }
 ];
 
 // Generate mock overdue invoices for demonstration
@@ -222,7 +255,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
 
   // Filter states
   const [selectedVendor, setSelectedVendor] = useState('all');
-  const [selectedPOType, setSelectedPOType] = useState('all');
+  const [invoiceTypeFilter, setInvoiceTypeFilter] = useState('all');
 
   // Interaction mode states
   const [chartsInDrawer, setChartsInDrawer] = useState(false);
@@ -264,9 +297,16 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   const quickFilterCounts = useMemo(() => {
     const now = new Date();
     return {
+      'po-missing': invoices.filter(inv =>
+        !inv.po_numbers_cached || inv.po_numbers_cached.length === 0
+      ).length,
       'tolerance': invoices.filter(inv => inv.total > 10000).length, // Combined price/qty tolerance
       'line-mismatch': Math.floor(Math.random() * 5) + 1, // Mock UOM/line mismatch data
-      'po-gr-missing': invoices.filter(inv => !inv.gr_numbers || inv.gr_numbers.length === 0 || !inv.po_numbers_cached || inv.po_numbers_cached.length === 0).length,
+      'due-7days': invoices.filter(inv => {
+        const dueDate = new Date(inv.due_date);
+        const daysDiff = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return daysDiff >= 0 && daysDiff <= 7 && inv.status !== 'paid';
+      }).length,
       'overdue': invoices.filter(inv => {
         const dueDate = new Date(inv.due_date);
         return dueDate < now && inv.status !== 'paid';
@@ -301,6 +341,13 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   useEffect(() => {
     let filtered = [...invoices];
 
+    // Apply invoice type filter from header toggle (highest priority)
+    if (invoiceTypeFilter === 'po') {
+      filtered = filtered.filter(inv => inv.po_numbers_cached && inv.po_numbers_cached.length > 0);
+    } else if (invoiceTypeFilter === 'non-po') {
+      filtered = filtered.filter(inv => !inv.po_numbers_cached || inv.po_numbers_cached.length === 0);
+    }
+
     // View filter (All, PO, Non-PO, Parked)
     if (activeView === 'po') {
       filtered = filtered.filter(inv => inv.po_numbers_cached && inv.po_numbers_cached.length > 0);
@@ -319,11 +366,19 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       // Mock filter for line mismatches - in real app would check line-level data
       filtered = filtered.filter(inv => Math.random() > 0.7);
     }
-    if (activeQuickFilters.has('po-gr-missing')) {
+    if (activeQuickFilters.has('po-missing')) {
+      // Filter for invoices without PO numbers
       filtered = filtered.filter(inv =>
-        !inv.gr_numbers || inv.gr_numbers.length === 0 ||
         !inv.po_numbers_cached || inv.po_numbers_cached.length === 0
       );
+    }
+    if (activeQuickFilters.has('due-7days')) {
+      // Filter for invoices due within 7 days
+      filtered = filtered.filter(inv => {
+        const dueDate = new Date(inv.due_date);
+        const daysDiff = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        return daysDiff >= 0 && daysDiff <= 7 && inv.status !== 'paid';
+      });
     }
     if (activeQuickFilters.has('overdue')) {
       filtered = filtered.filter(inv => {
@@ -349,17 +404,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       filtered = filtered.filter(invoice => invoice.vendor_name_snapshot === selectedVendor);
     }
 
-    // PO Type filter
-    if (selectedPOType !== 'all') {
-      if (selectedPOType === 'po') {
-        filtered = filtered.filter(invoice => invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0);
-      } else if (selectedPOType === 'non-po') {
-        filtered = filtered.filter(invoice => !invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0);
-      }
-    }
-
     setFilteredInvoices(filtered);
-  }, [searchQuery, invoices, activeView, selectedVendor, selectedPOType, activeQuickFilters]);
+  }, [searchQuery, invoices, activeView, selectedVendor, activeQuickFilters, invoiceTypeFilter]);
 
   const handleUploadComplete = useCallback((invoiceId: string) => {
     router.push(`/invoices/${invoiceId}`);
@@ -502,101 +548,181 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-950">Invoice Management</h1>
 
-        <button
-          onClick={() => setUploadDialogOpen(true)}
-          className="flex items-center gap-2 px-3 py-1.5 bg-purple-900 text-white text-sm rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-        >
-          <Plus className="h-4 w-4" />
-          Add Invoice
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Invoice Type Toggle */}
+          <ToggleGroup
+            type="single"
+            value={invoiceTypeFilter}
+            onValueChange={(value) => value && setInvoiceTypeFilter(value)}
+            className="bg-white border border-gray-200 p-0.5"
+          >
+            <ToggleGroupItem
+              value="all"
+              className="px-3 py-1 text-xs data-[state=on]:bg-purple-900 data-[state=on]:text-white data-[state=on]:shadow-sm"
+            >
+              All
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="po"
+              className="px-3 py-1 text-xs data-[state=on]:bg-purple-900 data-[state=on]:text-white data-[state=on]:shadow-sm"
+            >
+              PO
+            </ToggleGroupItem>
+            <ToggleGroupItem
+              value="non-po"
+              className="px-3 py-1 text-xs data-[state=on]:bg-purple-900 data-[state=on]:text-white data-[state=on]:shadow-sm"
+            >
+              Non-PO
+            </ToggleGroupItem>
+          </ToggleGroup>
+
+          {/* Add Invoice Button */}
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setUploadDialogOpen(true)}
+                  className="p-1.5 bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                >
+                  <Plus className="h-4 w-4" strokeWidth={2} />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom">
+                Add Invoice
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
 
       {/* Metrics strip bar */}
       <div className="mb-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-        <div className="flex items-center divide-x divide-gray-200">
-          {/* Due soon metric */}
-          <button
-            onClick={() => handleMetricClick('dueSoon')}
-            className="flex items-center gap-2 px-5 py-4 hover:bg-purple-50 transition-colors flex-1 rounded-l-lg"
+        {!chartsInDrawer ? (
+          // Expandable mode - entire banner is clickable with unified hover
+          <div
+            onClick={() => setBannerExpanded(!bannerExpanded)}
+            className={`flex items-center divide-x divide-gray-200 cursor-pointer hover:bg-purple-50 transition-colors ${
+              bannerExpanded ? 'rounded-t-lg' : 'rounded-lg'
+            }`}
           >
-            <Clock className="h-4 w-4 text-purple-900" />
-            <span className="text-sm text-gray-950">
-              <span className="font-semibold">{metrics.dueSoon.count}</span> due soon
-              <span className="text-gray-600 ml-1">• {formatValue(metrics.dueSoon.value)}</span>
-            </span>
-          </button>
+            {/* Due soon metric */}
+            <div className="flex items-center gap-2 px-5 py-4 flex-1">
+              <Clock className="h-4 w-4 text-purple-900" />
+              <span className="text-sm text-gray-950">
+                <span className="font-semibold text-base">{metrics.dueSoon.count}</span> due soon
+                <span className="text-gray-700 ml-1">• {formatValue(metrics.dueSoon.value)}</span>
+              </span>
+            </div>
 
-          {/* Overdue value metric */}
-          <button
-            onClick={() => handleMetricClick('overdue')}
-            className="flex items-center gap-2 px-5 py-4 hover:bg-purple-50 transition-colors flex-1"
-          >
-            <Clock className="h-4 w-4 text-purple-900" />
-            <span className="text-sm text-gray-950">
-              <span className="font-semibold">{metrics.overdue.count}</span> overdue
-              <span className="text-gray-600 ml-1">• {formatValue(metrics.overdue.value)}</span>
-            </span>
-          </button>
+            {/* Overdue value metric */}
+            <div className="flex items-center gap-2 px-5 py-4 flex-1">
+              <Clock className="h-4 w-4 text-purple-900" />
+              <span className="text-sm text-gray-950">
+                <span className="font-semibold text-base">{metrics.overdue.count}</span> overdue
+                <span className="text-gray-700 ml-1">• {formatValue(metrics.overdue.value)}</span>
+              </span>
+            </div>
 
-          {/* Open blocked metric */}
-          <button
-            onClick={() => handleMetricClick('blocked')}
-            className="flex items-center gap-2 px-5 py-4 hover:bg-purple-50 transition-colors flex-1 rounded-r-lg"
-          >
-            <AlertTriangle className="h-4 w-4 text-red-500" />
-            <span className="text-sm text-gray-950">
-              <span className="font-semibold">{metrics.openBlocked.count}</span> blocked
-              <span className="text-gray-600 ml-1">• {formatValue(metrics.openBlocked.value)}</span>
-            </span>
-          </button>
-        </div>
+            {/* Open blocked metric with chevron */}
+            <div className="flex items-center gap-2 px-5 py-4 flex-1">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+              <span className="text-sm text-gray-950 flex-1">
+                <span className="font-semibold text-base">{metrics.openBlocked.count}</span> blocked
+                <span className="text-gray-700 ml-1">• {formatValue(metrics.openBlocked.value)}</span>
+              </span>
+              {bannerExpanded ? (
+                <ChevronUp className="h-3 w-3 text-gray-500 ml-2" />
+              ) : (
+                <ChevronDown className="h-3 w-3 text-gray-500 ml-2" />
+              )}
+            </div>
+          </div>
+        ) : (
+          // Drawer mode - individual buttons with separate hover effects
+          <div className="flex items-center divide-x divide-gray-200">
+            {/* Due soon metric */}
+            <button
+              onClick={() => handleMetricClick('dueSoon')}
+              className="flex items-center gap-2 px-5 py-4 hover:bg-purple-50 transition-colors flex-1 rounded-l-lg"
+            >
+              <Clock className="h-4 w-4 text-purple-900" />
+              <span className="text-sm text-gray-950">
+                <span className="font-semibold text-base">{metrics.dueSoon.count}</span> due soon
+                <span className="text-gray-700 ml-1">• {formatValue(metrics.dueSoon.value)}</span>
+              </span>
+            </button>
+
+            {/* Overdue value metric */}
+            <button
+              onClick={() => handleMetricClick('overdue')}
+              className="flex items-center gap-2 px-5 py-4 hover:bg-purple-50 transition-colors flex-1"
+            >
+              <Clock className="h-4 w-4 text-purple-900" />
+              <span className="text-sm text-gray-950">
+                <span className="font-semibold text-base">{metrics.overdue.count}</span> overdue
+                <span className="text-gray-700 ml-1">• {formatValue(metrics.overdue.value)}</span>
+              </span>
+            </button>
+
+            {/* Open blocked metric */}
+            <button
+              onClick={() => handleMetricClick('blocked')}
+              className="flex items-center gap-2 px-5 py-4 hover:bg-purple-50 transition-colors flex-1 rounded-r-lg"
+            >
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+              <span className="text-sm text-gray-950">
+                <span className="font-semibold text-base">{metrics.openBlocked.count}</span> blocked
+                <span className="text-gray-700 ml-1">• {formatValue(metrics.openBlocked.value)}</span>
+              </span>
+            </button>
+          </div>
+        )}
 
         {/* Inline Charts Expansion (when chartsInDrawer is OFF) */}
         {!chartsInDrawer && bannerExpanded && (
-          <div className="border-t border-gray-200 p-6 transition-all duration-300 animate-in slide-in-from-top-2">
-            {/* Collapse button */}
-            <div className="flex justify-end mb-4">
-              <button
-                onClick={() => setBannerExpanded(false)}
-                className="flex items-center gap-1 text-xs text-gray-600 hover:text-gray-900 transition-colors"
-              >
-                <ChevronUp className="h-3 w-3" />
-                Collapse
-              </button>
-            </div>
-
-            {/* Charts Grid */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="border-t border-gray-200 relative transition-all duration-300 animate-in slide-in-from-top-2">
+            {/* Charts Grid with vertical dividers aligned to banner sections */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 py-4">
               {/* Due Soon Chart */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <InvoiceDueSoonChart
-                  invoices={invoices}
-                  onBucketClick={(bucket) => {
-                    console.log(`View ${bucket} invoices`);
-                  }}
-                />
+              <div className="px-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <InvoiceDueSoonChart
+                    invoices={invoices}
+                    onBucketClick={(bucket) => {
+                      console.log(`View ${bucket} invoices`);
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Overdue Chart */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <InvoiceAgingChart
-                  invoices={invoices}
-                  onBucketClick={(bucket) => {
-                    console.log(`View ${bucket} invoices`);
-                  }}
-                />
+              <div className="px-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <InvoiceAgingChart
+                    invoices={invoices}
+                    onBucketClick={(bucket) => {
+                      console.log(`View ${bucket} invoices`);
+                    }}
+                  />
+                </div>
               </div>
 
               {/* Blocked Chart */}
-              <div className="bg-gray-50 rounded-lg p-4">
-                <BlockedInvoiceAnalysis
-                  invoices={invoices}
-                  onCategoryClick={(category) => {
-                    console.log(`View ${category} exceptions`);
-                  }}
-                />
+              <div className="px-6">
+                <div className="bg-gray-50 rounded-lg p-4">
+                  <BlockedInvoiceAnalysis
+                    invoices={invoices}
+                    onCategoryClick={(category) => {
+                      console.log(`View ${category} exceptions`);
+                    }}
+                  />
+                </div>
               </div>
             </div>
+
+            {/* Vertical dividers that align with the banner dividers - now touching top and bottom */}
+            <div className="absolute left-[calc(33.333%-0.5px)] top-0 bottom-0 w-px bg-gray-200 hidden lg:block" />
+            <div className="absolute left-[calc(66.666%-0.5px)] top-0 bottom-0 w-px bg-gray-200 hidden lg:block" />
           </div>
         )}
       </div>
@@ -633,8 +759,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
                   : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
               )}
               style={{
-                minWidth: selectedVendor === 'all' ? '100px' : '140px',
-                maxWidth: selectedVendor === 'all' ? '100px' : '140px'
+                minWidth: selectedVendor === 'all' ? '120px' : '160px',
+                maxWidth: selectedVendor === 'all' ? '120px' : '160px'
               }}
             >
               {selectedVendor !== 'all' && (
@@ -655,65 +781,46 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             </select>
           </div>
 
-          {/* PO Type Filter */}
-          <div className="relative">
-            {selectedPOType !== 'all' && (
-              <CheckCircle2 className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-green-600 pointer-events-none z-10" />
-            )}
-            <button
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative",
-                selectedPOType !== 'all'
-                  ? "bg-purple-100 text-purple-700 border-purple-400"
-                  : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
-              )}
-              style={{
-                minWidth: '110px'
-              }}
-            >
-              <span className={cn(selectedPOType !== 'all' && "pl-4")}>{selectedPOType === 'all' ? 'All Types' : selectedPOType === 'po' ? 'PO' : 'Non-PO'}</span>
-              <ChevronDown className="h-3 w-3 ml-auto" />
-            </button>
-            <select
-              value={selectedPOType}
-              onChange={(e) => setSelectedPOType(e.target.value)}
-              className="absolute inset-0 opacity-0 cursor-pointer"
-              style={{
-                minWidth: '110px'
-              }}
-            >
-              <option value="all">All Types</option>
-              <option value="po">PO</option>
-              <option value="non-po">Non-PO</option>
-            </select>
-          </div>
-
           {/* Vertical divider */}
           <div className="h-5 w-px bg-gray-200" />
 
           {/* Other quick filters */}
           {quickFilterOptions.map((filter) => {
+            // Hide PO-related filters when Non-PO is selected
+            if (invoiceTypeFilter === 'non-po' &&
+                (filter.id === 'po-missing' || filter.id === 'tolerance' || filter.id === 'line-mismatch')) {
+              return null;
+            }
+
             const count = quickFilterCounts[filter.id as keyof typeof quickFilterCounts];
             const isActive = activeQuickFilters.has(filter.id);
             const Icon = isActive ? CheckCircle2 : filter.icon;
 
             return (
-              <button
-                key={filter.id}
-                onClick={() => toggleQuickFilter(filter.id)}
-                className={cn(
-                  "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border",
-                  isActive
-                    ? "bg-purple-100 text-purple-700 border-purple-400"
-                    : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
-                )}
-              >
-                <Icon className={cn(
-                  "h-3 w-3",
-                  isActive ? "text-green-600" : ""
-                )} />
-                <span>{filter.label}</span>
-              </button>
+              <TooltipProvider key={filter.id}>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      onClick={() => toggleQuickFilter(filter.id)}
+                      className={cn(
+                        "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border",
+                        isActive
+                          ? "bg-purple-100 text-purple-700 border-purple-400"
+                          : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
+                      )}
+                    >
+                      <Icon className={cn(
+                        "h-3 w-3",
+                        isActive ? "text-green-600" : ""
+                      )} />
+                      <span>{filter.label}</span>
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">
+                    {filter.tooltip}
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             );
           })}
           </div>
