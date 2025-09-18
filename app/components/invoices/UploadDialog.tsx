@@ -146,8 +146,6 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
             <ol className="space-y-2 text-sm text-gray-950">
               <li>1. Your invoice will be processed using AI extraction</li>
               <li>2. Invoice information will be automatically extracted including line items</li>
-              <li>3. You can review and edit the extracted information</li>
-              <li>4. Once approved, the invoice will be added to your system</li>
             </ol>
           </div>
           
