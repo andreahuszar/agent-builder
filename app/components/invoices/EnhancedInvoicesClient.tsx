@@ -299,6 +299,34 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
     };
   }, [invoices]);
 
+  // Calculate filtered metrics based on current filter selection
+  const filteredMetrics = useMemo(() => {
+    const now = new Date();
+
+    // Use filteredInvoices to respect all active filters
+    const openBlocked = filteredInvoices.filter(inv =>
+      inv.status === 'requires_review' || inv.status === 'needs_review'
+    );
+
+    const overdue = filteredInvoices.filter(inv => {
+      const dueDate = new Date(inv.due_date);
+      return dueDate < now && inv.status !== 'paid';
+    });
+
+    // Due soon: invoices due within next 7 days
+    const dueSoon = filteredInvoices.filter(inv => {
+      const dueDate = new Date(inv.due_date);
+      const daysUntilDue = Math.floor((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+      return daysUntilDue >= 0 && daysUntilDue <= 7 && inv.status !== 'paid';
+    });
+
+    return {
+      openBlocked: { count: openBlocked.length, value: openBlocked.reduce((sum, inv) => sum + inv.total, 0) },
+      overdue: { count: overdue.length, value: overdue.reduce((sum, inv) => sum + inv.total, 0) },
+      dueSoon: { count: dueSoon.length, value: dueSoon.reduce((sum, inv) => sum + inv.total, 0) }
+    };
+  }, [filteredInvoices]);
+
   // Calculate quick filter counts
   const quickFilterCounts = useMemo(() => {
     const now = new Date();
@@ -615,8 +643,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             <div className="flex items-center gap-2 px-5 py-4 flex-1">
               <Clock className="h-4 w-4 text-purple-900" />
               <span className="text-sm text-gray-950">
-                <span className="font-semibold text-lg">{metrics.dueSoon.count}</span> due soon
-                <span className="text-gray-700 ml-1">• {formatValue(metrics.dueSoon.value)}</span>
+                <span className="font-semibold text-lg">{filteredMetrics.dueSoon.count}</span> due soon
+                <span className="text-gray-700 ml-1">• {formatValue(filteredMetrics.dueSoon.value)}</span>
               </span>
             </div>
 
@@ -624,8 +652,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             <div className="flex items-center gap-2 px-5 py-4 flex-1">
               <Clock className="h-4 w-4 text-purple-900" />
               <span className="text-sm text-gray-950">
-                <span className="font-semibold text-lg">{metrics.overdue.count}</span> overdue
-                <span className="text-gray-700 ml-1">• {formatValue(metrics.overdue.value)}</span>
+                <span className="font-semibold text-lg">{filteredMetrics.overdue.count}</span> overdue
+                <span className="text-gray-700 ml-1">• {formatValue(filteredMetrics.overdue.value)}</span>
               </span>
             </div>
 
@@ -633,8 +661,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             <div className="flex items-center gap-2 px-5 py-4 flex-1">
               <AlertTriangle className="h-4 w-4 text-red-500" />
               <span className="text-sm text-gray-950 flex-1">
-                <span className="font-semibold text-lg">{metrics.openBlocked.count}</span> blocked
-                <span className="text-gray-700 ml-1">• {formatValue(metrics.openBlocked.value)}</span>
+                <span className="font-semibold text-lg">{filteredMetrics.openBlocked.count}</span> blocked
+                <span className="text-gray-700 ml-1">• {formatValue(filteredMetrics.openBlocked.value)}</span>
               </span>
               {bannerExpanded ? (
                 <ChevronUp className="h-3 w-3 text-gray-500 ml-2" />
@@ -653,8 +681,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             >
               <Clock className="h-4 w-4 text-purple-900" />
               <span className="text-sm text-gray-950">
-                <span className="font-semibold text-lg">{metrics.dueSoon.count}</span> due soon
-                <span className="text-gray-700 ml-1">• {formatValue(metrics.dueSoon.value)}</span>
+                <span className="font-semibold text-lg">{filteredMetrics.dueSoon.count}</span> due soon
+                <span className="text-gray-700 ml-1">• {formatValue(filteredMetrics.dueSoon.value)}</span>
               </span>
             </button>
 
@@ -665,8 +693,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             >
               <Clock className="h-4 w-4 text-purple-900" />
               <span className="text-sm text-gray-950">
-                <span className="font-semibold text-lg">{metrics.overdue.count}</span> overdue
-                <span className="text-gray-700 ml-1">• {formatValue(metrics.overdue.value)}</span>
+                <span className="font-semibold text-lg">{filteredMetrics.overdue.count}</span> overdue
+                <span className="text-gray-700 ml-1">• {formatValue(filteredMetrics.overdue.value)}</span>
               </span>
             </button>
 
@@ -677,8 +705,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             >
               <AlertTriangle className="h-4 w-4 text-red-500" />
               <span className="text-sm text-gray-950">
-                <span className="font-semibold text-lg">{metrics.openBlocked.count}</span> blocked
-                <span className="text-gray-700 ml-1">• {formatValue(metrics.openBlocked.value)}</span>
+                <span className="font-semibold text-lg">{filteredMetrics.openBlocked.count}</span> blocked
+                <span className="text-gray-700 ml-1">• {formatValue(filteredMetrics.openBlocked.value)}</span>
               </span>
             </button>
           </div>
@@ -693,7 +721,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
               <div className="px-6 flex">
                 <div className="bg-gray-50 rounded-lg p-4 flex-1 flex flex-col">
                   <InvoiceDueSoonChart
-                    invoices={invoices}
+                    invoices={filteredInvoices}
                     onBucketClick={(bucket) => {
                       console.log(`View ${bucket} invoices`);
                     }}
@@ -705,7 +733,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
               <div className="px-6 flex">
                 <div className="bg-gray-50 rounded-lg p-4 flex-1 flex flex-col">
                   <InvoiceAgingChart
-                    invoices={invoices}
+                    invoices={filteredInvoices}
                     onBucketClick={(bucket) => {
                       console.log(`View ${bucket} invoices`);
                     }}
@@ -717,7 +745,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
               <div className="px-6 flex">
                 <div className="bg-gray-50 rounded-lg p-4 flex-1 flex flex-col">
                   <BlockedInvoiceAnalysis
-                    invoices={invoices}
+                    invoices={filteredInvoices}
                     onCategoryClick={(category) => {
                       console.log(`View ${category} exceptions`);
                     }}
@@ -933,7 +961,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
               <Card className="border border-gray-200">
                 <CardContent className="p-4">
                   <InvoiceAgingChart
-                    invoices={invoices}
+                    invoices={filteredInvoices}
                     onBucketClick={(bucket) => {
                       console.log(`View ${bucket} invoices`);
                       // Could add filtering logic here
@@ -983,7 +1011,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
               <Card className="border border-gray-200">
                 <CardContent className="p-4">
                   <InvoiceDueSoonChart
-                    invoices={invoices}
+                    invoices={filteredInvoices}
                     onBucketClick={(bucket) => {
                       console.log(`View ${bucket} invoices`);
                       // Could add filtering logic here
@@ -1033,7 +1061,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
               <Card className="border border-gray-200">
                 <CardContent className="p-4">
                   <BlockedInvoiceAnalysis
-                    invoices={invoices}
+                    invoices={filteredInvoices}
                     onCategoryClick={(category) => {
                       console.log(`View ${category} exceptions`);
                       // Could add filtering logic here
