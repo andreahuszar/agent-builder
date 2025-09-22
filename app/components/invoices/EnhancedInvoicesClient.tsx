@@ -49,6 +49,7 @@ interface Invoice {
   id: string;
   invoice_number: string;
   vendor_name_snapshot: string;
+  division?: string;
   invoice_date: string;
   due_date: string;
   currency: string;
@@ -100,6 +101,52 @@ const quickFilterOptions = [
   }
 ];
 
+// Function to map vendor names to divisions
+const getDivision = (vendorName: string | undefined): string => {
+  if (!vendorName) return 'EMEA'; // Default division
+
+  const vendor = vendorName.toLowerCase();
+
+  // EMEA mappings
+  if (vendor.includes('global') || vendor.includes('international') || vendor.includes('world') ||
+      vendor.includes('europe') || vendor.includes('gmbh') || vendor.includes('ag')) {
+    return 'EMEA';
+  }
+
+  // US Inc mappings
+  if (vendor.includes('us ') || vendor.includes('america') || vendor.includes('corp') ||
+      vendor.includes('inc') && !vendor.includes('uk')) {
+    return 'US Inc';
+  }
+
+  // Carter UK Ltd mappings
+  if (vendor.includes('uk') || vendor.includes('ltd') || vendor.includes('british') ||
+      vendor.includes('london')) {
+    return 'Carter UK Ltd';
+  }
+
+  // APAC mappings
+  if (vendor.includes('asia') || vendor.includes('pacific') || vendor.includes('tech') ||
+      vendor.includes('digital') || vendor.includes('systems')) {
+    return 'APAC';
+  }
+
+  // LATAM mappings
+  if (vendor.includes('latin') || vendor.includes('south') || vendor.includes('brazil')) {
+    return 'LATAM';
+  }
+
+  // Canada Corp mappings
+  if (vendor.includes('canada') || vendor.includes('canadian') || vendor.includes('toronto')) {
+    return 'Canada Corp';
+  }
+
+  // Consistent fallback based on vendor name hash
+  const divisions = ['EMEA', 'US Inc', 'Carter UK Ltd', 'APAC', 'LATAM', 'Canada Corp'];
+  const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return divisions[hash % divisions.length];
+};
+
 // Generate mock overdue invoices for demonstration
 const generateMockOverdueInvoices = (): Invoice[] => {
   const now = new Date();
@@ -124,10 +171,12 @@ const generateMockOverdueInvoices = (): Invoice[] => {
       const invoiceDate = new Date(dueDate);
       invoiceDate.setDate(invoiceDate.getDate() - 30);
 
+      const vendorName = vendors[Math.floor(Math.random() * vendors.length)];
       mockInvoices.push({
         id: `mock-${invoiceCounter}`,
         invoice_number: `INV-2024-${String(1000 + invoiceCounter).padStart(4, '0')}`,
-        vendor_name_snapshot: vendors[Math.floor(Math.random() * vendors.length)],
+        vendor_name_snapshot: vendorName,
+        division: getDivision(vendorName),
         invoice_date: invoiceDate.toISOString().split('T')[0],
         due_date: dueDate.toISOString().split('T')[0],
         currency: 'GBP',
@@ -172,10 +221,12 @@ const generateMockDueSoonInvoices = (): Invoice[] => {
       const invoiceDate = new Date(dueDate);
       invoiceDate.setDate(invoiceDate.getDate() - 30);
 
+      const vendorName = vendors[Math.floor(Math.random() * vendors.length)];
       mockInvoices.push({
         id: `due-${invoiceCounter}`,
         invoice_number: `INV-2025-${String(invoiceCounter).padStart(4, '0')}`,
-        vendor_name_snapshot: vendors[Math.floor(Math.random() * vendors.length)],
+        vendor_name_snapshot: vendorName,
+        division: getDivision(vendorName),
         invoice_date: invoiceDate.toISOString().split('T')[0],
         due_date: dueDate.toISOString().split('T')[0],
         currency: 'GBP',
@@ -209,10 +260,12 @@ const generateMockBlockedInvoices = (): Invoice[] => {
     const dueDate = new Date(invoiceDate);
     dueDate.setDate(dueDate.getDate() + 30);
 
+    const vendorName = vendors[Math.floor(Math.random() * vendors.length)];
     mockInvoices.push({
       id: `blocked-${i}`,
       invoice_number: `INV-2025-${String(5000 + i).padStart(4, '0')}`,
-      vendor_name_snapshot: vendors[Math.floor(Math.random() * vendors.length)],
+      vendor_name_snapshot: vendorName,
+      division: getDivision(vendorName),
       invoice_date: invoiceDate.toISOString().split('T')[0],
       due_date: dueDate.toISOString().split('T')[0],
       currency: 'GBP',
@@ -783,6 +836,22 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
 
           {/* Quick filter pills with vendor filter first */}
           <div className="flex items-center gap-1.5">
+            {/* Clear All link - shows when any quick filters are active OR vendor is selected */}
+            {(activeQuickFilters.size > 0 || selectedVendor !== 'all') && (
+              <>
+                <button
+                  onClick={() => {
+                    setActiveQuickFilters(new Set());
+                    setSelectedVendor('all');
+                  }}
+                  className="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                >
+                  Clear All
+                </button>
+                <div className="h-5 w-px bg-gray-100" />
+              </>
+            )}
+
             {/* Vendor Filter - First and expandable */}
             <div className="relative">
             <button

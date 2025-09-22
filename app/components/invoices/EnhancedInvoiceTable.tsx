@@ -33,6 +33,7 @@ interface Invoice {
   id: string;
   invoice_number: string;
   vendor_name_snapshot: string;
+  division?: string;
   invoice_date: string;
   due_date: string;
   currency: string;
@@ -59,6 +60,52 @@ interface EnhancedInvoiceTableProps {
 
 type SortField = 'status' | 'invoice_number' | 'vendor_name_snapshot' | 'invoice_date' | 'due_date' | 'total' | 'currency' | 'match_status';
 type SortDirection = 'asc' | 'desc';
+
+// Function to map vendor names to divisions
+const getDivision = (vendorName: string | undefined): string => {
+  if (!vendorName) return 'EMEA'; // Default division
+
+  const vendor = vendorName.toLowerCase();
+
+  // EMEA mappings
+  if (vendor.includes('global') || vendor.includes('international') || vendor.includes('world') ||
+      vendor.includes('europe') || vendor.includes('gmbh') || vendor.includes('ag')) {
+    return 'EMEA';
+  }
+
+  // US Inc mappings
+  if (vendor.includes('us ') || vendor.includes('america') || vendor.includes('corp') ||
+      vendor.includes('inc') && !vendor.includes('uk')) {
+    return 'US Inc';
+  }
+
+  // Carter UK Ltd mappings
+  if (vendor.includes('uk') || vendor.includes('ltd') || vendor.includes('british') ||
+      vendor.includes('london')) {
+    return 'Carter UK Ltd';
+  }
+
+  // APAC mappings
+  if (vendor.includes('asia') || vendor.includes('pacific') || vendor.includes('tech') ||
+      vendor.includes('digital') || vendor.includes('systems')) {
+    return 'APAC';
+  }
+
+  // LATAM mappings
+  if (vendor.includes('latin') || vendor.includes('south') || vendor.includes('brazil')) {
+    return 'LATAM';
+  }
+
+  // Canada Corp mappings
+  if (vendor.includes('canada') || vendor.includes('canadian') || vendor.includes('toronto')) {
+    return 'Canada Corp';
+  }
+
+  // Consistent fallback based on vendor name hash
+  const divisions = ['EMEA', 'US Inc', 'Carter UK Ltd', 'APAC', 'LATAM', 'Canada Corp'];
+  const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  return divisions[hash % divisions.length];
+};
 
 export function EnhancedInvoiceTable({
   invoices,
@@ -152,8 +199,14 @@ export function EnhancedInvoiceTable({
     if (normalizedStatus === 'draft' || normalizedStatus === 'new') {
       return 'bg-gray-50 text-gray-700 ring-1 ring-gray-200';
     }
-    if (normalizedStatus === 'requires_review' || normalizedStatus === 'needs_review' || normalizedStatus === 'needs review' || normalizedStatus === 'pending') {
+    if (normalizedStatus === 'requires_review' || normalizedStatus === 'needs_review' || normalizedStatus === 'needs review') {
       return 'bg-orange-50 text-orange-700 ring-1 ring-orange-200';
+    }
+    if (normalizedStatus === 'pending') {
+      return 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200';
+    }
+    if (normalizedStatus === 'approved') {
+      return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200';
     }
     if (normalizedStatus === 'ready_for_payment' || normalizedStatus === 'ready_to_pay' || normalizedStatus === 'ready to pay') {
       return 'bg-green-50 text-green-700 ring-1 ring-green-200';
@@ -248,9 +301,9 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('status')}
-                  className="flex items-center gap-1 hover:text-gray-900"
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
                 >
-                  Status
+                  Workflow Status
                   {getSortIcon('status')}
                 </button>
               </th>
@@ -260,16 +313,19 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('vendor_name_snapshot')}
-                  className="flex items-center gap-1 hover:text-gray-900"
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
                 >
                   Vendor
                   {getSortIcon('vendor_name_snapshot')}
                 </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                Division
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('invoice_number')}
-                  className="flex items-center gap-1 hover:text-gray-900"
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
                 >
                   Invoice No.
                   {getSortIcon('invoice_number')}
@@ -278,7 +334,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('invoice_date')}
-                  className="flex items-center gap-1 hover:text-gray-900"
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
                 >
                   Invoice Date
                   {getSortIcon('invoice_date')}
@@ -287,7 +343,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('due_date')}
-                  className="flex items-center gap-1 hover:text-gray-900"
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
                 >
                   Due Date
                   {getSortIcon('due_date')}
@@ -295,6 +351,9 @@ export function EnhancedInvoiceTable({
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 Aging (days)
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                Currency
               </th>
               <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
                 <button
@@ -304,9 +363,6 @@ export function EnhancedInvoiceTable({
                   Amount
                   {getSortIcon('total')}
                 </button>
-              </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                Currency
               </th>
               <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
                 Net Amount
@@ -320,9 +376,9 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('match_status')}
-                  className="flex items-center gap-1 hover:text-gray-900"
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
                 >
-                  Match Status
+                  Processed Status
                   {getSortIcon('match_status')}
                 </button>
               </th>
@@ -365,8 +421,10 @@ export function EnhancedInvoiceTable({
                       "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
                       getStatusColor(invoice.status)
                     )}>
-                      {invoice.status === 'requires_review' || invoice.status === 'needs_review' || invoice.status?.toLowerCase() === 'pending' ? 'Needs Review' :
-                       invoice.status === 'ready_for_payment' || invoice.status === 'ready_to_pay' ? 'Ready to Pay' :
+                      {invoice.status === 'requires_review' || invoice.status === 'needs_review' ? 'Needs Review' :
+                       invoice.status === 'ready_for_payment' || invoice.status === 'ready_to_pay' ? 'Ready for posting' :
+                       invoice.status === 'approved' ? 'Approved' :
+                       invoice.status === 'pending' ? 'Pending' :
                        invoice.status === 'draft' ? 'Draft' :
                        invoice.status?.charAt(0).toUpperCase() + invoice.status?.slice(1).replace(/_/g, ' ') || 'Draft'}
                     </span>
@@ -376,6 +434,9 @@ export function EnhancedInvoiceTable({
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
                     {invoice.vendor_name_snapshot || '-'}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
+                    {invoice.division || getDivision(invoice.vendor_name_snapshot)}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     {/* Check if this is a mock invoice (starts with 'mock-', 'due-', or 'blocked-') */}
@@ -410,11 +471,11 @@ export function EnhancedInvoiceTable({
                       }
                     })() : '-'}
                   </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-bold text-gray-950 text-right">
-                    {formatCurrency(invoice.total, invoice.currency)}
-                  </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
                     {invoice.currency || 'USD'}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-bold text-gray-950 text-right">
+                    {formatCurrency(invoice.total, invoice.currency)}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
                     {(() => {
