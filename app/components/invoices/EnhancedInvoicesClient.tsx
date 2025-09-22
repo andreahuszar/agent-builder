@@ -147,6 +147,46 @@ const getDivision = (vendorName: string | undefined): string => {
   return divisions[hash % divisions.length];
 };
 
+// Helper functions for synthetic data generation
+const assigneePool = [
+  'John Smith', 'Sarah Johnson', 'Mike Davis', 'Emma Wilson',
+  'David Brown', 'Anna Larsson', 'Klaus Mueller', 'Li Zhang',
+  'Maria Garcia', 'James Thompson', 'Sophie Martin', 'Robert Anderson'
+];
+
+const approverPool = [
+  'Michael Chen', 'Jennifer Roberts', 'Thomas Schmidt',
+  'Elizabeth Taylor', 'Richard Jones', 'Patricia Williams'
+];
+
+const getRandomAssignee = (seed: number = 0): string => {
+  return assigneePool[Math.abs(seed) % assigneePool.length];
+};
+
+const getRandomApprover = (seed: number = 0): string | undefined => {
+  // Only 30% of invoices have an approver
+  if ((seed % 10) < 3) {
+    return approverPool[Math.abs(seed) % approverPool.length];
+  }
+  return undefined;
+};
+
+const generateSyntheticFields = (invoice: any): any => {
+  // Use invoice ID or vendor name as seed for consistent generation
+  const seed = invoice.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+
+  return {
+    ...invoice,
+    type: invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? 'PO' : 'Non-PO',
+    assignedTo: getRandomAssignee(seed),
+    costCentre: `CC-${String((seed % 7) + 1).padStart(3, '0')}`,
+    accountCode: `AC-${5000 + (seed % 10) + 1}`,
+    approver: getRandomApprover(seed),
+    balanceOutstanding: invoice.total * (0.1 + (seed % 5) * 0.1), // 10-50% of total
+    division: getDivision(invoice.vendor_name_snapshot)
+  };
+};
+
 // Generate mock overdue invoices for demonstration
 const generateMockOverdueInvoices = (): Invoice[] => {
   const now = new Date();
@@ -294,7 +334,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
 
   // Add mock data only on the client side after mount
   useEffect(() => {
-    const combinedInvoices = [...(initialInvoices || []), ...generateMockOverdueInvoices(), ...generateMockDueSoonInvoices(), ...generateMockBlockedInvoices()];
+    const rawInvoices = [...(initialInvoices || []), ...generateMockOverdueInvoices(), ...generateMockDueSoonInvoices(), ...generateMockBlockedInvoices()];
+    const combinedInvoices = rawInvoices.map(invoice => generateSyntheticFields(invoice));
     setInvoices(combinedInvoices);
     setFilteredInvoices(combinedInvoices);
   }, [initialInvoices]);
@@ -503,7 +544,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       const response = await fetch('/api/invoices');
       if (response.ok) {
         const data = await response.json();
-        setInvoices(data.invoices || []);
+        const invoicesWithSynthetic = (data.invoices || []).map((invoice: any) => generateSyntheticFields(invoice));
+        setInvoices(invoicesWithSynthetic);
       }
     } catch (error) {
       console.error('Error refreshing invoices:', error);
@@ -938,6 +980,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
         onToggleAll={toggleAllSelection}
         onDelete={handleDelete}
         onPOClick={handlePOClick}
+        activeView={activeView}
       />
 
       {/* Bulk Actions Bar */}

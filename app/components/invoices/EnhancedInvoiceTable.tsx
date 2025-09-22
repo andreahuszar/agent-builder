@@ -47,6 +47,12 @@ interface Invoice {
   assigned_to_email?: string;
   po_numbers_cached?: string[];
   gr_numbers?: string[];
+  type?: 'PO' | 'Non-PO';
+  assignedTo?: string;
+  costCentre?: string;
+  accountCode?: string;
+  approver?: string;
+  balanceOutstanding?: number;
 }
 
 interface EnhancedInvoiceTableProps {
@@ -56,6 +62,7 @@ interface EnhancedInvoiceTableProps {
   onToggleAll: () => void;
   onDelete?: (invoiceId: string) => void;
   onPOClick?: (poNumber: string) => void;
+  activeView?: 'all' | 'po' | 'non-po' | 'parked';
 }
 
 type SortField = 'status' | 'invoice_number' | 'vendor_name_snapshot' | 'invoice_date' | 'due_date' | 'total' | 'currency' | 'match_status';
@@ -113,7 +120,8 @@ export function EnhancedInvoiceTable({
   onToggleSelection,
   onToggleAll,
   onDelete,
-  onPOClick
+  onPOClick,
+  activeView = 'all'
 }: EnhancedInvoiceTableProps) {
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -301,9 +309,9 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('status')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  Workflow Status
+                  <span className="whitespace-normal">Workflow Status</span>
                   {getSortIcon('status')}
                 </button>
               </th>
@@ -367,23 +375,45 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
                 Net Amount
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                PO Number
-              </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                GR
-              </th>
+              {activeView !== 'non-po' && (
+                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                  PO No.
+                </th>
+              )}
+              {activeView !== 'non-po' && (
+                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                  GR No.
+                </th>
+              )}
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('match_status')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  Processed Status
+                  <span className="whitespace-normal">Processed Status</span>
                   {getSortIcon('match_status')}
                 </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 Reason
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                Type (PO/Non-PO)
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                Assigned
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                Cost Centre
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                Account Code
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                Approver
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
+                Balance Outstanding
               </th>
               <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
                 Actions
@@ -484,45 +514,49 @@ export function EnhancedInvoiceTable({
                       return formatCurrency(netAmount, invoice.currency);
                     })()}
                   </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium">
-                    {invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
-                      <div className="flex flex-col gap-1">
-                        {invoice.po_numbers_cached.map((poNumber) => (
-                          invoice.id.startsWith('mock-') || invoice.id.startsWith('due-') || invoice.id.startsWith('blocked-') ? (
-                            <span
-                              key={poNumber}
-                              className="text-gray-950 text-sm font-medium"
-                            >
-                              {poNumber}
+                  {activeView !== 'non-po' && (
+                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium">
+                      {invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          {invoice.po_numbers_cached.map((poNumber) => (
+                            invoice.id.startsWith('mock-') || invoice.id.startsWith('due-') || invoice.id.startsWith('blocked-') ? (
+                              <span
+                                key={poNumber}
+                                className="text-gray-950 text-sm font-medium"
+                              >
+                                {poNumber}
+                              </span>
+                            ) : (
+                              <button
+                                key={poNumber}
+                                onClick={() => onPOClick?.(poNumber)}
+                                className="text-purple-600 hover:text-purple-700 text-left text-sm font-medium"
+                              >
+                                {poNumber}
+                              </button>
+                            )
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-950 text-sm font-medium">No PO</span>
+                      )}
+                    </td>
+                  )}
+                  {activeView !== 'non-po' && (
+                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                      {invoice.gr_numbers && invoice.gr_numbers.length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          {invoice.gr_numbers.map((grNumber) => (
+                            <span key={grNumber} className="text-sm font-medium text-gray-950">
+                              {grNumber}
                             </span>
-                          ) : (
-                            <button
-                              key={poNumber}
-                              onClick={() => onPOClick?.(poNumber)}
-                              className="text-purple-600 hover:text-purple-700 text-left text-sm font-medium"
-                            >
-                              {poNumber}
-                            </button>
-                          )
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-gray-950 text-sm font-medium">No PO</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {invoice.gr_numbers && invoice.gr_numbers.length > 0 ? (
-                      <div className="flex flex-col gap-1">
-                        {invoice.gr_numbers.map((grNumber) => (
-                          <span key={grNumber} className="text-sm font-medium text-gray-950">
-                            {grNumber}
-                          </span>
-                        ))}
-                      </div>
-                    ) : (
-                      <span className="text-gray-950">No GR</span>
-                    )}
-                  </td>
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-gray-950">No GR</span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     <span className={cn(
                       "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
@@ -535,6 +569,33 @@ export function EnhancedInvoiceTable({
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
                     {getMatchStatusReason(invoice)}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap">
+                    {invoice.type || (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                        PO
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                        Non-PO
+                      </span>
+                    ))}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
+                    {invoice.assignedTo || '-'}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
+                    {invoice.costCentre || '-'}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
+                    {invoice.accountCode || '-'}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
+                    {invoice.approver || '-'}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-bold text-gray-950 text-right">
+                    {invoice.balanceOutstanding !== undefined ?
+                      formatCurrency(invoice.balanceOutstanding, invoice.currency) : '-'}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     <div className="flex items-center justify-end gap-2">
