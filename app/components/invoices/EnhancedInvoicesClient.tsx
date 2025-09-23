@@ -23,7 +23,9 @@ import {
   AlertCircle,
   CheckCircle2,
   Tag,
-  CalendarClock
+  CalendarClock,
+  MoreHorizontal,
+  Bell
 } from 'lucide-react';
 import { EnhancedInvoiceTable } from './EnhancedInvoiceTable';
 import { UploadDialog } from './UploadDialog';
@@ -44,6 +46,14 @@ import {
   TooltipTrigger,
 } from '@/app/components/ui/tooltip';
 import { ToggleGroup, ToggleGroupItem } from '@/app/components/ui/toggle-group';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
+} from '@/app/components/ui/dropdown-menu';
+import { Checkbox } from '@/app/components/ui/checkbox';
 
 interface Invoice {
   id: string;
@@ -69,24 +79,6 @@ interface EnhancedInvoicesClientProps {
 
 // Quick filter options with tooltips
 const quickFilterOptions = [
-  {
-    id: 'po-missing',
-    label: 'PO Missing',
-    icon: Tag,
-    tooltip: 'Show invoices without purchase orders'
-  },
-  {
-    id: 'tolerance',
-    label: '>Tolerance',
-    icon: Tag,
-    tooltip: 'Show invoices exceeding price/quantity tolerance thresholds'
-  },
-  {
-    id: 'line-mismatch',
-    label: 'Mismatch',
-    icon: Tag,
-    tooltip: 'Show invoices with line-level discrepancies'
-  },
   {
     id: 'due-7days',
     label: '<7 Day Due',
@@ -161,8 +153,34 @@ const ISSUE_TYPES: Record<string, { severity: 'critical' | 'warning' | 'info', o
   'Currency Issue': { severity: 'info', order: 10 },
   'Payment Terms': { severity: 'info', order: 11 },
   'Vendor Issues': { severity: 'info', order: 12 },
-  'Missing Documentation': { severity: 'info', order: 13 }
+  'Missing Documentation': { severity: 'info', order: 13 },
+  'Bank Account Issue': { severity: 'warning', order: 14 },
+  'Vendor Not Verified': { severity: 'critical', order: 15 }
 };
+
+// Separate issue pools for PO and Non-PO invoices
+const PO_INVOICE_ISSUES = [
+  'Missing PO',
+  'Missing GR',
+  'PO/Invoice Mismatch',
+  'Line Mismatch',
+  'Quantity Variance',
+  'Price Tolerance',
+  'Missing Approval',
+  'Tax Discrepancy'
+];
+
+const NON_PO_INVOICE_ISSUES = [
+  'Missing Approval',
+  'Vendor Issues',
+  'Vendor Not Verified',
+  'Bank Account Issue',
+  'Duplicate Suspected',
+  'Tax Discrepancy',
+  'Currency Issue',
+  'Missing Documentation',
+  'Payment Terms'
+];
 
 // Helper functions for synthetic data generation
 const assigneePool = [
@@ -190,6 +208,13 @@ const getRandomApprover = (seed: number = 0): string | undefined => {
 
 // Generate multiple issues per invoice with deterministic seeding
 const generateInvoiceIssues = (invoice: any): string[] => {
+  // Only generate issues for exception status
+  if (invoice.match_status !== 'not_matched' &&
+      invoice.match_status !== 'exception' &&
+      invoice.match_status !== 'partial') {
+    return [];
+  }
+
   // Use invoice ID as seed for consistent generation
   const seed = invoice.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
 
@@ -198,26 +223,22 @@ const generateInvoiceIssues = (invoice: any): string[] => {
     return Math.floor((x - Math.floor(x)) * (max - min + 1)) + min;
   };
 
-  // Generate issues for invoices that need attention
-  // Be more permissive to ensure we have demo data
-  const needsIssues =
-    invoice.match_status === 'not_matched' ||
-    invoice.match_status === 'partial' ||
-    invoice.match_status === 'exception' ||
-    invoice.status === 'requires_review' ||
-    invoice.status === 'needs_review' ||
-    invoice.status === 'pending' ||
-    invoice.status === 'draft' ||
-    // For demo purposes, generate issues for blocked mock invoices
-    invoice.id.startsWith('blocked-') ||
-    invoice.id.startsWith('due-');
+  // Determine the invoice type
+  const isPO = invoice.type === 'PO' || invoice.vendor_requires_po;
 
-  if (!needsIssues) {
-    return [];
+  // Check if PO invoice is missing PO
+  const missingPO = isPO && (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0);
+
+  // Select appropriate issue pool based on invoice type
+  let availableIssues = isPO ? [...PO_INVOICE_ISSUES] : [...NON_PO_INVOICE_ISSUES];
+
+  // Remove "Missing PO" from available issues if it will be handled separately
+  if (missingPO) {
+    availableIssues = availableIssues.filter(issue => issue !== 'Missing PO');
   }
 
-  // Determine number of issues (1-8 with weighted distribution)
-  const weights = [30, 25, 20, 10, 8, 4, 2, 1]; // More likely to have fewer issues
+  // Determine number of issues (1-5 with weighted distribution)
+  const weights = [35, 30, 20, 10, 5]; // More likely to have fewer issues
   const totalWeight = weights.reduce((a, b) => a + b, 0);
   let randomWeight = random(0, totalWeight);
   let issueCount = 1;
@@ -230,23 +251,25 @@ const generateInvoiceIssues = (invoice: any): string[] => {
     }
   }
 
-  // Select random issues using Fisher-Yates shuffle to avoid infinite loops
-  const availableIssues = Object.keys(ISSUE_TYPES);
-  const shuffled = [...availableIssues];
-
-  // Fisher-Yates shuffle algorithm
-  for (let i = shuffled.length - 1; i > 0; i--) {
+  // Fisher-Yates shuffle to randomly select issues
+  for (let i = availableIssues.length - 1; i > 0; i--) {
     const j = random(0, i);
-    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    [availableIssues[i], availableIssues[j]] = [availableIssues[j], availableIssues[i]];
   }
 
-  // Take the first issueCount items
-  const selectedIssues = shuffled.slice(0, Math.min(issueCount, availableIssues.length));
+  // Take the first N issues
+  let selectedIssues = availableIssues.slice(0, Math.min(issueCount, availableIssues.length));
+
+  // If PO invoice is missing PO, add it as the first issue
+  if (missingPO) {
+    selectedIssues.unshift('Missing PO');
+  }
 
   // Sort issues by priority (severity and order)
   return selectedIssues.sort((a, b) => {
     const issueA = ISSUE_TYPES[a];
     const issueB = ISSUE_TYPES[b];
+    if (!issueA || !issueB) return 0;
     return issueA.order - issueB.order;
   });
 };
@@ -257,7 +280,7 @@ const generateSyntheticFields = (invoice: any): any => {
 
   return {
     ...invoice,
-    type: invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? 'PO' : 'Non-PO',
+    type: invoice.vendor_requires_po ? 'PO' : 'Non-PO',
     assignedTo: getRandomAssignee(seed),
     costCentre: `CC-${String((seed % 7) + 1).padStart(3, '0')}`,
     accountCode: `AC-${5000 + (seed % 10) + 1}`,
@@ -464,6 +487,10 @@ const generateMockBlockedInvoices = (): Invoice[] => {
     dueDate.setDate(dueDate.getDate() + 30);
 
     const vendorName = vendors[Math.floor(Math.random() * vendors.length)];
+
+    // Force first 3 invoices to be PO-type with missing PO
+    const isMissingPO = i <= 3;
+
     mockInvoices.push({
       id: `blocked-${i}`,
       invoice_number: `INV-2025-${String(5000 + i).padStart(4, '0')}`,
@@ -475,10 +502,12 @@ const generateMockBlockedInvoices = (): Invoice[] => {
       total: Math.floor(Math.random() * 40000 + 5000), // £5k-45k range
       status: 'requires_review', // Blocked status
       match_status: 'not_matched', // Changed to trigger issue generation
-      po_numbers_cached: Math.random() > 0.3 ? [`PO-2025-${String(3000 + i).padStart(4, '0')}`] : [],
-      gr_numbers: Math.random() > 0.5 ? [`GR-2025-${String(2000 + i).padStart(4, '0')}`] : [],
+      // First 3 invoices have missing PO, rest have normal PO
+      po_numbers_cached: isMissingPO ? [] : (Math.random() > 0.3 ? [`PO-2025-${String(3000 + i).padStart(4, '0')}`] : []),
+      gr_numbers: isMissingPO ? [] : (Math.random() > 0.5 ? [`GR-2025-${String(2000 + i).padStart(4, '0')}`] : []),
       created_at: invoiceDate.toISOString(),
-      vendor_requires_po: true,
+      // First 3 are PO-type (but missing PO), rest follow normal logic
+      vendor_requires_po: isMissingPO ? true : Math.random() > 0.3,
       vendor_is_verified: Math.random() > 0.2,
       vendor_id: `vendor-${Math.floor(Math.random() * 20) + 1}`
     });
@@ -527,7 +556,12 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   const [selectedMetric, setSelectedMetric] = useState<'blocked' | 'overdue' | 'dueSoon' | null>(null);
 
   // Filter states
-  const [selectedVendor, setSelectedVendor] = useState('all');
+  const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
+  const [vendorFilterOpen, setVendorFilterOpen] = useState(false);
+  const [vendorSearchQuery, setVendorSearchQuery] = useState('');
+  const [selectedExceptions, setSelectedExceptions] = useState<Set<string>>(new Set());
+  const [exceptionFilterOpen, setExceptionFilterOpen] = useState(false);
+  const [exceptionSearchQuery, setExceptionSearchQuery] = useState('');
   const [invoiceTypeFilter, setInvoiceTypeFilter] = useState('all');
 
   // Interaction mode states
@@ -598,11 +632,6 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   const quickFilterCounts = useMemo(() => {
     const now = new Date();
     return {
-      'po-missing': invoices.filter(inv =>
-        !inv.po_numbers_cached || inv.po_numbers_cached.length === 0
-      ).length,
-      'tolerance': invoices.filter(inv => inv.total > 10000).length, // Combined price/qty tolerance
-      'line-mismatch': Math.floor(Math.random() * 5) + 1, // Mock UOM/line mismatch data
       'due-7days': invoices.filter(inv => {
         const dueDate = new Date(inv.due_date);
         const daysDiff = Math.ceil((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
@@ -620,6 +649,102 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
     const vendors = new Set(invoices.map(inv => inv.vendor_name_snapshot).filter(Boolean));
     return Array.from(vendors).sort();
   }, [invoices]);
+
+  // Get unique exceptions from invoice issues
+  const uniqueExceptions = useMemo(() => {
+    const exceptions = new Set<string>();
+    invoices.forEach(invoice => {
+      if (invoice.issues && Array.isArray(invoice.issues)) {
+        invoice.issues.forEach(issue => exceptions.add(issue));
+      }
+    });
+    // Filter to PO-related exceptions when in PO mode
+    if (invoiceTypeFilter === 'po') {
+      return Array.from(exceptions).filter(e => PO_INVOICE_ISSUES.includes(e)).sort();
+    }
+    // Show all exceptions for 'all' mode
+    return Array.from(exceptions).sort();
+  }, [invoices, invoiceTypeFilter]);
+
+  // Filter vendors based on search query
+  const filteredVendors = useMemo(() => {
+    if (!vendorSearchQuery) return uniqueVendors;
+    return uniqueVendors.filter(vendor =>
+      vendor.toLowerCase().includes(vendorSearchQuery.toLowerCase())
+    );
+  }, [uniqueVendors, vendorSearchQuery]);
+
+  // Handle vendor filter changes
+  const handleVendorToggle = (vendor: string) => {
+    const newSelected = new Set(selectedVendors);
+    if (newSelected.has(vendor)) {
+      newSelected.delete(vendor);
+    } else {
+      newSelected.add(vendor);
+    }
+    setSelectedVendors(newSelected);
+  };
+
+  const handleSelectAllVendors = () => {
+    if (selectedVendors.size === uniqueVendors.length) {
+      setSelectedVendors(new Set());
+    } else {
+      setSelectedVendors(new Set(uniqueVendors));
+    }
+  };
+
+  const clearVendorFilter = () => {
+    setSelectedVendors(new Set());
+    setVendorSearchQuery('');
+    setVendorFilterOpen(false);
+  };
+
+  // Get display text for vendor filter
+  const getVendorFilterText = () => {
+    if (selectedVendors.size === 0) return 'All Vendors';
+    if (selectedVendors.size === 1) return Array.from(selectedVendors)[0];
+    return `${selectedVendors.size} Vendors`;
+  };
+
+  // Filter exceptions based on search query
+  const filteredExceptions = useMemo(() => {
+    if (!exceptionSearchQuery) return uniqueExceptions;
+    return uniqueExceptions.filter(exception =>
+      exception.toLowerCase().includes(exceptionSearchQuery.toLowerCase())
+    );
+  }, [uniqueExceptions, exceptionSearchQuery]);
+
+  // Handle exception filter changes
+  const handleExceptionToggle = (exception: string) => {
+    const newSelected = new Set(selectedExceptions);
+    if (newSelected.has(exception)) {
+      newSelected.delete(exception);
+    } else {
+      newSelected.add(exception);
+    }
+    setSelectedExceptions(newSelected);
+  };
+
+  const handleSelectAllExceptions = () => {
+    if (selectedExceptions.size === uniqueExceptions.length) {
+      setSelectedExceptions(new Set());
+    } else {
+      setSelectedExceptions(new Set(uniqueExceptions));
+    }
+  };
+
+  const clearExceptionFilter = () => {
+    setSelectedExceptions(new Set());
+    setExceptionSearchQuery('');
+    setExceptionFilterOpen(false);
+  };
+
+  // Get display text for exception filter
+  const getExceptionFilterText = () => {
+    if (selectedExceptions.size === 0) return 'All Exceptions';
+    if (selectedExceptions.size === 1) return Array.from(selectedExceptions)[0];
+    return `${selectedExceptions.size} Exceptions`;
+  };
 
   // Calculate view counts
   const viewCounts = useMemo(() => {
@@ -644,35 +769,29 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
 
     // Apply invoice type filter from header toggle (highest priority)
     if (invoiceTypeFilter === 'po') {
-      filtered = filtered.filter(inv => inv.po_numbers_cached && inv.po_numbers_cached.length > 0);
+      filtered = filtered.filter(inv => inv.type === 'PO');
     } else if (invoiceTypeFilter === 'non-po') {
-      filtered = filtered.filter(inv => !inv.po_numbers_cached || inv.po_numbers_cached.length === 0);
+      filtered = filtered.filter(inv => inv.type === 'Non-PO');
     }
 
     // View filter (All, PO, Non-PO, Parked)
     if (activeView === 'po') {
-      filtered = filtered.filter(inv => inv.po_numbers_cached && inv.po_numbers_cached.length > 0);
+      filtered = filtered.filter(inv => inv.type === 'PO');
     } else if (activeView === 'non-po') {
-      filtered = filtered.filter(inv => !inv.po_numbers_cached || inv.po_numbers_cached.length === 0);
+      filtered = filtered.filter(inv => inv.type === 'Non-PO');
     } else if (activeView === 'parked') {
       filtered = filtered.filter(inv => inv.status === 'on_hold' || inv.status === 'parked');
     }
 
-    // Apply quick filters
-    const now = new Date();
-    if (activeQuickFilters.has('tolerance')) {
-      filtered = filtered.filter(inv => inv.total > 10000); // Price/qty tolerance threshold
-    }
-    if (activeQuickFilters.has('line-mismatch')) {
-      // Mock filter for line mismatches - in real app would check line-level data
-      filtered = filtered.filter(inv => Math.random() > 0.7);
-    }
-    if (activeQuickFilters.has('po-missing')) {
-      // Filter for invoices without PO numbers
-      filtered = filtered.filter(inv =>
-        !inv.po_numbers_cached || inv.po_numbers_cached.length === 0
+    // Apply exception filter
+    if (selectedExceptions.size > 0) {
+      filtered = filtered.filter(invoice =>
+        invoice.issues && invoice.issues.some(issue => selectedExceptions.has(issue))
       );
     }
+
+    // Apply quick filters
+    const now = new Date();
     if (activeQuickFilters.has('due-7days')) {
       // Filter for invoices due within 7 days
       filtered = filtered.filter(inv => {
@@ -701,12 +820,12 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
     }
 
     // Vendor filter
-    if (selectedVendor !== 'all') {
-      filtered = filtered.filter(invoice => invoice.vendor_name_snapshot === selectedVendor);
+    if (selectedVendors.size > 0) {
+      filtered = filtered.filter(invoice => selectedVendors.has(invoice.vendor_name_snapshot));
     }
 
     setFilteredInvoices(filtered);
-  }, [searchQuery, invoices, activeView, selectedVendor, activeQuickFilters, invoiceTypeFilter]);
+  }, [searchQuery, invoices, activeView, selectedVendors, selectedExceptions, activeQuickFilters, invoiceTypeFilter]);
 
   const handleUploadComplete = useCallback((invoiceId: string) => {
     router.push(`/invoices/${invoiceId}`);
@@ -805,6 +924,14 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   const clearSelection = () => {
     setSelectedInvoices(new Set());
   };
+
+  // Count invoices with approvers for Nudge Approver button
+  const invoicesWithApprovers = useMemo(() => {
+    return Array.from(selectedInvoices).filter(id => {
+      const invoice = filteredInvoices.find(inv => inv.id === id);
+      return invoice?.approver;
+    }).length;
+  }, [selectedInvoices, filteredInvoices]);
 
   const toggleQuickFilter = (filterId: string) => {
     setActiveQuickFilters(prev => {
@@ -1052,12 +1179,13 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
           {/* Quick filter pills with vendor filter first */}
           <div className="flex items-center gap-1.5">
             {/* Clear All link - shows when any quick filters are active OR vendor is selected */}
-            {(activeQuickFilters.size > 0 || selectedVendor !== 'all') && (
+            {(activeQuickFilters.size > 0 || selectedVendors.size > 0 || selectedExceptions.size > 0) && (
               <>
                 <button
                   onClick={() => {
                     setActiveQuickFilters(new Set());
-                    setSelectedVendor('all');
+                    setSelectedVendors(new Set());
+                    setSelectedExceptions(new Set());
                   }}
                   className="text-xs text-purple-600 hover:text-purple-700 font-medium"
                 >
@@ -1068,47 +1196,190 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             )}
 
             {/* Vendor Filter - First and expandable */}
-            <div className="relative">
-            <button
-              className={cn(
-                "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
-                selectedVendor !== 'all'
-                  ? "bg-purple-100 text-purple-700 border-purple-400"
-                  : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
-              )}
-              style={{
-                minWidth: selectedVendor === 'all' ? '120px' : '160px',
-                maxWidth: selectedVendor === 'all' ? '120px' : '160px'
-              }}
-            >
-              {selectedVendor !== 'all' && (
-                <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
-              )}
-              <span className="truncate flex-1 text-left">{selectedVendor === 'all' ? 'All Vendors' : selectedVendor}</span>
-              <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
-            </button>
-            <select
-              value={selectedVendor}
-              onChange={(e) => setSelectedVendor(e.target.value)}
-              className="absolute inset-0 opacity-0 cursor-pointer"
-            >
-              <option value="all">All Vendors</option>
-              {uniqueVendors.map(vendor => (
-                <option key={vendor} value={vendor}>{vendor}</option>
-              ))}
-            </select>
-          </div>
+            <DropdownMenu open={vendorFilterOpen} onOpenChange={setVendorFilterOpen}>
+              <DropdownMenuTrigger asChild>
+                <button
+                  className={cn(
+                    "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
+                    selectedVendors.size > 0
+                      ? "bg-purple-100 text-purple-700 border-purple-400"
+                      : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
+                  )}
+                  style={{
+                    minWidth: '120px',
+                    maxWidth: '200px'
+                  }}
+                >
+                  {selectedVendors.size === 1 && (
+                    <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
+                  )}
+                  <span className="truncate flex-1 text-left">{getVendorFilterText()}</span>
+                  <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent className="w-72 max-h-96 overflow-y-auto" align="start">
+                {/* Search box */}
+                <div className="px-3 py-2 border-b">
+                  <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-gray-50">
+                    <Search className="h-3 w-3 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search vendors..."
+                      value={vendorSearchQuery}
+                      onChange={(e) => setVendorSearchQuery(e.target.value)}
+                      className="flex-1 outline-none text-sm bg-transparent"
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </div>
+
+                {/* Select All option */}
+                <div className="py-2">
+                  <DropdownMenuCheckboxItem
+                    checked={selectedVendors.size === uniqueVendors.length}
+                    onCheckedChange={handleSelectAllVendors}
+                    onSelect={(e) => e.preventDefault()}
+                  >
+                    <span className="font-medium">All Vendors</span>
+                    <span className="ml-auto text-xs text-gray-500">
+                      {uniqueVendors.length}
+                    </span>
+                  </DropdownMenuCheckboxItem>
+                </div>
+
+                <DropdownMenuSeparator />
+
+                {/* Individual vendors */}
+                <div className="py-2">
+                  {filteredVendors.length > 0 ? (
+                    filteredVendors.map(vendor => (
+                      <DropdownMenuCheckboxItem
+                        key={vendor}
+                        checked={selectedVendors.has(vendor)}
+                        onCheckedChange={() => handleVendorToggle(vendor)}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        <span className="truncate">{vendor}</span>
+                      </DropdownMenuCheckboxItem>
+                    ))
+                  ) : (
+                    <div className="px-3 py-2 text-sm text-gray-500">No vendors found</div>
+                  )}
+                </div>
+
+                {selectedVendors.size > 0 && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <div className="px-3 py-2">
+                      <button
+                        onClick={clearVendorFilter}
+                        className="w-full text-left text-sm text-purple-600 hover:text-purple-700 font-medium"
+                      >
+                        Clear selection
+                      </button>
+                    </div>
+                  </>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {/* Exception Filter - Only show when not in Non-PO mode */}
+            {invoiceTypeFilter !== 'non-po' && (
+              <>
+                <DropdownMenu open={exceptionFilterOpen} onOpenChange={setExceptionFilterOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={cn(
+                        "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
+                        selectedExceptions.size > 0
+                          ? "bg-purple-100 text-purple-700 border-purple-400"
+                          : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
+                      )}
+                      style={{
+                        minWidth: '120px',
+                        maxWidth: '200px'
+                      }}
+                    >
+                      {selectedExceptions.size === 1 && (
+                        <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
+                      )}
+                      <span className="truncate flex-1 text-left">{getExceptionFilterText()}</span>
+                      <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-72 max-h-96 overflow-y-auto" align="start">
+                    {/* Search box */}
+                    <div className="px-3 py-2 border-b">
+                      <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-gray-50">
+                        <Search className="h-3 w-3 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search exceptions..."
+                          value={exceptionSearchQuery}
+                          onChange={(e) => setExceptionSearchQuery(e.target.value)}
+                          className="flex-1 outline-none text-sm bg-transparent"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Select All option */}
+                    <div className="py-2">
+                      <DropdownMenuCheckboxItem
+                        checked={selectedExceptions.size === uniqueExceptions.length}
+                        onCheckedChange={handleSelectAllExceptions}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        <span className="font-medium">All Exceptions</span>
+                        <span className="ml-auto text-xs text-gray-500">
+                          {uniqueExceptions.length}
+                        </span>
+                      </DropdownMenuCheckboxItem>
+                    </div>
+
+                    <DropdownMenuSeparator />
+
+                    {/* Individual exceptions */}
+                    <div className="py-2">
+                      {filteredExceptions.length > 0 ? (
+                        filteredExceptions.map(exception => (
+                          <DropdownMenuCheckboxItem
+                            key={exception}
+                            checked={selectedExceptions.has(exception)}
+                            onCheckedChange={() => handleExceptionToggle(exception)}
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <span className="truncate">{exception}</span>
+                          </DropdownMenuCheckboxItem>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-gray-500">No exceptions found</div>
+                      )}
+                    </div>
+
+                    {selectedExceptions.size > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <div className="px-3 py-2">
+                          <button
+                            onClick={clearExceptionFilter}
+                            className="w-full text-left text-sm text-purple-600 hover:text-purple-700 font-medium"
+                          >
+                            Clear selection
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </>
+            )}
 
           {/* Vertical divider */}
           <div className="h-5 w-px bg-gray-100" />
 
           {/* Other quick filters */}
           {quickFilterOptions.map((filter) => {
-            // Hide PO-related filters when Non-PO is selected
-            if (invoiceTypeFilter === 'non-po' &&
-                (filter.id === 'po-missing' || filter.id === 'tolerance' || filter.id === 'line-mismatch')) {
-              return null;
-            }
 
             const count = quickFilterCounts[filter.id as keyof typeof quickFilterCounts];
             const isActive = activeQuickFilters.has(filter.id);
@@ -1168,20 +1439,47 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             </div>
             <div className="h-6 w-px bg-gray-300" />
             <div className="flex items-center gap-2">
-              <button className="px-3 py-1.5 text-sm bg-white text-purple-600 border border-purple-600 rounded-md hover:bg-purple-50">
-                Approve
-              </button>
-              <button className="px-3 py-1.5 text-sm bg-white text-purple-600 border border-purple-600 rounded-md hover:bg-purple-50">
-                To Approval
-              </button>
               <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-purple-600 border border-purple-600 rounded-md hover:bg-purple-50">
                 <UserPlus className="h-3 w-3" />
-                Assign
+                Assign ({selectedInvoices.size})
               </button>
               <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-purple-600 border border-purple-600 rounded-md hover:bg-purple-50">
                 <MessageSquare className="h-3 w-3" />
-                Comment
+                Comment ({selectedInvoices.size})
               </button>
+              <button className="px-3 py-1.5 text-sm bg-white text-purple-600 border border-purple-600 rounded-md hover:bg-purple-50">
+                Send for Approval ({selectedInvoices.size})
+              </button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-purple-600 border border-purple-600 rounded-md hover:bg-purple-50">
+                    <MoreHorizontal className="h-4 w-4" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <button
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                    onClick={() => console.log('Accept')}
+                  >
+                    <Check className="h-3 w-3" />
+                    Accept ({selectedInvoices.size})
+                  </button>
+                  <button
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                    onClick={() => console.log('Reject')}
+                  >
+                    <X className="h-3 w-3" />
+                    Reject ({selectedInvoices.size})
+                  </button>
+                  <button
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 text-left"
+                    onClick={() => console.log('Nudge Approver')}
+                  >
+                    <Bell className="h-3 w-3" />
+                    Nudge Approver ({invoicesWithApprovers})
+                  </button>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
             <button
               onClick={clearSelection}

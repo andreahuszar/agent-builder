@@ -13,13 +13,19 @@ import {
   MessageSquare,
   Send,
   CheckSquare,
-  Square
+  Square,
+  Filter,
+  Check,
+  X,
+  Search
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
 } from '@/app/components/ui/dropdown-menu';
 import {
   Tooltip,
@@ -67,7 +73,7 @@ interface EnhancedInvoiceTableProps {
   activeView?: 'all' | 'po' | 'non-po' | 'parked';
 }
 
-type SortField = 'status' | 'docType' | 'invoice_number' | 'vendor_name_snapshot' | 'invoice_date' | 'due_date' | 'total' | 'currency' | 'match_status';
+type SortField = 'status' | 'docType' | 'invoice_number' | 'vendor_name_snapshot' | 'invoice_date' | 'due_date' | 'total' | 'currency' | 'match_status' | 'division' | 'type' | 'assignedTo' | 'costCentre' | 'accountCode' | 'approver' | 'balanceOutstanding' | 'vendorId' | 'aging' | 'netAmount' | 'poNumbers' | 'grNumbers' | 'reason';
 type SortDirection = 'asc' | 'desc';
 
 // Function to map vendor names to divisions
@@ -127,6 +133,9 @@ export function EnhancedInvoiceTable({
 }: EnhancedInvoiceTableProps) {
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [selectedDivisions, setSelectedDivisions] = useState<Set<string>>(new Set());
+  const [divisionFilterOpen, setDivisionFilterOpen] = useState(false);
+  const [divisionSearchQuery, setDivisionSearchQuery] = useState('');
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -137,26 +146,144 @@ export function EnhancedInvoiceTable({
     }
   };
 
+  // Get unique divisions from invoices
+  const uniqueDivisions = useMemo(() => {
+    const divisions = new Set<string>();
+    invoices.forEach(invoice => {
+      if (invoice.division) {
+        divisions.add(invoice.division);
+      }
+    });
+    return Array.from(divisions).sort();
+  }, [invoices]);
+
+  // Filter divisions based on search query
+  const filteredDivisions = useMemo(() => {
+    if (!divisionSearchQuery) return uniqueDivisions;
+    return uniqueDivisions.filter(division =>
+      division.toLowerCase().includes(divisionSearchQuery.toLowerCase())
+    );
+  }, [uniqueDivisions, divisionSearchQuery]);
+
+  // Handle division filter changes
+  const handleDivisionToggle = (division: string) => {
+    const newSelected = new Set(selectedDivisions);
+    if (newSelected.has(division)) {
+      newSelected.delete(division);
+    } else {
+      newSelected.add(division);
+    }
+    setSelectedDivisions(newSelected);
+  };
+
+  const handleSelectAllDivisions = () => {
+    if (selectedDivisions.size === uniqueDivisions.length) {
+      setSelectedDivisions(new Set());
+    } else {
+      setSelectedDivisions(new Set(uniqueDivisions));
+    }
+  };
+
+  const clearDivisionFilter = () => {
+    setSelectedDivisions(new Set());
+    setDivisionSearchQuery('');
+  };
+
+  // Helper functions - moved before sortedInvoices
+  const calculateAging = (dueDate: string) => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const due = new Date(dueDate);
+    due.setHours(0, 0, 0, 0);
+    const diffTime = today.getTime() - due.getTime();
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  // Mock function to generate vendor ID based on vendor name
+  const getVendorId = (vendorName: string | undefined) => {
+    if (!vendorName) return 'VND-000';
+    // Generate a consistent ID based on vendor name
+    const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+    return `VND-${String(hash % 9000 + 1000).padStart(4, '0')}`;
+  };
+
+  // Apply division filter
+  const divisionFilteredInvoices = useMemo(() => {
+    if (selectedDivisions.size === 0) return invoices;
+    return invoices.filter(invoice =>
+      invoice.division && selectedDivisions.has(invoice.division)
+    );
+  }, [invoices, selectedDivisions]);
+
   const sortedInvoices = useMemo(() => {
-    if (!sortField) return invoices;
+    if (!sortField) return divisionFilteredInvoices;
 
-    const sorted = [...invoices].sort((a, b) => {
-      let aValue = a[sortField];
-      let bValue = b[sortField];
+    const sorted = [...divisionFilteredInvoices].sort((a, b) => {
+      let aValue: any;
+      let bValue: any;
 
+      // Handle calculated/special fields first
+      if (sortField === 'vendorId') {
+        aValue = getVendorId(a.vendor_name_snapshot);
+        bValue = getVendorId(b.vendor_name_snapshot);
+      } else if (sortField === 'aging') {
+        aValue = calculateAging(a.due_date);
+        bValue = calculateAging(b.due_date);
+      } else if (sortField === 'netAmount') {
+        aValue = a.total * 0.9;
+        bValue = b.total * 0.9;
+      } else if (sortField === 'poNumbers') {
+        const aPO = a.po_numbers_cached || [];
+        const bPO = b.po_numbers_cached || [];
+        // Sort by: has PO > no PO, then by first PO number
+        if (aPO.length === 0 && bPO.length === 0) return 0;
+        if (aPO.length === 0) return sortDirection === 'asc' ? 1 : -1;
+        if (bPO.length === 0) return sortDirection === 'asc' ? -1 : 1;
+        aValue = aPO[0];
+        bValue = bPO[0];
+      } else if (sortField === 'grNumbers') {
+        const aGR = a.gr_numbers || [];
+        const bGR = b.gr_numbers || [];
+        // Sort by: has GR > no GR, then by first GR number
+        if (aGR.length === 0 && bGR.length === 0) return 0;
+        if (aGR.length === 0) return sortDirection === 'asc' ? 1 : -1;
+        if (bGR.length === 0) return sortDirection === 'asc' ? -1 : 1;
+        aValue = aGR[0] || '';
+        bValue = bGR[0] || '';
+      } else if (sortField === 'reason') {
+        const aIssues = a.issues || [];
+        const bIssues = b.issues || [];
+        // Sort by: has issues > no issues, then by count of issues
+        if (aIssues.length === 0 && bIssues.length === 0) return 0;
+        if (aIssues.length === 0) return sortDirection === 'asc' ? 1 : -1;
+        if (bIssues.length === 0) return sortDirection === 'asc' ? -1 : 1;
+        // Sort by number of issues
+        aValue = aIssues.length;
+        bValue = bIssues.length;
+      } else {
+        // Handle regular fields from the object
+        aValue = a[sortField];
+        bValue = b[sortField];
+      }
+
+      // Now do null checks
       if (aValue == null) return 1;
       if (bValue == null) return -1;
 
+      // Handle date fields
       if (sortField === 'invoice_date' || sortField === 'due_date') {
         aValue = new Date(aValue as string).getTime();
         bValue = new Date(bValue as string).getTime();
       }
 
-      if (sortField === 'total') {
+      // Handle number fields
+      if (sortField === 'total' || sortField === 'balanceOutstanding') {
         aValue = Number(aValue);
         bValue = Number(bValue);
       }
 
+      // String comparison
       if (typeof aValue === 'string' && typeof bValue === 'string') {
         aValue = aValue.toLowerCase();
         bValue = bValue.toLowerCase();
@@ -168,7 +295,7 @@ export function EnhancedInvoiceTable({
     });
 
     return sorted;
-  }, [invoices, sortField, sortDirection]);
+  }, [divisionFilteredInvoices, sortField, sortDirection]);
 
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) {
@@ -182,16 +309,6 @@ export function EnhancedInvoiceTable({
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-  };
-
-  const calculateAging = (dueDate: string) => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const due = new Date(dueDate);
-    due.setHours(0, 0, 0, 0);
-    const diffTime = today.getTime() - due.getTime();
-    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
   };
 
   const formatCurrency = (amount: number, currency: string) => {
@@ -294,14 +411,6 @@ export function EnhancedInvoiceTable({
   const allSelected = selectedInvoices.size === invoices.length && invoices.length > 0;
   const someSelected = selectedInvoices.size > 0 && selectedInvoices.size < invoices.length;
 
-  // Mock function to generate vendor ID based on vendor name
-  const getVendorId = (vendorName: string | undefined) => {
-    if (!vendorName) return 'VND-000';
-    // Generate a consistent ID based on vendor name
-    const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-    return `VND-${String(hash % 9000 + 1000).padStart(4, '0')}`;
-  };
-
   return (
     <div className="overflow-hidden bg-white shadow-sm ring-1 ring-gray-900/5 rounded-lg">
       <div className="overflow-x-auto">
@@ -333,15 +442,21 @@ export function EnhancedInvoiceTable({
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
-                  onClick={() => handleSort('docType')}
+                  onClick={() => handleSort('invoice_number')}
                   className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
                 >
-                  Doc. Type
-                  {getSortIcon('docType')}
+                  Invoice No.
+                  {getSortIcon('invoice_number')}
                 </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                Vendor ID
+                <button
+                  onClick={() => handleSort('vendorId')}
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                >
+                  Vendor ID
+                  {getSortIcon('vendorId')}
+                </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
@@ -353,15 +468,97 @@ export function EnhancedInvoiceTable({
                 </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                Division
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => handleSort('division')}
+                    className="flex items-center gap-1 hover:text-gray-900"
+                  >
+                    Division
+                    {getSortIcon('division')}
+                  </button>
+                  <DropdownMenu open={divisionFilterOpen} onOpenChange={setDivisionFilterOpen}>
+                    <DropdownMenuTrigger asChild>
+                      <button className="p-1 hover:bg-gray-100 rounded relative focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-1">
+                        <Filter className={cn(
+                          "h-4 w-4",
+                          selectedDivisions.size > 0 ? "text-purple-600" : "text-gray-400"
+                        )} />
+                        {selectedDivisions.size > 0 && (
+                          <span className="absolute -top-1 -right-1 h-3 w-3 bg-purple-600 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                            {selectedDivisions.size}
+                          </span>
+                        )}
+                      </button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-64 p-2">
+                      <div className="flex items-center gap-2 px-2 pb-2 border-b">
+                        <Search className="h-4 w-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search..."
+                          value={divisionSearchQuery}
+                          onChange={(e) => setDivisionSearchQuery(e.target.value)}
+                          className="flex-1 outline-none text-sm"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+
+                      <div className="py-2">
+                        <DropdownMenuCheckboxItem
+                          checked={selectedDivisions.size === uniqueDivisions.length}
+                          onCheckedChange={handleSelectAllDivisions}
+                          onSelect={(e) => e.preventDefault()}
+                        >
+                          <span className="font-medium">All Divisions</span>
+                        </DropdownMenuCheckboxItem>
+                      </div>
+
+                      <DropdownMenuSeparator />
+
+                      <div className="max-h-64 overflow-y-auto py-2">
+                        {filteredDivisions.length === 0 ? (
+                          <div className="px-2 py-3 text-sm text-gray-500 text-center">
+                            No divisions found
+                          </div>
+                        ) : (
+                          filteredDivisions.map((division) => (
+                            <DropdownMenuCheckboxItem
+                              key={division}
+                              checked={selectedDivisions.has(division)}
+                              onCheckedChange={() => handleDivisionToggle(division)}
+                              onSelect={(e) => e.preventDefault()}
+                            >
+                              {division}
+                            </DropdownMenuCheckboxItem>
+                          ))
+                        )}
+                      </div>
+
+                      {selectedDivisions.size > 0 && (
+                        <>
+                          <DropdownMenuSeparator />
+                          <div className="p-2">
+                            <button
+                              onClick={clearDivisionFilter}
+                              className="w-full px-2 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors flex items-center justify-center gap-1"
+                            >
+                              <X className="h-3 w-3" />
+                              Reset
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </div>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
-                  onClick={() => handleSort('invoice_number')}
+                  onClick={() => handleSort('docType')}
                   className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
                 >
-                  Invoice No.
-                  {getSortIcon('invoice_number')}
+                  Doc. Type
+                  {getSortIcon('docType')}
                 </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
@@ -383,10 +580,22 @@ export function EnhancedInvoiceTable({
                 </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                Aging (days)
+                <button
+                  onClick={() => handleSort('aging')}
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                >
+                  Aging (days)
+                  {getSortIcon('aging')}
+                </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                Currency
+                <button
+                  onClick={() => handleSort('currency')}
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                >
+                  Currency
+                  {getSortIcon('currency')}
+                </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
                 <button
@@ -398,16 +607,43 @@ export function EnhancedInvoiceTable({
                 </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
-                Net Amount
+                <button
+                  onClick={() => handleSort('netAmount')}
+                  className="flex items-center gap-1 hover:text-gray-900 justify-end w-full"
+                >
+                  Net Amount
+                  {getSortIcon('netAmount')}
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <button
+                  onClick={() => handleSort('type')}
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                >
+                  Type (PO/Non-PO)
+                  {getSortIcon('type')}
+                </button>
               </th>
               {activeView !== 'non-po' && (
                 <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                  PO No.
+                  <button
+                    onClick={() => handleSort('poNumbers')}
+                    className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  >
+                    PO No.
+                    {getSortIcon('poNumbers')}
+                  </button>
                 </th>
               )}
               {activeView !== 'non-po' && (
                 <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                  GR No.
+                  <button
+                    onClick={() => handleSort('grNumbers')}
+                    className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  >
+                    GR No.
+                    {getSortIcon('grNumbers')}
+                  </button>
                 </th>
               )}
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
@@ -420,25 +656,58 @@ export function EnhancedInvoiceTable({
                 </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                Reason
+                <button
+                  onClick={() => handleSort('reason')}
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                >
+                  Reason
+                  {getSortIcon('reason')}
+                </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                Type (PO/Non-PO)
+                <button
+                  onClick={() => handleSort('costCentre')}
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                >
+                  Cost Centre
+                  {getSortIcon('costCentre')}
+                </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                Assigned
+                <button
+                  onClick={() => handleSort('accountCode')}
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                >
+                  Account Code
+                  {getSortIcon('accountCode')}
+                </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                Cost Centre
+                <button
+                  onClick={() => handleSort('assignedTo')}
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                >
+                  Assigned
+                  {getSortIcon('assignedTo')}
+                </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                Account Code
-              </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                Approver
+                <button
+                  onClick={() => handleSort('approver')}
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                >
+                  Approver
+                  {getSortIcon('approver')}
+                </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
-                Balance Outstanding
+                <button
+                  onClick={() => handleSort('balanceOutstanding')}
+                  className="flex items-center gap-1 hover:text-gray-900 justify-end w-full"
+                >
+                  Balance Outstanding
+                  {getSortIcon('balanceOutstanding')}
+                </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
                 Actions
@@ -485,23 +754,6 @@ export function EnhancedInvoiceTable({
                     </span>
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap">
-                    <span className={cn(
-                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                      getDocTypeColor(invoice.docType || 'Invoice')
-                    )}>
-                      {invoice.docType || 'Invoice'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
-                    {getVendorId(invoice.vendor_name_snapshot)}
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
-                    {invoice.vendor_name_snapshot || '-'}
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
-                    {invoice.division || getDivision(invoice.vendor_name_snapshot)}
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap">
                     {/* Check if this is a mock invoice (starts with 'mock-', 'due-', or 'blocked-') */}
                     {invoice.id.startsWith('mock-') || invoice.id.startsWith('due-') || invoice.id.startsWith('blocked-') ? (
                       <span className="text-sm text-gray-950 font-medium">
@@ -515,6 +767,23 @@ export function EnhancedInvoiceTable({
                         {invoice.invoice_number}
                       </Link>
                     )}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
+                    {getVendorId(invoice.vendor_name_snapshot)}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
+                    {invoice.vendor_name_snapshot || '-'}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
+                    {invoice.division || getDivision(invoice.vendor_name_snapshot)}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap">
+                    <span className={cn(
+                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                      getDocTypeColor(invoice.docType || 'Invoice')
+                    )}>
+                      {invoice.docType || 'Invoice'}
+                    </span>
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {formatDate(invoice.invoice_date)}
@@ -547,9 +816,22 @@ export function EnhancedInvoiceTable({
                       return formatCurrency(netAmount, invoice.currency);
                     })()}
                   </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap">
+                    {invoice.type || (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
+                        PO
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
+                        Non-PO
+                      </span>
+                    ))}
+                  </td>
                   {activeView !== 'non-po' && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium">
-                      {invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
+                      {invoice.type === 'Non-PO' ? (
+                        <span className="text-gray-950">-</span>
+                      ) : invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
                         <div className="flex flex-col gap-1">
                           {invoice.po_numbers_cached.map((poNumber) => (
                             invoice.id.startsWith('mock-') || invoice.id.startsWith('due-') || invoice.id.startsWith('blocked-') ? (
@@ -571,7 +853,7 @@ export function EnhancedInvoiceTable({
                           ))}
                         </div>
                       ) : (
-                        <span className="text-gray-950 text-sm font-medium">No PO</span>
+                        <span className="text-gray-950 text-sm font-medium">Missing PO</span>
                       )}
                     </td>
                   )}
@@ -586,7 +868,7 @@ export function EnhancedInvoiceTable({
                           ))}
                         </div>
                       ) : (
-                        <span className="text-gray-950">No GR</span>
+                        <span className="text-gray-950">-</span>
                       )}
                     </td>
                   )}
@@ -596,7 +878,7 @@ export function EnhancedInvoiceTable({
                       getMatchStatusColor(invoice.match_status)
                     )}>
                       {invoice.match_status === 'not_matched' ? 'Exception' :
-                       invoice.match_status === 'matched' ? 'Matched' :
+                       invoice.match_status === 'matched' ? (invoice.type === 'Non-PO' ? 'Approved' : 'Matched') :
                        invoice.match_status?.charAt(0).toUpperCase() + invoice.match_status?.slice(1).replace(/_/g, ' ') || 'Pending'}
                     </span>
                   </td>
@@ -631,25 +913,14 @@ export function EnhancedInvoiceTable({
                       <span>-</span>
                     )}
                   </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap">
-                    {invoice.type || (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                        PO
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
-                        Non-PO
-                      </span>
-                    ))}
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
-                    {invoice.assignedTo || '-'}
-                  </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
                     {invoice.costCentre || '-'}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
                     {invoice.accountCode || '-'}
+                  </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
+                    {invoice.assignedTo || '-'}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
                     {invoice.approver || '-'}
