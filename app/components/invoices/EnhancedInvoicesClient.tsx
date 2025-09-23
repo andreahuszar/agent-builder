@@ -147,6 +147,23 @@ const getDivision = (vendorName: string | undefined): string => {
   return divisions[hash % divisions.length];
 };
 
+// Define issue types with severity levels for prioritization
+const ISSUE_TYPES: Record<string, { severity: 'critical' | 'warning' | 'info', order: number }> = {
+  'Missing PO': { severity: 'critical', order: 1 },
+  'Missing GR': { severity: 'critical', order: 2 },
+  'Missing Approval': { severity: 'critical', order: 3 },
+  'Duplicate Suspected': { severity: 'warning', order: 4 },
+  'Price Tolerance': { severity: 'warning', order: 5 },
+  'Quantity Variance': { severity: 'warning', order: 6 },
+  'PO/Invoice Mismatch': { severity: 'warning', order: 7 },
+  'Line Mismatch': { severity: 'warning', order: 8 },
+  'Tax Discrepancy': { severity: 'info', order: 9 },
+  'Currency Issue': { severity: 'info', order: 10 },
+  'Payment Terms': { severity: 'info', order: 11 },
+  'Vendor Issues': { severity: 'info', order: 12 },
+  'Missing Documentation': { severity: 'info', order: 13 }
+};
+
 // Helper functions for synthetic data generation
 const assigneePool = [
   'John Smith', 'Sarah Johnson', 'Mike Davis', 'Emma Wilson',
@@ -171,6 +188,69 @@ const getRandomApprover = (seed: number = 0): string | undefined => {
   return undefined;
 };
 
+// Generate multiple issues per invoice with deterministic seeding
+const generateInvoiceIssues = (invoice: any): string[] => {
+  // Use invoice ID as seed for consistent generation
+  const seed = invoice.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+
+  const random = (min: number, max: number) => {
+    const x = Math.sin(seed) * 10000;
+    return Math.floor((x - Math.floor(x)) * (max - min + 1)) + min;
+  };
+
+  // Generate issues for invoices that need attention
+  // Be more permissive to ensure we have demo data
+  const needsIssues =
+    invoice.match_status === 'not_matched' ||
+    invoice.match_status === 'partial' ||
+    invoice.match_status === 'exception' ||
+    invoice.status === 'requires_review' ||
+    invoice.status === 'needs_review' ||
+    invoice.status === 'pending' ||
+    invoice.status === 'draft' ||
+    // For demo purposes, generate issues for blocked mock invoices
+    invoice.id.startsWith('blocked-') ||
+    invoice.id.startsWith('due-');
+
+  if (!needsIssues) {
+    return [];
+  }
+
+  // Determine number of issues (1-8 with weighted distribution)
+  const weights = [30, 25, 20, 10, 8, 4, 2, 1]; // More likely to have fewer issues
+  const totalWeight = weights.reduce((a, b) => a + b, 0);
+  let randomWeight = random(0, totalWeight);
+  let issueCount = 1;
+
+  for (let i = 0; i < weights.length; i++) {
+    randomWeight -= weights[i];
+    if (randomWeight <= 0) {
+      issueCount = i + 1;
+      break;
+    }
+  }
+
+  // Select random issues using Fisher-Yates shuffle to avoid infinite loops
+  const availableIssues = Object.keys(ISSUE_TYPES);
+  const shuffled = [...availableIssues];
+
+  // Fisher-Yates shuffle algorithm
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = random(0, i);
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+
+  // Take the first issueCount items
+  const selectedIssues = shuffled.slice(0, Math.min(issueCount, availableIssues.length));
+
+  // Sort issues by priority (severity and order)
+  return selectedIssues.sort((a, b) => {
+    const issueA = ISSUE_TYPES[a];
+    const issueB = ISSUE_TYPES[b];
+    return issueA.order - issueB.order;
+  });
+};
+
 const generateSyntheticFields = (invoice: any): any => {
   // Use invoice ID or vendor name as seed for consistent generation
   const seed = invoice.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
@@ -183,7 +263,8 @@ const generateSyntheticFields = (invoice: any): any => {
     accountCode: `AC-${5000 + (seed % 10) + 1}`,
     approver: getRandomApprover(seed),
     balanceOutstanding: invoice.total * (0.1 + (seed % 5) * 0.1), // 10-50% of total
-    division: getDivision(invoice.vendor_name_snapshot)
+    division: getDivision(invoice.vendor_name_snapshot),
+    issues: generateInvoiceIssues(invoice)
   };
 };
 
@@ -286,6 +367,88 @@ const generateMockDueSoonInvoices = (): Invoice[] => {
   return mockInvoices;
 };
 
+// Generate mock Credit Notes for demonstration
+const generateMockCreditNotes = (): Invoice[] => {
+  const now = new Date();
+  const vendors = ['TechSupply Co', 'Global Services Inc', 'MegaCorp Industries', 'DataCore'];
+  const mockCreditNotes: Invoice[] = [];
+
+  // Generate 2-3 credit notes
+  for (let i = 1; i <= 3; i++) {
+    const creditNoteDate = new Date(now);
+    creditNoteDate.setDate(creditNoteDate.getDate() - Math.floor(Math.random() * 10 + 5)); // 5-15 days ago
+
+    const dueDate = new Date(creditNoteDate);
+    dueDate.setDate(dueDate.getDate() + 30);
+
+    const vendorName = vendors[Math.floor(Math.random() * vendors.length)];
+    const originalAmount = Math.floor(Math.random() * 15000 + 5000);
+    const creditAmount = -Math.floor(originalAmount * (0.1 + Math.random() * 0.3)); // 10-40% credit
+
+    mockCreditNotes.push({
+      id: `cn-${i}`,
+      invoice_number: `CN-2025-${String(i).padStart(4, '0')}`,
+      vendor_name_snapshot: vendorName,
+      division: getDivision(vendorName),
+      invoice_date: creditNoteDate.toISOString().split('T')[0],
+      due_date: dueDate.toISOString().split('T')[0],
+      currency: 'GBP',
+      total: creditAmount,
+      status: i === 1 ? 'credited' : 'approved',
+      match_status: 'matched',
+      vendor_requires_po: true,
+      vendor_is_verified: true,
+      approval_status: 'approved',
+      po_numbers_cached: [`PO-2024-${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`],
+      gr_numbers: [],
+      docType: 'Credit Note',
+      issues: i === 1 ? ['Return processed', 'Credit adjustment'] : ['Refund approved']
+    });
+  }
+
+  return mockCreditNotes;
+};
+
+// Generate mock Pro Forma invoices for demonstration
+const generateMockProFormaInvoices = (): Invoice[] => {
+  const now = new Date();
+  const vendors = ['Industrial Parts Ltd', 'Software Solutions GmbH', 'CloudWave', 'NetSolutions'];
+  const mockProForma: Invoice[] = [];
+
+  // Generate 2 pro forma invoices
+  for (let i = 1; i <= 2; i++) {
+    const proFormaDate = new Date(now);
+    proFormaDate.setDate(proFormaDate.getDate() - Math.floor(Math.random() * 5)); // 0-5 days ago
+
+    const dueDate = new Date(proFormaDate);
+    dueDate.setDate(dueDate.getDate() + 45); // Pro forma usually have longer terms
+
+    const vendorName = vendors[Math.floor(Math.random() * vendors.length)];
+
+    mockProForma.push({
+      id: `pf-${i}`,
+      invoice_number: `PF-2025-${String(i).padStart(4, '0')}`,
+      vendor_name_snapshot: vendorName,
+      division: getDivision(vendorName),
+      invoice_date: proFormaDate.toISOString().split('T')[0],
+      due_date: dueDate.toISOString().split('T')[0],
+      currency: 'GBP',
+      total: Math.floor(Math.random() * 50000 + 25000), // Pro forma often for larger amounts
+      status: i === 1 ? 'draft' : 'pending',
+      match_status: 'pending',
+      vendor_requires_po: false, // Pro forma usually don't require PO yet
+      vendor_is_verified: true,
+      approval_status: 'pending',
+      po_numbers_cached: [],
+      gr_numbers: [],
+      docType: 'Pro Forma',
+      issues: i === 1 ? ['Awaiting confirmation', 'Quote pending approval'] : ['Customs clearance pending']
+    });
+  }
+
+  return mockProForma;
+};
+
 // Generate mock blocked invoices for demonstration
 const generateMockBlockedInvoices = (): Invoice[] => {
   const now = new Date();
@@ -311,7 +474,7 @@ const generateMockBlockedInvoices = (): Invoice[] => {
       currency: 'GBP',
       total: Math.floor(Math.random() * 40000 + 5000), // £5k-45k range
       status: 'requires_review', // Blocked status
-      match_status: 'exception',
+      match_status: 'not_matched', // Changed to trigger issue generation
       po_numbers_cached: Math.random() > 0.3 ? [`PO-2025-${String(3000 + i).padStart(4, '0')}`] : [],
       gr_numbers: Math.random() > 0.5 ? [`GR-2025-${String(2000 + i).padStart(4, '0')}`] : [],
       created_at: invoiceDate.toISOString(),
@@ -334,8 +497,18 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
 
   // Add mock data only on the client side after mount
   useEffect(() => {
-    const rawInvoices = [...(initialInvoices || []), ...generateMockOverdueInvoices(), ...generateMockDueSoonInvoices(), ...generateMockBlockedInvoices()];
-    const combinedInvoices = rawInvoices.map(invoice => generateSyntheticFields(invoice));
+    const rawInvoices = [
+      ...(initialInvoices || []),
+      ...generateMockOverdueInvoices(),
+      ...generateMockDueSoonInvoices(),
+      ...generateMockBlockedInvoices(),
+      ...generateMockCreditNotes(),
+      ...generateMockProFormaInvoices()
+    ];
+    const combinedInvoices = rawInvoices.map(invoice => ({
+      ...generateSyntheticFields(invoice),
+      docType: invoice.docType || 'Invoice' // Default to 'Invoice' if not specified
+    }));
     setInvoices(combinedInvoices);
     setFilteredInvoices(combinedInvoices);
   }, [initialInvoices]);

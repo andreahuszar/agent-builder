@@ -53,6 +53,8 @@ interface Invoice {
   accountCode?: string;
   approver?: string;
   balanceOutstanding?: number;
+  issues?: string[];
+  docType?: 'Invoice' | 'Credit Note' | 'Pro Forma';
 }
 
 interface EnhancedInvoiceTableProps {
@@ -65,7 +67,7 @@ interface EnhancedInvoiceTableProps {
   activeView?: 'all' | 'po' | 'non-po' | 'parked';
 }
 
-type SortField = 'status' | 'invoice_number' | 'vendor_name_snapshot' | 'invoice_date' | 'due_date' | 'total' | 'currency' | 'match_status';
+type SortField = 'status' | 'docType' | 'invoice_number' | 'vendor_name_snapshot' | 'invoice_date' | 'due_date' | 'total' | 'currency' | 'match_status';
 type SortDirection = 'asc' | 'desc';
 
 // Function to map vendor names to divisions
@@ -200,6 +202,18 @@ export function EnhancedInvoiceTable({
     }).format(amount);
   };
 
+  const getDocTypeColor = (docType: string): string => {
+    switch (docType) {
+      case 'Credit Note':
+        return 'bg-orange-100 text-orange-700';
+      case 'Pro Forma':
+        return 'bg-blue-100 text-blue-700';
+      case 'Invoice':
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
+  };
+
   const getStatusColor = (status: string) => {
     const normalizedStatus = status?.toLowerCase() || '';
 
@@ -257,22 +271,24 @@ export function EnhancedInvoiceTable({
     return 'bg-gray-100 text-gray-700';
   };
 
-  const getMatchStatusReason = (invoice: Invoice) => {
-    // Mock reasons based on match status and other conditions
-    if (invoice.match_status === 'not_matched') {
-      if (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0) {
-        return 'Missing PO';
-      }
-      if (!invoice.gr_numbers || invoice.gr_numbers.length === 0) {
-        return 'Missing GR';
-      }
-      return 'Price variance';
-    } else if (invoice.match_status === 'partial') {
-      return 'Quantity mismatch';
-    } else if (invoice.match_status === 'matched') {
-      return '-';
-    }
-    return 'Pending review';
+  // Get the severity color for the badge based on issue types
+  const getIssueSeverityColor = (issues: string[]): string => {
+    // Check if there are any critical issues
+    const hasCritical = issues.some(issue =>
+      issue === 'Missing PO' || issue === 'Missing GR' || issue === 'Missing Approval'
+    );
+    if (hasCritical) return 'bg-red-100 text-red-700';
+
+    // Check if there are any warning issues
+    const hasWarning = issues.some(issue =>
+      issue === 'Duplicate Suspected' || issue === 'Price Tolerance' ||
+      issue === 'Quantity Variance' || issue === 'PO/Invoice Mismatch' ||
+      issue === 'Line Mismatch'
+    );
+    if (hasWarning) return 'bg-orange-100 text-orange-700';
+
+    // Rest are info level
+    return 'bg-blue-100 text-blue-700';
   };
 
   const allSelected = selectedInvoices.size === invoices.length && invoices.length > 0;
@@ -313,6 +329,15 @@ export function EnhancedInvoiceTable({
                 >
                   <span className="whitespace-normal">Workflow Status</span>
                   {getSortIcon('status')}
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <button
+                  onClick={() => handleSort('docType')}
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                >
+                  Doc. Type
+                  {getSortIcon('docType')}
                 </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
@@ -459,6 +484,14 @@ export function EnhancedInvoiceTable({
                        invoice.status?.charAt(0).toUpperCase() + invoice.status?.slice(1).replace(/_/g, ' ') || 'Draft'}
                     </span>
                   </td>
+                  <td className="px-6 py-2.5 whitespace-nowrap">
+                    <span className={cn(
+                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                      getDocTypeColor(invoice.docType || 'Invoice')
+                    )}>
+                      {invoice.docType || 'Invoice'}
+                    </span>
+                  </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
                     {getVendorId(invoice.vendor_name_snapshot)}
                   </td>
@@ -568,7 +601,35 @@ export function EnhancedInvoiceTable({
                     </span>
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
-                    {getMatchStatusReason(invoice)}
+                    {invoice.issues && invoice.issues.length > 0 ? (
+                      <div className="flex items-center gap-1.5">
+                        <span>{invoice.issues[0]}</span>
+                        {invoice.issues.length > 1 && (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <span className={cn(
+                                  "inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium cursor-default",
+                                  getIssueSeverityColor(invoice.issues.slice(1))
+                                )}>
+                                  +{invoice.issues.length - 1}
+                                </span>
+                              </TooltipTrigger>
+                              <TooltipContent className="bg-gray-800 text-white border-gray-800 max-w-xs">
+                                <div className="space-y-0.5">
+                                  <p className="font-semibold mb-1">All Issues:</p>
+                                  {invoice.issues.map((issue, idx) => (
+                                    <p key={idx} className="text-sm">• {issue}</p>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        )}
+                      </div>
+                    ) : (
+                      <span>-</span>
+                    )}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     {invoice.type || (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
