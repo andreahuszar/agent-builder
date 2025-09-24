@@ -331,14 +331,26 @@ export function EnhancedInvoiceTable({
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string, hasApprover: boolean = false) => {
     const normalizedStatus = status?.toLowerCase() || '';
 
+    // Override for in-approval items
+    if (hasApprover && normalizedStatus !== 'approved' && normalizedStatus !== 'paid') {
+      return 'bg-purple-50 text-purple-700 ring-1 ring-purple-200';
+    }
+
     // Check exact matches first
+    if (normalizedStatus === 'needs_info' || normalizedStatus === 'needs info') {
+      return 'bg-red-50 text-red-700 ring-1 ring-red-200';
+    }
     if (normalizedStatus === 'draft' || normalizedStatus === 'new') {
       return 'bg-gray-50 text-gray-700 ring-1 ring-gray-200';
     }
     if (normalizedStatus === 'requires_review' || normalizedStatus === 'needs_review' || normalizedStatus === 'needs review') {
+      return 'bg-orange-50 text-orange-700 ring-1 ring-orange-200';
+    }
+    // If pending without approver (blocked tab), treat as needs review
+    if (normalizedStatus === 'pending' && !hasApprover) {
       return 'bg-orange-50 text-orange-700 ring-1 ring-orange-200';
     }
     if (normalizedStatus === 'pending') {
@@ -743,11 +755,15 @@ export function EnhancedInvoiceTable({
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     <span className={cn(
                       "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                      getStatusColor(invoice.status)
+                      getStatusColor(invoice.status, !!invoice.approver)
                     )}>
-                      {invoice.status === 'requires_review' || invoice.status === 'needs_review' ? 'Needs Review' :
+                      {invoice.approver && invoice.status !== 'approved' && invoice.status !== 'paid' ? 'In Approval' :
+                       invoice.status === 'needs_info' ? 'Needs info' :
+                       invoice.status === 'requires_review' || invoice.status === 'needs_review' ? 'Needs Review' :
                        invoice.status === 'ready_for_payment' || invoice.status === 'ready_to_pay' ? 'Ready for posting' :
                        invoice.status === 'approved' ? 'Approved' :
+                       // If pending and no approver (meaning it's in blocked tab), show as Needs Review
+                       invoice.status === 'pending' && !invoice.approver ? 'Needs Review' :
                        invoice.status === 'pending' ? 'Pending' :
                        invoice.status === 'draft' ? 'Draft' :
                        invoice.status?.charAt(0).toUpperCase() + invoice.status?.slice(1).replace(/_/g, ' ') || 'Draft'}
@@ -769,10 +785,14 @@ export function EnhancedInvoiceTable({
                     )}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
-                    {getVendorId(invoice.vendor_name_snapshot)}
+                    {invoice.vendor_name_snapshot ? getVendorId(invoice.vendor_name_snapshot) :
+                      <span className="text-red-600 font-semibold">Missing</span>
+                    }
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
-                    {invoice.vendor_name_snapshot || '-'}
+                    {invoice.vendor_name_snapshot ||
+                      <span className="text-red-600 font-semibold">Missing</span>
+                    }
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
                     {invoice.division || getDivision(invoice.vendor_name_snapshot)}
@@ -786,7 +806,9 @@ export function EnhancedInvoiceTable({
                     </span>
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {formatDate(invoice.invoice_date)}
+                    {invoice.invoice_date ? formatDate(invoice.invoice_date) :
+                      <span className="text-red-600 font-semibold">Missing</span>
+                    }
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {formatDate(invoice.due_date)}
@@ -804,17 +826,24 @@ export function EnhancedInvoiceTable({
                     })() : '-'}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
-                    {invoice.currency || 'USD'}
+                    {invoice.currency ||
+                      <span className="text-red-600 font-semibold">Missing</span>
+                    }
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-bold text-gray-950 text-right">
-                    {formatCurrency(invoice.total, invoice.currency)}
+                    {invoice.total !== undefined && invoice.total !== null ?
+                      formatCurrency(invoice.total, invoice.currency || 'USD') :
+                      <span className="text-red-600 font-semibold">Missing</span>
+                    }
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
-                    {(() => {
+                    {invoice.total !== undefined && invoice.total !== null ? (() => {
                       // Mock net amount as 90% of total for demonstration
                       const netAmount = invoice.total * 0.9;
-                      return formatCurrency(netAmount, invoice.currency);
-                    })()}
+                      return formatCurrency(netAmount, invoice.currency || 'USD');
+                    })() :
+                      <span className="text-red-600 font-semibold">-</span>
+                    }
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     {invoice.type || (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (

@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Navigation from './Navigation';
 import TopBar from './TopBar';
 import { MODULE_PILLS } from '@/app/constants/navigation';
+import { getPOVisibilityPreference, getLaunchpadVisibilityPreference } from '@/app/utils/cookies';
 
 interface AppLayoutProps {
   activeModule: string;
@@ -14,13 +15,40 @@ interface AppLayoutProps {
 
 export default function AppLayout({ activeModule, children, customTopBar, hideNavigation = false }: AppLayoutProps) {
   const [currentModule, setCurrentModule] = useState<string>(activeModule);
-  // Initialize with default view first, then update from hash after mount
+  const [poVisibility, setPOVisibility] = useState(false);
+  const [launchpadVisibility, setLaunchpadVisibility] = useState(false);
+
+  // Initialize with default view - Invoices for invoice-processing, first pill for others
   const pills = MODULE_PILLS[activeModule];
-  const defaultView = pills && pills.length > 0 ? pills[0].id : '';
+  const defaultView = activeModule === 'invoice-processing' ? 'invoices' :
+                      (pills && pills.length > 0 ? pills[0].id : '');
   const [currentView, setCurrentView] = useState<string>(defaultView);
 
-  // Get pills for the active module
-  const currentPills = MODULE_PILLS[currentModule] || [];
+  // Get pills for the active module and filter based on visibility preferences
+  const currentPills = React.useMemo(() => {
+    let pills = MODULE_PILLS[currentModule] || [];
+
+    if (currentModule === 'invoice-processing') {
+      // Filter based on visibility preferences
+      pills = pills.filter(pill => {
+        // Hide PO/GRs/Escalations when disabled
+        if (!poVisibility && (
+          pill.id === 'purchase-orders' ||
+          pill.id === 'goods-receipts' ||
+          pill.id === 'escalations'
+        )) {
+          return false;
+        }
+        // Hide Launchpad when disabled
+        if (!launchpadVisibility && pill.id === 'launchpad') {
+          return false;
+        }
+        return true;
+      });
+    }
+
+    return pills;
+  }, [currentModule, poVisibility, launchpadVisibility]);
 
   const handleViewChange = (view: string) => {
     setCurrentView(view);
@@ -36,6 +64,15 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
       setCurrentView(pills[0].id);
     }
   };
+
+  // Load visibility preferences on mount
+  useEffect(() => {
+    const poPreference = getPOVisibilityPreference();
+    setPOVisibility(poPreference);
+
+    const launchpadPreference = getLaunchpadVisibilityPreference();
+    setLaunchpadVisibility(launchpadPreference);
+  }, []);
 
   // Check hash on mount and handle browser navigation (back/forward)
   useEffect(() => {

@@ -2,7 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import AppLayout from '@/app/components/AppLayout';
-import { getChartsInDrawerPreference, setChartsInDrawerPreference } from '@/app/utils/cookies';
+import {
+  getChartsInDrawerPreference,
+  setChartsInDrawerPreference,
+  getPOVisibilityPreference,
+  setPOVisibilityPreference,
+  getLaunchpadVisibilityPreference,
+  setLaunchpadVisibilityPreference
+} from '@/app/utils/cookies';
 
 interface SettingsContentProps {
   currentView?: string;
@@ -11,18 +18,40 @@ interface SettingsContentProps {
 
 function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
   const [chartsInDrawer, setChartsInDrawerState] = useState(false);
+  const [poVisibility, setPOVisibilityState] = useState(false);
+  const [launchpadVisibility, setLaunchpadVisibilityState] = useState(false);
 
-  // Load preference from cookie on mount
+  // Load preferences from cookies on mount
   useEffect(() => {
-    const preference = getChartsInDrawerPreference();
-    setChartsInDrawerState(preference);
+    const chartsPreference = getChartsInDrawerPreference();
+    setChartsInDrawerState(chartsPreference);
+
+    const poPreference = getPOVisibilityPreference();
+    setPOVisibilityState(poPreference);
+
+    const launchpadPreference = getLaunchpadVisibilityPreference();
+    setLaunchpadVisibilityState(launchpadPreference);
   }, []);
 
-  // Handle toggle change
+  // Handle toggle change for charts
   const handleToggleChange = () => {
     const newValue = !chartsInDrawer;
     setChartsInDrawerState(newValue);
     setChartsInDrawerPreference(newValue);
+  };
+
+  // Handle toggle change for PO/GRs/Escalations visibility
+  const handlePOVisibilityToggle = () => {
+    const newValue = !poVisibility;
+    setPOVisibilityState(newValue);
+    setPOVisibilityPreference(newValue);
+  };
+
+  // Handle toggle change for Launchpad visibility
+  const handleLaunchpadVisibilityToggle = () => {
+    const newValue = !launchpadVisibility;
+    setLaunchpadVisibilityState(newValue);
+    setLaunchpadVisibilityPreference(newValue);
   };
 
   return (
@@ -89,6 +118,46 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                         chartsInDrawer ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between rounded bg-gray-50 p-4">
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">PO/GRs/Escalations list visibility</span>
+                    <p className="text-xs text-gray-500 mt-1">Show Purchase Orders, Goods Receipts, and Escalations in top menu</p>
+                  </div>
+                  <button
+                    onClick={handlePOVisibilityToggle}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      poVisibility ? 'bg-purple-600' : 'bg-gray-200'
+                    }`}
+                    aria-pressed={poVisibility}
+                    aria-label="Toggle PO/GRs/Escalations visibility"
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        poVisibility ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between rounded bg-gray-50 p-4">
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Launchpad (concept)</span>
+                    <p className="text-xs text-gray-500 mt-1">Show Launchpad concept in top navigation menu</p>
+                  </div>
+                  <button
+                    onClick={handleLaunchpadVisibilityToggle}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      launchpadVisibility ? 'bg-purple-600' : 'bg-gray-200'
+                    }`}
+                    aria-pressed={launchpadVisibility}
+                    aria-label="Toggle Launchpad visibility"
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        launchpadVisibility ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
                   </button>

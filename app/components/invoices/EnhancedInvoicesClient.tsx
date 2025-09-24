@@ -283,6 +283,21 @@ const generateInvoiceIssues = (invoice: any): string[] => {
 };
 
 const generateSyntheticFields = (invoice: any): any => {
+  // Preserve needs_info status - don't generate synthetic fields for these invoices
+  if (invoice.status === 'needs_info') {
+    return {
+      ...invoice,
+      type: 'Non-PO',
+      assignedTo: 'Unassigned',
+      costCentre: '-',
+      accountCode: '-',
+      approver: undefined,
+      balanceOutstanding: 0,
+      division: invoice.division || 'Unknown',
+      issues: []
+    };
+  }
+
   // Use invoice ID or vendor name as seed for consistent generation
   const seed = invoice.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
 
@@ -481,6 +496,93 @@ const generateMockProFormaInvoices = (): Invoice[] => {
 };
 
 // Generate mock blocked invoices for demonstration
+const generateMockNeedsInfoInvoices = (): Invoice[] => {
+  const now = new Date();
+  const mockInvoices: Invoice[] = [];
+
+  // Generate 6 invoices with missing critical data
+  const missingDataScenarios = [
+    {
+      id: 'needs-info-1',
+      invoice_number: 'INV-2025-9001',
+      vendor_name_snapshot: null, // Missing vendor
+      vendor_id: null,
+      missing_field: 'vendor'
+    },
+    {
+      id: 'needs-info-2',
+      invoice_number: 'INV-2025-9002',
+      vendor_name_snapshot: 'DataTech Systems',
+      vendor_id: null, // Missing vendor ID
+      missing_field: 'vendor_id'
+    },
+    {
+      id: 'needs-info-3',
+      invoice_number: 'INV-2025-9003',
+      vendor_name_snapshot: null, // Missing vendor
+      vendor_id: null,
+      invoice_date: null, // Missing invoice date
+      missing_field: 'vendor_and_date'
+    },
+    {
+      id: 'needs-info-4',
+      invoice_number: 'INV-2025-9004',
+      vendor_name_snapshot: 'CloudFlow Inc',
+      vendor_id: 'VND-4521',
+      currency: null, // Missing currency
+      missing_field: 'currency'
+    },
+    {
+      id: 'needs-info-5',
+      invoice_number: 'INV-2025-9005',
+      vendor_name_snapshot: null, // Missing vendor
+      vendor_id: null,
+      currency: null, // Missing currency
+      missing_field: 'vendor_and_currency'
+    },
+    {
+      id: 'needs-info-6',
+      invoice_number: 'INV-2025-9006',
+      vendor_name_snapshot: 'TechSupply Pro',
+      vendor_id: null, // Missing vendor ID
+      total: null, // Missing total amount
+      missing_field: 'vendor_id_and_total'
+    }
+  ];
+
+  missingDataScenarios.forEach((scenario, index) => {
+    const baseDate = new Date(now);
+    baseDate.setDate(baseDate.getDate() - Math.floor(Math.random() * 10)); // 0-10 days ago
+
+    const dueDate = new Date(baseDate);
+    dueDate.setDate(dueDate.getDate() + 30);
+
+    mockInvoices.push({
+      id: scenario.id,
+      invoice_number: scenario.invoice_number,
+      vendor_name_snapshot: scenario.vendor_name_snapshot || undefined,
+      vendor_id: scenario.vendor_id || undefined,
+      division: scenario.vendor_name_snapshot ? getDivision(scenario.vendor_name_snapshot) : 'Unknown',
+      invoice_date: scenario.invoice_date !== null ? baseDate.toISOString().split('T')[0] : undefined,
+      due_date: dueDate.toISOString().split('T')[0],
+      currency: scenario.currency !== null ? (scenario.currency || 'GBP') : undefined,
+      total: scenario.total !== null ? Math.floor(Math.random() * 20000 + 5000) : undefined,
+      status: 'needs_info', // New status for missing data
+      match_status: 'pending',
+      vendor_requires_po: false,
+      vendor_is_verified: false,
+      approval_status: 'pending',
+      po_numbers_cached: [],
+      gr_numbers: [],
+      docType: 'Invoice',
+      created_at: baseDate.toISOString(),
+      updated_at: baseDate.toISOString()
+    } as Invoice);
+  });
+
+  return mockInvoices;
+};
+
 const generateMockBlockedInvoices = (): Invoice[] => {
   const now = new Date();
   const vendors = ['TechSupply Co', 'Global Services Inc', 'Industrial Parts Ltd', 'Office Supplies Direct', 'Maintenance Pro', 'Software Solutions GmbH'];
@@ -536,6 +638,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   useEffect(() => {
     const rawInvoices = [
       ...(initialInvoices || []),
+      ...generateMockNeedsInfoInvoices(),
       ...generateMockOverdueInvoices(),
       ...generateMockDueSoonInvoices(),
       ...generateMockBlockedInvoices(),
@@ -566,6 +669,65 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   // Tab state
   const [activeTab, setActiveTab] = useState('needs-info');
 
+  // Tab-specific filtering function
+  const getTabInvoices = useCallback((tab: string, allInvoices: Invoice[]): Invoice[] => {
+    switch(tab) {
+      case 'needs-info':
+        // Invoices with missing critical data
+        return allInvoices.filter(inv =>
+          inv.status === 'needs_info'
+        );
+
+      case 'blocked':
+        // Issues preventing processing - excludes invoices with approvers and needs_info
+        return allInvoices.filter(inv =>
+          !inv.approver && // Exclude invoices that have approvers (they go to in-approval)
+          inv.status !== 'needs_info' && // Exclude needs_info (has its own tab)
+          inv.match_status !== 'matched' && // Exclude matched (they go to ready-to-post)
+          (
+            inv.status === 'requires_review' ||
+            inv.status === 'needs_review' ||
+            inv.status === 'draft' ||
+            inv.status === 'pending' ||
+            inv.match_status === 'exception' ||
+            inv.match_status === 'not_matched' ||
+            inv.match_status === 'unmatched' ||
+            inv.match_status === 'pending'
+          )
+        );
+
+      case 'in-approval':
+        // Has approver assigned
+        return allInvoices.filter(inv =>
+          inv.approver &&
+          inv.status !== 'approved' &&
+          inv.status !== 'paid' &&
+          inv.status !== 'needs_info' // Exclude needs_info
+        );
+
+      case 'ready-to-post':
+        // Matched and ready for posting - excludes invoices with approvers
+        return allInvoices.filter(inv =>
+          !inv.approver && // Exclude invoices that have approvers (they go to in-approval)
+          inv.match_status === 'matched' &&
+          inv.status !== 'paid' &&
+          inv.status !== 'requires_review' &&
+          inv.status !== 'needs_info' // Exclude needs_info
+        );
+
+      default:
+        return allInvoices;
+    }
+  }, []);
+
+  // Tab-specific states
+  const [tabSelectedInvoices, setTabSelectedInvoices] = useState<Record<string, Set<string>>>({
+    'needs-info': new Set(),
+    'blocked': new Set(),
+    'in-approval': new Set(),
+    'ready-to-post': new Set()
+  });
+
   // Filter states
   const [selectedVendors, setSelectedVendors] = useState<Set<string>>(new Set());
   const [vendorFilterOpen, setVendorFilterOpen] = useState(false);
@@ -573,6 +735,9 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   const [selectedExceptions, setSelectedExceptions] = useState<Set<string>>(new Set());
   const [exceptionFilterOpen, setExceptionFilterOpen] = useState(false);
   const [exceptionSearchQuery, setExceptionSearchQuery] = useState('');
+  const [selectedApprovers, setSelectedApprovers] = useState<Set<string>>(new Set());
+  const [approverFilterOpen, setApproverFilterOpen] = useState(false);
+  const [approverSearchQuery, setApproverSearchQuery] = useState('');
   const [invoiceTypeFilter, setInvoiceTypeFilter] = useState('all');
 
   // Interaction mode states
@@ -610,6 +775,14 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       dueSoon: { count: dueSoon.length, value: dueSoon.reduce((sum, inv) => sum + inv.total, 0) }
     };
   }, [invoices]);
+
+  // Get current tab's invoices - using filtered invoices to respect all active filters
+  const currentTabInvoices = useMemo(() => {
+    return getTabInvoices(activeTab, filteredInvoices);
+  }, [activeTab, filteredInvoices, getTabInvoices]);
+
+  // Get current tab's selected invoices
+  const currentTabSelected = tabSelectedInvoices[activeTab] || new Set<string>();
 
   // Calculate filtered metrics based on current filter selection
   const filteredMetrics = useMemo(() => {
@@ -676,6 +849,32 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
     // Show all exceptions for 'all' mode
     return Array.from(exceptions).sort();
   }, [invoices, invoiceTypeFilter]);
+
+  // Get unique approvers from invoices in approval tab
+  const uniqueApprovers = useMemo(() => {
+    const approvers = new Set<string>();
+    const approvalInvoices = getTabInvoices('in-approval', invoices);
+    approvalInvoices.forEach(invoice => {
+      if (invoice.approver) {
+        approvers.add(invoice.approver);
+      }
+    });
+    return Array.from(approvers).sort();
+  }, [invoices, getTabInvoices]);
+
+  // Get unique missing fields from needs-info invoices
+  const uniqueIssues = useMemo(() => {
+    const issues = new Set<string>();
+    const needsInfoInvoices = getTabInvoices('needs-info', invoices);
+    needsInfoInvoices.forEach(invoice => {
+      if (!invoice.vendor_name_snapshot) issues.add('Missing Vendor');
+      if (!invoice.invoice_date) issues.add('Missing Date');
+      if (!invoice.currency) issues.add('Missing Currency');
+      if (!invoice.total || invoice.total === 0) issues.add('Missing Amount');
+      if (!invoice.vendor_id) issues.add('Missing Vendor ID');
+    });
+    return Array.from(issues).sort();
+  }, [invoices, getTabInvoices]);
 
   // Filter vendors based on search query
   const filteredVendors = useMemo(() => {
@@ -757,6 +956,46 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
     return `${selectedExceptions.size} Exceptions`;
   };
 
+  // Filter approvers based on search query
+  const filteredApprovers = useMemo(() => {
+    if (!approverSearchQuery) return uniqueApprovers;
+    return uniqueApprovers.filter(approver =>
+      approver.toLowerCase().includes(approverSearchQuery.toLowerCase())
+    );
+  }, [uniqueApprovers, approverSearchQuery]);
+
+  // Handle approver filter changes
+  const handleApproverToggle = (approver: string) => {
+    const newSelected = new Set(selectedApprovers);
+    if (newSelected.has(approver)) {
+      newSelected.delete(approver);
+    } else {
+      newSelected.add(approver);
+    }
+    setSelectedApprovers(newSelected);
+  };
+
+  const handleSelectAllApprovers = () => {
+    if (selectedApprovers.size === uniqueApprovers.length) {
+      setSelectedApprovers(new Set());
+    } else {
+      setSelectedApprovers(new Set(uniqueApprovers));
+    }
+  };
+
+  const clearApproverFilter = () => {
+    setSelectedApprovers(new Set());
+    setApproverSearchQuery('');
+    setApproverFilterOpen(false);
+  };
+
+  // Get display text for approver filter
+  const getApproverFilterText = () => {
+    if (selectedApprovers.size === 0) return 'All Approvers';
+    if (selectedApprovers.size === 1) return Array.from(selectedApprovers)[0];
+    return `${selectedApprovers.size} Approvers`;
+  };
+
   // Calculate view counts
   const viewCounts = useMemo(() => {
     return {
@@ -794,11 +1033,26 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       filtered = filtered.filter(inv => inv.status === 'on_hold' || inv.status === 'parked');
     }
 
-    // Apply exception filter
+    // Apply exception/issues filter
     if (selectedExceptions.size > 0) {
-      filtered = filtered.filter(invoice =>
-        invoice.issues && invoice.issues.some(issue => selectedExceptions.has(issue))
-      );
+      if (activeTab === 'needs-info') {
+        // Filter by missing fields in needs-info tab
+        filtered = filtered.filter(invoice => {
+          const missingFields = [];
+          if (!invoice.vendor_name_snapshot) missingFields.push('Missing Vendor');
+          if (!invoice.invoice_date) missingFields.push('Missing Date');
+          if (!invoice.currency) missingFields.push('Missing Currency');
+          if (!invoice.total || invoice.total === 0) missingFields.push('Missing Amount');
+          if (!invoice.vendor_id) missingFields.push('Missing Vendor ID');
+
+          return missingFields.some(field => selectedExceptions.has(field));
+        });
+      } else {
+        // Regular exception filtering for other tabs
+        filtered = filtered.filter(invoice =>
+          invoice.issues && invoice.issues.some(issue => selectedExceptions.has(issue))
+        );
+      }
     }
 
     // Apply quick filters
@@ -835,8 +1089,13 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       filtered = filtered.filter(invoice => selectedVendors.has(invoice.vendor_name_snapshot));
     }
 
+    // Approver filter
+    if (selectedApprovers.size > 0) {
+      filtered = filtered.filter(invoice => invoice.approver && selectedApprovers.has(invoice.approver));
+    }
+
     setFilteredInvoices(filtered);
-  }, [searchQuery, invoices, activeView, selectedVendors, selectedExceptions, activeQuickFilters, invoiceTypeFilter]);
+  }, [searchQuery, invoices, activeView, selectedVendors, selectedExceptions, selectedApprovers, activeQuickFilters, invoiceTypeFilter, activeTab]);
 
   const handleUploadComplete = useCallback((invoiceId: string) => {
     router.push(`/invoices/${invoiceId}`);
@@ -912,6 +1171,39 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
     }
   }, []);
 
+  // Tab-specific selection handlers
+  const toggleTabInvoiceSelection = (invoiceId: string) => {
+    setTabSelectedInvoices(prev => {
+      const newTabSelections = { ...prev };
+      const currentSet = new Set(prev[activeTab] || []);
+
+      if (currentSet.has(invoiceId)) {
+        currentSet.delete(invoiceId);
+      } else {
+        currentSet.add(invoiceId);
+      }
+
+      newTabSelections[activeTab] = currentSet;
+      return newTabSelections;
+    });
+  };
+
+  const toggleTabAllSelection = () => {
+    setTabSelectedInvoices(prev => {
+      const newTabSelections = { ...prev };
+      const currentSelected = prev[activeTab] || new Set();
+
+      if (currentSelected.size === currentTabInvoices.length && currentTabInvoices.length > 0) {
+        newTabSelections[activeTab] = new Set();
+      } else {
+        newTabSelections[activeTab] = new Set(currentTabInvoices.map(inv => inv.id));
+      }
+
+      return newTabSelections;
+    });
+  };
+
+  // Legacy handlers for backwards compatibility (can be removed later)
   const toggleInvoiceSelection = (invoiceId: string) => {
     setSelectedInvoices(prev => {
       const newSet = new Set(prev);
@@ -944,6 +1236,23 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
     }).length;
   }, [selectedInvoices, filteredInvoices]);
 
+  // Count invoices with approvers for tab-specific Nudge Approver button
+  const tabInvoicesWithApprovers = useMemo(() => {
+    return Array.from(currentTabSelected).filter(id => {
+      const invoice = currentTabInvoices.find(inv => inv.id === id);
+      return invoice?.approver;
+    }).length;
+  }, [currentTabSelected, currentTabInvoices]);
+
+  // Calculate counts for each tab - using filtered invoices to match table content
+  const tabCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    TABS.forEach(tab => {
+      counts[tab.id] = getTabInvoices(tab.id, filteredInvoices).length;
+    });
+    return counts;
+  }, [filteredInvoices, getTabInvoices]);
+
   const toggleQuickFilter = (filterId: string) => {
     setActiveQuickFilters(prev => {
       const newSet = new Set(prev);
@@ -965,6 +1274,86 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
     return `$${value.toFixed(0)}`;
   };
 
+  // Compact metrics banner component with card styling - contextual to current tab
+  const MetricsBanner = () => {
+    // Get invoices for the current tab
+    const tabInvoices = getTabInvoices(activeTab, filteredInvoices);
+
+    // Calculate metrics specific to this tab's invoices
+    const tabMetrics = useMemo(() => {
+      const now = new Date();
+      const dueSoonThreshold = new Date();
+      dueSoonThreshold.setDate(dueSoonThreshold.getDate() + 7);
+
+      const dueSoonInvoices = tabInvoices.filter(inv => {
+        const dueDate = new Date(inv.due_date);
+        return dueDate >= now && dueDate <= dueSoonThreshold && inv.status !== 'paid';
+      });
+
+      const overdueInvoices = tabInvoices.filter(inv => {
+        const dueDate = new Date(inv.due_date);
+        return dueDate < now && inv.status !== 'paid';
+      });
+
+      // For blocked tab, count all invoices as blocked (they're in this tab for a reason)
+      // Otherwise, look for specific blocked statuses
+      const blockedInvoices = activeTab === 'blocked' ?
+        tabInvoices :
+        tabInvoices.filter(inv =>
+          inv.status === 'requires_review' ||
+          inv.status === 'needs_review' ||
+          inv.match_status === 'exception' ||
+          inv.match_status === 'not_matched' ||
+          inv.match_status === 'unmatched'
+        );
+
+      return {
+        dueSoon: {
+          count: dueSoonInvoices.length,
+          value: dueSoonInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0)
+        },
+        overdue: {
+          count: overdueInvoices.length,
+          value: overdueInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0)
+        },
+        blocked: {
+          count: blockedInvoices.length,
+          value: blockedInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0)
+        }
+      };
+    }, [tabInvoices, activeTab]);
+
+    return (
+      <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-3 py-1.5 mb-3">
+        <div className="flex items-center divide-x divide-gray-100">
+          <div className="flex items-center gap-1.5 pr-4">
+            <Clock className="h-3 w-3 text-purple-900" />
+            <span className="text-xs text-gray-950">
+              <span className="font-semibold">{tabMetrics.dueSoon.count}</span> due soon
+              <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.dueSoon.value)}</span>
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 px-4">
+            <Clock className="h-3 w-3 text-purple-900" />
+            <span className="text-xs text-gray-950">
+              <span className="font-semibold">{tabMetrics.overdue.count}</span> overdue
+              <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.overdue.value)}</span>
+            </span>
+          </div>
+          {activeTab === 'blocked' && (
+            <div className="flex items-center gap-1.5 pl-4">
+              <AlertTriangle className="h-3 w-3 text-red-500" />
+              <span className="text-xs text-gray-950">
+                <span className="font-semibold">{tabMetrics.blocked.count}</span> blocked
+                <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.blocked.value)}</span>
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   const handleMetricClick = (metric: 'blocked' | 'overdue' | 'dueSoon') => {
     if (chartsInDrawer) {
       // Drawer mode (toggle ON)
@@ -980,6 +1369,455 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   const closeSidePanel = () => {
     setSidePanelOpen(false);
     setTimeout(() => setSelectedMetric(null), 300);
+  };
+
+  // Component for rendering tab content with full table functionality
+  const renderTabContent = () => {
+    return (
+      <>
+        {/* Search bar and filter pills */}
+        <div className="mb-4">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <div className="flex items-center gap-2">
+              <div className="relative w-48">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-600" />
+                <input
+                  type="search"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-8 pr-2.5 py-1.5 w-full border border-gray-300 rounded-md text-xs placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <button className="px-2.5 py-1.5 bg-white border border-purple-600 text-purple-600 text-xs font-medium rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
+                <Filter className="h-3 w-3 inline mr-1" />
+                Columns & Filters
+              </button>
+            </div>
+
+            {/* Quick filter pills with vendor filter first */}
+            <div className="flex items-center gap-1.5">
+              {/* Clear All link - shows when any quick filters are active OR vendor is selected */}
+              {(activeQuickFilters.size > 0 || selectedVendors.size > 0 || selectedExceptions.size > 0 || selectedApprovers.size > 0) && (
+                <>
+                  <button
+                    onClick={() => {
+                      setActiveQuickFilters(new Set());
+                      setSelectedVendors(new Set());
+                      setSelectedExceptions(new Set());
+                      setSelectedApprovers(new Set());
+                    }}
+                    className="text-xs text-purple-600 hover:text-purple-700 font-medium"
+                  >
+                    Clear All
+                  </button>
+                  <div className="h-5 w-px bg-gray-100" />
+                </>
+              )}
+
+              {/* Vendor Filter - First and expandable */}
+              <DropdownMenu open={vendorFilterOpen} onOpenChange={setVendorFilterOpen}>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    className={cn(
+                      "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
+                      selectedVendors.size > 0
+                        ? "bg-purple-100 text-purple-700 border-purple-400"
+                        : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
+                    )}
+                    style={{
+                      minWidth: '120px',
+                      maxWidth: '200px'
+                    }}
+                  >
+                    {selectedVendors.size === 1 && (
+                      <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
+                    )}
+                    <span className="truncate flex-1 text-left">{getVendorFilterText()}</span>
+                    <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent className="w-72 max-h-96 overflow-y-auto" align="start">
+                  <div className="px-3 py-2 border-b">
+                    <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-gray-50">
+                      <Search className="h-3 w-3 text-gray-400" />
+                      <input
+                        type="text"
+                        placeholder="Search vendors..."
+                        value={vendorSearchQuery}
+                        onChange={(e) => setVendorSearchQuery(e.target.value)}
+                        className="flex-1 outline-none text-sm bg-transparent"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </div>
+                  </div>
+                  <div className="py-2">
+                    <DropdownMenuCheckboxItem
+                      checked={selectedVendors.size === uniqueVendors.length}
+                      onCheckedChange={handleSelectAllVendors}
+                      onSelect={(e) => e.preventDefault()}
+                    >
+                      <span className="font-medium">All Vendors</span>
+                      <span className="ml-auto text-xs text-gray-500">
+                        {uniqueVendors.length}
+                      </span>
+                    </DropdownMenuCheckboxItem>
+                  </div>
+                  <DropdownMenuSeparator />
+                  <div className="py-2">
+                    {filteredVendors.length > 0 ? (
+                      filteredVendors.map(vendor => (
+                        <DropdownMenuCheckboxItem
+                          key={vendor}
+                          checked={selectedVendors.has(vendor)}
+                          onCheckedChange={() => handleVendorToggle(vendor)}
+                          onSelect={(e) => e.preventDefault()}
+                        >
+                          <span className="truncate">{vendor}</span>
+                        </DropdownMenuCheckboxItem>
+                      ))
+                    ) : (
+                      <div className="px-3 py-2 text-sm text-gray-500">No vendors found</div>
+                    )}
+                  </div>
+                  {selectedVendors.size > 0 && (
+                    <>
+                      <DropdownMenuSeparator />
+                      <div className="px-3 py-2">
+                        <button
+                          onClick={clearVendorFilter}
+                          className="w-full text-left text-sm text-purple-600 hover:text-purple-700 font-medium"
+                        >
+                          Clear selection
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Exception/Issues Filter - Show based on tab and invoice type */}
+              {invoiceTypeFilter !== 'non-po' && activeTab !== 'ready-to-post' && (
+                <>
+                  {activeTab === 'needs-info' ? (
+                    // Issues filter for needs-info tab
+                    <DropdownMenu open={exceptionFilterOpen} onOpenChange={setExceptionFilterOpen}>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className={cn(
+                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
+                            selectedExceptions.size > 0
+                              ? "bg-purple-100 text-purple-700 border-purple-400"
+                              : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
+                          )}
+                          style={{
+                            minWidth: '120px',
+                            maxWidth: '200px'
+                          }}
+                        >
+                          {selectedExceptions.size === 1 && (
+                            <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
+                          )}
+                          <span className="truncate flex-1 text-left">
+                            {selectedExceptions.size === 0 ? 'All Issues' :
+                             selectedExceptions.size === 1 ? Array.from(selectedExceptions)[0] :
+                             `${selectedExceptions.size} Issues`}
+                          </span>
+                          <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-72 max-h-96 overflow-y-auto" align="start">
+                        <div className="px-3 py-2 border-b">
+                          <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-gray-50">
+                            <Search className="h-3 w-3 text-gray-400" />
+                            <input
+                              type="text"
+                              placeholder="Search issues..."
+                              value={exceptionSearchQuery}
+                              onChange={(e) => setExceptionSearchQuery(e.target.value)}
+                              className="flex-1 outline-none text-sm bg-transparent"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        </div>
+                        <div className="py-2">
+                          <DropdownMenuCheckboxItem
+                            checked={selectedExceptions.size === uniqueIssues.length}
+                            onCheckedChange={() => {
+                              if (selectedExceptions.size === uniqueIssues.length) {
+                                setSelectedExceptions(new Set());
+                              } else {
+                                setSelectedExceptions(new Set(uniqueIssues));
+                              }
+                            }}
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <span className="font-medium">All Issues</span>
+                            <span className="ml-auto text-xs text-gray-500">
+                              {uniqueIssues.length}
+                            </span>
+                          </DropdownMenuCheckboxItem>
+                        </div>
+                        <DropdownMenuSeparator />
+                        <div className="py-2">
+                          {uniqueIssues.length > 0 ? (
+                            uniqueIssues.filter(issue =>
+                              !exceptionSearchQuery || issue.toLowerCase().includes(exceptionSearchQuery.toLowerCase())
+                            ).map(issue => (
+                              <DropdownMenuCheckboxItem
+                                key={issue}
+                                checked={selectedExceptions.has(issue)}
+                                onCheckedChange={() => {
+                                  const newSelected = new Set(selectedExceptions);
+                                  if (newSelected.has(issue)) {
+                                    newSelected.delete(issue);
+                                  } else {
+                                    newSelected.add(issue);
+                                  }
+                                  setSelectedExceptions(newSelected);
+                                }}
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                <span className="truncate">{issue}</span>
+                              </DropdownMenuCheckboxItem>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-sm text-gray-500">No issues found</div>
+                          )}
+                        </div>
+                        {selectedExceptions.size > 0 && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <div className="px-3 py-2">
+                              <button
+                                onClick={clearExceptionFilter}
+                                className="w-full text-left text-sm text-purple-600 hover:text-purple-700 font-medium"
+                              >
+                                Clear selection
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  ) : (
+                    // Regular exceptions filter for other tabs
+                    <DropdownMenu open={exceptionFilterOpen} onOpenChange={setExceptionFilterOpen}>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className={cn(
+                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
+                            selectedExceptions.size > 0
+                              ? "bg-purple-100 text-purple-700 border-purple-400"
+                              : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
+                          )}
+                          style={{
+                            minWidth: '120px',
+                            maxWidth: '200px'
+                          }}
+                        >
+                          {selectedExceptions.size === 1 && (
+                            <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
+                          )}
+                          <span className="truncate flex-1 text-left">{getExceptionFilterText()}</span>
+                          <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent className="w-72 max-h-96 overflow-y-auto" align="start">
+                        <div className="px-3 py-2 border-b">
+                          <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-gray-50">
+                            <Search className="h-3 w-3 text-gray-400" />
+                            <input
+                              type="text"
+                              placeholder="Search exceptions..."
+                              value={exceptionSearchQuery}
+                              onChange={(e) => setExceptionSearchQuery(e.target.value)}
+                              className="flex-1 outline-none text-sm bg-transparent"
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          </div>
+                        </div>
+                        <div className="py-2">
+                          <DropdownMenuCheckboxItem
+                            checked={selectedExceptions.size === uniqueExceptions.length}
+                            onCheckedChange={handleSelectAllExceptions}
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <span className="font-medium">All Exceptions</span>
+                            <span className="ml-auto text-xs text-gray-500">
+                              {uniqueExceptions.length}
+                            </span>
+                          </DropdownMenuCheckboxItem>
+                        </div>
+                        <DropdownMenuSeparator />
+                        <div className="py-2">
+                          {filteredExceptions.length > 0 ? (
+                            filteredExceptions.map(exception => (
+                              <DropdownMenuCheckboxItem
+                                key={exception}
+                                checked={selectedExceptions.has(exception)}
+                                onCheckedChange={() => handleExceptionToggle(exception)}
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                <span className="truncate">{exception}</span>
+                              </DropdownMenuCheckboxItem>
+                            ))
+                          ) : (
+                            <div className="px-3 py-2 text-sm text-gray-500">No exceptions found</div>
+                          )}
+                        </div>
+                        {selectedExceptions.size > 0 && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <div className="px-3 py-2">
+                              <button
+                                onClick={clearExceptionFilter}
+                                className="w-full text-left text-sm text-purple-600 hover:text-purple-700 font-medium"
+                              >
+                                Clear selection
+                              </button>
+                            </div>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
+                </>
+              )}
+
+              {/* Approvers Filter - Only show in in-approval tab */}
+              {activeTab === 'in-approval' && (
+                <DropdownMenu open={approverFilterOpen} onOpenChange={setApproverFilterOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={cn(
+                        "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
+                        selectedApprovers.size > 0
+                          ? "bg-purple-100 text-purple-700 border-purple-400"
+                          : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
+                      )}
+                      style={{
+                        minWidth: '120px',
+                        maxWidth: '200px'
+                      }}
+                    >
+                      {selectedApprovers.size === 1 && (
+                        <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
+                      )}
+                      <span className="truncate flex-1 text-left">{getApproverFilterText()}</span>
+                      <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-72 max-h-96 overflow-y-auto" align="start">
+                    <div className="px-3 py-2 border-b">
+                      <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-gray-50">
+                        <Search className="h-3 w-3 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search approvers..."
+                          value={approverSearchQuery}
+                          onChange={(e) => setApproverSearchQuery(e.target.value)}
+                          className="flex-1 outline-none text-sm bg-transparent"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+                    <div className="py-2">
+                      <DropdownMenuCheckboxItem
+                        checked={selectedApprovers.size === uniqueApprovers.length}
+                        onCheckedChange={handleSelectAllApprovers}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        <span className="font-medium">All Approvers</span>
+                        <span className="ml-auto text-xs text-gray-500">
+                          {uniqueApprovers.length}
+                        </span>
+                      </DropdownMenuCheckboxItem>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <div className="py-2">
+                      {filteredApprovers.length > 0 ? (
+                        filteredApprovers.map(approver => (
+                          <DropdownMenuCheckboxItem
+                            key={approver}
+                            checked={selectedApprovers.has(approver)}
+                            onCheckedChange={() => handleApproverToggle(approver)}
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <span className="truncate">{approver}</span>
+                          </DropdownMenuCheckboxItem>
+                        ))
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-gray-500">No approvers found</div>
+                      )}
+                    </div>
+                    {selectedApprovers.size > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <div className="px-3 py-2">
+                          <button
+                            onClick={clearApproverFilter}
+                            className="w-full text-left text-sm text-purple-600 hover:text-purple-700 font-medium"
+                          >
+                            Clear selection
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+
+              {/* Vertical divider */}
+              <div className="h-5 w-px bg-gray-100" />
+
+              {/* Invoice count */}
+              <span className="text-xs text-gray-600">
+                {currentTabInvoices.length} invoice{currentTabInvoices.length !== 1 ? 's' : ''}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* Table */}
+        <EnhancedInvoiceTable
+          invoices={currentTabInvoices as any}
+          selectedInvoices={currentTabSelected}
+          onToggleSelection={toggleTabInvoiceSelection}
+          onToggleAll={toggleTabAllSelection}
+          onDelete={handleDelete}
+          onPOClick={handlePOClick}
+          activeView={activeView}
+        />
+
+        {/* Bulk Actions Bar - only show if items are selected */}
+        {currentTabSelected.size > 0 && (
+          <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-50">
+            <div className="bg-white rounded-lg shadow-lg border border-gray-200 px-4 py-3">
+              <div className="flex items-center gap-3">
+                <span className="text-sm text-gray-700 font-medium">
+                  {currentTabSelected.size} selected
+                </span>
+                <div className="flex items-center gap-2">
+                  <button className="px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
+                    <UserPlus className="h-4 w-4 inline mr-1.5" />
+                    Assign({currentTabSelected.size})
+                  </button>
+                  <button className="px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
+                    <MessageSquare className="h-4 w-4 inline mr-1.5" />
+                    Comment({currentTabSelected.size})
+                  </button>
+                  <button className="px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
+                    <Send className="h-4 w-4 inline mr-1.5" />
+                    Send for Approval({currentTabSelected.size})
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </>
+    );
   };
 
   return (
@@ -1035,137 +1873,6 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
         </div>
       </div>
 
-      {/* Metrics strip bar */}
-      <div className="mb-4 bg-white rounded-lg border border-gray-200 shadow-sm">
-        {!chartsInDrawer ? (
-          // Expandable mode - entire banner is clickable with unified hover
-          <div
-            onClick={() => setBannerExpanded(!bannerExpanded)}
-            className={`flex items-center divide-x divide-gray-100 cursor-pointer hover:bg-purple-50 transition-colors ${
-              bannerExpanded ? 'rounded-t-lg' : 'rounded-lg'
-            }`}
-          >
-            {/* Due soon metric */}
-            <div className="flex items-center gap-2 px-5 py-4 flex-1">
-              <Clock className="h-4 w-4 text-purple-900" />
-              <span className="text-sm text-gray-950">
-                <span className="font-semibold text-lg">{filteredMetrics.dueSoon.count}</span> due soon
-                <span className="text-gray-700 ml-1">• {formatValue(filteredMetrics.dueSoon.value)}</span>
-              </span>
-            </div>
-
-            {/* Overdue value metric */}
-            <div className="flex items-center gap-2 px-5 py-4 flex-1">
-              <Clock className="h-4 w-4 text-purple-900" />
-              <span className="text-sm text-gray-950">
-                <span className="font-semibold text-lg">{filteredMetrics.overdue.count}</span> overdue
-                <span className="text-gray-700 ml-1">• {formatValue(filteredMetrics.overdue.value)}</span>
-              </span>
-            </div>
-
-            {/* Open blocked metric with chevron */}
-            <div className="flex items-center gap-2 px-5 py-4 flex-1">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-sm text-gray-950 flex-1">
-                <span className="font-semibold text-lg">{filteredMetrics.openBlocked.count}</span> blocked
-                <span className="text-gray-700 ml-1">• {formatValue(filteredMetrics.openBlocked.value)}</span>
-              </span>
-              {bannerExpanded ? (
-                <ChevronUp className="h-3 w-3 text-gray-500 ml-2" />
-              ) : (
-                <ChevronDown className="h-3 w-3 text-gray-500 ml-2" />
-              )}
-            </div>
-          </div>
-        ) : (
-          // Drawer mode - individual buttons with separate hover effects
-          <div className="flex items-center divide-x divide-gray-100">
-            {/* Due soon metric */}
-            <button
-              onClick={() => handleMetricClick('dueSoon')}
-              className="flex items-center gap-2 px-5 py-4 hover:bg-purple-50 transition-colors flex-1 rounded-l-lg"
-            >
-              <Clock className="h-4 w-4 text-purple-900" />
-              <span className="text-sm text-gray-950">
-                <span className="font-semibold text-lg">{filteredMetrics.dueSoon.count}</span> due soon
-                <span className="text-gray-700 ml-1">• {formatValue(filteredMetrics.dueSoon.value)}</span>
-              </span>
-            </button>
-
-            {/* Overdue value metric */}
-            <button
-              onClick={() => handleMetricClick('overdue')}
-              className="flex items-center gap-2 px-5 py-4 hover:bg-purple-50 transition-colors flex-1"
-            >
-              <Clock className="h-4 w-4 text-purple-900" />
-              <span className="text-sm text-gray-950">
-                <span className="font-semibold text-lg">{filteredMetrics.overdue.count}</span> overdue
-                <span className="text-gray-700 ml-1">• {formatValue(filteredMetrics.overdue.value)}</span>
-              </span>
-            </button>
-
-            {/* Open blocked metric */}
-            <button
-              onClick={() => handleMetricClick('blocked')}
-              className="flex items-center gap-2 px-5 py-4 hover:bg-purple-50 transition-colors flex-1 rounded-r-lg"
-            >
-              <AlertTriangle className="h-4 w-4 text-red-500" />
-              <span className="text-sm text-gray-950">
-                <span className="font-semibold text-lg">{filteredMetrics.openBlocked.count}</span> blocked
-                <span className="text-gray-700 ml-1">• {formatValue(filteredMetrics.openBlocked.value)}</span>
-              </span>
-            </button>
-          </div>
-        )}
-
-        {/* Inline Charts Expansion (when chartsInDrawer is OFF) */}
-        {!chartsInDrawer && bannerExpanded && (
-          <div className="border-t border-gray-100 relative transition-all duration-300 animate-in slide-in-from-top-2">
-            {/* Charts Grid with vertical dividers aligned to banner sections */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 py-4">
-              {/* Due Soon Chart */}
-              <div className="px-6 flex">
-                <div className="bg-gray-50 rounded-lg p-4 flex-1 flex flex-col">
-                  <InvoiceDueSoonChart
-                    invoices={filteredInvoices}
-                    onBucketClick={(bucket) => {
-                      console.log(`View ${bucket} invoices`);
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Overdue Chart */}
-              <div className="px-6 flex">
-                <div className="bg-gray-50 rounded-lg p-4 flex-1 flex flex-col">
-                  <InvoiceAgingChart
-                    invoices={filteredInvoices}
-                    onBucketClick={(bucket) => {
-                      console.log(`View ${bucket} invoices`);
-                    }}
-                  />
-                </div>
-              </div>
-
-              {/* Blocked Chart */}
-              <div className="px-6 flex">
-                <div className="bg-gray-50 rounded-lg p-4 flex-1 flex flex-col">
-                  <BlockedInvoiceAnalysis
-                    invoices={filteredInvoices}
-                    onCategoryClick={(category) => {
-                      console.log(`View ${category} exceptions`);
-                    }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {/* Vertical dividers that align with the banner dividers - now touching top and bottom */}
-            <div className="absolute left-[calc(33.333%-0.5px)] top-0 bottom-0 w-px bg-gray-100 hidden lg:block" />
-            <div className="absolute left-[calc(66.666%-0.5px)] top-0 bottom-0 w-px bg-gray-100 hidden lg:block" />
-          </div>
-        )}
-      </div>
 
       {/* Tab Navigation */}
       <div className="mb-4">
@@ -1182,594 +1889,26 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
                 }`}
               >
                 {tab.label}
+                {tabCounts[tab.id] > 0 && (
+                  <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                    activeTab === tab.id
+                      ? 'bg-purple-100 text-purple-900'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {tabCounts[tab.id]}
+                  </span>
+                )}
               </button>
             ))}
           </nav>
         </div>
       </div>
 
-      {/* Tab Content */}
-      {activeTab === 'needs-info' && (
-        <>
-          {/* Search bar and filter pills */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between gap-2 flex-wrap">
-          <div className="flex items-center gap-2">
-            <div className="relative w-48">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-600" />
-              <input
-                type="search"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-8 pr-2.5 py-1.5 w-full border border-gray-300 rounded-md text-xs placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-purple-500"
-              />
-            </div>
-            <button className="px-2.5 py-1.5 bg-white border border-purple-600 text-purple-600 text-xs font-medium rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
-              <Filter className="h-3 w-3 inline mr-1" />
-              Columns & Filters
-            </button>
-          </div>
-
-          {/* Quick filter pills with vendor filter first */}
-          <div className="flex items-center gap-1.5">
-            {/* Clear All link - shows when any quick filters are active OR vendor is selected */}
-            {(activeQuickFilters.size > 0 || selectedVendors.size > 0 || selectedExceptions.size > 0) && (
-              <>
-                <button
-                  onClick={() => {
-                    setActiveQuickFilters(new Set());
-                    setSelectedVendors(new Set());
-                    setSelectedExceptions(new Set());
-                  }}
-                  className="text-xs text-purple-600 hover:text-purple-700 font-medium"
-                >
-                  Clear All
-                </button>
-                <div className="h-5 w-px bg-gray-100" />
-              </>
-            )}
-
-            {/* Vendor Filter - First and expandable */}
-            <DropdownMenu open={vendorFilterOpen} onOpenChange={setVendorFilterOpen}>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className={cn(
-                    "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
-                    selectedVendors.size > 0
-                      ? "bg-purple-100 text-purple-700 border-purple-400"
-                      : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
-                  )}
-                  style={{
-                    minWidth: '120px',
-                    maxWidth: '200px'
-                  }}
-                >
-                  {selectedVendors.size === 1 && (
-                    <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
-                  )}
-                  <span className="truncate flex-1 text-left">{getVendorFilterText()}</span>
-                  <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent className="w-72 max-h-96 overflow-y-auto" align="start">
-                {/* Search box */}
-                <div className="px-3 py-2 border-b">
-                  <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-gray-50">
-                    <Search className="h-3 w-3 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search vendors..."
-                      value={vendorSearchQuery}
-                      onChange={(e) => setVendorSearchQuery(e.target.value)}
-                      className="flex-1 outline-none text-sm bg-transparent"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </div>
-                </div>
-
-                {/* Select All option */}
-                <div className="py-2">
-                  <DropdownMenuCheckboxItem
-                    checked={selectedVendors.size === uniqueVendors.length}
-                    onCheckedChange={handleSelectAllVendors}
-                    onSelect={(e) => e.preventDefault()}
-                  >
-                    <span className="font-medium">All Vendors</span>
-                    <span className="ml-auto text-xs text-gray-500">
-                      {uniqueVendors.length}
-                    </span>
-                  </DropdownMenuCheckboxItem>
-                </div>
-
-                <DropdownMenuSeparator />
-
-                {/* Individual vendors */}
-                <div className="py-2">
-                  {filteredVendors.length > 0 ? (
-                    filteredVendors.map(vendor => (
-                      <DropdownMenuCheckboxItem
-                        key={vendor}
-                        checked={selectedVendors.has(vendor)}
-                        onCheckedChange={() => handleVendorToggle(vendor)}
-                        onSelect={(e) => e.preventDefault()}
-                      >
-                        <span className="truncate">{vendor}</span>
-                      </DropdownMenuCheckboxItem>
-                    ))
-                  ) : (
-                    <div className="px-3 py-2 text-sm text-gray-500">No vendors found</div>
-                  )}
-                </div>
-
-                {selectedVendors.size > 0 && (
-                  <>
-                    <DropdownMenuSeparator />
-                    <div className="px-3 py-2">
-                      <button
-                        onClick={clearVendorFilter}
-                        className="w-full text-left text-sm text-purple-600 hover:text-purple-700 font-medium"
-                      >
-                        Clear selection
-                      </button>
-                    </div>
-                  </>
-                )}
-              </DropdownMenuContent>
-            </DropdownMenu>
-
-            {/* Exception Filter - Only show when not in Non-PO mode */}
-            {invoiceTypeFilter !== 'non-po' && (
-              <>
-                <DropdownMenu open={exceptionFilterOpen} onOpenChange={setExceptionFilterOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
-                        selectedExceptions.size > 0
-                          ? "bg-purple-100 text-purple-700 border-purple-400"
-                          : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
-                      )}
-                      style={{
-                        minWidth: '120px',
-                        maxWidth: '200px'
-                      }}
-                    >
-                      {selectedExceptions.size === 1 && (
-                        <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
-                      )}
-                      <span className="truncate flex-1 text-left">{getExceptionFilterText()}</span>
-                      <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-72 max-h-96 overflow-y-auto" align="start">
-                    {/* Search box */}
-                    <div className="px-3 py-2 border-b">
-                      <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-gray-50">
-                        <Search className="h-3 w-3 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Search exceptions..."
-                          value={exceptionSearchQuery}
-                          onChange={(e) => setExceptionSearchQuery(e.target.value)}
-                          className="flex-1 outline-none text-sm bg-transparent"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                    </div>
-
-                    {/* Select All option */}
-                    <div className="py-2">
-                      <DropdownMenuCheckboxItem
-                        checked={selectedExceptions.size === uniqueExceptions.length}
-                        onCheckedChange={handleSelectAllExceptions}
-                        onSelect={(e) => e.preventDefault()}
-                      >
-                        <span className="font-medium">All Exceptions</span>
-                        <span className="ml-auto text-xs text-gray-500">
-                          {uniqueExceptions.length}
-                        </span>
-                      </DropdownMenuCheckboxItem>
-                    </div>
-
-                    <DropdownMenuSeparator />
-
-                    {/* Individual exceptions */}
-                    <div className="py-2">
-                      {filteredExceptions.length > 0 ? (
-                        filteredExceptions.map(exception => (
-                          <DropdownMenuCheckboxItem
-                            key={exception}
-                            checked={selectedExceptions.has(exception)}
-                            onCheckedChange={() => handleExceptionToggle(exception)}
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            <span className="truncate">{exception}</span>
-                          </DropdownMenuCheckboxItem>
-                        ))
-                      ) : (
-                        <div className="px-3 py-2 text-sm text-gray-500">No exceptions found</div>
-                      )}
-                    </div>
-
-                    {selectedExceptions.size > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <div className="px-3 py-2">
-                          <button
-                            onClick={clearExceptionFilter}
-                            className="w-full text-left text-sm text-purple-600 hover:text-purple-700 font-medium"
-                          >
-                            Clear selection
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </>
-            )}
-
-          {/* Vertical divider */}
-          <div className="h-5 w-px bg-gray-100" />
-
-          {/* Other quick filters */}
-          {quickFilterOptions.map((filter) => {
-
-            const count = quickFilterCounts[filter.id as keyof typeof quickFilterCounts];
-            const isActive = activeQuickFilters.has(filter.id);
-            const Icon = isActive ? CheckCircle2 : filter.icon;
-
-            return (
-              <TooltipProvider key={filter.id}>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      onClick={() => toggleQuickFilter(filter.id)}
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border",
-                        isActive
-                          ? "bg-purple-100 text-purple-700 border-purple-400"
-                          : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
-                      )}
-                    >
-                      <Icon className={cn(
-                        "h-3 w-3",
-                        isActive ? "text-green-600" : ""
-                      )} />
-                      <span>{filter.label}</span>
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    {filter.tooltip}
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            );
-          })}
-          </div>
-        </div>
-      </div>
-
-      {/* Table */}
-      <EnhancedInvoiceTable
-        invoices={filteredInvoices as any}
-        selectedInvoices={selectedInvoices}
-        onToggleSelection={toggleInvoiceSelection}
-        onToggleAll={toggleAllSelection}
-        onDelete={handleDelete}
-        onPOClick={handlePOClick}
-        activeView={activeView}
-      />
-
-      {/* Bulk Actions Bar */}
-      {selectedInvoices.size > 0 && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-40 bg-white rounded-lg shadow-lg border border-gray-200 p-4">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <CheckSquare className="h-4 w-4 text-purple-600" />
-              <span className="text-sm font-medium text-gray-900">
-                {selectedInvoices.size} selected
-              </span>
-            </div>
-            <div className="h-6 w-px bg-gray-300" />
-            <div className="flex items-center gap-2">
-              <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-purple-600 border border-purple-600 rounded-md hover:bg-purple-50">
-                <UserPlus className="h-3 w-3" />
-                Assign ({selectedInvoices.size})
-              </button>
-              <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-purple-600 border border-purple-600 rounded-md hover:bg-purple-50">
-                <MessageSquare className="h-3 w-3" />
-                Comment ({selectedInvoices.size})
-              </button>
-              <button className="px-3 py-1.5 text-sm bg-white text-purple-600 border border-purple-600 rounded-md hover:bg-purple-50">
-                Send for Approval ({selectedInvoices.size})
-              </button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-1 px-3 py-1.5 text-sm bg-white text-purple-600 border border-purple-600 rounded-md hover:bg-purple-50">
-                    <MoreHorizontal className="h-4 w-4" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <button
-                    className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 text-left"
-                    onClick={() => console.log('Accept')}
-                  >
-                    <Check className="h-3 w-3" />
-                    Accept ({selectedInvoices.size})
-                  </button>
-                  <button
-                    className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 text-left"
-                    onClick={() => console.log('Reject')}
-                  >
-                    <X className="h-3 w-3" />
-                    Reject ({selectedInvoices.size})
-                  </button>
-                  <button
-                    className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100 text-left"
-                    onClick={() => console.log('Nudge Approver')}
-                  >
-                    <Bell className="h-3 w-3" />
-                    Nudge Approver ({invoicesWithApprovers})
-                  </button>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-            <button
-              onClick={clearSelection}
-              className="ml-auto text-sm text-gray-500 hover:text-gray-700"
-            >
-              Clear
-            </button>
-          </div>
-        </div>
-      )}
-
-      <UploadDialog
-        open={uploadDialogOpen}
-        onOpenChange={setUploadDialogOpen}
-        onUploadComplete={handleUploadComplete}
-      />
-
-      {selectedPO && (
-        <PurchaseOrderDrawer
-          purchaseOrderId={selectedPO.id}
-          purchaseOrder={selectedPO}
-          onClose={() => setSelectedPO(null)}
-        />
-      )}
-
-      <ArchiveInvoiceDialog
-        isOpen={archivingInvoice !== null}
-        onClose={handleArchiveCancel}
-        onConfirm={handleArchiveConfirm}
-        invoiceNumber={archivingInvoice?.number || ''}
-        isLoading={isArchiving}
-      />
-
-      {/* Side panel for graphs (only when chartsInDrawer is ON) */}
-      {chartsInDrawer && (
-        <div className={cn(
-        "fixed inset-y-0 right-0 z-50 w-[480px] bg-white shadow-xl transform transition-transform duration-300 ease-in-out",
-        sidePanelOpen ? "translate-x-0" : "translate-x-full"
-      )}>
-        {/* Panel header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <div className="flex items-center gap-2">
-            {(selectedMetric === 'overdue' || selectedMetric === 'dueSoon') && <CalendarClock className="h-5 w-5 text-purple-600" />}
-            <h2 className="text-lg font-semibold text-gray-900">
-              {selectedMetric === 'blocked' && 'Open Blocked Analysis'}
-              {selectedMetric === 'overdue' && 'Overdue Invoices'}
-              {selectedMetric === 'dueSoon' && 'Due Soon Analysis'}
-            </h2>
-          </div>
-          <button
-            onClick={closeSidePanel}
-            className="p-1 hover:bg-gray-100 rounded-md transition-colors"
-          >
-            <X className="h-5 w-5 text-gray-500" />
-          </button>
-        </div>
-
-        {/* Panel content */}
-        <div className="px-6 py-4 overflow-y-auto h-[calc(100vh-80px)]">
-          {selectedMetric === 'overdue' ? (
-            <>
-              <Card className="border border-gray-200">
-                <CardContent className="p-4">
-                  <InvoiceAgingChart
-                    invoices={filteredInvoices}
-                    onBucketClick={(bucket) => {
-                      console.log(`View ${bucket} invoices`);
-                      // Could add filtering logic here
-                    }}
-                  />
-                </CardContent>
-              </Card>
-
-              <div className="mt-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-3">Analysis Details</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Metric type</span>
-                    <span className="text-sm font-medium text-gray-900">Payment delays</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Last updated</span>
-                    <span className="text-sm font-medium text-gray-900">Just now</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Critical invoices</span>
-                    <span className="text-sm font-medium text-red-600">
-                      {invoices.filter(inv => {
-                        const dueDate = new Date(inv.due_date);
-                        const now = new Date();
-                        const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-                        return daysOverdue > 90 && inv.status !== 'paid';
-                      }).length}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">All invoices</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {invoices.filter(inv => {
-                        const dueDate = new Date(inv.due_date);
-                        const now = new Date();
-                        const daysOverdue = Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
-                        return daysOverdue >= 0 && inv.status !== 'paid';
-                      }).length}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : selectedMetric === 'dueSoon' ? (
-            <>
-              <Card className="border border-gray-200">
-                <CardContent className="p-4">
-                  <InvoiceDueSoonChart
-                    invoices={filteredInvoices}
-                    onBucketClick={(bucket) => {
-                      console.log(`View ${bucket} invoices`);
-                      // Could add filtering logic here
-                    }}
-                  />
-                </CardContent>
-              </Card>
-
-              <div className="mt-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-3">Analysis Details</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Metric type</span>
-                    <span className="text-sm font-medium text-gray-900">Upcoming payments</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Last updated</span>
-                    <span className="text-sm font-medium text-gray-900">Just now</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Due today</span>
-                    <span className="text-sm font-medium text-orange-600">
-                      {invoices.filter(inv => {
-                        const dueDate = new Date(inv.due_date);
-                        const now = new Date();
-                        const daysUntilDue = Math.floor((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                        return daysUntilDue === 0 && inv.status !== 'paid';
-                      }).length}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Next 7 days</span>
-                    <span className="text-sm font-medium text-green-600">
-                      {invoices.filter(inv => {
-                        const dueDate = new Date(inv.due_date);
-                        const now = new Date();
-                        const daysUntilDue = Math.floor((dueDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-                        return daysUntilDue >= 0 && daysUntilDue <= 7 && inv.status !== 'paid';
-                      }).length}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : selectedMetric === 'blocked' ? (
-            <>
-              <Card className="border border-gray-200">
-                <CardContent className="p-4">
-                  <BlockedInvoiceAnalysis
-                    invoices={filteredInvoices}
-                    onCategoryClick={(category) => {
-                      console.log(`View ${category} exceptions`);
-                      // Could add filtering logic here
-                    }}
-                  />
-                </CardContent>
-              </Card>
-
-              <div className="mt-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-3">Analysis Details</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Metric type</span>
-                    <span className="text-sm font-medium text-gray-900">Exception handling</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Last updated</span>
-                    <span className="text-sm font-medium text-gray-900">Just now</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Most common issue</span>
-                    <span className="text-sm font-medium text-orange-600">PO/Invoice Mismatch</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Avg resolution time</span>
-                    <span className="text-sm font-medium text-gray-900">3.5 days</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Total blocked</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {invoices.filter(inv => inv.status === 'requires_review' || inv.status === 'needs_review').length}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </>
-          ) : (
-            <>
-              <div className="h-64 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-center">
-                <p className="text-gray-500 text-sm">Graph placeholder</p>
-              </div>
-
-              <div className="mt-6">
-                <h3 className="text-sm font-medium text-gray-900 mb-3">Details</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Metric type</span>
-                    <span className="text-sm font-medium text-gray-900">
-                      {selectedMetric === 'blocked' && 'Exceptions'}
-                    </span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Last updated</span>
-                    <span className="text-sm font-medium text-gray-900">Just now</span>
-                  </div>
-                  <div className="flex justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">Trend</span>
-                    <span className="text-sm font-medium text-gray-900">↑ Increasing</span>
-                  </div>
-                </div>
-              </div>
-            </>
-          )}
-        </div>
-      </div>
-      )}
-        </>
-      )}
-
-      {/* Other Tab Contents */}
-      {activeTab === 'blocked' && (
-        <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Blocked Invoices</h3>
-          <p className="text-gray-500">Content coming soon...</p>
-        </div>
-      )}
-
-      {activeTab === 'in-approval' && (
-        <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">In Approval</h3>
-          <p className="text-gray-500">Content coming soon...</p>
-        </div>
-      )}
-
-      {activeTab === 'ready-to-post' && (
-        <div className="text-center py-12">
-          <h3 className="text-lg font-medium text-gray-900 mb-2">Ready to Post</h3>
-          <p className="text-gray-500">Content coming soon...</p>
-        </div>
-      )}
+      {/* Tab Content - Use renderTabContent for all tabs */}
+      <>
+        <MetricsBanner />
+        {renderTabContent()}
+      </>
 
       {/* Overlay when side panel is open (only when chartsInDrawer is ON) */}
       {chartsInDrawer && sidePanelOpen && (
