@@ -299,11 +299,11 @@ export function EnhancedInvoiceTable({
 
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) {
-      return <ChevronsUpDown className="h-4 w-4 text-gray-400" />;
+      return <ChevronsUpDown className="h-4 w-4 text-gray-400 flex-shrink-0" />;
     }
     return sortDirection === 'asc'
-      ? <ChevronUp className="h-4 w-4 text-purple-600" />
-      : <ChevronDown className="h-4 w-4 text-purple-600" />;
+      ? <ChevronUp className="h-4 w-4 text-purple-600 flex-shrink-0" />
+      : <ChevronDown className="h-4 w-4 text-purple-600 flex-shrink-0" />;
   };
 
   const formatDate = (dateString: string) => {
@@ -443,7 +443,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('invoice_number')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Invoice No.
                   {getSortIcon('invoice_number')}
@@ -452,7 +452,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('vendorId')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Vendor ID
                   {getSortIcon('vendorId')}
@@ -461,7 +461,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('vendor_name_snapshot')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Vendor
                   {getSortIcon('vendor_name_snapshot')}
@@ -471,7 +471,7 @@ export function EnhancedInvoiceTable({
                 <div className="flex items-center gap-1">
                   <button
                     onClick={() => handleSort('division')}
-                    className="flex items-center gap-1 hover:text-gray-900"
+                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                   >
                     Division
                     {getSortIcon('division')}
@@ -480,7 +480,7 @@ export function EnhancedInvoiceTable({
                     <DropdownMenuTrigger asChild>
                       <button className="p-1 hover:bg-gray-100 rounded relative focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-1">
                         <Filter className={cn(
-                          "h-4 w-4",
+                          "h-3 w-3",
                           selectedDivisions.size > 0 ? "text-purple-600" : "text-gray-400"
                         )} />
                         {selectedDivisions.size > 0 && (
@@ -555,7 +555,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('docType')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Doc. Type
                   {getSortIcon('docType')}
@@ -564,7 +564,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('invoice_date')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Invoice Date
                   {getSortIcon('invoice_date')}
@@ -573,7 +573,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('due_date')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Due Date
                   {getSortIcon('due_date')}
@@ -582,7 +582,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('aging')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Aging (days)
                   {getSortIcon('aging')}
@@ -591,7 +591,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('currency')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Currency
                   {getSortIcon('currency')}
@@ -618,7 +618,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('type')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Type (PO/Non-PO)
                   {getSortIcon('type')}
@@ -628,7 +628,7 @@ export function EnhancedInvoiceTable({
                 <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                   <button
                     onClick={() => handleSort('poNumbers')}
-                    className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                   >
                     PO No.
                     {getSortIcon('poNumbers')}
@@ -639,7 +639,7 @@ export function EnhancedInvoiceTable({
                 <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                   <button
                     onClick={() => handleSort('grNumbers')}
-                    className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                   >
                     GR No.
                     {getSortIcon('grNumbers')}
@@ -658,7 +658,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('reason')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Reason
                   {getSortIcon('reason')}
@@ -667,7 +667,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('costCentre')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Cost Centre
                   {getSortIcon('costCentre')}
@@ -676,7 +676,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('accountCode')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Account Code
                   {getSortIcon('accountCode')}
@@ -685,7 +685,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('assignedTo')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Assigned
                   {getSortIcon('assignedTo')}
@@ -694,7 +694,7 @@ export function EnhancedInvoiceTable({
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('approver')}
-                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-start"
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
                   Approver
                   {getSortIcon('approver')}

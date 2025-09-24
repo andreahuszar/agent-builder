@@ -12,6 +12,7 @@ import DashboardClient from './dashboard/DashboardClient';
 import LaunchpadClient from './launchpad/LaunchpadClient';
 import { Plus, Search, Filter } from 'lucide-react';
 
+
 interface InvoiceProcessingContentProps {
   currentView?: string;
   currentModule?: string;
