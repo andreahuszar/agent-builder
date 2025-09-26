@@ -568,10 +568,31 @@ export const generateMockInApprovalInvoices = (): Invoice[] => {
   return mockInvoices;
 };
 
+// Environment configuration for mock data
+const USE_MOCK_DATA = process.env.USE_MOCK_DATA !== 'false'; // Default to true, can be disabled by setting to 'false'
+const DEBUG_MOCK = process.env.DEBUG_MOCK === 'true';
+
 // Check if an invoice ID is a mock ID
 export const isMockInvoice = (id: string): boolean => {
+  if (DEBUG_MOCK) {
+    console.log('[MockService] Checking if mock invoice:', id);
+    console.log('[MockService] USE_MOCK_DATA:', USE_MOCK_DATA);
+  }
+
+  if (!USE_MOCK_DATA) {
+    if (DEBUG_MOCK) console.log('[MockService] Mock data disabled');
+    return false;
+  }
+
   const mockPrefixes = ['needs-info-', 'blocked-', 'mock-', 'due-', 'cn-', 'pf-', 'approval-'];
-  return mockPrefixes.some(prefix => id.startsWith(prefix));
+  const isMock = mockPrefixes.some(prefix => id.startsWith(prefix));
+
+  if (DEBUG_MOCK) {
+    console.log('[MockService] Mock prefixes:', mockPrefixes);
+    console.log('[MockService] Is mock result:', isMock);
+  }
+
+  return isMock;
 };
 
 // Get all mock invoices
@@ -589,19 +610,38 @@ export const getAllMockInvoices = (): Invoice[] => {
 
 // Get a specific mock invoice by ID
 export const getMockInvoiceById = (id: string): Invoice | null => {
-  if (!isMockInvoice(id)) {
-    return null;
+  if (DEBUG_MOCK) {
+    console.log('[MockService] Getting mock invoice by ID:', id);
   }
 
-  const allMockInvoices = getAllMockInvoices();
-  const invoice = allMockInvoices.find(inv => inv.id === id);
+  try {
+    if (!isMockInvoice(id)) {
+      if (DEBUG_MOCK) console.log('[MockService] ID is not a mock invoice');
+      return null;
+    }
 
-  if (!invoice) {
+    const allMockInvoices = getAllMockInvoices();
+    if (DEBUG_MOCK) {
+      console.log('[MockService] Total mock invoices available:', allMockInvoices.length);
+    }
+
+    const invoice = allMockInvoices.find(inv => inv.id === id);
+
+    if (!invoice) {
+      if (DEBUG_MOCK) console.log('[MockService] Invoice not found in mock data');
+      return null;
+    }
+
+    if (DEBUG_MOCK) {
+      console.log('[MockService] Found mock invoice:', invoice.invoice_number);
+    }
+
+    // Transform to full invoice structure with additional fields and sample line items
+    return transformToFullInvoice(invoice);
+  } catch (error) {
+    console.error('[MockService] Error getting mock invoice:', error);
     return null;
   }
-
-  // Transform to full invoice structure with additional fields and sample line items
-  return transformToFullInvoice(invoice);
 };
 
 // Transform a minimal mock invoice to full detail structure
