@@ -58,7 +58,9 @@ interface Invoice {
   costCentre?: string;
   accountCode?: string;
   approver?: string;
-  balanceOutstanding?: number;
+  requisitioner?: string;
+  created_at?: string;
+  updated_at?: string;
   issues?: string[];
   docType?: 'Invoice' | 'Credit Note' | 'Pro Forma';
 }
@@ -71,9 +73,10 @@ interface EnhancedInvoiceTableProps {
   onDelete?: (invoiceId: string) => void;
   onPOClick?: (poNumber: string) => void;
   activeView?: 'all' | 'po' | 'non-po' | 'parked';
+  activeTab?: string;
 }
 
-type SortField = 'status' | 'docType' | 'invoice_number' | 'vendor_name_snapshot' | 'invoice_date' | 'due_date' | 'total' | 'currency' | 'match_status' | 'division' | 'type' | 'assignedTo' | 'costCentre' | 'accountCode' | 'approver' | 'balanceOutstanding' | 'vendorId' | 'aging' | 'netAmount' | 'poNumbers' | 'grNumbers' | 'reason';
+type SortField = 'status' | 'docType' | 'invoice_number' | 'vendor_name_snapshot' | 'invoice_date' | 'due_date' | 'total' | 'currency' | 'match_status' | 'division' | 'type' | 'assignedTo' | 'requisitioner' | 'costCentre' | 'accountCode' | 'approver' | 'daysWithApprover' | 'vendorId' | 'aging' | 'netAmount' | 'poNumbers' | 'grNumbers' | 'reason';
 type SortDirection = 'asc' | 'desc';
 
 // Function to map vendor names to divisions
@@ -129,7 +132,8 @@ export function EnhancedInvoiceTable({
   onToggleAll,
   onDelete,
   onPOClick,
-  activeView = 'all'
+  activeView = 'all',
+  activeTab
 }: EnhancedInvoiceTableProps) {
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
@@ -261,6 +265,16 @@ export function EnhancedInvoiceTable({
         // Sort by number of issues
         aValue = aIssues.length;
         bValue = bIssues.length;
+      } else if (sortField === 'daysWithApprover') {
+        const now = new Date();
+        const toDays = (inv: Invoice) => {
+          if (!inv.approver) return Number.POSITIVE_INFINITY;
+          const ref = new Date(inv.updated_at || inv.created_at || inv.invoice_date);
+          const ms = now.getTime() - ref.getTime();
+          return Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
+        };
+        aValue = toDays(a);
+        bValue = toDays(b);
       } else {
         // Handle regular fields from the object
         aValue = a[sortField];
@@ -278,7 +292,7 @@ export function EnhancedInvoiceTable({
       }
 
       // Handle number fields
-      if (sortField === 'total' || sortField === 'balanceOutstanding') {
+      if (sortField === 'total') {
         aValue = Number(aValue);
         bValue = Number(bValue);
       }
@@ -305,6 +319,16 @@ export function EnhancedInvoiceTable({
       ? <ChevronUp className="h-4 w-4 text-purple-600 flex-shrink-0" />
       : <ChevronDown className="h-4 w-4 text-purple-600 flex-shrink-0" />;
   };
+
+  // Determine if current table context is PO-only (used to rename Approver header)
+  const isPOContext = useMemo(() => {
+    if (!invoices || invoices.length === 0) return false;
+    return invoices.every(inv => inv.type === 'PO');
+  }, [invoices]);
+  const isNonPOContext = useMemo(() => {
+    if (!invoices || invoices.length === 0) return false;
+    return invoices.every(inv => inv.type === 'Non-PO');
+  }, [invoices]);
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -382,22 +406,16 @@ export function EnhancedInvoiceTable({
     return 'bg-gray-100 text-gray-700';
   };
 
-  const getMatchStatusColor = (matchStatus: string) => {
-    const normalizedStatus = matchStatus?.toLowerCase() || '';
-
-    if (normalizedStatus === 'matched' || normalizedStatus === 'full_match') {
-      return 'bg-green-100 text-green-700';
-    }
-    if (normalizedStatus === 'partial' || normalizedStatus === 'partial_match') {
-      return 'bg-orange-100 text-orange-700';
-    }
-    if (normalizedStatus === 'exception' || normalizedStatus === 'no_match' || normalizedStatus === 'mismatch' || normalizedStatus === 'not_matched') {
-      return 'bg-red-100 text-red-700';
-    }
-    if (normalizedStatus === 'pending' || normalizedStatus === 'in_progress' || normalizedStatus === 'needs_review') {
-      return 'bg-orange-100 text-orange-700';
-    }
-    return 'bg-gray-100 text-gray-700';
+  const getMatchStatusColor = (matchStatus: string | undefined | null) => {
+    const s = (matchStatus || '').toLowerCase();
+    // Matched
+    if (s === 'matched' || s === 'full_match') return 'bg-green-100 text-green-700';
+    // Within tolerance
+    if (s === 'within_tolerance') return 'bg-blue-100 text-blue-700';
+    // Pending (matching not yet done)
+    if (!s || s === 'pending' || s === 'in_progress') return 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200';
+    // Everything else is mismatched (incl. partial/exception variants)
+    return 'bg-red-100 text-red-700';
   };
 
   // Get the severity color for the badge based on issue types
@@ -410,9 +428,21 @@ export function EnhancedInvoiceTable({
 
     // Check if there are any warning issues
     const hasWarning = issues.some(issue =>
-      issue === 'Duplicate Suspected' || issue === 'Price Tolerance' ||
-      issue === 'Quantity Variance' || issue === 'PO/Invoice Mismatch' ||
-      issue === 'Line Mismatch'
+      issue === 'Duplicate Suspected' ||
+      issue === 'Price Tolerance' ||
+      issue === 'Quantity Variance' ||
+      issue === 'Quantity Mismatch' ||
+      issue === 'Amount Mismatch' ||
+      issue === 'Line Items Mismatch' ||
+      issue === 'Line Mismatch' ||
+      issue === 'Vendor Not Verified' ||
+      issue === 'Bank Account Not Verified' ||
+      issue === 'Tax Discrepancy' ||
+      issue === 'Currency Issue' ||
+      issue === 'Unit Price Mismatch' ||
+      issue === 'UoM Mismatch' ||
+      issue === 'Tax Rate Mismatch' ||
+      issue === 'Unapproved Change Order'
     );
     if (hasWarning) return 'bg-orange-100 text-orange-700';
 
@@ -479,91 +509,93 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('vendor_name_snapshot')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => handleSort('division')}
-                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                  >
-                    Division
-                    {getSortIcon('division')}
-                  </button>
-                  <DropdownMenu open={divisionFilterOpen} onOpenChange={setDivisionFilterOpen}>
-                    <DropdownMenuTrigger asChild>
-                      <button className="p-1 hover:bg-gray-100 rounded relative focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-1">
-                        <Filter className={cn(
-                          "h-3 w-3",
-                          selectedDivisions.size > 0 ? "text-purple-600" : "text-gray-400"
-                        )} />
+              {activeTab !== 'needs-info' && (
+                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => handleSort('division')}
+                      className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                    >
+                      Division
+                      {getSortIcon('division')}
+                    </button>
+                    <DropdownMenu open={divisionFilterOpen} onOpenChange={setDivisionFilterOpen}>
+                      <DropdownMenuTrigger asChild>
+                        <button className="p-1 hover:bg-gray-100 rounded relative focus:outline-none focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-1">
+                          <Filter className={cn(
+                            "h-3 w-3",
+                            selectedDivisions.size > 0 ? "text-purple-600" : "text-gray-400"
+                          )} />
+                          {selectedDivisions.size > 0 && (
+                            <span className="absolute -top-1 -right-1 h-3 w-3 bg-purple-600 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                              {selectedDivisions.size}
+                            </span>
+                          )}
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="start" className="w-64 p-2">
+                        <div className="flex items-center gap-2 px-2 pb-2 border-b">
+                          <Search className="h-4 w-4 text-gray-400" />
+                          <input
+                            type="text"
+                            placeholder="Search..."
+                            value={divisionSearchQuery}
+                            onChange={(e) => setDivisionSearchQuery(e.target.value)}
+                            className="flex-1 outline-none text-sm"
+                            onClick={(e) => e.stopPropagation()}
+                          />
+                        </div>
+
+                        <div className="py-2">
+                          <DropdownMenuCheckboxItem
+                            checked={selectedDivisions.size === uniqueDivisions.length}
+                            onCheckedChange={handleSelectAllDivisions}
+                            onSelect={(e) => e.preventDefault()}
+                          >
+                            <span className="font-medium">All Divisions</span>
+                          </DropdownMenuCheckboxItem>
+                        </div>
+
+                        <DropdownMenuSeparator />
+
+                        <div className="max-h-64 overflow-y-auto py-2">
+                          {filteredDivisions.length === 0 ? (
+                            <div className="px-2 py-3 text-sm text-gray-500 text-center">
+                              No divisions found
+                            </div>
+                          ) : (
+                            filteredDivisions.map((division) => (
+                              <DropdownMenuCheckboxItem
+                                key={division}
+                                checked={selectedDivisions.has(division)}
+                                onCheckedChange={() => handleDivisionToggle(division)}
+                                onSelect={(e) => e.preventDefault()}
+                              >
+                                {division}
+                              </DropdownMenuCheckboxItem>
+                            ))
+                          )}
+                        </div>
+
                         {selectedDivisions.size > 0 && (
-                          <span className="absolute -top-1 -right-1 h-3 w-3 bg-purple-600 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
-                            {selectedDivisions.size}
-                          </span>
+                          <>
+                            <DropdownMenuSeparator />
+                            <div className="p-2">
+                              <button
+                                onClick={clearDivisionFilter}
+                                className="w-full px-2 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors flex items-center justify-center gap-1"
+                              >
+                                <X className="h-3 w-3" />
+                                Reset
+                              </button>
+                            </div>
+                          </>
                         )}
-                      </button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="start" className="w-64 p-2">
-                      <div className="flex items-center gap-2 px-2 pb-2 border-b">
-                        <Search className="h-4 w-4 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Search..."
-                          value={divisionSearchQuery}
-                          onChange={(e) => setDivisionSearchQuery(e.target.value)}
-                          className="flex-1 outline-none text-sm"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-
-                      <div className="py-2">
-                        <DropdownMenuCheckboxItem
-                          checked={selectedDivisions.size === uniqueDivisions.length}
-                          onCheckedChange={handleSelectAllDivisions}
-                          onSelect={(e) => e.preventDefault()}
-                        >
-                          <span className="font-medium">All Divisions</span>
-                        </DropdownMenuCheckboxItem>
-                      </div>
-
-                      <DropdownMenuSeparator />
-
-                      <div className="max-h-64 overflow-y-auto py-2">
-                        {filteredDivisions.length === 0 ? (
-                          <div className="px-2 py-3 text-sm text-gray-500 text-center">
-                            No divisions found
-                          </div>
-                        ) : (
-                          filteredDivisions.map((division) => (
-                            <DropdownMenuCheckboxItem
-                              key={division}
-                              checked={selectedDivisions.has(division)}
-                              onCheckedChange={() => handleDivisionToggle(division)}
-                              onSelect={(e) => e.preventDefault()}
-                            >
-                              {division}
-                            </DropdownMenuCheckboxItem>
-                          ))
-                        )}
-                      </div>
-
-                      {selectedDivisions.size > 0 && (
-                        <>
-                          <DropdownMenuSeparator />
-                          <div className="p-2">
-                            <button
-                              onClick={clearDivisionFilter}
-                              className="w-full px-2 py-1.5 text-sm text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors flex items-center justify-center gap-1"
-                            >
-                              <X className="h-3 w-3" />
-                              Reset
-                            </button>
-                          </div>
-                        </>
-                      )}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-              </th>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </div>
+                </th>
+              )}
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('docType')}
@@ -627,16 +659,18 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('netAmount')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                <button
-                  onClick={() => handleSort('type')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  Type (PO/Non-PO)
-                  {getSortIcon('type')}
-                </button>
-              </th>
-              {activeView !== 'non-po' && (
+              {activeTab !== 'needs-info' && (
+                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                  <button
+                    onClick={() => handleSort('type')}
+                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                  >
+                    Type (PO/Non-PO)
+                    {getSortIcon('type')}
+                  </button>
+                </th>
+              )}
+              {!isNonPOContext && (
                 <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                   <button
                     onClick={() => handleSort('poNumbers')}
@@ -647,7 +681,7 @@ export function EnhancedInvoiceTable({
                   </button>
                 </th>
               )}
-              {activeView !== 'non-po' && (
+              {!isNonPOContext && (
                 <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                   <button
                     onClick={() => handleSort('grNumbers')}
@@ -667,60 +701,81 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('match_status')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                <button
-                  onClick={() => handleSort('reason')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  Reason
-                  {getSortIcon('reason')}
-                </button>
-              </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                <button
-                  onClick={() => handleSort('costCentre')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  Cost Centre
-                  {getSortIcon('costCentre')}
-                </button>
-              </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                <button
-                  onClick={() => handleSort('accountCode')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  Account Code
-                  {getSortIcon('accountCode')}
-                </button>
-              </th>
+              {activeTab !== 'needs-info' && (
+                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                  <button
+                    onClick={() => handleSort('reason')}
+                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                  >
+                    Reason
+                    {getSortIcon('reason')}
+                  </button>
+                </th>
+              )}
+              {activeTab !== 'needs-info' && (
+                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                  <button
+                    onClick={() => handleSort('costCentre')}
+                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                  >
+                    Cost Centre
+                    {getSortIcon('costCentre')}
+                  </button>
+                </th>
+              )}
+              {activeTab !== 'needs-info' && (
+                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                  <button
+                    onClick={() => handleSort('accountCode')}
+                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                  >
+                    Account Code
+                    {getSortIcon('accountCode')}
+                  </button>
+                </th>
+              )}
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('assignedTo')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  Assigned
+                  Owner
                   {getSortIcon('assignedTo')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                <button
-                  onClick={() => handleSort('approver')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  Approver
-                  {getSortIcon('approver')}
-                </button>
-              </th>
-              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
-                <button
-                  onClick={() => handleSort('balanceOutstanding')}
-                  className="flex items-center gap-1 hover:text-gray-900 justify-end w-full"
-                >
-                  Balance Outstanding
-                  {getSortIcon('balanceOutstanding')}
-                </button>
-              </th>
+              {isPOContext && (
+                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                  <button
+                    onClick={() => handleSort('requisitioner')}
+                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                  >
+                    PO Requisitioner
+                    {getSortIcon('requisitioner')}
+                  </button>
+                </th>
+              )}
+              {activeTab !== 'needs-info' && (
+                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                  <button
+                    onClick={() => handleSort('approver')}
+                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                  >
+                    {isPOContext ? 'PO Approver' : 'Approver'}
+                    {getSortIcon('approver')}
+                  </button>
+                </th>
+              )}
+              {activeTab !== 'needs-info' && (
+                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                  <button
+                    onClick={() => handleSort('daysWithApprover')}
+                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                  >
+                    Days with Approver
+                    {getSortIcon('daysWithApprover')}
+                  </button>
+                </th>
+              )}
               <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
                 Actions
               </th>
@@ -753,26 +808,40 @@ export function EnhancedInvoiceTable({
                     </button>
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap">
-                    <span className={cn(
-                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                      getStatusColor(invoice.status, !!invoice.approver)
-                    )}>
-                      {invoice.approver && invoice.status !== 'approved' && invoice.status !== 'paid' ? 'In Approval' :
-                       invoice.status === 'needs_info' ? 'Needs info' :
-                       invoice.status === 'requires_review' || invoice.status === 'needs_review' ? 'Needs Review' :
-                       invoice.status === 'ready_for_payment' || invoice.status === 'ready_to_pay' ? 'Ready for posting' :
-                       invoice.status === 'approved' ? 'Approved' :
-                       // If pending and no approver (meaning it's in blocked tab), show as Needs Review
-                       invoice.status === 'pending' && !invoice.approver ? 'Needs Review' :
-                       invoice.status === 'pending' ? 'Pending' :
-                       invoice.status === 'draft' ? 'Draft' :
-                       invoice.status?.charAt(0).toUpperCase() + invoice.status?.slice(1).replace(/_/g, ' ') || 'Draft'}
-                    </span>
+                    {(() => {
+                      const forceReady = activeTab === 'ready-to-post';
+                      const chipClass = forceReady
+                        ? 'bg-green-50 text-green-700 ring-1 ring-green-200'
+                        : getStatusColor(invoice.status, !!invoice.approver);
+                      const label = forceReady
+                        ? 'Ready for posting'
+                        : (activeTab === 'blocked' && invoice.type === 'Non-PO')
+                        ? 'Needs Review'
+                        : (
+                            invoice.approver && invoice.status !== 'approved' && invoice.status !== 'paid' ? 'In Approval' :
+                            invoice.status === 'needs_info' ? 'Needs info' :
+                            (invoice.status === 'requires_review' || invoice.status === 'needs_review') ? 'Needs Review' :
+                            (invoice.status === 'ready_for_payment' || invoice.status === 'ready_to_pay') ? 'Ready for posting' :
+                            invoice.status === 'approved' ? 'Approved' :
+                            (invoice.status === 'pending' && !invoice.approver) ? 'Needs Review' :
+                            invoice.status === 'pending' ? 'Pending' :
+                            invoice.status === 'draft' ? 'Draft' :
+                            (invoice.status?.charAt(0).toUpperCase() + invoice.status?.slice(1).replace(/_/g, ' ') || 'Draft')
+                          );
+                      return (
+                        <span className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                          chipClass
+                        )}>
+                          {label}
+                        </span>
+                      );
+                    })()}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     {/* Check if this is a mock invoice (starts with 'mock-', 'due-', or 'blocked-') */}
                     {invoice.id.startsWith('mock-') || invoice.id.startsWith('due-') || invoice.id.startsWith('blocked-') ? (
-                      <span className="text-sm text-gray-950 font-medium">
+                      <span className="text-sm font-medium text-gray-950">
                         {invoice.invoice_number}
                       </span>
                     ) : (
@@ -784,19 +853,21 @@ export function EnhancedInvoiceTable({
                       </Link>
                     )}
                   </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.vendor_name_snapshot ? getVendorId(invoice.vendor_name_snapshot) :
                       <span className="text-red-600 font-semibold">Missing</span>
                     }
                   </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.vendor_name_snapshot ||
                       <span className="text-red-600 font-semibold">Missing</span>
                     }
                   </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950 font-medium">
-                    {invoice.division || getDivision(invoice.vendor_name_snapshot)}
-                  </td>
+                  {activeTab !== 'needs-info' && (
+                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                      {invoice.division || getDivision(invoice.vendor_name_snapshot)}
+                    </td>
+                  )}
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     <span className={cn(
                       "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
@@ -825,7 +896,7 @@ export function EnhancedInvoiceTable({
                       }
                     })() : '-'}
                   </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.currency ||
                       <span className="text-red-600 font-semibold">Missing</span>
                     }
@@ -845,28 +916,22 @@ export function EnhancedInvoiceTable({
                       <span className="text-red-600 font-semibold">-</span>
                     }
                   </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap">
-                    {invoice.type || (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                        PO
-                      </span>
-                    ) : (
-                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-orange-100 text-orange-700">
-                        Non-PO
-                      </span>
-                    ))}
-                  </td>
-                  {activeView !== 'non-po' && (
+                  {activeTab !== 'needs-info' && (
+                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                      {invoice.type || (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? 'PO' : 'Non-PO')}
+                    </td>
+                  )}
+                  {!isNonPOContext && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium">
                       {invoice.type === 'Non-PO' ? (
-                        <span className="text-gray-950">-</span>
+                        <span className="text-sm font-medium text-gray-950">-</span>
                       ) : invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
                         <div className="flex flex-col gap-1">
                           {invoice.po_numbers_cached.map((poNumber) => (
                             invoice.id.startsWith('mock-') || invoice.id.startsWith('due-') || invoice.id.startsWith('blocked-') ? (
                               <span
                                 key={poNumber}
-                                className="text-gray-950 text-sm font-medium"
+                                className="text-sm font-medium text-gray-950"
                               >
                                 {poNumber}
                               </span>
@@ -882,11 +947,11 @@ export function EnhancedInvoiceTable({
                           ))}
                         </div>
                       ) : (
-                        <span className="text-gray-950 text-sm font-medium">Missing PO</span>
+                        <span className="text-sm font-medium text-gray-950">Missing PO</span>
                       )}
                     </td>
                   )}
-                  {activeView !== 'non-po' && (
+                  {!isNonPOContext && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {invoice.gr_numbers && invoice.gr_numbers.length > 0 ? (
                         <div className="flex flex-col gap-1">
@@ -897,67 +962,126 @@ export function EnhancedInvoiceTable({
                           ))}
                         </div>
                       ) : (
-                        <span className="text-gray-950">-</span>
+                        <span className="text-sm font-medium text-gray-950">-</span>
                       )}
                     </td>
                   )}
                   <td className="px-6 py-2.5 whitespace-nowrap">
-                    <span className={cn(
-                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                      getMatchStatusColor(invoice.match_status)
-                    )}>
-                      {invoice.match_status === 'not_matched' ? 'Exception' :
-                       invoice.match_status === 'matched' ? (invoice.type === 'Non-PO' ? 'Approved' : 'Matched') :
-                       invoice.match_status?.charAt(0).toUpperCase() + invoice.match_status?.slice(1).replace(/_/g, ' ') || 'Pending'}
-                    </span>
+                    {(() => {
+                      const s = (invoice.match_status || '').toLowerCase();
+                      const isNonPO = invoice.type === 'Non-PO';
+                      let label: string;
+                      let chipClass = getMatchStatusColor(invoice.match_status);
+                      if (isNonPO && (s === 'matched' || s === 'full_match' || s === 'within_tolerance')) {
+                        // In pending approval tab, non-PO invoices should show "Mismatched" if they need approval
+                        if (activeTab === 'in-approval') {
+                          label = 'Mismatched';
+                          chipClass = 'bg-red-100 text-red-700';
+                        } else {
+                          label = 'Approved';
+                          chipClass = 'bg-green-100 text-green-700';
+                        }
+                      } else if (s === 'matched' || s === 'full_match') {
+                        label = 'Matched';
+                      } else if (s === 'within_tolerance') {
+                        label = 'Within Tolerance';
+                      } else if (!s || s === 'pending' || s === 'in_progress') {
+                        label = 'Pending';
+                      } else {
+                        label = 'Mismatched';
+                      }
+                      return (
+                        <span className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                          chipClass
+                        )}>
+                          {label}
+                        </span>
+                      );
+                    })()}
                   </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
-                    {invoice.issues && invoice.issues.length > 0 ? (
-                      <div className="flex items-center gap-1.5">
-                        <span>{invoice.issues[0]}</span>
-                        {invoice.issues.length > 1 && (
-                          <TooltipProvider>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className={cn(
-                                  "inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium cursor-default",
-                                  getIssueSeverityColor(invoice.issues.slice(1))
-                                )}>
-                                  +{invoice.issues.length - 1}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent className="bg-gray-800 text-white border-gray-800 max-w-xs">
-                                <div className="space-y-0.5">
-                                  <p className="font-semibold mb-1">All Issues:</p>
-                                  {invoice.issues.map((issue, idx) => (
-                                    <p key={idx} className="text-sm">• {issue}</p>
-                                  ))}
-                                </div>
-                              </TooltipContent>
-                            </Tooltip>
-                          </TooltipProvider>
-                        )}
-                      </div>
-                    ) : (
-                      <span>-</span>
-                    )}
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
-                    {invoice.costCentre || '-'}
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
-                    {invoice.accountCode || '-'}
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
+                  {activeTab !== 'needs-info' && (
+                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                      {(() => {
+                        // For non-PO invoices in pending approval tab, show "Needs Approval"
+                        if (activeTab === 'in-approval' && invoice.type === 'Non-PO') {
+                          return (<span>Needs Approval</span>);
+                        }
+
+                        const issues = (invoice.issues || []);
+                        let displayIssues = issues;
+                        if (activeTab === 'blocked') {
+                          displayIssues = displayIssues.filter(i => i !== 'Missing PO');
+                        }
+                        if (activeTab === 'in-approval' && invoice.type === 'PO') {
+                          displayIssues = displayIssues.filter(i => i !== 'Missing PO' && i !== 'Missing GR');
+                        }
+                        if (displayIssues.length === 0) return (<span>-</span>);
+                        return (
+                        <div className="flex items-center gap-1.5">
+                          <span>{displayIssues[0]}</span>
+                          {displayIssues.length > 1 && (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className={cn(
+                                    "inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium cursor-default",
+                                    getIssueSeverityColor(displayIssues.slice(1))
+                                  )}>
+                                    +{displayIssues.length - 1}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent className="bg-gray-800 text-white border-gray-800 max-w-xs">
+                                  <div className="space-y-0.5">
+                                    <p className="font-semibold mb-1">All Issues:</p>
+                                    {displayIssues.map((issue, idx) => (
+                                      <p key={idx} className="text-sm">• {issue}</p>
+                                    ))}
+                                  </div>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          )}
+                        </div>
+                        );
+                      })()}
+                    </td>
+                  )}
+                  {activeTab !== 'needs-info' && (
+                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                      {invoice.costCentre || '-'}
+                    </td>
+                  )}
+                  {activeTab !== 'needs-info' && (
+                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                      {invoice.accountCode || '-'}
+                    </td>
+                  )}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.assignedTo || '-'}
                   </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm text-gray-950">
-                    {invoice.approver || '-'}
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-bold text-gray-950 text-right">
-                    {invoice.balanceOutstanding !== undefined ?
-                      formatCurrency(invoice.balanceOutstanding, invoice.currency) : '-'}
-                  </td>
+                  {isPOContext && (
+                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                      {invoice.requisitioner || '-'}
+                    </td>
+                  )}
+                  {activeTab !== 'needs-info' && (
+                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                      {invoice.approver || '-'}
+                    </td>
+                  )}
+                  {activeTab !== 'needs-info' && (
+                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                      {(() => {
+                        if (!invoice.approver) return '-';
+                        const now = new Date();
+                        const ref = new Date(invoice.updated_at || invoice.created_at || invoice.invoice_date);
+                        const ms = now.getTime() - ref.getTime();
+                        const days = Math.max(0, Math.floor(ms / (1000 * 60 * 60 * 24)));
+                        return days;
+                      })()}
+                    </td>
+                  )}
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     <div className="flex items-center justify-end gap-2">
                       <TooltipProvider>
@@ -994,26 +1118,125 @@ export function EnhancedInvoiceTable({
                             <MoreHorizontal className="h-4 w-4 text-gray-700" />
                           </button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-48">
-                          <DropdownMenuItem>
-                            Approve
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            Reject
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            Send for Approval
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>
-                            Nudge Approver
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => onDelete?.(invoice.id)}
-                            className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2 text-red-600" />
-                            Archive
-                          </DropdownMenuItem>
+                        <DropdownMenuContent align="end" className="w-52">
+                          {activeTab === 'needs-info' ? (
+                            <>
+                              <DropdownMenuItem>
+                                Reject to Sender
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                onClick={() => onDelete?.(invoice.id)}
+                                className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+                              >
+                                <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                                Archive
+                              </DropdownMenuItem>
+                            </>
+                          ) : (
+                            <>
+                              {activeTab === 'blocked' ? (
+                                // Mismatched/Blocked: no Change/Chase Approver
+                                invoice.type === 'PO' ? (
+                                  <>
+                                    <DropdownMenuItem>
+                                      Send for Approval
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem>
+                                      Reject to Sender
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => onDelete?.(invoice.id)}
+                                      className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                                      Archive
+                                    </DropdownMenuItem>
+                                  </>
+                                ) : (
+                                  <>
+                                    <DropdownMenuItem>
+                                      Send for Approval
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem
+                                      onClick={() => onDelete?.(invoice.id)}
+                                      className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                                      Archive
+                                    </DropdownMenuItem>
+                                  </>
+                                )
+                              ) : activeTab === 'in-approval' && invoice.type === 'PO' ? (
+                                // Pending approval (PO): no Send for Approval
+                                <>
+                                  <DropdownMenuItem>
+                                    Reassign PO Approver
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    Chase PO Approver
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => onDelete?.(invoice.id)}
+                                    className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                                    Archive
+                                  </DropdownMenuItem>
+                                </>
+                              ) : activeTab === 'in-approval' && invoice.type === 'Non-PO' ? (
+                                // Pending approval (Non-PO): no Send for Approval, already with approver
+                                <>
+                                  <DropdownMenuItem>
+                                    Change Approver
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    Chase Approver
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => onDelete?.(invoice.id)}
+                                    className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                                    Archive
+                                  </DropdownMenuItem>
+                                </>
+                              ) : activeTab === 'ready-to-post' ? (
+                                // Ready to post: only Send for Approval
+                                <>
+                                  <DropdownMenuItem>
+                                    Send for Approval
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => onDelete?.(invoice.id)}
+                                    className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                                    Archive
+                                  </DropdownMenuItem>
+                                </>
+                              ) : (
+                                // Default actions (needs-info, all)
+                                <>
+                                  <DropdownMenuItem>
+                                    Send for Approval
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    Change Approver
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem>
+                                    Chase Approver
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem
+                                    onClick={() => onDelete?.(invoice.id)}
+                                    className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                                    Archive
+                                  </DropdownMenuItem>
+                                </>
+                              )}
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>

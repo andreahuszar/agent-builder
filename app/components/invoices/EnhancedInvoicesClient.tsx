@@ -36,6 +36,7 @@ import { PurchaseOrderDrawer } from '../purchase-orders/PurchaseOrderDrawer';
 import InvoiceAgingChart from './InvoiceAgingChart';
 import InvoiceDueSoonChart from './InvoiceDueSoonChart';
 import BlockedInvoiceAnalysis from './BlockedInvoiceAnalysis';
+import { QuickFixesModal } from './QuickFixesModal';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { cn } from '@/lib/utils';
 import { getChartsInDrawerPreference } from '@/app/utils/cookies';
@@ -54,11 +55,23 @@ import {
   DropdownMenuSeparator,
 } from '@/app/components/ui/dropdown-menu';
 import { Checkbox } from '@/app/components/ui/checkbox';
+import {
+  generateMockNeedsInfoInvoices,
+  generateMockBlockedInvoices,
+  generateMockOverdueInvoices,
+  generateMockDueSoonInvoices,
+  generateMockCreditNotes,
+  generateMockProFormaInvoices,
+  isMockInvoice,
+} from '@/app/services/mockInvoiceService';
 
 interface Invoice {
   id: string;
   invoice_number: string;
   vendor_name_snapshot: string;
+  vendor_id?: string;
+  vendor_tax_id_snapshot?: string;
+  vendor_address_snapshot?: string;
   division?: string;
   invoice_date: string;
   due_date: string;
@@ -71,19 +84,29 @@ interface Invoice {
   approval_status?: string;
   po_numbers_cached?: string[];
   gr_numbers?: string[];
+  payment_method?: string | null;
+  payment_bank_details?: any;
+  tax_rate_percent?: number | null;
+  lines?: any[];
+  invoice_lines?: any[];
+  requisitioner?: string;
 }
 
 interface EnhancedInvoicesClientProps {
   initialInvoices: Invoice[];
 }
 
-// Tab options
-const TABS = [
-  { id: 'needs-info', label: 'Needs info' },
-  { id: 'blocked', label: 'Blocked' },
-  { id: 'in-approval', label: 'In approval' },
-  { id: 'ready-to-post', label: 'Ready to post' }
-];
+// Tab options - contextual based on invoice type
+const getContextualTabs = (invoiceType: string) => {
+  const blockedLabel = invoiceType === 'po' ? 'Mismatched/Blocked' : 'Approval needed';
+  return [
+    { id: 'needs-info', label: 'Needs info' },
+    { id: 'blocked', label: blockedLabel },
+    { id: 'in-approval', label: 'Pending approval' },
+    { id: 'ready-to-post', label: 'Ready to post' },
+    { id: 'all', label: 'All' }
+  ];
+};
 
 // Quick filter options with tooltips
 const quickFilterOptions = [
@@ -98,6 +121,12 @@ const quickFilterOptions = [
     label: 'Overdue',
     icon: Tag,
     tooltip: 'Show invoices past their due date'
+  },
+  {
+    id: 'missing-po',
+    label: 'Missing PO',
+    icon: AlertTriangle,
+    tooltip: 'Vendor requires PO but none attached'
   }
 ];
 
@@ -170,19 +199,26 @@ const ISSUE_TYPES: Record<string, { severity: 'critical' | 'warning' | 'info', o
 const PO_INVOICE_ISSUES = [
   'Missing PO',
   'Missing GR',
-  'PO/Invoice Mismatch',
-  'Line Mismatch',
   'Quantity Variance',
+  'Quantity Mismatch',
+  'Amount Mismatch',
+  'Line Items Mismatch',
+  'Line Mismatch',
   'Price Tolerance',
+  'Unit Price Mismatch',
+  'UoM Mismatch',
+  'Tax Rate Mismatch',
+  'Unapproved Change Order',
   'Missing Approval',
   'Tax Discrepancy'
 ];
 
 const NON_PO_INVOICE_ISSUES = [
   'Missing Approval',
-  'Vendor Issues',
   'Vendor Not Verified',
-  'Bank Account Issue',
+  'Bank Account Not Verified',
+  'Amount Mismatch',
+  'Line Items Mismatch',
   'Duplicate Suspected',
   'Tax Discrepancy',
   'Currency Issue',
@@ -202,6 +238,11 @@ const approverPool = [
   'Elizabeth Taylor', 'Richard Jones', 'Patricia Williams'
 ];
 
+const requisitionerPool = [
+  'Olivia Green', 'Noah Patel', 'Liam Walker', 'Ava Thompson',
+  'Mason Clark', 'Isabella Lewis', 'Sophia Hall', 'Ethan Young'
+];
+
 const getRandomAssignee = (seed: number = 0): string => {
   return assigneePool[Math.abs(seed) % assigneePool.length];
 };
@@ -219,7 +260,12 @@ const generateInvoiceIssues = (invoice: any): string[] => {
   // Only generate issues for exception status
   if (invoice.match_status !== 'not_matched' &&
       invoice.match_status !== 'exception' &&
-      invoice.match_status !== 'partial') {
+      invoice.match_status !== 'partial' &&
+      invoice.match_status !== 'mismatch' &&
+      invoice.match_status !== 'over_tolerance' &&
+      invoice.match_status !== 'quantity_mismatch' &&
+      invoice.match_status !== 'amount_mismatch' &&
+      invoice.match_status !== 'line_mismatch') {
     return [];
   }
 
@@ -285,14 +331,17 @@ const generateInvoiceIssues = (invoice: any): string[] => {
 const generateSyntheticFields = (invoice: any): any => {
   // Preserve needs_info status - don't generate synthetic fields for these invoices
   if (invoice.status === 'needs_info') {
+    const seed = invoice.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
     return {
       ...invoice,
-      type: 'Non-PO',
-      assignedTo: 'Unassigned',
+      type: invoice.vendor_requires_po ? 'PO' : 'Non-PO',
+      assignedTo: getRandomAssignee(seed),
       costCentre: '-',
       accountCode: '-',
       approver: undefined,
-      balanceOutstanding: 0,
+      requisitioner: (invoice.vendor_requires_po && invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0)
+        ? requisitionerPool[Math.abs(seed) % requisitionerPool.length]
+        : undefined,
       division: invoice.division || 'Unknown',
       issues: []
     };
@@ -308,324 +357,18 @@ const generateSyntheticFields = (invoice: any): any => {
     costCentre: `CC-${String((seed % 7) + 1).padStart(3, '0')}`,
     accountCode: `AC-${5000 + (seed % 10) + 1}`,
     approver: getRandomApprover(seed),
-    balanceOutstanding: invoice.total * (0.1 + (seed % 5) * 0.1), // 10-50% of total
+    requisitioner: invoice.vendor_requires_po ? requisitionerPool[Math.abs(seed) % requisitionerPool.length] : undefined,
     division: getDivision(invoice.vendor_name_snapshot),
-    issues: generateInvoiceIssues(invoice)
+    po_numbers_cached: (invoice.vendor_requires_po && (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0))
+      ? [`PO-${new Date().getFullYear()}-${String(Math.abs(seed) % 9000 + 1000).padStart(4, '0')}`]
+      : invoice.po_numbers_cached,
+    issues: (Array.isArray((invoice as any).issues) && (invoice as any).issues.length > 0)
+      ? (invoice as any).issues
+      : generateInvoiceIssues(invoice)
   };
 };
 
 // Generate mock overdue invoices for demonstration
-const generateMockOverdueInvoices = (): Invoice[] => {
-  const now = new Date();
-  const vendors = ['TechCorp Ltd', 'BuildCo Solutions', 'SupplyCo Global', 'GlobalParts Inc', 'Acme Corp', 'DataSoft Systems', 'CloudNet Services'];
-  const mockInvoices: Invoice[] = [];
-
-  // Generate invoices for different aging buckets - OVERDUE
-  const agingBuckets = [
-    { days: 120, count: 3, minAmount: 8000, maxAmount: 15000 }, // 90+ days overdue
-    { days: 75, count: 4, minAmount: 10000, maxAmount: 20000 }, // 61-90 days overdue
-    { days: 45, count: 5, minAmount: 12000, maxAmount: 25000 }, // 31-60 days overdue
-    { days: 15, count: 11, minAmount: 14000, maxAmount: 30000 }, // 1-30 days overdue
-  ];
-
-  let invoiceCounter = 1;
-
-  agingBuckets.forEach(bucket => {
-    for (let i = 0; i < bucket.count; i++) {
-      const dueDate = new Date(now);
-      dueDate.setDate(dueDate.getDate() - bucket.days - Math.floor(Math.random() * 3));
-
-      const invoiceDate = new Date(dueDate);
-      invoiceDate.setDate(invoiceDate.getDate() - 30);
-
-      const vendorName = vendors[Math.floor(Math.random() * vendors.length)];
-      mockInvoices.push({
-        id: `mock-${invoiceCounter}`,
-        invoice_number: `INV-2024-${String(1000 + invoiceCounter).padStart(4, '0')}`,
-        vendor_name_snapshot: vendorName,
-        division: getDivision(vendorName),
-        invoice_date: invoiceDate.toISOString().split('T')[0],
-        due_date: dueDate.toISOString().split('T')[0],
-        currency: 'GBP',
-        total: Math.floor(Math.random() * (bucket.maxAmount - bucket.minAmount) + bucket.minAmount),
-        status: bucket.days > 30 ? 'requires_review' : 'pending',
-        match_status: bucket.days > 15 ? 'exception' : 'unmatched',
-        vendor_requires_po: Math.random() > 0.3,
-        vendor_is_verified: true,
-        approval_status: bucket.days > 7 ? 'pending' : 'approved',
-        po_numbers_cached: Math.random() > 0.5 ? [`PO-2024-${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`] : [],
-        gr_numbers: []
-      });
-      invoiceCounter++;
-    }
-  });
-
-  return mockInvoices;
-};
-
-// Generate mock due soon invoices for demonstration
-const generateMockDueSoonInvoices = (): Invoice[] => {
-  const now = new Date();
-  const vendors = ['MegaCorp Industries', 'TechFlow Systems', 'SupplyChain Pro', 'LogiTech Solutions', 'DataCore', 'CloudWave', 'NetSolutions'];
-  const mockInvoices: Invoice[] = [];
-
-  // Generate invoices for different due soon buckets
-  const dueSoonBuckets = [
-    { days: 0, count: 4, minAmount: 8000, maxAmount: 12000 }, // Due today
-    { days: -2, count: 6, minAmount: 10000, maxAmount: 18000 }, // Due in 1-3 days
-    { days: -5, count: 8, minAmount: 12000, maxAmount: 22000 }, // Due in 4-7 days
-    { days: -10, count: 10, minAmount: 14000, maxAmount: 28000 }, // Due in 8-14 days
-    { days: -20, count: 12, minAmount: 16000, maxAmount: 32000 }, // Due in 15-30 days
-  ];
-
-  let invoiceCounter = 2001; // Start from different number to distinguish from overdue
-
-  dueSoonBuckets.forEach(bucket => {
-    for (let i = 0; i < bucket.count; i++) {
-      const dueDate = new Date(now);
-      dueDate.setDate(dueDate.getDate() - bucket.days - Math.floor(Math.random() * 2));
-
-      const invoiceDate = new Date(dueDate);
-      invoiceDate.setDate(invoiceDate.getDate() - 30);
-
-      const vendorName = vendors[Math.floor(Math.random() * vendors.length)];
-      mockInvoices.push({
-        id: `due-${invoiceCounter}`,
-        invoice_number: `INV-2025-${String(invoiceCounter).padStart(4, '0')}`,
-        vendor_name_snapshot: vendorName,
-        division: getDivision(vendorName),
-        invoice_date: invoiceDate.toISOString().split('T')[0],
-        due_date: dueDate.toISOString().split('T')[0],
-        currency: 'GBP',
-        total: Math.floor(Math.random() * (bucket.maxAmount - bucket.minAmount) + bucket.minAmount),
-        status: 'pending',
-        match_status: 'matched',
-        vendor_requires_po: Math.random() > 0.4,
-        vendor_is_verified: true,
-        approval_status: 'approved',
-        po_numbers_cached: Math.random() > 0.3 ? [`PO-2025-${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`] : [],
-        gr_numbers: []
-      });
-      invoiceCounter++;
-    }
-  });
-
-  return mockInvoices;
-};
-
-// Generate mock Credit Notes for demonstration
-const generateMockCreditNotes = (): Invoice[] => {
-  const now = new Date();
-  const vendors = ['TechSupply Co', 'Global Services Inc', 'MegaCorp Industries', 'DataCore'];
-  const mockCreditNotes: Invoice[] = [];
-
-  // Generate 2-3 credit notes
-  for (let i = 1; i <= 3; i++) {
-    const creditNoteDate = new Date(now);
-    creditNoteDate.setDate(creditNoteDate.getDate() - Math.floor(Math.random() * 10 + 5)); // 5-15 days ago
-
-    const dueDate = new Date(creditNoteDate);
-    dueDate.setDate(dueDate.getDate() + 30);
-
-    const vendorName = vendors[Math.floor(Math.random() * vendors.length)];
-    const originalAmount = Math.floor(Math.random() * 15000 + 5000);
-    const creditAmount = -Math.floor(originalAmount * (0.1 + Math.random() * 0.3)); // 10-40% credit
-
-    mockCreditNotes.push({
-      id: `cn-${i}`,
-      invoice_number: `CN-2025-${String(i).padStart(4, '0')}`,
-      vendor_name_snapshot: vendorName,
-      division: getDivision(vendorName),
-      invoice_date: creditNoteDate.toISOString().split('T')[0],
-      due_date: dueDate.toISOString().split('T')[0],
-      currency: 'GBP',
-      total: creditAmount,
-      status: i === 1 ? 'credited' : 'approved',
-      match_status: 'matched',
-      vendor_requires_po: true,
-      vendor_is_verified: true,
-      approval_status: 'approved',
-      po_numbers_cached: [`PO-2024-${String(Math.floor(Math.random() * 900) + 100).padStart(3, '0')}`],
-      gr_numbers: [],
-      docType: 'Credit Note',
-      issues: i === 1 ? ['Return processed', 'Credit adjustment'] : ['Refund approved']
-    });
-  }
-
-  return mockCreditNotes;
-};
-
-// Generate mock Pro Forma invoices for demonstration
-const generateMockProFormaInvoices = (): Invoice[] => {
-  const now = new Date();
-  const vendors = ['Industrial Parts Ltd', 'Software Solutions GmbH', 'CloudWave', 'NetSolutions'];
-  const mockProForma: Invoice[] = [];
-
-  // Generate 2 pro forma invoices
-  for (let i = 1; i <= 2; i++) {
-    const proFormaDate = new Date(now);
-    proFormaDate.setDate(proFormaDate.getDate() - Math.floor(Math.random() * 5)); // 0-5 days ago
-
-    const dueDate = new Date(proFormaDate);
-    dueDate.setDate(dueDate.getDate() + 45); // Pro forma usually have longer terms
-
-    const vendorName = vendors[Math.floor(Math.random() * vendors.length)];
-
-    mockProForma.push({
-      id: `pf-${i}`,
-      invoice_number: `PF-2025-${String(i).padStart(4, '0')}`,
-      vendor_name_snapshot: vendorName,
-      division: getDivision(vendorName),
-      invoice_date: proFormaDate.toISOString().split('T')[0],
-      due_date: dueDate.toISOString().split('T')[0],
-      currency: 'GBP',
-      total: Math.floor(Math.random() * 50000 + 25000), // Pro forma often for larger amounts
-      status: i === 1 ? 'draft' : 'pending',
-      match_status: 'pending',
-      vendor_requires_po: false, // Pro forma usually don't require PO yet
-      vendor_is_verified: true,
-      approval_status: 'pending',
-      po_numbers_cached: [],
-      gr_numbers: [],
-      docType: 'Pro Forma',
-      issues: i === 1 ? ['Awaiting confirmation', 'Quote pending approval'] : ['Customs clearance pending']
-    });
-  }
-
-  return mockProForma;
-};
-
-// Generate mock blocked invoices for demonstration
-const generateMockNeedsInfoInvoices = (): Invoice[] => {
-  const now = new Date();
-  const mockInvoices: Invoice[] = [];
-
-  // Generate 6 invoices with missing critical data
-  const missingDataScenarios = [
-    {
-      id: 'needs-info-1',
-      invoice_number: 'INV-2025-9001',
-      vendor_name_snapshot: null, // Missing vendor
-      vendor_id: null,
-      missing_field: 'vendor'
-    },
-    {
-      id: 'needs-info-2',
-      invoice_number: 'INV-2025-9002',
-      vendor_name_snapshot: 'DataTech Systems',
-      vendor_id: null, // Missing vendor ID
-      missing_field: 'vendor_id'
-    },
-    {
-      id: 'needs-info-3',
-      invoice_number: 'INV-2025-9003',
-      vendor_name_snapshot: null, // Missing vendor
-      vendor_id: null,
-      invoice_date: null, // Missing invoice date
-      missing_field: 'vendor_and_date'
-    },
-    {
-      id: 'needs-info-4',
-      invoice_number: 'INV-2025-9004',
-      vendor_name_snapshot: 'CloudFlow Inc',
-      vendor_id: 'VND-4521',
-      currency: null, // Missing currency
-      missing_field: 'currency'
-    },
-    {
-      id: 'needs-info-5',
-      invoice_number: 'INV-2025-9005',
-      vendor_name_snapshot: null, // Missing vendor
-      vendor_id: null,
-      currency: null, // Missing currency
-      missing_field: 'vendor_and_currency'
-    },
-    {
-      id: 'needs-info-6',
-      invoice_number: 'INV-2025-9006',
-      vendor_name_snapshot: 'TechSupply Pro',
-      vendor_id: null, // Missing vendor ID
-      total: null, // Missing total amount
-      missing_field: 'vendor_id_and_total'
-    }
-  ];
-
-  missingDataScenarios.forEach((scenario, index) => {
-    const baseDate = new Date(now);
-    baseDate.setDate(baseDate.getDate() - Math.floor(Math.random() * 10)); // 0-10 days ago
-
-    const dueDate = new Date(baseDate);
-    dueDate.setDate(dueDate.getDate() + 30);
-
-    mockInvoices.push({
-      id: scenario.id,
-      invoice_number: scenario.invoice_number,
-      vendor_name_snapshot: scenario.vendor_name_snapshot || undefined,
-      vendor_id: scenario.vendor_id || undefined,
-      division: scenario.vendor_name_snapshot ? getDivision(scenario.vendor_name_snapshot) : 'Unknown',
-      invoice_date: scenario.invoice_date !== null ? baseDate.toISOString().split('T')[0] : undefined,
-      due_date: dueDate.toISOString().split('T')[0],
-      currency: scenario.currency !== null ? (scenario.currency || 'GBP') : undefined,
-      total: scenario.total !== null ? Math.floor(Math.random() * 20000 + 5000) : undefined,
-      status: 'needs_info', // New status for missing data
-      match_status: 'pending',
-      vendor_requires_po: false,
-      vendor_is_verified: false,
-      approval_status: 'pending',
-      po_numbers_cached: [],
-      gr_numbers: [],
-      docType: 'Invoice',
-      created_at: baseDate.toISOString(),
-      updated_at: baseDate.toISOString()
-    } as Invoice);
-  });
-
-  return mockInvoices;
-};
-
-const generateMockBlockedInvoices = (): Invoice[] => {
-  const now = new Date();
-  const vendors = ['TechSupply Co', 'Global Services Inc', 'Industrial Parts Ltd', 'Office Supplies Direct', 'Maintenance Pro', 'Software Solutions GmbH'];
-  const mockInvoices: Invoice[] = [];
-
-  // Generate 5 blocked invoices with different exception reasons
-  for (let i = 1; i <= 5; i++) {
-    const invoiceDate = new Date(now);
-    invoiceDate.setDate(invoiceDate.getDate() - Math.floor(Math.random() * 20 + 5)); // 5-25 days ago
-
-    const dueDate = new Date(invoiceDate);
-    dueDate.setDate(dueDate.getDate() + 30);
-
-    const vendorName = vendors[Math.floor(Math.random() * vendors.length)];
-
-    // Force first 3 invoices to be PO-type with missing PO
-    const isMissingPO = i <= 3;
-
-    mockInvoices.push({
-      id: `blocked-${i}`,
-      invoice_number: `INV-2025-${String(5000 + i).padStart(4, '0')}`,
-      vendor_name_snapshot: vendorName,
-      division: getDivision(vendorName),
-      invoice_date: invoiceDate.toISOString().split('T')[0],
-      due_date: dueDate.toISOString().split('T')[0],
-      currency: 'GBP',
-      total: Math.floor(Math.random() * 40000 + 5000), // £5k-45k range
-      status: 'requires_review', // Blocked status
-      match_status: 'not_matched', // Changed to trigger issue generation
-      // First 3 invoices have missing PO, rest have normal PO
-      po_numbers_cached: isMissingPO ? [] : (Math.random() > 0.3 ? [`PO-2025-${String(3000 + i).padStart(4, '0')}`] : []),
-      gr_numbers: isMissingPO ? [] : (Math.random() > 0.5 ? [`GR-2025-${String(2000 + i).padStart(4, '0')}`] : []),
-      created_at: invoiceDate.toISOString(),
-      // First 3 are PO-type (but missing PO), rest follow normal logic
-      vendor_requires_po: isMissingPO ? true : Math.random() > 0.3,
-      vendor_is_verified: Math.random() > 0.2,
-      vendor_id: `vendor-${Math.floor(Math.random() * 20) + 1}`
-    });
-  }
-
-  return mockInvoices;
-};
-
 export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvoicesClientProps) {
   // Initialize with just the initial invoices first
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices || []);
@@ -634,10 +377,10 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
-  // Add mock data only on the client side after mount
+  // Add mock data only on the client side after mount (hide DB-backed records)
   useEffect(() => {
     const rawInvoices = [
-      ...(initialInvoices || []),
+      // Only include mocked data to hide DB-backed invoices in lists
       ...generateMockNeedsInfoInvoices(),
       ...generateMockOverdueInvoices(),
       ...generateMockDueSoonInvoices(),
@@ -665,6 +408,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   const [activeQuickFilters, setActiveQuickFilters] = useState<Set<string>>(new Set());
   const [sidePanelOpen, setSidePanelOpen] = useState(false);
   const [selectedMetric, setSelectedMetric] = useState<'blocked' | 'overdue' | 'dueSoon' | null>(null);
+  const [showQuickFixes, setShowQuickFixes] = useState(false);
 
   // Tab state
   const [activeTab, setActiveTab] = useState('needs-info');
@@ -679,20 +423,23 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
         );
 
       case 'blocked':
-        // Issues preventing processing - excludes invoices with approvers and needs_info
+        // Mismatched/On-Hold: excludes approver, needs_info, and matched; focuses on true mismatch/hold states
         return allInvoices.filter(inv =>
-          !inv.approver && // Exclude invoices that have approvers (they go to in-approval)
-          inv.status !== 'needs_info' && // Exclude needs_info (has its own tab)
-          inv.match_status !== 'matched' && // Exclude matched (they go to ready-to-post)
+          !inv.approver &&
+          inv.status !== 'needs_info' &&
+          inv.match_status !== 'matched' &&
           (
             inv.status === 'requires_review' ||
             inv.status === 'needs_review' ||
-            inv.status === 'draft' ||
-            inv.status === 'pending' ||
+            inv.status === 'blocked' ||
             inv.match_status === 'exception' ||
             inv.match_status === 'not_matched' ||
             inv.match_status === 'unmatched' ||
-            inv.match_status === 'pending'
+            inv.match_status === 'mismatch' ||
+            inv.match_status === 'over_tolerance' ||
+            inv.match_status === 'quantity_mismatch' ||
+            inv.match_status === 'amount_mismatch' ||
+            inv.match_status === 'line_mismatch'
           )
         );
 
@@ -706,15 +453,18 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
         );
 
       case 'ready-to-post':
-        // Matched and ready for posting - excludes invoices with approvers
+        // Matched or within tolerance and ready for posting - excludes invoices with approvers
         return allInvoices.filter(inv =>
           !inv.approver && // Exclude invoices that have approvers (they go to in-approval)
-          inv.match_status === 'matched' &&
+          (inv.match_status === 'matched' || inv.match_status === 'within_tolerance') &&
           inv.status !== 'paid' &&
           inv.status !== 'requires_review' &&
           inv.status !== 'needs_info' // Exclude needs_info
         );
 
+      case 'all':
+        // Show all invoices for the current type (PO/Non-PO filtering is handled upstream)
+        return allInvoices;
       default:
         return allInvoices;
     }
@@ -738,7 +488,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   const [selectedApprovers, setSelectedApprovers] = useState<Set<string>>(new Set());
   const [approverFilterOpen, setApproverFilterOpen] = useState(false);
   const [approverSearchQuery, setApproverSearchQuery] = useState('');
-  const [invoiceTypeFilter, setInvoiceTypeFilter] = useState('all');
+  const [invoiceTypeFilter, setInvoiceTypeFilter] = useState('po');
 
   // Interaction mode states
   const [chartsInDrawer, setChartsInDrawer] = useState(false);
@@ -824,7 +574,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       'overdue': invoices.filter(inv => {
         const dueDate = new Date(inv.due_date);
         return dueDate < now && inv.status !== 'paid';
-      }).length
+      }).length,
+      'missing-po': invoices.filter(inv => inv.vendor_requires_po === true && (!inv.po_numbers_cached || inv.po_numbers_cached.length === 0)).length
     };
   }, [invoices]);
 
@@ -837,18 +588,68 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   // Get unique exceptions from invoice issues
   const uniqueExceptions = useMemo(() => {
     const exceptions = new Set<string>();
-    invoices.forEach(invoice => {
+    // Build from the current tab's invoices so the list matches visible data
+    const source = getTabInvoices(activeTab, invoices);
+    source.forEach(invoice => {
       if (invoice.issues && Array.isArray(invoice.issues)) {
         invoice.issues.forEach(issue => exceptions.add(issue));
       }
     });
     // Filter to PO-related exceptions when in PO mode
     if (invoiceTypeFilter === 'po') {
-      return Array.from(exceptions).filter(e => PO_INVOICE_ISSUES.includes(e)).sort();
+      let list = Array.from(exceptions).filter(e => PO_INVOICE_ISSUES.includes(e));
+      // In blocked tab, curate to meaningful mismatches only
+      if (activeTab === 'blocked') {
+        const whitelist = new Set([
+          'Quantity Variance',
+          'Quantity Mismatch',
+          'Amount Mismatch',
+          'Line Items Mismatch',
+          'Line Mismatch',
+          'Price Tolerance',
+          'Missing GR',
+          'Tax Discrepancy',
+          'Currency Issue',
+          'Unit Price Mismatch',
+          'UoM Mismatch',
+          'Tax Rate Mismatch',
+          'Unapproved Change Order'
+        ]);
+        list = list.filter(e => whitelist.has(e));
+      }
+      return list.sort();
+    } else if (invoiceTypeFilter === 'non-po') {
+      let list = Array.from(exceptions).filter(e => NON_PO_INVOICE_ISSUES.includes(e));
+      if (activeTab === 'blocked') {
+        const whitelist = new Set([
+          'Amount Mismatch',
+          'Line Items Mismatch',
+          'Vendor Not Verified',
+          'Bank Account Not Verified',
+          'Tax Discrepancy',
+          'Currency Issue'
+        ]);
+        list = list.filter(e => whitelist.has(e));
+      }
+      return list.sort();
     }
-    // Show all exceptions for 'all' mode
+    // Show all exceptions for any other mode
     return Array.from(exceptions).sort();
-  }, [invoices, invoiceTypeFilter]);
+  }, [invoices, invoiceTypeFilter, activeTab]);
+
+  // When switching to Blocked tab, drop disallowed selections from exceptions filter
+  useEffect(() => {
+    if (activeTab !== 'blocked') return;
+    setSelectedExceptions(prev => {
+      if (prev.size === 0) return prev;
+      const allowed = new Set([
+        'Quantity Variance', 'Quantity Mismatch', 'Amount Mismatch', 'Line Items Mismatch', 'Line Mismatch', 'Price Tolerance',
+        'Vendor Not Verified', 'Bank Account Not Verified', 'Tax Discrepancy', 'Currency Issue', 'Missing GR'
+      ]);
+      const next = new Set(Array.from(prev).filter(e => allowed.has(e)));
+      return next.size === prev.size ? prev : next;
+    });
+  }, [activeTab]);
 
   // Get unique approvers from invoices in approval tab
   const uniqueApprovers = useMemo(() => {
@@ -865,16 +666,43 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   // Get unique missing fields from needs-info invoices
   const uniqueIssues = useMemo(() => {
     const issues = new Set<string>();
-    const needsInfoInvoices = getTabInvoices('needs-info', invoices);
+    // Scope to current invoice type toggle for clarity
+    const needsInfoInvoices = getTabInvoices('needs-info', invoices).filter(inv =>
+      invoiceTypeFilter === 'po' ? inv.type === 'PO' : invoiceTypeFilter === 'non-po' ? inv.type === 'Non-PO' : true
+    );
     needsInfoInvoices.forEach(invoice => {
       if (!invoice.vendor_name_snapshot) issues.add('Missing Vendor');
       if (!invoice.invoice_date) issues.add('Missing Date');
       if (!invoice.currency) issues.add('Missing Currency');
       if (!invoice.total || invoice.total === 0) issues.add('Missing Amount');
       if (!invoice.vendor_id) issues.add('Missing Vendor ID');
+      if (!invoice.vendor_tax_id_snapshot) issues.add('Missing Vendor Tax ID');
+      if (!invoice.vendor_address_snapshot) issues.add('Missing Vendor Address');
+      if (!invoice.payment_method) issues.add('Missing Payment Method');
+      if (!invoice.payment_bank_details) issues.add('Missing Bank Account');
+      if (invoice.tax_rate_percent == null) issues.add('Missing Tax Code');
+      const hasLines = (invoice.lines && invoice.lines.length > 0) || (invoice.invoice_lines && invoice.invoice_lines.length > 0);
+      if (!hasLines) issues.add('Missing Line Items');
+      if (invoice.vendor_requires_po && (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0)) issues.add('Missing PO');
     });
+    // In Non-PO view, do not expose Missing PO
+    if (invoiceTypeFilter === 'non-po') {
+      issues.delete('Missing PO');
+    }
     return Array.from(issues).sort();
-  }, [invoices, getTabInvoices]);
+  }, [invoices, getTabInvoices, invoiceTypeFilter]);
+
+  // Ensure "Missing PO" isn't applied as a filter in Non-PO view
+  useEffect(() => {
+    if (invoiceTypeFilter === 'non-po') {
+      setSelectedExceptions(prev => {
+        if (!prev.has('Missing PO')) return prev;
+        const next = new Set(prev);
+        next.delete('Missing PO');
+        return next;
+      });
+    }
+  }, [invoiceTypeFilter]);
 
   // Filter vendors based on search query
   const filteredVendors = useMemo(() => {
@@ -1038,12 +866,20 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       if (activeTab === 'needs-info') {
         // Filter by missing fields in needs-info tab
         filtered = filtered.filter(invoice => {
-          const missingFields = [];
+          const missingFields: string[] = [];
           if (!invoice.vendor_name_snapshot) missingFields.push('Missing Vendor');
           if (!invoice.invoice_date) missingFields.push('Missing Date');
           if (!invoice.currency) missingFields.push('Missing Currency');
           if (!invoice.total || invoice.total === 0) missingFields.push('Missing Amount');
           if (!invoice.vendor_id) missingFields.push('Missing Vendor ID');
+          if (!invoice.vendor_tax_id_snapshot) missingFields.push('Missing Vendor Tax ID');
+          if (!invoice.vendor_address_snapshot) missingFields.push('Missing Vendor Address');
+          if (!invoice.payment_method) missingFields.push('Missing Payment Method');
+          if (!invoice.payment_bank_details) missingFields.push('Missing Bank Account');
+          if (invoice.tax_rate_percent == null) missingFields.push('Missing Tax Code');
+          const hasLines = (invoice.lines && invoice.lines.length > 0) || (invoice.invoice_lines && invoice.invoice_lines.length > 0);
+          if (!hasLines) missingFields.push('Missing Line Items');
+          if (invoice.vendor_requires_po && (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0)) missingFields.push('Missing PO');
 
           return missingFields.some(field => selectedExceptions.has(field));
         });
@@ -1070,6 +906,9 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
         const dueDate = new Date(inv.due_date);
         return dueDate < now && inv.status !== 'paid';
       });
+    }
+    if (activeQuickFilters.has('missing-po')) {
+      filtered = filtered.filter(inv => inv.vendor_requires_po === true && (!inv.po_numbers_cached || inv.po_numbers_cached.length === 0));
     }
 
     // Search filter
@@ -1102,16 +941,20 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   }, [router]);
 
   const refreshInvoices = useCallback(async () => {
-    try {
-      const response = await fetch('/api/invoices');
-      if (response.ok) {
-        const data = await response.json();
-        const invoicesWithSynthetic = (data.invoices || []).map((invoice: any) => generateSyntheticFields(invoice));
-        setInvoices(invoicesWithSynthetic);
-      }
-    } catch (error) {
-      console.error('Error refreshing invoices:', error);
-    }
+    // Rebuild mock dataset; do not include DB-backed records
+    const rawInvoices = [
+      ...generateMockNeedsInfoInvoices(),
+      ...generateMockOverdueInvoices(),
+      ...generateMockDueSoonInvoices(),
+      ...generateMockBlockedInvoices(),
+      ...generateMockCreditNotes(),
+      ...generateMockProFormaInvoices()
+    ];
+    const combinedInvoices = rawInvoices.map(invoice => ({
+      ...generateSyntheticFields(invoice),
+      docType: invoice.docType || 'Invoice'
+    }));
+    setInvoices(combinedInvoices);
   }, []);
 
   const handleDelete = useCallback(async (invoiceId: string) => {
@@ -1247,11 +1090,12 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   // Calculate counts for each tab - using filtered invoices to match table content
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    TABS.forEach(tab => {
+    const contextualTabs = getContextualTabs(invoiceTypeFilter);
+    contextualTabs.forEach(tab => {
       counts[tab.id] = getTabInvoices(tab.id, filteredInvoices).length;
     });
     return counts;
-  }, [filteredInvoices, getTabInvoices]);
+  }, [filteredInvoices, getTabInvoices, invoiceTypeFilter]);
 
   const toggleQuickFilter = (filterId: string) => {
     setActiveQuickFilters(prev => {
@@ -1259,6 +1103,12 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       if (newSet.has(filterId)) {
         newSet.delete(filterId);
       } else {
+        // Enforce mutual exclusivity between time-based filters
+        if (filterId === 'due-7days') {
+          newSet.delete('overdue');
+        } else if (filterId === 'overdue') {
+          newSet.delete('due-7days');
+        }
         newSet.add(filterId);
       }
       return newSet;
@@ -1307,6 +1157,38 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
           inv.match_status === 'unmatched'
         );
 
+      // Approval-specific metrics
+      let waitingLongInvoices: any[] = [];
+      let highValueInvoices: any[] = [];
+      // Needs-info + PO context: missing PO
+      const missingPOInvoices = tabInvoices.filter(inv =>
+        inv.vendor_requires_po === true && (!inv.po_numbers_cached || inv.po_numbers_cached.length === 0)
+      );
+
+      // Missing fields across PO and Non-PO (critical fields only)
+      const missingFieldsInvoices = tabInvoices.filter(inv => (
+        !inv?.vendor_name_snapshot ||
+        !inv?.invoice_date ||
+        !inv?.currency ||
+        !(Number(inv?.total || 0) > 0) ||
+        !inv?.vendor_id
+      ));
+
+      if (activeTab === 'in-approval') {
+        // Waiting >3 days - calculate from created_at or updated_at
+        const waitingThreshold = 3 * 24 * 60 * 60 * 1000; // 3 days in milliseconds
+        waitingLongInvoices = tabInvoices.filter(inv => {
+          const createdDate = new Date(inv.created_at || inv.updated_at || now);
+          return (now.getTime() - createdDate.getTime()) > waitingThreshold;
+        });
+
+        // High value >$50K
+        const highValueThreshold = 50000;
+        highValueInvoices = tabInvoices.filter(inv =>
+          Number(inv.total || 0) > highValueThreshold
+        );
+      }
+
       return {
         dueSoon: {
           count: dueSoonInvoices.length,
@@ -1319,6 +1201,24 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
         blocked: {
           count: blockedInvoices.length,
           value: blockedInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0)
+        },
+        waitingLong: {
+          count: waitingLongInvoices.length,
+          value: waitingLongInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0)
+        },
+        highValue: {
+          count: highValueInvoices.length,
+          value: highValueInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0)
+        },
+        // Always compute; only rendered for needs-info + PO filter
+        missingPO: {
+          count: missingPOInvoices.length,
+          value: missingPOInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0)
+        },
+        // Shown for both PO and Non-PO
+        missingFields: {
+          count: missingFieldsInvoices.length,
+          value: missingFieldsInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0)
         }
       };
     }, [tabInvoices, activeTab]);
@@ -1340,13 +1240,61 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
               <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.overdue.value)}</span>
             </span>
           </div>
+          {/* Missing fields: only in Needs info (both PO and Non-PO) */}
+          {activeTab === 'needs-info' && (
+            <div className="flex items-center gap-1.5 px-4">
+              <AlertCircle className="h-3 w-3 text-red-500" />
+              <span className="text-xs text-gray-950">
+                <span className="font-semibold">{tabMetrics.missingFields.count}</span> with missing fields
+              </span>
+            </div>
+          )}
+          {/* Needs info + PO toggle: show Missing PO metric */}
+          {activeTab === 'needs-info' && invoiceTypeFilter === 'po' && (
+            <div className="flex items-center gap-1.5 px-4">
+              <AlertTriangle className="h-3 w-3 text-orange-500" />
+              <span className="text-xs text-gray-950">
+                <span className="font-semibold">{tabMetrics.missingPO.count}</span> missing PO
+                <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.missingPO.value)}</span>
+              </span>
+            </div>
+          )}
           {activeTab === 'blocked' && (
-            <div className="flex items-center gap-1.5 pl-4">
+            <div className="flex items-center gap-1.5 px-4">
               <AlertTriangle className="h-3 w-3 text-red-500" />
               <span className="text-xs text-gray-950">
-                <span className="font-semibold">{tabMetrics.blocked.count}</span> blocked
+                <span className="font-semibold">{tabMetrics.blocked.count}</span> mismatched
                 <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.blocked.value)}</span>
               </span>
+            </div>
+          )}
+          {activeTab === 'in-approval' && (
+            <>
+              <div className="flex items-center gap-1.5 px-4">
+                <Clock className="h-3 w-3 text-orange-500" />
+                <span className="text-xs text-gray-950">
+                  <span className="font-semibold">{tabMetrics.waitingLong.count}</span> waiting &gt;3 days
+                  <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.waitingLong.value)}</span>
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5 px-4">
+                <DollarSign className="h-3 w-3 text-green-600" />
+                <span className="text-xs text-gray-950">
+                  <span className="font-semibold">{tabMetrics.highValue.count}</span> high value &gt;$50K
+                  <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.highValue.value)}</span>
+                </span>
+              </div>
+            </>
+          )}
+          {/* Right-aligned Quick Fixes only for PO + Mismatched/Blocked */}
+          {activeTab === 'blocked' && invoiceTypeFilter === 'po' && (
+            <div className="ml-auto pl-4">
+              <button
+                onClick={() => setShowQuickFixes(true)}
+                className="px-3 py-1.5 text-xs bg-purple-900 text-white rounded-md hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              >
+                Quick Fixes
+              </button>
             </div>
           )}
         </div>
@@ -1497,7 +1445,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
               </DropdownMenu>
 
               {/* Exception/Issues Filter - Show based on tab and invoice type */}
-              {invoiceTypeFilter !== 'non-po' && activeTab !== 'ready-to-post' && (
+              {activeTab !== 'ready-to-post' && (
                 <>
                   {activeTab === 'needs-info' ? (
                     // Issues filter for needs-info tab
@@ -1768,16 +1716,13 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
                 </DropdownMenu>
               )}
 
-              {/* Vertical divider */}
-              <div className="h-5 w-px bg-gray-100" />
-
-              {/* Invoice count */}
-              <span className="text-xs text-gray-600">
-                {currentTabInvoices.length} invoice{currentTabInvoices.length !== 1 ? 's' : ''}
-              </span>
+              {/* Removed trailing invoice count and divider per design update */}
             </div>
           </div>
         </div>
+
+        {/* Metrics strip bar positioned just above the table */}
+        <MetricsBanner />
 
         {/* Table */}
         <EnhancedInvoiceTable
@@ -1788,6 +1733,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
           onDelete={handleDelete}
           onPOClick={handlePOClick}
           activeView={activeView}
+          activeTab={activeTab}
         />
 
         {/* Bulk Actions Bar - only show if items are selected */}
@@ -1835,12 +1781,6 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
             className="bg-white border border-gray-200 p-0.5"
           >
             <ToggleGroupItem
-              value="all"
-              className="px-3 py-1 text-xs data-[state=on]:bg-purple-900 data-[state=on]:text-white data-[state=on]:shadow-sm"
-            >
-              All
-            </ToggleGroupItem>
-            <ToggleGroupItem
               value="po"
               className="px-3 py-1 text-xs data-[state=on]:bg-purple-900 data-[state=on]:text-white data-[state=on]:shadow-sm"
             >
@@ -1878,7 +1818,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       <div className="mb-4">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
-            {TABS.map((tab) => (
+            {getContextualTabs(invoiceTypeFilter).map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -1889,15 +1829,13 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
                 }`}
               >
                 {tab.label}
-                {tabCounts[tab.id] > 0 && (
-                  <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
-                    activeTab === tab.id
-                      ? 'bg-purple-100 text-purple-900'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}>
-                    {tabCounts[tab.id]}
-                  </span>
-                )}
+                <span className={`ml-2 px-2 py-0.5 text-xs rounded-full ${
+                  activeTab === tab.id
+                    ? 'bg-purple-100 text-purple-900'
+                    : 'bg-gray-100 text-gray-800'
+                }`}>
+                  {tabCounts[tab.id] ?? 0}
+                </span>
               </button>
             ))}
           </nav>
@@ -1906,7 +1844,6 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
 
       {/* Tab Content - Use renderTabContent for all tabs */}
       <>
-        <MetricsBanner />
         {renderTabContent()}
       </>
 
@@ -1915,6 +1852,15 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
         <div
           className="fixed inset-0 bg-black bg-opacity-25 z-40 transition-opacity"
           onClick={closeSidePanel}
+        />
+      )}
+
+      {/* Quick Fixes Modal (PO + Mismatched/Blocked only) */}
+      {activeTab === 'blocked' && invoiceTypeFilter === 'po' && (
+        <QuickFixesModal
+          open={showQuickFixes}
+          onClose={() => setShowQuickFixes(false)}
+          invoices={currentTabInvoices as any}
         />
       )}
     </>
