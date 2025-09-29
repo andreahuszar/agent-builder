@@ -39,6 +39,7 @@ interface EnhancedLineItemsTabV2Props {
   invoiceShippingTotal?: number;
   invoiceDiscountTotal?: number;
   invoiceTotal?: number;
+  hideComparison?: boolean;
 }
 
 export function EnhancedLineItemsTabV2({
@@ -56,6 +57,7 @@ export function EnhancedLineItemsTabV2({
   invoiceShippingTotal,
   invoiceDiscountTotal,
   invoiceTotal,
+  hideComparison = false,
 }: EnhancedLineItemsTabV2Props) {
   const [showComparison, setShowComparison] = useState(false);
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
@@ -160,8 +162,8 @@ export function EnhancedLineItemsTabV2({
   const discountAmount = invoiceDiscountTotal || 0;
   const total = invoiceTotal !== undefined ? invoiceTotal : calculatedSubtotal;
 
-  if (!showComparison) {
-    // Simple view without comparison
+  if (!showComparison || hideComparison) {
+    // Simple view without comparison (or when comparison is hidden)
     return (
       <div className="h-full flex flex-col bg-white">
         {/* Header */}
@@ -170,7 +172,7 @@ export function EnhancedLineItemsTabV2({
             <Package className="h-4 w-4 text-purple-600" />
             <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">LINE ITEMS</h3>
           </div>
-          {poComparisonData?.poData && (
+          {poComparisonData?.poData && !hideComparison && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-700">Comparing with PO</span>
               <button
@@ -196,9 +198,11 @@ export function EnhancedLineItemsTabV2({
                 onClick={() => onLineSelect?.(line.id || null)}
               >
                 <div className="flex items-start gap-4">
-                  <div className="pt-1">
-                    {getStatusBadge(comparison)}
-                  </div>
+                  {!hideComparison && (
+                    <div className="pt-1">
+                      {getStatusBadge(comparison)}
+                    </div>
+                  )}
                   
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-gray-950">{line.description}</h4>
@@ -271,16 +275,18 @@ export function EnhancedLineItemsTabV2({
           <Package className="h-4 w-4 text-purple-600" />
           <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">LINE ITEMS</h3>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-600">Comparing with PO</span>
-          <button
-            onClick={() => setShowComparison(false)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white rounded-full text-xs font-medium hover:bg-purple-700 transition-colors"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            <span className="font-medium">{poComparisonData?.poData?.po_number}</span>
-          </button>
-        </div>
+        {!hideComparison && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-600">Comparing with PO</span>
+            <button
+              onClick={() => setShowComparison(false)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white rounded-full text-xs font-medium hover:bg-purple-700 transition-colors"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span className="font-medium">{poComparisonData?.poData?.po_number}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Table Header */}

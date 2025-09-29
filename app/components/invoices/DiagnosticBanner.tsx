@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
-import { Check, AlertTriangle, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, AlertTriangle, X, ChevronDown, MessageSquare, FileCheck, FileText } from 'lucide-react';
 import { HelpdeskPill } from './HelpdeskPill';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 interface DiagnosticBannerProps {
   total: number;
@@ -18,6 +19,9 @@ interface DiagnosticBannerProps {
   exceptionsCount?: number;
   validationWarnings?: any[];
   className?: string;
+  showSaveButton?: boolean;
+  onSaveClick?: () => void;
+  isSaving?: boolean;
 }
 
 export function DiagnosticBanner({
@@ -34,7 +38,12 @@ export function DiagnosticBanner({
   exceptionsCount = 0,
   validationWarnings = [],
   className = '',
+  showSaveButton = false,
+  onSaveClick,
+  isSaving = false,
 }: DiagnosticBannerProps) {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   // Format currency in compact form
   const formatCompactCurrency = (amount: number) => {
     if (amount >= 1000000) {
@@ -209,6 +218,52 @@ export function DiagnosticBanner({
             <HelpdeskPill ticketRef={helpdeskTicketRef} className="!px-2 !py-0.5" />
           </>
         )}
+      </div>
+
+      {/* Action Buttons for all invoices */}
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          onClick={onSaveClick}
+          disabled={isSaving}
+          className="px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+        >
+          {isSaving ? 'Saving...' : 'Save & Validate'}
+        </button>
+
+        {/* Comments Button */}
+        <button
+          className="px-3 py-1.5 text-sm bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
+          title="Add Comment"
+        >
+          <MessageSquare className="h-3.5 w-3.5" />
+          <span>Comments</span>
+        </button>
+
+        {/* Actions Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="px-3 py-1.5 text-sm bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
+          >
+            <span>Actions</span>
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Dropdown Menu */}
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  // Handle reject action
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors"
+              >
+                Reject to Sender
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

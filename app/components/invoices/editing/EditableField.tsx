@@ -80,8 +80,15 @@ export function EditableField({
     // Convert date to YYYY-MM-DD format for input
     const formatDateForInput = (dateValue: any) => {
       if (!dateValue) return '';
-      const date = new Date(dateValue);
-      return date.toISOString().split('T')[0];
+      try {
+        const date = new Date(dateValue);
+        // Check if the date is valid
+        if (isNaN(date.getTime())) return '';
+        return date.toISOString().split('T')[0];
+      } catch (error) {
+        // Return empty string if date parsing fails
+        return '';
+      }
     };
 
     return (

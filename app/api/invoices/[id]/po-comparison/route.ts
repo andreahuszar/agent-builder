@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { isMockInvoice, getMockPoComparisonData } from '@/app/services/mockInvoiceService';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -10,6 +11,11 @@ export async function GET(request: Request, { params }: Params) {
   const invoiceId = resolvedParams.id;
 
   try {
+    // Return mock PO comparison data for mock invoices
+    if (isMockInvoice(invoiceId)) {
+      const mockData = getMockPoComparisonData(invoiceId);
+      return NextResponse.json(mockData);
+    }
     // Get invoice with its lines
     const invoiceHeader = await prisma.invoice_headers.findUnique({
       where: { id: invoiceId },

@@ -123,7 +123,7 @@ export function ValidatedEditableField({
     return (
       <div className="relative">
         {shouldShowIndicator && (
-          <Icon className={`absolute -left-5 top-[50%] -translate-y-1/2 h-4 w-4 ${iconColor} z-10`} />
+          <Icon className={`absolute -left-5 top-[50%] -translate-y-1/2 h-4 w-4 ${iconColor}`} />
         )}
         <input
           type="text"
@@ -149,7 +149,7 @@ export function ValidatedEditableField({
     return (
       <div className="relative">
         {shouldShowIndicator && (
-          <Icon className={`absolute -left-5 top-[50%] -translate-y-1/2 h-4 w-4 ${iconColor} z-10`} />
+          <Icon className={`absolute -left-5 top-[50%] -translate-y-1/2 h-4 w-4 ${iconColor}`} />
         )}
         <select
           value={localValue || ''}

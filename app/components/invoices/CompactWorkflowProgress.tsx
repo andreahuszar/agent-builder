@@ -19,15 +19,24 @@ const WORKFLOW_STEPS: { id: WorkflowStep; label: string; shortLabel: string; sta
   { id: 'paid', label: 'Paid', shortLabel: 'P', statusValues: ['paid'] },
 ];
 
+// Special handling for needs_info status
+const getNeedsInfoStep = () => ({
+  label: 'Needs Info',
+  shortLabel: 'NI'
+});
+
 export function CompactWorkflowProgress({ currentStatus, className = '' }: CompactWorkflowProgressProps) {
+  // Special handling for needs_info status
+  const isNeedsInfo = currentStatus === 'needs_info' || currentStatus === 'needs-info';
+
   // Find the current step index based on status
-  const currentStepIndex = WORKFLOW_STEPS.findIndex(step => 
+  const currentStepIndex = WORKFLOW_STEPS.findIndex(step =>
     step.statusValues.includes(currentStatus)
   );
-  
+
   // Default to first step if status not found
   const activeIndex = currentStepIndex === -1 ? 0 : currentStepIndex;
-  const currentStep = WORKFLOW_STEPS[activeIndex];
+  const currentStep = isNeedsInfo ? getNeedsInfoStep() : WORKFLOW_STEPS[activeIndex];
 
   return (
     <Tooltip.Provider>

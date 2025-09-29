@@ -27,21 +27,38 @@ import {
   Package
 } from 'lucide-react';
 import { EditableField } from '../editing/EditableField';
+import { ValidatedEditableField } from '../editing/ValidatedEditableField';
 import { ValidationIndicator, ValidationSummaryBadge } from '../ValidationIndicator';
-import { FieldConfidenceIndicator } from '../FieldConfidenceIndicator';
 import { InvoiceValidator, ValidationResult } from '@/app/utils/validationService';
 import { COST_CENTER_OPTIONS, LEDGER_OPTIONS } from '@/lib/constants/accountingCodes';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { Badge } from '@/app/components/ui/badge';
+import { FieldErrorIndicator, useFieldErrors, FieldError } from '../FieldErrorIndicator';
 import type { LayoutMode } from './InvoiceTabs';
 
 interface DetailsTabProps {
   invoiceData: any;
   onUpdate?: (data: any) => void;
   layoutMode?: LayoutMode;
+  forceEditMode?: boolean;
+  forceReadOnly?: boolean;
+  hideFloatingSaveButton?: boolean;
+  hideAccountingSection?: boolean;
+  hidePaymentSection?: boolean;
+  hideDocumentLinksSection?: boolean;
 }
 
-export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: DetailsTabProps) {
+export function DetailsTab({
+  invoiceData,
+  onUpdate,
+  layoutMode = 'large',
+  forceEditMode = false,
+  forceReadOnly = false,
+  hideFloatingSaveButton = false,
+  hideAccountingSection = false,
+  hidePaymentSection = false,
+  hideDocumentLinksSection = false
+}: DetailsTabProps) {
   // Calculate totals from line items for accuracy
   const calculatedSubtotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + (line.net_amount || 0), 0) || 0;
   const calculatedTaxTotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + ((line.line_total || 0) - (line.net_amount || 0)), 0) || 0;
@@ -73,13 +90,62 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
     }
   };
 
-  const [isEditing, setIsEditing] = useState(false);
+  // Determine initial edit state based on props
+  const getInitialEditState = () => {
+    if (forceReadOnly) return false;
+    if (forceEditMode) return true;
+    return true; // Default to edit mode
+  };
+
+  const [isEditing, setIsEditing] = useState(getInitialEditState());
   const [editedData, setEditedData] = useState(invoiceData);
   const [isSaving, setIsSaving] = useState(false);
   const [showFab, setShowFab] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [showAIReasoning, setShowAIReasoning] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Field error tracking for needs info mode
+  const { errors: fieldErrors, addError, removeError, clearErrors, validateRequired } = useFieldErrors();
+
+  // Field refs for error navigation
+  const fieldRefs = useRef<{ [key: string]: HTMLElement | null }>({});
+
+  // Update edit state when props change
+  useEffect(() => {
+    const newEditState = getInitialEditState();
+    setIsEditing(newEditState);
+  }, [forceEditMode, forceReadOnly]);
+
+  // Validate required fields on mount for needs info mode
+  useEffect(() => {
+    if (forceEditMode && isEditing) {
+      // Use setTimeout to avoid state update issues
+      const timer = setTimeout(() => {
+        // Clear any existing errors first
+        clearErrors();
+
+        // For demo purposes, check for fields that are commonly missing
+        const fieldsToCheck = [
+          { field: 'vendor_name_snapshot', label: 'Vendor Name' },
+          { field: 'vendor_tax_id_snapshot', label: 'Vendor Tax ID' },
+          { field: 'invoice_date', label: 'Invoice Date' },
+          { field: 'currency', label: 'Currency' }
+        ];
+
+        fieldsToCheck.forEach(({ field, label }) => {
+          const value = editedData[field];
+
+          // Check for empty or missing values
+          if (!value || value === '') {
+            addError(field, `${label} is required`, fieldRefs.current[field]);
+          }
+        });
+      }, 100);
+
+      return () => clearTimeout(timer);
+    }
+  }, [forceEditMode, isEditing, invoiceData.id]); // Only re-run when invoice changes or edit mode changes
 
   // Run validations
   const validationResults = useMemo(() => {
@@ -168,6 +234,20 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
       ...prev,
       [field]: value,
     }));
+
+    // Validate required fields for needs info mode
+    if (forceEditMode && isEditing) {
+      // Check if field is required and validate
+      const requiredFields = ['vendor_name_snapshot', 'vendor_tax_id_snapshot', 'invoice_date', 'currency'];
+      if (requiredFields.includes(field)) {
+        const label = field === 'vendor_name_snapshot' ? 'Vendor Name' :
+                       field === 'vendor_tax_id_snapshot' ? 'Vendor Tax ID' :
+                       field === 'invoice_date' ? 'Invoice Date' :
+                       field === 'currency' ? 'Currency' : field;
+
+        validateRequired(field, value, fieldRefs.current[field]);
+      }
+    }
   };
 
   const handleSave = async () => {
@@ -231,7 +311,15 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
     <Tooltip.Provider>
       <div className="h-full flex flex-col relative">
         {/* Scrollable Content Area - Now takes full height */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative">
+          {/* Field Error Indicator - Only show in needs info mode when editing */}
+          {forceEditMode && isEditing && fieldErrors.length > 0 && (
+            <FieldErrorIndicator
+              errors={fieldErrors}
+              onDismiss={clearErrors}
+            />
+          )}
+
         {/* Invoice Information Section */}
         <div>
           <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
@@ -242,32 +330,34 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
           </div>
           <div className="px-6 py-4 bg-white">
             <div className={`grid ${getGridCols()} gap-4`}>
-              <div>
+              <div ref={(el) => fieldRefs.current['invoice_number'] = el}>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Invoice Number
-                  <FieldConfidenceIndicator 
-                    fieldName="invoice_number"
-                    confidence={invoiceData.extraction_field_confidences?.invoice_number}
-                    isManuallyEdited={invoiceData.is_manually_edited?.invoice_number}
-                  />
                 </label>
-                <p className="text-sm font-medium text-gray-950">{invoiceData.invoice_number}</p>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={editedData.invoice_number}
+                    onChange={(value) => handleFieldChange('invoice_number', value)}
+                    type="text"
+                    required={true}
+                    fieldName="invoice_number"
+                  />
+                ) : (
+                  <p className="text-sm font-medium text-gray-950">{invoiceData.invoice_number}</p>
+                )}
               </div>
-              <div>
+              <div ref={(el) => fieldRefs.current['invoice_date'] = el}>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Invoice Date
-                  <FieldConfidenceIndicator 
-                    fieldName="invoice_date"
-                    confidence={invoiceData.extraction_field_confidences?.invoice_date}
-                    isManuallyEdited={invoiceData.is_manually_edited?.invoice_date}
-                  />
                   <ValidationIndicator validations={[...errors, ...warnings]} field="invoice_date" />
                 </label>
                 {isEditing ? (
-                  <EditableField
+                  <ValidatedEditableField
                     value={editedData.invoice_date}
                     onChange={(value) => handleFieldChange('invoice_date', value)}
                     type="date"
+                    required={true}
+                    fieldName="invoice_date"
                   />
                 ) : (
                   <p className="text-sm font-medium text-gray-950">{formatDate(invoiceData.invoice_date)}</p>
@@ -276,18 +366,15 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Due Date
-                  <FieldConfidenceIndicator 
-                    fieldName="due_date"
-                    confidence={invoiceData.extraction_field_confidences?.due_date}
-                    isManuallyEdited={invoiceData.is_manually_edited?.due_date}
-                  />
                   <ValidationIndicator validations={[...errors, ...warnings]} field="due_date" />
                 </label>
                 {isEditing ? (
-                  <EditableField
+                  <ValidatedEditableField
                     value={editedData.due_date}
                     onChange={(value) => handleFieldChange('due_date', value)}
                     type="date"
+                    required={true}
+                    fieldName="due_date"
                   />
                 ) : (
                   <div className="flex items-center gap-2">
@@ -303,22 +390,17 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
                   </div>
                 )}
               </div>
-              <div>
+              <div ref={(el) => fieldRefs.current['vendor_name_snapshot'] = el}>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Vendor
-                  <FieldConfidenceIndicator 
-                    fieldName="vendor_name_snapshot"
-                    confidence={invoiceData.extraction_field_confidences?.vendor_name_snapshot}
-                    isManuallyEdited={invoiceData.is_manually_edited?.vendor_name_snapshot}
-                  />
-                  <ValidationIndicator validations={[...errors, ...warnings]} field="vendor_name_snapshot" />
-                  <ValidationIndicator validations={[...errors, ...warnings]} field="vendor_approval_status" />
                 </label>
                 {isEditing ? (
-                  <EditableField
+                  <ValidatedEditableField
                     value={editedData.vendor_name_snapshot}
                     onChange={(value) => handleFieldChange('vendor_name_snapshot', value)}
                     type="text"
+                    required={true}
+                    fieldName="vendor_name_snapshot"
                   />
                 ) : (
                   <div className="flex items-start gap-2">
@@ -347,19 +429,46 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
                   </div>
                 )}
               </div>
-              {invoiceData.vendor_tax_id_snapshot && (
-                <div>
-                  <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                    Vendor No.
-                    <FieldConfidenceIndicator
-                      fieldName="vendor_tax_id_snapshot"
-                      confidence={invoiceData.extraction_field_confidences?.vendor_tax_id_snapshot}
-                      isManuallyEdited={invoiceData.is_manually_edited?.vendor_tax_id_snapshot}
-                    />
-                  </label>
-                  <p className="text-sm font-medium text-gray-950">{invoiceData.vendor_tax_id_snapshot}</p>
-                </div>
-              )}
+              <div ref={(el) => fieldRefs.current['vendor_tax_id_snapshot'] = el}>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
+                  Vendor ID
+                </label>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={editedData.vendor_tax_id_snapshot}
+                    onChange={(value) => handleFieldChange('vendor_tax_id_snapshot', value)}
+                    type="text"
+                    required={true}
+                    fieldName="vendor_tax_id_snapshot"
+                    placeholder="e.g., TAX-12345"
+                  />
+                ) : (
+                  <p className="text-sm font-medium text-gray-950">
+                    {invoiceData.vendor_tax_id_snapshot || 'Not provided'}
+                  </p>
+                )}
+              </div>
+              <div ref={(el) => fieldRefs.current['po_numbers_cached'] = el}>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
+                  PO Number
+                </label>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={editedData.po_numbers_cached?.[0] || ''}
+                    onChange={(value) => handleFieldChange('po_numbers_cached', value ? [value] : [])}
+                    type="text"
+                    required={true}
+                    fieldName="po_numbers_cached"
+                    placeholder="Enter PO Number"
+                  />
+                ) : (
+                  <p className="text-sm font-medium text-gray-950">
+                    {invoiceData.po_numbers_cached?.length > 0
+                      ? invoiceData.po_numbers_cached[0]
+                      : 'PO Missing'}
+                  </p>
+                )}
+              </div>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">Assigned To</label>
                 <div className="inline-flex items-center gap-2">
@@ -389,30 +498,33 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Subtotal
-                  <FieldConfidenceIndicator 
-                    fieldName="subtotal"
-                    confidence={invoiceData.extraction_field_confidences?.subtotal}
-                    isManuallyEdited={invoiceData.is_manually_edited?.subtotal}
-                  />
                 </label>
-                <p className="text-sm font-medium text-gray-950">
-                  {formatCurrency(invoiceData.subtotal || calculatedSubtotal, invoiceData.currency)}
-                </p>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={editedData.subtotal || calculatedSubtotal}
+                    onChange={(value) => handleFieldChange('subtotal', value)}
+                    type="currency"
+                    required={true}
+                    fieldName="subtotal"
+                    currency={editedData.currency}
+                  />
+                ) : (
+                  <p className="text-sm font-medium text-gray-950">
+                    {formatCurrency(invoiceData.subtotal || calculatedSubtotal, invoiceData.currency)}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Currency
-                  <FieldConfidenceIndicator 
-                    fieldName="currency"
-                    confidence={invoiceData.extraction_field_confidences?.currency}
-                    isManuallyEdited={invoiceData.is_manually_edited?.currency}
-                  />
                 </label>
                 {isEditing ? (
-                  <EditableField
+                  <ValidatedEditableField
                     value={editedData.currency}
                     onChange={(value) => handleFieldChange('currency', value)}
                     type="select"
+                    required={true}
+                    fieldName="currency"
                     options={[
                       { value: 'USD', label: 'USD' },
                       { value: 'EUR', label: 'EUR' },
@@ -426,16 +538,24 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
               </div>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Tax Rate
-                  <FieldConfidenceIndicator 
-                    fieldName="tax_rate"
-                    confidence={invoiceData.extraction_field_confidences?.tax_rate}
-                    isManuallyEdited={invoiceData.is_manually_edited?.tax_rate}
-                  />
+                  Tax Rate (%)
                 </label>
-                <p className="text-sm font-medium text-gray-950">
-                  {getTaxRate()}%
-                </p>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={editedData.tax_rate_percent || parseFloat(getTaxRate())}
+                    onChange={(value) => handleFieldChange('tax_rate_percent', value)}
+                    type="number"
+                    required={false}
+                    fieldName="tax_rate_percent"
+                    min={0}
+                    max={100}
+                    step={0.1}
+                  />
+                ) : (
+                  <p className="text-sm font-medium text-gray-950">
+                    {getTaxRate()}%
+                  </p>
+                )}
               </div>
             </div>
             
@@ -444,25 +564,25 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Tax Amount
-                  <FieldConfidenceIndicator 
-                    fieldName="tax_total"
-                    confidence={invoiceData.extraction_field_confidences?.tax_total}
-                    isManuallyEdited={invoiceData.is_manually_edited?.tax_total}
-                  />
-                  <ValidationIndicator validations={[...errors, ...warnings]} field="tax_total" />
                 </label>
-                <p className="text-sm font-medium text-gray-950">
-                  {formatCurrency(invoiceData.tax_total || calculatedTaxTotal, invoiceData.currency)}
-                </p>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={editedData.tax_total || calculatedTaxTotal}
+                    onChange={(value) => handleFieldChange('tax_total', value)}
+                    type="currency"
+                    required={false}
+                    fieldName="tax_total"
+                    currency={editedData.currency}
+                  />
+                ) : (
+                  <p className="text-sm font-medium text-gray-950">
+                    {formatCurrency(invoiceData.tax_total || calculatedTaxTotal, invoiceData.currency)}
+                  </p>
+                )}
               </div>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Shipping/Freight
-                  <FieldConfidenceIndicator 
-                    fieldName="shipping_total"
-                    confidence={invoiceData.extraction_field_confidences?.shipping_total}
-                    isManuallyEdited={invoiceData.is_manually_edited?.shipping_total}
-                  />
                 </label>
                 <p className="text-sm font-medium text-gray-950">
                   {invoiceData.shipping_total > 0 
@@ -474,11 +594,6 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Discount
-                  <FieldConfidenceIndicator 
-                    fieldName="discount_total"
-                    confidence={invoiceData.extraction_field_confidences?.discount_total}
-                    isManuallyEdited={invoiceData.is_manually_edited?.discount_total}
-                  />
                 </label>
                 <p className={`text-sm font-medium ${invoiceData.discount_total > 0 ? 'text-green-600' : 'text-gray-950'}`}>
                   {invoiceData.discount_total > 0 
@@ -495,11 +610,6 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
                 <div>
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                     Other Charges
-                    <FieldConfidenceIndicator 
-                      fieldName="other_charges_total"
-                      confidence={invoiceData.extraction_field_confidences?.other_charges_total}
-                      isManuallyEdited={invoiceData.is_manually_edited?.other_charges_total}
-                    />
                   </label>
                   <p className="text-sm font-medium text-gray-950">
                     {formatCurrency(invoiceData.other_charges_total, invoiceData.currency)}
@@ -512,19 +622,24 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
             {/* Invoice Total Row */}
             <div className="mt-4 pt-4 border-t border-gray-100">
               <div className={`grid ${getGridCols()} gap-4`}>
-                <div>
+                <div ref={(el) => fieldRefs.current['total'] = el}>
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                     Invoice Total
-                    <FieldConfidenceIndicator 
-                      fieldName="total"
-                      confidence={invoiceData.extraction_field_confidences?.total}
-                      isManuallyEdited={invoiceData.is_manually_edited?.total}
-                    />
-                    <ValidationIndicator validations={[...errors, ...warnings]} field="total" />
                   </label>
-                  <p className="text-sm font-bold text-gray-950">
-                    {formatCurrency(invoiceData.total || calculatedTotal, invoiceData.currency)}
-                  </p>
+                  {isEditing ? (
+                    <ValidatedEditableField
+                      value={editedData.total || calculatedTotal}
+                      onChange={(value) => handleFieldChange('total', value)}
+                      type="currency"
+                      required={true}
+                      fieldName="total"
+                      currency={editedData.currency}
+                    />
+                  ) : (
+                    <p className="text-sm font-bold text-gray-950">
+                      {formatCurrency(invoiceData.total || calculatedTotal, invoiceData.currency)}
+                    </p>
+                  )}
                   {/* Show discrepancy warning if extracted total differs from current total */}
                   {invoiceData.total_discrepancy && Number(invoiceData.total_discrepancy) > 1 && (
                     <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
@@ -558,6 +673,7 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
         </div>
 
         {/* Payment Information Section */}
+        {!hidePaymentSection && (
         <div>
           <div className="px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
             <div className="flex items-center gap-2">
@@ -570,23 +686,35 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Payment Method
-                  <ValidationIndicator validations={[...errors, ...warnings]} field="payment_method" />
                 </label>
-                <p className="text-sm font-medium text-gray-950">
-                  {invoiceData.payment_method 
-                    ? invoiceData.payment_method.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
-                    : 'Not specified'
-                  }
-                </p>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={editedData.payment_method}
+                    onChange={(value) => handleFieldChange('payment_method', value)}
+                    type="select"
+                    required={false}
+                    fieldName="payment_method"
+                    options={[
+                      { value: 'bank_transfer', label: 'Bank Transfer' },
+                      { value: 'check', label: 'Check' },
+                      { value: 'credit_card', label: 'Credit Card' },
+                      { value: 'ach', label: 'ACH' },
+                      { value: 'wire', label: 'Wire Transfer' },
+                      { value: 'cash', label: 'Cash' }
+                    ]}
+                  />
+                ) : (
+                  <p className="text-sm font-medium text-gray-950">
+                    {invoiceData.payment_method
+                      ? invoiceData.payment_method.replace(/_/g, ' ').replace(/\b\w/g, (l: string) => l.toUpperCase())
+                      : 'Not specified'
+                    }
+                  </p>
+                )}
               </div>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Payment Terms
-                  <FieldConfidenceIndicator 
-                    fieldName="payment_terms_text"
-                    confidence={invoiceData.extraction_field_confidences?.payment_terms_text}
-                    isManuallyEdited={invoiceData.is_manually_edited?.payment_terms_text}
-                  />
                   <ValidationIndicator validations={[...errors, ...warnings]} field="payment_terms" />
                 </label>
                 {isEditing ? (
@@ -602,18 +730,15 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Due Date
-                  <FieldConfidenceIndicator 
-                    fieldName="due_date"
-                    confidence={invoiceData.extraction_field_confidences?.due_date}
-                    isManuallyEdited={invoiceData.is_manually_edited?.due_date}
-                  />
                   <ValidationIndicator validations={[...errors, ...warnings]} field="due_date" />
                 </label>
                 {isEditing ? (
-                  <EditableField
+                  <ValidatedEditableField
                     value={editedData.due_date}
                     onChange={(value) => handleFieldChange('due_date', value)}
                     type="date"
+                    required={true}
+                    fieldName="due_date"
                   />
                 ) : (
                   <div className="flex items-center gap-2">
@@ -714,8 +839,10 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
             </div>
           </div>
         </div>
+        )}
 
         {/* Accounting Classification Section */}
+        {!hideAccountingSection && (
         <div>
           <div className="px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
             <div className="flex items-center justify-between">
@@ -780,10 +907,12 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
                   GL Code
                 </label>
                 {isEditing ? (
-                  <EditableField
+                  <ValidatedEditableField
                     value={editedData.gl_code || ''}
                     onChange={(value) => handleFieldChange('gl_code', value)}
                     type="text"
+                    required={false}
+                    fieldName="gl_code"
                     placeholder="e.g., 6210"
                   />
                 ) : (
@@ -792,12 +921,25 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
                   </p>
                 )}
               </div>
-              {invoiceData.department && (
-                <div>
-                  <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">Department</label>
-                  <p className="text-sm font-medium text-gray-950">{invoiceData.department}</p>
-                </div>
-              )}
+              <div>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">Department</label>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={editedData.department || ''}
+                    onChange={(value) => handleFieldChange('department', value)}
+                    type="text"
+                    required={false}
+                    fieldName="department"
+                    placeholder="e.g., Finance, Engineering"
+                  />
+                ) : (
+                  invoiceData.department ? (
+                    <p className="text-sm font-medium text-gray-950">{invoiceData.department}</p>
+                  ) : (
+                    <p className="text-sm text-gray-500">Not assigned</p>
+                  )
+                )}
+              </div>
               {invoiceData.accounting_notes && (
                 <div className={getFullSpan()}>
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">Accounting Notes</label>
@@ -834,6 +976,7 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
             </div>
           </div>
         </div>
+        )}
 
         {/* Document Links Section */}
         <div>
@@ -843,7 +986,7 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Document Links</h3>
             </div>
             {/* Link Document Button - positioned absolutely */}
-            <button 
+            <button
               className="absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
               onClick={() => {/* No functionality yet */}}
             >
@@ -872,7 +1015,7 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
                     </div>
                   </div>
                 )}
-                
+
                 {/* Goods Receipts Section */}
                 {invoiceData.gr_numbers_cached?.length > 0 && (
                   <div>
@@ -906,7 +1049,7 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
       </div>
 
       {/* Floating Action Button */}
-      {!isEditing && (
+      {!isEditing && !forceReadOnly && !hideFloatingSaveButton && (
         <button
           onClick={() => setIsEditing(true)}
           className={`
@@ -924,15 +1067,17 @@ export function DetailsTab({ invoiceData, onUpdate, layoutMode = 'large' }: Deta
       )}
 
       {/* Edit Mode Action Buttons */}
-      {isEditing && (
+      {isEditing && !hideFloatingSaveButton && (
         <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
-          <button
-            onClick={handleCancel}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-full shadow-lg hover:bg-gray-50 transition-all"
-          >
-            <X className="h-4 w-4" />
-            <span className="font-medium">Cancel</span>
-          </button>
+          {!forceEditMode && (
+            <button
+              onClick={handleCancel}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-full shadow-lg hover:bg-gray-50 transition-all"
+            >
+              <X className="h-4 w-4" />
+              <span className="font-medium">Cancel</span>
+            </button>
+          )}
           <button
             onClick={handleSave}
             disabled={isSaving}

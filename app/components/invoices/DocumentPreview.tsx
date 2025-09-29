@@ -4,14 +4,140 @@ import { useState, useRef, useEffect } from 'react';
 import { ZoomIn, ZoomOut, RotateCw, Maximize2, Download, FileText } from 'lucide-react';
 import { FakeInvoiceDocument } from './FakeInvoiceDocument';
 import { PDFViewer } from './PDFViewer';
+import { ResizablePanel } from './ResizablePanel';
+import { LineItemsPreviewPanel } from './preview/LineItemsPreviewPanel';
 
 interface DocumentPreviewProps {
   invoiceId: string;
   hasAttachment: boolean;
   invoiceData?: any;
+  matchResults?: any[];
+  poComparisonData?: any;
+  hideLineComparison?: boolean;
 }
 
-export function DocumentPreview({ invoiceId, hasAttachment, invoiceData }: DocumentPreviewProps) {
+// Collapsible Document Preview for needs info mode
+interface CollapsibleDocumentPreviewProps {
+  documentContent: React.ReactNode;
+  invoiceLines: any[];
+  currency: string;
+  invoiceId: string;
+  matchResults: any[];
+  poLines: any[];
+}
+
+function CollapsibleDocumentPreview({
+  documentContent,
+  invoiceLines,
+  currency,
+  invoiceId,
+  matchResults,
+  poLines
+}: CollapsibleDocumentPreviewProps) {
+  const [isCollapsed, setIsCollapsed] = useState(true);
+  const [expandedSize, setExpandedSize] = useState(50);
+  const [isClient, setIsClient] = useState(false);
+
+  // Load state from localStorage after mount
+  useEffect(() => {
+    setIsClient(true);
+    if (typeof window !== 'undefined') {
+      const storedCollapsed = localStorage.getItem(`line-items-collapsed-${invoiceId}`);
+      const storedSize = localStorage.getItem(`line-items-expanded-size-${invoiceId}`);
+
+      if (storedCollapsed !== null) {
+        setIsCollapsed(storedCollapsed === 'true');
+      }
+      if (storedSize) {
+        setExpandedSize(parseInt(storedSize, 10));
+      }
+    }
+  }, [invoiceId]);
+
+  // Save state to localStorage when it changes
+  useEffect(() => {
+    if (isClient && typeof window !== 'undefined') {
+      localStorage.setItem(`line-items-collapsed-${invoiceId}`, isCollapsed.toString());
+      localStorage.setItem(`line-items-expanded-size-${invoiceId}`, expandedSize.toString());
+    }
+  }, [isCollapsed, expandedSize, invoiceId, isClient]);
+
+  const handleToggle = () => {
+    setIsCollapsed(!isCollapsed);
+  };
+
+  const handleSizeChange = (sizes: number[]) => {
+    if (!isCollapsed && sizes[1]) {
+      setExpandedSize(sizes[1]);
+    }
+  };
+
+  if (isCollapsed) {
+    // Collapsed state: fixed height layout
+    return (
+      <div className="h-full flex flex-col">
+        {/* Document content takes up remaining space */}
+        <div className="flex-1 overflow-hidden">
+          {documentContent}
+        </div>
+
+        {/* Fixed height line items bar */}
+        <div
+          className="h-[49px] border-t border-gray-200 bg-white overflow-hidden transition-all duration-200"
+        >
+          <LineItemsPreviewPanel
+            invoiceLines={invoiceLines}
+            poLines={poLines}
+            matchResults={matchResults}
+            currency={currency}
+            invoiceId={invoiceId}
+            externallyControlled={true}
+            externalCollapsed={true}
+            onToggleCollapsed={handleToggle}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  // Expanded state: use ResizablePanel
+  return (
+    <ResizablePanel
+      defaultSizes={[100 - expandedSize, expandedSize]}
+      minSizes={[30, 20]}
+      maxSizes={[80, 70]}
+      direction="vertical"
+      storageKey={`invoice-preview-needs-info-expanded-${invoiceId}`}
+      onSizeChange={handleSizeChange}
+      className="h-full"
+    >
+      <div className="h-full">
+        {documentContent}
+      </div>
+      <div className="h-full">
+        <LineItemsPreviewPanel
+          invoiceLines={invoiceLines}
+          poLines={poLines}
+          matchResults={matchResults}
+          currency={currency}
+          invoiceId={invoiceId}
+          externallyControlled={true}
+          externalCollapsed={false}
+          onToggleCollapsed={handleToggle}
+        />
+      </div>
+    </ResizablePanel>
+  );
+}
+
+export function DocumentPreview({
+  invoiceId,
+  hasAttachment,
+  invoiceData,
+  matchResults = [],
+  poComparisonData,
+  hideLineComparison = false
+}: DocumentPreviewProps) {
   // Start with 75% zoom for all documents
   const [zoom, setZoom] = useState(0.75);
   const [rotation, setRotation] = useState(0);
@@ -76,9 +202,17 @@ export function DocumentPreview({ invoiceId, hasAttachment, invoiceData }: Docum
     }
   }, [hasAttachment, invoiceData]);
 
-  // Always show the document viewer with toolbar
-  return (
-    <div 
+  // Show line items preview panel if we have invoice data and lines
+  // Check both invoice_lines and lines properties for compatibility
+  const invoiceLines = invoiceData?.invoice_lines || invoiceData?.lines || [];
+  const showLineItemsPreview = invoiceLines && invoiceLines.length > 0;
+
+  // In needs info mode, always show the panel to ensure consistent ResizablePanel structure
+  // This prevents ResizablePanel from getting only 1 child during rendering transitions
+  const shouldShowPanel = hideLineComparison || showLineItemsPreview;
+
+  const documentContent = (
+    <div
       ref={containerRef}
       className={`flex flex-col h-full bg-gray-50 rounded-lg overflow-hidden ${
         isFullscreen ? 'fixed inset-0 z-50 bg-gray-900' : ''
@@ -245,4 +379,46 @@ export function DocumentPreview({ invoiceId, hasAttachment, invoiceData }: Docum
       </div>
     </div>
   );
+
+  // If we have line items, wrap in resizable panel with preview at bottom
+  if (shouldShowPanel) {
+    // For needs info mode, use custom collapsible implementation
+    if (hideLineComparison) {
+      return <CollapsibleDocumentPreview
+        documentContent={documentContent}
+        invoiceLines={invoiceLines}
+        currency={invoiceData?.currency || 'USD'}
+        invoiceId={invoiceId}
+        matchResults={[]}
+        poLines={[]}
+      />;
+    }
+
+    // For standard mode, use regular ResizablePanel
+    return (
+      <ResizablePanel
+        defaultSizes={[85, 15]}
+        minSizes={[50, 3]}
+        direction="vertical"
+        storageKey={`invoice-preview-${invoiceId}`}
+        className="h-full"
+      >
+        <div className="h-full">
+          {documentContent}
+        </div>
+        <div className="h-full">
+          <LineItemsPreviewPanel
+            invoiceLines={invoiceLines}
+            poLines={poComparisonData?.poData?.lines || []}
+            matchResults={matchResults}
+            currency={invoiceData?.currency || 'USD'}
+            invoiceId={invoiceId}
+          />
+        </div>
+      </ResizablePanel>
+    );
+  }
+
+  // Otherwise just return the document content
+  return documentContent;
 }

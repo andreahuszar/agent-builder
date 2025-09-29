@@ -6,6 +6,7 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { DetailsTab } from './DetailsTab';
 import { LineItemsTab } from './LineItemsTab';
 import { EnhancedLineItemsTabV2 } from './EnhancedLineItemsTabV2';
+import { LineItemsPreviewPanel } from '../preview/LineItemsPreviewPanel';
 import { MatchingTab } from './MatchingTab';
 import { AttachmentsTab } from './AttachmentsTab';
 import { ActivityTab } from './ActivityTab';
@@ -25,6 +26,9 @@ interface InvoiceTabsProps {
   storageKey?: string;
   compactMode?: boolean;
   poComparisonData?: any;
+  forceEditMode?: boolean;
+  forceReadOnly?: boolean;
+  hideComparison?: boolean;
 }
 
 export function InvoiceTabs({
@@ -38,11 +42,19 @@ export function InvoiceTabs({
   storageKey,
   compactMode = false,
   poComparisonData,
+  forceEditMode = false,
+  forceReadOnly = false,
+  hideComparison = false,
 }: InvoiceTabsProps) {
-  const [activeTab, setActiveTab] = useState<TabId>('details');
+  // Determine initial tab based on invoice status
+  const getInitialTab = (): TabId => {
+    return 'details';
+  };
+
+  const [activeTab, setActiveTab] = useState<TabId>(getInitialTab());
   const [isClient, setIsClient] = useState(false);
-  const [isDynamicallyCompact, setIsDynamicallyCompact] = useState(false);
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>('large');
+  const [isDynamicallyCompact, setIsDynamicallyCompact] = useState(true); // Start minimized
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>('compact'); // Start in compact mode
   const tabContainerRef = useRef<HTMLDivElement>(null);
   
   // Combine prop-based and dynamic compact modes
@@ -176,8 +188,11 @@ export function InvoiceTabs({
   
   // Count only error-severity issues (matching what MatchingTab shows)
   const totalIssuesCount = validationIssues.filter(i => i.severity === 'error').length;
-  
-  const tabs = [
+
+  // Check if in needs info mode
+  const isNeedsInfo = invoiceData?.status === 'needs_info' || invoiceData?.status === 'needs-info';
+
+  const allTabs = [
     {
       id: 'details' as TabId,
       label: 'Details',
@@ -208,6 +223,11 @@ export function InvoiceTabs({
       icon: Clock,
     },
   ];
+
+  // Filter tabs based on mode
+  const tabs = isNeedsInfo
+    ? allTabs.filter(tab => tab.id !== 'matching' && tab.id !== 'line-items') // Hide Exceptions and Line Items tabs in needs info mode
+    : allTabs;
 
   const renderTabButton = (tab: any) => {
     const tabContent = (
@@ -317,25 +337,31 @@ export function InvoiceTabs({
             invoiceData={invoiceData}
             onUpdate={onDataUpdate}
             layoutMode={layoutMode}
+            forceEditMode={forceEditMode}
+            forceReadOnly={forceReadOnly}
+            hideFloatingSaveButton={forceEditMode}
+            hideAccountingSection={forceEditMode}
+            hidePaymentSection={forceEditMode}
           />
         )}
         {activeTab === 'line-items' && (
-          <EnhancedLineItemsTabV2
-            invoiceId={invoiceId}
-            lines={invoiceData?.lines || []}
-            currency={invoiceData?.currency || 'USD'}
-            matchResults={matchResults}
-            selectedLineId={selectedLineId}
-            onLineSelect={onLineSelect}
-            onLinesUpdate={(lines) => onDataUpdate?.({ ...invoiceData, lines })}
-            poComparisonData={poComparisonData}
-            invoiceSubtotal={invoiceData?.subtotal}
-            invoiceTaxTotal={invoiceData?.tax_total}
-            invoiceTaxRate={invoiceData?.tax_rate_percent}
-            invoiceShippingTotal={invoiceData?.shipping_total}
-            invoiceDiscountTotal={invoiceData?.discount_total}
-            invoiceTotal={invoiceData?.total}
-          />
+          <div className="p-4">
+            <LineItemsPreviewPanel
+              invoiceLines={invoiceData?.lines || invoiceData?.invoice_lines || []}
+              poLines={poComparisonData?.poData?.po_lines || []}
+              currency={invoiceData?.currency || 'USD'}
+              matchResults={matchResults || []}
+              onLinesUpdate={(lines: any[]) => {
+                onDataUpdate?.({
+                  ...invoiceData,
+                  lines,
+                  invoice_lines: lines
+                });
+              }}
+              showComparison={!hideComparison && poComparisonData?.poData?.po_lines?.length > 0}
+              startExpanded={true}
+            />
+          </div>
         )}
         {activeTab === 'matching' && (
           <MatchingTab

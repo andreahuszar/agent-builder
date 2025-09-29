@@ -41,11 +41,15 @@ export function ResizablePanel({
       if (stored) {
         try {
           const parsedSizes = JSON.parse(stored);
-          setSizes(parsedSizes);
+          // Only use stored sizes if they're reasonable, otherwise use defaults
+          // This ensures we start with a minimized right panel
+          if (parsedSizes[0] >= minSizes[0] && parsedSizes[1] >= minSizes[1]) {
+            setSizes(parsedSizes);
+          }
         } catch {}
       }
     }
-  }, [storageKey]);
+  }, [storageKey, minSizes]);
 
   // Save sizes to localStorage when they change
   useEffect(() => {
@@ -129,8 +133,28 @@ export function ResizablePanel({
   }, [isDragging, direction, minSizes, maxSizes]);
 
   const panels = React.Children.toArray(children);
+
+  // Handle edge cases gracefully during React rendering lifecycle
   if (panels.length !== 2) {
-    throw new Error('ResizablePanel requires exactly 2 children');
+    console.warn(`ResizablePanel: Expected 2 children, got ${panels.length}. StorageKey: ${storageKey}. Rendering fallback.`);
+
+    // Render fallback for invalid child count
+    if (panels.length === 1) {
+      // If only one child, render it without resizing
+      return <div className={className}>{panels[0]}</div>;
+    } else if (panels.length === 0) {
+      // If no children, render empty container
+      return <div className={className} />;
+    } else {
+      // If more than 2 children, render first two and warn
+      console.warn('ResizablePanel: More than 2 children provided, using first 2');
+      return (
+        <div className={className}>
+          <div>{panels[0]}</div>
+          <div>{panels[1]}</div>
+        </div>
+      );
+    }
   }
 
   const isHorizontal = direction === 'horizontal';

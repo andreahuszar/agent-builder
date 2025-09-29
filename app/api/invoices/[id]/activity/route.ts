@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { isMockInvoice } from '@/app/services/mockInvoiceService';
 
 export async function GET(
   request: NextRequest,
@@ -7,6 +8,11 @@ export async function GET(
 ) {
   try {
     const { id } = await context.params;
+
+    // Return empty array for mock invoices
+    if (isMockInvoice(id)) {
+      return NextResponse.json([]);
+    }
 
     const auditEvents = await prisma.$queryRaw`
       SELECT 

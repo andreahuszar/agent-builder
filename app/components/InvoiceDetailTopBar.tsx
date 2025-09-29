@@ -1,7 +1,7 @@
 'use client';
 
 import React, { memo } from 'react';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, X } from 'lucide-react';
 import { CompactWorkflowProgress } from '@/app/components/invoices/CompactWorkflowProgress';
 
 interface InvoiceDetailTopBarProps {
@@ -11,6 +11,7 @@ interface InvoiceDetailTopBarProps {
   documentType?: 'invoice' | 'purchase-order';
   viewModeSwitcher?: React.ReactNode;
   workflowStatus?: string;
+  isNeedsInfo?: boolean;
 }
 
 const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
@@ -20,6 +21,7 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
   documentType = 'invoice',
   viewModeSwitcher,
   workflowStatus,
+  isNeedsInfo = false,
 }) => {
   const getTitle = () => {
     switch (documentType) {
@@ -34,16 +36,9 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
     <div className="border-b border-gray-200 bg-white/90 shadow-sm backdrop-blur-md">
       <div className="w-full px-3 sm:px-4 lg:px-6">
         <div className="flex h-16 items-center">
-          {/* Back Link and Invoice Title */}
-          <div className="flex items-center">
-            <button
-              onClick={onBackClick}
-              className="inline-flex items-center text-sm text-purple-600 hover:text-purple-700 mr-3 pr-0.5"
-            >
-              <ArrowLeft className="h-4 w-4 mr-1" />
-              Back
-            </button>
-            <div className="border-l border-gray-200 pl-3 ml-2 flex items-center gap-3">
+          {/* For needs info mode, show invoice title on left */}
+          {isNeedsInfo ? (
+            <div className="flex items-center">
               <div>
                 <h1 className="text-xl font-semibold text-gray-950">
                   {getTitle()}
@@ -53,21 +48,39 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
                 )}
               </div>
             </div>
-          </div>
-          
+          ) : (
+            /* Regular mode: Invoice Title Only (no Back button) */
+            <div className="flex items-center">
+              <div className="flex items-center gap-3">
+                <div>
+                  <h1 className="text-xl font-semibold text-gray-950">
+                    {getTitle()}
+                  </h1>
+                  {vendorName && (
+                    <p className="text-xs text-gray-700">{vendorName}</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Workflow Progress - centered */}
           {workflowStatus && documentType === 'invoice' && (
             <div className="flex-1 flex justify-center">
               <CompactWorkflowProgress currentStatus={workflowStatus} className="-mt-3" />
             </div>
           )}
-          
-          {/* View Mode Switcher */}
-          {viewModeSwitcher && (
-            <div className="flex items-center ml-auto">
-              {viewModeSwitcher}
-            </div>
-          )}
+
+          {/* Exit button for all modes */}
+          <div className="flex items-center ml-auto">
+            <button
+              onClick={onBackClick}
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-800 hover:text-gray-900 rounded-md hover:bg-gray-100 transition-colors"
+            >
+              Exit
+              <X className="h-4 w-4 ml-1.5" />
+            </button>
+          </div>
         </div>
       </div>
     </div>

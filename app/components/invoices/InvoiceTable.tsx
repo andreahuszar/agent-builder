@@ -458,7 +458,7 @@ export function InvoiceTable({ invoices, onDelete, onPOClick }: InvoiceTableProp
                 GR
               </th>
               <th scope="col" className="hidden xl:table-cell px-2 lg:px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                Assigned To
+                Owner
               </th>
               <th scope="col" className="relative py-3.5 pl-3 pr-3 lg:pr-6">
                 <span className="sr-only">Actions</span>

@@ -968,6 +968,15 @@ export function EnhancedInvoiceTable({
                   )}
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     {(() => {
+                      // Check for processed_status first (for Auto Rejected status)
+                      if (invoice.processed_status === 'Auto Rejected') {
+                        return (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            Auto Rejected
+                          </span>
+                        );
+                      }
+
                       const s = (invoice.match_status || '').toLowerCase();
                       const isNonPO = invoice.type === 'Non-PO';
                       let label: string;

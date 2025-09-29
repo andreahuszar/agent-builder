@@ -98,34 +98,36 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
       invoice_number: 'INV-2025-9001',
       vendor_name_snapshot: null, // Missing vendor
       vendor_id: null,
-      vendor_requires_po: true, // Would be PO-type if vendor was identified
-      missing_field: 'vendor'
+      invoice_date: null, // Also missing invoice date
+      vendor_requires_po: true, // PO type invoice
+      missing_field: 'vendor_and_date'
     },
     {
       id: 'needs-info-2',
       invoice_number: 'INV-2025-9002',
       vendor_name_snapshot: 'TechSupply Solutions Ltd',
       vendor_id: null, // Missing vendor ID
-      vendor_requires_po: true, // Equipment supplier requires PO
-      missing_field: 'vendor_id'
+      currency: null, // Also missing currency
+      vendor_requires_po: true, // PO type invoice
+      missing_field: 'vendor_id_and_currency'
     },
     {
       id: 'needs-info-3',
       invoice_number: 'INV-2025-9003',
       vendor_name_snapshot: 'Industrial Equipment Co',
-      vendor_id: 'VND-4523',
+      vendor_id: 'VND-3249',
       currency: null, // Missing currency
-      vendor_requires_po: true, // Industrial supplier requires PO
+      vendor_requires_po: false, // Changed to Non-PO type
       missing_field: 'currency'
     },
     {
       id: 'needs-info-4',
       invoice_number: 'INV-2025-9004',
       vendor_name_snapshot: 'Professional IT Services',
-      vendor_id: null, // Missing vendor ID
+      vendor_id: 'VND-3326',
       total: null, // Missing total amount
-      vendor_requires_po: true, // IT services require PO
-      missing_field: 'vendor_id_and_total'
+      vendor_requires_po: false, // Changed to Non-PO type
+      missing_field: 'total'
     },
     // Non-PO type invoices (utilities, rent, insurance)
     {
@@ -162,6 +164,24 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
       total: null, // Missing total amount
       vendor_requires_po: false, // Insurance, no PO required
       missing_field: 'vendor_id_and_total'
+    },
+    // Additional PO-type invoices to ensure we have 4 when PO filter is selected
+    {
+      id: 'needs-info-9',
+      invoice_number: 'INV-2025-9009',
+      vendor_name_snapshot: 'Manufacturing Supplies Inc',
+      vendor_id: 'VND-5234',
+      invoice_date: null, // Missing invoice date
+      vendor_requires_po: true, // PO type invoice
+      missing_field: 'invoice_date'
+    },
+    {
+      id: 'needs-info-10',
+      invoice_number: 'INV-2025-9010',
+      vendor_name_snapshot: 'Technical Components Ltd',
+      vendor_id: null, // Missing vendor ID
+      vendor_requires_po: true, // PO type invoice
+      missing_field: 'vendor_id'
     }
   ];
 
@@ -173,39 +193,138 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
     dueDate.setDate(dueDate.getDate() + 30);
 
     // Generate mock line items
-    const numLines = 3;
-    const lines = [];
+    let lines = [];
     let subtotal = 0;
+    let taxAmount = 0;
+    let total = 0;
 
-    for (let j = 0; j < numLines; j++) {
-      const qty = Math.floor(Math.random() * 10 + 1);
-      const unitPrice = Math.floor(Math.random() * 2000 + 100);
-      const lineTotal = qty * unitPrice;
-      subtotal += lineTotal;
+    // Special handling for needs-info-1 and needs-info-2 to match the PDFs
+    if (scenario.id === 'needs-info-1') {
+      lines = [
+        {
+          id: `line-${scenario.id}-1`,
+          line_no: 1,
+          description: 'Professional Services - Consulting',
+          qty: 1,
+          uom: 'Hours',
+          unit_price: 279.00,
+          net_amount: 279.00,
+          line_total: 279.00,
+          po_line_id: null,
+          gr_line_id: null,
+          ses_line_id: null
+        },
+        {
+          id: `line-${scenario.id}-2`,
+          line_no: 2,
+          description: 'Software License - Annual Subscription',
+          qty: 5,
+          uom: 'License',
+          unit_price: 273.00,
+          net_amount: 1365.00,
+          line_total: 1365.00,
+          po_line_id: null,
+          gr_line_id: null,
+          ses_line_id: null
+        },
+        {
+          id: `line-${scenario.id}-3`,
+          line_no: 3,
+          description: 'Hardware Components - Server Equipment',
+          qty: 4,
+          uom: 'Units',
+          unit_price: 798.00,
+          net_amount: 3192.00,
+          line_total: 3192.00,
+          po_line_id: null,
+          gr_line_id: null,
+          ses_line_id: null
+        }
+      ];
+      subtotal = 4836.00;
+      const taxRate = 0.0; // No tax for this invoice
+      taxAmount = 0;
+      total = 4836.00;
+    } else if (scenario.id === 'needs-info-2') {
+      lines = [
+        {
+          id: `line-${scenario.id}-1`,
+          line_no: 1,
+          description: 'Professional Services - Consulting',
+          qty: 2,
+          uom: 'Hours',
+          unit_price: 874.39,
+          net_amount: 1748.78,
+          line_total: 1748.78,
+          po_line_id: null,
+          gr_line_id: null,
+          ses_line_id: null
+        },
+        {
+          id: `line-${scenario.id}-2`,
+          line_no: 2,
+          description: 'Software License - Annual Subscription',
+          qty: 9,
+          uom: 'License',
+          unit_price: 343.02,
+          net_amount: 3087.22,
+          line_total: 3087.22,
+          po_line_id: null,
+          gr_line_id: null,
+          ses_line_id: null
+        }
+      ];
+      subtotal = 4836.00;
+      const taxRate = 0.2; // 20% tax
+      taxAmount = 967.20;
+      total = 5803.20;
+    } else {
+      // Generate random line items for other scenarios
+      const numLines = 3;
+      for (let j = 0; j < numLines; j++) {
+        const qty = Math.floor(Math.random() * 10 + 1);
+        const unitPrice = Math.floor(Math.random() * 2000 + 100);
+        const lineTotal = qty * unitPrice;
+        subtotal += lineTotal;
 
-      lines.push({
-        id: `line-${scenario.id}-${j + 1}`,
-        line_no: j + 1,
-        description: ['Professional Services - Consulting', 'Software License - Annual Subscription', 'Hardware Components - Server Equipment'][j],
-        qty: qty,
-        uom: ['Hours', 'License', 'Units'][j],
-        unit_price: unitPrice,
-        net_amount: lineTotal,
-        line_total: lineTotal,
-        po_line_id: null,
-        gr_line_id: null,
-        ses_line_id: null
-      });
+        lines.push({
+          id: `line-${scenario.id}-${j + 1}`,
+          line_no: j + 1,
+          description: ['Professional Services - Consulting', 'Software License - Annual Subscription', 'Hardware Components - Server Equipment'][j],
+          qty: qty,
+          uom: ['Hours', 'License', 'Units'][j],
+          unit_price: unitPrice,
+          net_amount: lineTotal,
+          line_total: lineTotal,
+          po_line_id: null,
+          gr_line_id: null,
+          ses_line_id: null
+        });
+      }
+
+      const taxRate = 0.2; // 20% tax
+      taxAmount = subtotal * taxRate;
+      total = subtotal + taxAmount;
     }
 
-    const taxRate = 0.2; // 20% tax
-    const taxAmount = subtotal * taxRate;
-    const total = subtotal + taxAmount;
+    // For PO-type scenarios, attach PO numbers to all except the last one (needs-info-10)
+    // needs-info-10 will have Missing PO status
+    let poNumbersForNeedsInfo: string[] = [];
+    if (scenario.vendor_requires_po) {
+      if (scenario.id === 'needs-info-1') {
+        poNumbersForNeedsInfo = [`PO-2025-${String(9001).padStart(4, '0')}`];
+      } else if (scenario.id === 'needs-info-2') {
+        poNumbersForNeedsInfo = [`PO-2025-${String(9002).padStart(4, '0')}`];
+      } else if (scenario.id === 'needs-info-9') {
+        poNumbersForNeedsInfo = [`PO-2025-${String(9009).padStart(4, '0')}`];
+      }
+      // needs-info-10 intentionally has NO PO number to demonstrate missing PO
+    }
 
-    // For PO-type scenarios, attach a PO number to two of the four
-    const poNumbersForNeedsInfo = (scenario.vendor_requires_po && (scenario.id === 'needs-info-2' || scenario.id === 'needs-info-3'))
-      ? [`PO-2025-NI-${String(9000 + index).padStart(4, '0')}`]
-      : [];
+    // Set processed_status to "Auto Rejected" for invoice with missing PO
+    const processedStatus = (scenario.id === 'needs-info-10' && scenario.vendor_requires_po)
+      ? 'Auto Rejected'
+      : 'Pending';
 
     mockInvoices.push({
       id: scenario.id,
@@ -213,18 +332,20 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
       vendor_name_snapshot: scenario.vendor_name_snapshot || undefined,
       vendor_id: scenario.vendor_id || undefined,
       division: scenario.vendor_name_snapshot ? getDivision(scenario.vendor_name_snapshot) : 'Unknown',
-      invoice_date: scenario.invoice_date !== null ? baseDate.toISOString().split('T')[0] : undefined,
+      invoice_date: scenario.invoice_date === null ? undefined : baseDate.toISOString().split('T')[0],
       due_date: dueDate.toISOString().split('T')[0],
       currency: scenario.currency !== null ? (scenario.currency || 'GBP') : undefined,
       subtotal: subtotal,
       tax_total: taxAmount,
-      tax_rate_percent: taxRate * 100,
+      tax_rate_percent: subtotal > 0 ? (taxAmount / subtotal) * 100 : 0,
       total: scenario.total !== null ? total : undefined,
       status: 'needs_info', // New status for missing data
       match_status: 'pending',
+      type: scenario.vendor_requires_po ? 'PO' : 'Non-PO', // Add type field based on vendor_requires_po
       vendor_requires_po: scenario.vendor_requires_po,
       vendor_is_verified: false,
       approval_status: 'pending',
+      processed_status: processedStatus, // Add processed status
       po_numbers_cached: poNumbersForNeedsInfo,
       gr_numbers: [],
       docType: 'Invoice',
@@ -609,6 +730,109 @@ export const getAllMockInvoices = (): Invoice[] => {
 };
 
 // Get a specific mock invoice by ID
+// Generate mock PO comparison data for mock invoices with POs
+export const getMockPoComparisonData = (invoiceId: string): any | null => {
+  if (!isMockInvoice(invoiceId)) {
+    return null;
+  }
+
+  const invoice = getMockInvoiceById(invoiceId);
+  if (!invoice || !invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0) {
+    return null;
+  }
+
+  const poNumber = invoice.po_numbers_cached[0];
+
+  // Generate mock PO lines based on invoice lines
+  const invoiceLines = invoice.lines || invoice.invoice_lines || [];
+
+  // For some lines, create matching PO lines with slight variances
+  // Skip some lines to simulate missing PO lines
+  const poLines = invoiceLines
+    .filter((_, index) => index < 3) // Only first 3 invoice lines have corresponding PO lines
+    .map((line: any, index: number) => ({
+      id: `po-line-${index + 1}`,
+      line_no: index + 1,
+      description: line.description,
+      item_name: line.description,
+      qty_ordered: line.qty * 0.95, // Slightly different quantity for variance
+      uom: line.uom || 'EA',
+      unit_price: line.unit_price * 1.02, // Slightly different price for variance
+      status: 'open'
+    }));
+
+  // Calculate PO total
+  const poTotal = poLines.reduce((sum: number, line: any) =>
+    sum + (line.qty_ordered * line.unit_price), 0);
+
+  const poData = {
+    po_id: `po-${invoiceId}`,
+    po_number: poNumber,
+    vendor_id: invoice.vendor_id,
+    currency: invoice.currency || 'USD',
+    po_status: 'approved',
+    expected_match_rule: '3-way',
+    subtotal: poTotal,
+    tax_total: poTotal * 0.2,
+    total: poTotal * 1.2,
+    po_lines: poLines
+  };
+
+  // Generate match results
+  const matchResults = invoiceLines.map((invLine: any, index: number) => {
+    // Only first 3 lines have PO matches
+    const poLine = index < 3 ? poLines[index] : null;
+    const qtyVariance = poLine ? invLine.qty - poLine.qty_ordered : 0;
+    const priceVariance = poLine ? invLine.unit_price - poLine.unit_price : 0;
+
+    return {
+      id: `match-${index + 1}`,
+      invoice_line_id: invLine.id || `line-${index + 1}`,
+      matched_po_line_id: poLine?.id || null,
+      matched_gr_line_id: null,
+      qty_variance: qtyVariance,
+      price_variance: priceVariance,
+      amount_variance: poLine ? (invLine.line_total || 0) - (poLine.qty_ordered * poLine.unit_price) : 0,
+      within_tolerance: poLine ? (Math.abs(qtyVariance) < 1 && Math.abs(priceVariance) < 10) : false,
+      explanation_code: poLine ? (Math.abs(qtyVariance) > 1 ? 'QTY_MISMATCH' : Math.abs(priceVariance) > 10 ? 'PRICE_MISMATCH' : null) : 'NO_PO_LINE',
+      po_line_no: poLine?.line_no || null,
+      po_description: poLine?.description || null,
+      po_qty: poLine?.qty_ordered || null,
+      po_unit_price: poLine?.unit_price || null,
+      po_uom: poLine?.uom || null,
+      gr_qty_received: null
+    };
+  });
+
+  return {
+    invoice: {
+      id: invoice.id,
+      invoice_number: invoice.invoice_number,
+      po_numbers_cached: invoice.po_numbers_cached,
+      lines: invoiceLines
+    },
+    poData: poData,
+    matchResults: matchResults,
+    grData: {
+      gr_lines: []
+    },
+    lineComparison: invoiceLines.map((invLine: any, index: number) => {
+      const matchResult = matchResults[index];
+      const poLine = index < 3 ? poLines[index] : null;
+
+      return {
+        invoice: invLine,
+        po: poLine || null,
+        gr: null,
+        matchResult: matchResult,
+        hasVariance: matchResult && !matchResult.within_tolerance,
+        status: poLine ? (matchResult.within_tolerance ? 'matched' : 'variance') : 'no_po_line'
+      };
+    }),
+    unmatchedPoLines: []
+  };
+};
+
 export const getMockInvoiceById = (id: string): Invoice | null => {
   if (DEBUG_MOCK) {
     console.log('[MockService] Getting mock invoice by ID:', id);
@@ -663,7 +887,9 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
     ...invoice,
     // Ensure all required fields have values
     vendor_name_snapshot: invoice.vendor_name_snapshot || 'Unknown Vendor',
-    vendor_tax_id_snapshot: invoice.vendor_id ? `TAX-${invoice.vendor_id}` : undefined,
+    vendor_tax_id_snapshot: invoice.vendor_id ? `TAX-${invoice.vendor_id}` :
+      // For needs info scenarios, explicitly leave tax ID empty
+      (invoice.id?.startsWith('needs-info-') ? '' : undefined),
     vendor_address_snapshot: invoice.vendor_name_snapshot
       ? `${Math.floor(Math.random() * 999) + 1} Business Street, Suite ${Math.floor(Math.random() * 99) + 1}, Business City, BC 12345`
       : undefined,

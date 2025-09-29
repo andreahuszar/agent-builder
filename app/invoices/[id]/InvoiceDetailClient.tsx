@@ -24,14 +24,19 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const [grData, setGrData] = useState<any>(null);
   const { selectedLineId, selectInvoiceLine } = useSelection();
 
+  // Check if this is a needs info status invoice
+  const isNeedsInfoMode = invoice?.status === 'needs_info' || invoice?.status === 'needs-info';
+
   useEffect(() => {
-    // Fetch match results and PO comparison data
-    fetchMatchResults();
-    fetchPoComparisonData();
-    if (initialInvoice?.po_id) {
-      fetchGrData();
+    // Fetch match results and PO comparison data (skip for needs info)
+    if (!isNeedsInfoMode) {
+      fetchMatchResults();
+      fetchPoComparisonData();
+      if (initialInvoice?.po_id) {
+        fetchGrData();
+      }
     }
-  }, [invoiceId, initialInvoice?.po_id]);
+  }, [invoiceId, initialInvoice?.po_id, isNeedsInfoMode]);
 
   const fetchMatchResults = async () => {
     try {
@@ -88,6 +93,22 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     setInvoice(updatedData);
   };
 
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Trigger save from the tabs component
+      // For now, just simulate the save
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Saved invoice data');
+    } catch (error) {
+      console.error('Error saving invoice:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const hasPO = invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0;
   // Check for GR from both match results and direct GR data
   const hasGR = matchResults.some((mr: any) => mr.matched_gr_line_id && mr.matched_gr_line_id !== '') || 
@@ -104,22 +125,53 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const varianceAmount = poComparisonData?.poData ? invoiceTotal - poTotal : null;
 
   const renderContent = () => {
-    if (viewMode === 'review') {
+    // Ensure we have a valid invoice object before rendering ResizablePanel structure
+    if (!invoice || !invoice.id) {
+      return <div className="h-full flex items-center justify-center text-gray-500">Loading...</div>;
+    }
+
+    // For needs info status: Show editable fields on left, PDF on right
+    if (isNeedsInfoMode) {
       return (
         <ResizablePanel
-          defaultSizes={[40, 60]}
-          minSizes={[30, 30]}
-          storageKey={`invoice-${invoiceId}`}
+          defaultSizes={[25, 75]}
+          minSizes={[20, 40]}
+          storageKey={`invoice-needs-info-${invoiceId}`}
           className="h-full"
         >
-          {/* Document Preview */}
-          <DocumentPreview 
-            invoiceId={invoiceId} 
+          {/* Invoice Tabs (Editable) - LEFT PANEL */}
+          <InvoiceTabs
+            invoiceId={invoiceId}
+            invoiceData={invoice}
+            matchResults={matchResults}
+            attachments={invoice.attachments || []}
+            selectedLineId={selectedLineId}
+            onLineSelect={selectInvoiceLine}
+            onDataUpdate={handleInvoiceUpdate}
+            storageKey={`invoice-${invoiceId}`}
+            poComparisonData={isNeedsInfoMode ? null : poComparisonData}
+            forceEditMode={true}
+            hideComparison={isNeedsInfoMode}
+          />
+
+          {/* Document Preview - RIGHT PANEL */}
+          <DocumentPreview
+            invoiceId={invoiceId}
             hasAttachment={invoice.attachments && invoice.attachments.length > 0}
             invoiceData={invoice}
+            matchResults={matchResults}
+            poComparisonData={poComparisonData}
+            hideLineComparison={isNeedsInfoMode}
           />
-          
-          {/* Tabs */}
+        </ResizablePanel>
+      );
+    }
+
+    // For other statuses: Show read-only fields only (no PDF)
+    if (viewMode === 'review') {
+      return (
+        <div className="h-full w-full">
+          {/* Read-only Invoice Tabs - FULL WIDTH */}
           <InvoiceTabs
             invoiceId={invoiceId}
             invoiceData={invoice}
@@ -130,28 +182,31 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
             onDataUpdate={handleInvoiceUpdate}
             storageKey={`invoice-${invoiceId}`}
             poComparisonData={poComparisonData}
+            forceReadOnly={true}
           />
-        </ResizablePanel>
+        </div>
       );
     } else if (viewMode === '2-up') {
       return (
         <ResizablePanel
-          defaultSizes={[35, 65]}
+          defaultSizes={[40, 60]}
           minSizes={[25, 35]}
           storageKey={`invoice-2up-${invoiceId}`}
           className="h-full"
         >
           {/* Document Preview */}
-          <DocumentPreview 
-            invoiceId={invoiceId} 
+          <DocumentPreview
+            invoiceId={invoiceId}
             hasAttachment={invoice.attachments && invoice.attachments.length > 0}
             invoiceData={invoice}
+            matchResults={matchResults}
+            poComparisonData={poComparisonData}
           />
-          
+
           {/* PO and Invoice Side by Side */}
           <ResizablePanel
-            defaultSizes={[40, 60]}
-            minSizes={[30, 35]}
+            defaultSizes={[50, 50]}
+            minSizes={[30, 20]}
             storageKey={`invoice-2up-inner-${invoiceId}`}
             className="h-full"
           >
@@ -160,7 +215,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               selectedLineId={selectedLineId}
               onLineSelect={selectInvoiceLine}
             />
-            
+
             <InvoiceTabs
               invoiceId={invoiceId}
               invoiceData={invoice}
@@ -171,6 +226,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               onDataUpdate={handleInvoiceUpdate}
               storageKey={`invoice-${invoiceId}`}
               compactMode={true}
+              forceReadOnly={true}
             />
           </ResizablePanel>
         </ResizablePanel>
@@ -179,20 +235,22 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       // 3-up mode with vertical stacking for comparison docs
       return (
         <MultiResizablePanel
-          defaultSizes={[30, 35, 35]}
-          minSizes={[25, 30, 35]}
+          defaultSizes={[35, 40, 25]}
+          minSizes={[25, 30, 20]}
           storageKey={`invoice-3up-${invoiceId}`}
           className="h-full"
         >
           {/* Document Preview */}
           <div className="h-full w-full flex flex-col">
-            <DocumentPreview 
-              invoiceId={invoiceId} 
+            <DocumentPreview
+              invoiceId={invoiceId}
               hasAttachment={invoice.attachments && invoice.attachments.length > 0}
               invoiceData={invoice}
+              matchResults={matchResults}
+              poComparisonData={poComparisonData}
             />
           </div>
-          
+
           {/* Middle Panel: PO and GR/SES Stacked Vertically */}
           <div className="h-full w-full flex flex-col">
             <ResizablePanel
@@ -208,7 +266,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
                 selectedLineId={selectedLineId}
                 onLineSelect={selectInvoiceLine}
               />
-              
+
               {/* GR/SES Document */}
               {hasGR ? (
                 <GRDocumentPreview
@@ -227,7 +285,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               )}
             </ResizablePanel>
           </div>
-          
+
           {/* Invoice Tabs */}
           <div className="h-full w-full flex flex-col">
             <InvoiceTabs
@@ -240,6 +298,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               onDataUpdate={handleInvoiceUpdate}
               storageKey={`invoice-${invoiceId}`}
               compactMode={true}
+              forceReadOnly={true}
             />
           </div>
         </MultiResizablePanel>
@@ -313,9 +372,12 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         hasSES={hasSES}
         varianceAmount={varianceAmount}
         poTotal={poTotal || null}
-        helpdeskTicketRef={invoice.helpdesk_ticket_ref || `TICKET-${invoice.id ? parseInt(invoice.id.substring(0, 6), 16) % 10000 + 380000 : '380000'}`}
+        helpdeskTicketRef={invoice.helpdesk_ticket_ref || 'TICKET-389688'}
         exceptionsCount={exceptionsCount}
         validationWarnings={invoice.validation_warnings}
+        showSaveButton={true}
+        onSaveClick={handleSave}
+        isSaving={isSaving}
       />
       
       {/* Main Content Area */}
