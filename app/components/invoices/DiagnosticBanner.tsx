@@ -122,12 +122,12 @@ export function DiagnosticBanner({
         {/* PO Status */}
         <div className={`
           inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-          ${poNumber === 'PO Missing' || poNumber === '"PO Missing"' 
+          ${poNumber === 'PO Missing' || poNumber === '"PO Missing"'
             ? 'bg-red-50 text-red-700'
             : poNumber === 'N/A' || poNumber === '"N/A"'
-              ? 'bg-green-50 text-green-700'  // Green for legitimate Non-PO
-              : poNumber 
-                ? 'bg-green-50 text-green-700' 
+              ? 'bg-gray-100 text-gray-700'  // Gray for Non-PO (neutral, like No GR/SES)
+              : poNumber
+                ? 'bg-green-50 text-green-700'
                 : 'bg-red-50 text-red-700'}
         `}>
           {poNumber === 'PO Missing' || poNumber === '"PO Missing"' ? (
@@ -137,7 +137,7 @@ export function DiagnosticBanner({
             </>
           ) : poNumber === 'N/A' || poNumber === '"N/A"' ? (
             <>
-              <Check className="h-3 w-3" />  {/* Checkmark for legitimate Non-PO */}
+              <X className="h-3 w-3" />  {/* X icon for Non-PO (matches No GR/SES styling) */}
               <span>Non-PO</span>
             </>
           ) : poNumber ? (

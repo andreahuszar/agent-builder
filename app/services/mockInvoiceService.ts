@@ -182,6 +182,20 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
       vendor_id: null, // Missing vendor ID
       vendor_requires_po: true, // PO type invoice
       missing_field: 'vendor_id'
+    },
+    // New: PO-backed invoice with missing PO, pending state (not auto rejected)
+    {
+      id: 'needs-info-11',
+      invoice_number: 'INV-2025-9011',
+      vendor_name_snapshot: 'Global Industrial Parts',
+      vendor_id: 'VND-6789',
+      invoice_date: '2025-02-20',
+      currency: 'USD',
+      total: 8750.00,
+      vendor_requires_po: true, // PO type invoice
+      po_numbers_cached: [], // Missing PO
+      processed_status: 'Pending', // Pending state, not auto rejected
+      missing_field: 'po_number'
     }
   ];
 
@@ -278,6 +292,53 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
       const taxRate = 0.2; // 20% tax
       taxAmount = 967.20;
       total = 5803.20;
+    } else if (scenario.id === 'needs-info-11') {
+      // Special handling for needs-info-11: PO-backed invoice with missing PO
+      lines = [
+        {
+          id: `line-${scenario.id}-1`,
+          line_no: 1,
+          description: 'Industrial Machinery Parts - Gearbox Assembly',
+          qty: 2,
+          uom: 'Units',
+          unit_price: 2500.00,
+          net_amount: 5000.00,
+          line_total: 5000.00,
+          po_line_id: null,
+          gr_line_id: null,
+          ses_line_id: null
+        },
+        {
+          id: `line-${scenario.id}-2`,
+          line_no: 2,
+          description: 'Replacement Hydraulic Cylinders',
+          qty: 3,
+          uom: 'Units',
+          unit_price: 750.00,
+          net_amount: 2250.00,
+          line_total: 2250.00,
+          po_line_id: null,
+          gr_line_id: null,
+          ses_line_id: null
+        },
+        {
+          id: `line-${scenario.id}-3`,
+          line_no: 3,
+          description: 'Premium Industrial Lubricant - 55 Gallon Drum',
+          qty: 1,
+          uom: 'Drum',
+          unit_price: 1500.00,
+          net_amount: 1500.00,
+          line_total: 1500.00,
+          po_line_id: null,
+          gr_line_id: null,
+          ses_line_id: null
+        }
+      ];
+      subtotal = 8750.00;
+      const taxRate = 0.0; // No tax for this invoice
+      taxAmount = 0;
+      total = 8750.00;
     } else {
       // Generate random line items for other scenarios
       const numLines = 3;
@@ -307,8 +368,9 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
       total = subtotal + taxAmount;
     }
 
-    // For PO-type scenarios, attach PO numbers to all except the last one (needs-info-10)
-    // needs-info-10 will have Missing PO status
+    // For PO-type scenarios, attach PO numbers to all except needs-info-10 and needs-info-11
+    // needs-info-10 will have Missing PO status with Auto Rejected
+    // needs-info-11 will have Missing PO status with Pending
     let poNumbersForNeedsInfo: string[] = [];
     if (scenario.vendor_requires_po) {
       if (scenario.id === 'needs-info-1') {
@@ -318,13 +380,16 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
       } else if (scenario.id === 'needs-info-9') {
         poNumbersForNeedsInfo = [`PO-2025-${String(9009).padStart(4, '0')}`];
       }
-      // needs-info-10 intentionally has NO PO number to demonstrate missing PO
+      // needs-info-10 and needs-info-11 intentionally have NO PO number
     }
 
-    // Set processed_status to "Auto Rejected" for invoice with missing PO
-    const processedStatus = (scenario.id === 'needs-info-10' && scenario.vendor_requires_po)
-      ? 'Auto Rejected'
-      : 'Pending';
+    // Set processed_status based on the scenario
+    let processedStatus = 'Pending';
+    if (scenario.id === 'needs-info-10' && scenario.vendor_requires_po) {
+      processedStatus = 'Auto Rejected'; // Auto rejected for needs-info-10
+    } else if (scenario.id === 'needs-info-11') {
+      processedStatus = 'Pending'; // Pending for needs-info-11 (explicitly set from scenario)
+    }
 
     mockInvoices.push({
       id: scenario.id,
@@ -422,6 +487,67 @@ export const generateMockBlockedInvoices = (): Invoice[] => {
 
     mockInvoices.push(base);
   }
+
+  // Add special invoice with 20 line items (18 matched, 2 mismatched)
+  const invoiceDate20 = new Date(now);
+  invoiceDate20.setDate(invoiceDate20.getDate() - 10);
+  const dueDate20 = new Date(invoiceDate20);
+  dueDate20.setDate(dueDate20.getDate() + 30);
+
+  // Generate 20 line items
+  const lines20 = [];
+  let subtotal20 = 0;
+
+  for (let i = 1; i <= 20; i++) {
+    const qty = i % 5 === 0 ? 10 : 5;
+    const unitPrice = 100 + (i * 50);
+    const lineTotal = qty * unitPrice;
+    subtotal20 += lineTotal;
+
+    lines20.push({
+      id: `line-blocked-20-${i}`,
+      line_no: i,
+      description: `Product Item ${i} - High Quality Component`,
+      qty: qty,
+      uom: 'EA',
+      unit_price: unitPrice,
+      net_amount: lineTotal,
+      line_total: lineTotal,
+      po_line_id: `po-line-large-${i}`
+    });
+  }
+
+  const taxAmount20 = subtotal20 * 0.20;
+  const total20 = subtotal20 + taxAmount20;
+
+  mockInvoices.push({
+    id: 'blocked-20',
+    invoice_number: 'INV-2025-8888',
+    vendor_name_snapshot: 'Industrial Parts Ltd',
+    vendor_id: 'VND-2020',
+    division: 'Supply Chain',
+    invoice_date: invoiceDate20.toISOString().split('T')[0],
+    due_date: dueDate20.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: subtotal20,
+    tax_total: taxAmount20,
+    tax_rate_percent: 20,
+    total: total20,
+    status: 'requires_review',
+    match_status: 'quantity_mismatch',
+    vendor_requires_po: true,
+    vendor_is_verified: true,
+    approval_status: 'pending',
+    po_numbers_cached: ['PO-2025-8888'],
+    gr_numbers: ['GR-2025-8888'],
+    docType: 'Invoice',
+    created_at: invoiceDate20.toISOString(),
+    updated_at: invoiceDate20.toISOString(),
+    payment_method: 'bank_transfer',
+    payment_bank_details: { bank_name: 'First National Bank' },
+    lines: lines20,
+    invoice_lines: lines20
+  });
 
   return mockInvoices;
 };
@@ -746,20 +872,31 @@ export const getMockPoComparisonData = (invoiceId: string): any | null => {
   // Generate mock PO lines based on invoice lines
   const invoiceLines = invoice.lines || invoice.invoice_lines || [];
 
-  // For some lines, create matching PO lines with slight variances
-  // Skip some lines to simulate missing PO lines
-  const poLines = invoiceLines
-    .filter((_, index) => index < 3) // Only first 3 invoice lines have corresponding PO lines
-    .map((line: any, index: number) => ({
-      id: `po-line-${index + 1}`,
-      line_no: index + 1,
-      description: line.description,
-      item_name: line.description,
-      qty_ordered: line.qty * 0.95, // Slightly different quantity for variance
-      uom: line.uom || 'EA',
-      unit_price: line.unit_price * 1.02, // Slightly different price for variance
-      status: 'open'
-    }));
+  // Try to get PO data from mock PO service first
+  const { getMockPOByNumber } = require('./mockPOService');
+  const mockPO = getMockPOByNumber(poNumber);
+
+  let poLines: any[];
+
+  if (mockPO && mockPO.lines) {
+    // Use actual PO lines from mock PO service
+    poLines = mockPO.lines;
+  } else {
+    // Fallback: For some lines, create matching PO lines with slight variances
+    // Skip some lines to simulate missing PO lines
+    poLines = invoiceLines
+      .filter((_, index) => index < 3) // Only first 3 invoice lines have corresponding PO lines
+      .map((line: any, index: number) => ({
+        id: `po-line-${index + 1}`,
+        line_no: index + 1,
+        description: line.description,
+        item_name: line.description,
+        qty_ordered: line.qty * 0.95, // Slightly different quantity for variance
+        uom: line.uom || 'EA',
+        unit_price: line.unit_price * 1.02, // Slightly different price for variance
+        status: 'open'
+      }));
+  }
 
   // Calculate PO total
   const poTotal = poLines.reduce((sum: number, line: any) =>
@@ -780,8 +917,15 @@ export const getMockPoComparisonData = (invoiceId: string): any | null => {
 
   // Generate match results
   const matchResults = invoiceLines.map((invLine: any, index: number) => {
-    // Only first 3 lines have PO matches
-    const poLine = index < 3 ? poLines[index] : null;
+    // Try to match by po_line_id first, then by line_no
+    let poLine = null;
+    if (invLine.po_line_id) {
+      poLine = poLines.find(pl => pl.id === invLine.po_line_id);
+    }
+    if (!poLine) {
+      poLine = poLines.find(pl => pl.line_no === invLine.line_no);
+    }
+
     const qtyVariance = poLine ? invLine.qty - poLine.qty_ordered : 0;
     const priceVariance = poLine ? invLine.unit_price - poLine.unit_price : 0;
 
@@ -818,7 +962,14 @@ export const getMockPoComparisonData = (invoiceId: string): any | null => {
     },
     lineComparison: invoiceLines.map((invLine: any, index: number) => {
       const matchResult = matchResults[index];
-      const poLine = index < 3 ? poLines[index] : null;
+      // Use the same matching logic as above
+      let poLine = null;
+      if (invLine.po_line_id) {
+        poLine = poLines.find(pl => pl.id === invLine.po_line_id);
+      }
+      if (!poLine) {
+        poLine = poLines.find(pl => pl.line_no === invLine.line_no);
+      }
 
       return {
         invoice: invLine,
@@ -877,11 +1028,11 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
 
   // Calculate financial breakdown
   const taxRate = 0.20; // 20% VAT
-  const subtotal = hasTotal ? absTotal / (1 + taxRate) : 0;
-  const taxTotal = hasTotal ? absTotal - subtotal : 0;
+  const subtotal = invoice.subtotal || (hasTotal ? absTotal / (1 + taxRate) : 0);
+  const taxTotal = invoice.tax_total || (hasTotal ? absTotal - subtotal : 0);
 
-  // Generate sample line items if we have a total
-  const lines = hasTotal ? generateSampleLines(subtotal) : [];
+  // Use existing lines if available, otherwise generate sample line items
+  const lines = invoice.lines || invoice.invoice_lines || (hasTotal ? generateSampleLines(subtotal) : []);
 
   return {
     ...invoice,
@@ -930,6 +1081,7 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
       routing_number: '123456789'
     } : null,
     lines: lines,
+    invoice_lines: lines, // Also set invoice_lines for compatibility
     poTotal: invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 && hasTotal
       ? subtotal * 1.05 // Slightly higher PO amount
       : null,

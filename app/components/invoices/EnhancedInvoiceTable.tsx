@@ -17,7 +17,8 @@ import {
   Filter,
   Check,
   X,
-  Search
+  Search,
+  Info
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -63,6 +64,7 @@ interface Invoice {
   updated_at?: string;
   issues?: string[];
   docType?: 'Invoice' | 'Credit Note' | 'Pro Forma';
+  processed_status?: string;
 }
 
 interface EnhancedInvoiceTableProps {
@@ -123,6 +125,64 @@ const getDivision = (vendorName: string | undefined): string => {
   const divisions = ['EMEA', 'US Inc', 'Carter UK Ltd', 'APAC', 'LATAM', 'Canada Corp'];
   const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
   return divisions[hash % divisions.length];
+};
+
+// Helper function to get PO status badge for all invoices
+const getPOStatus = (invoice: Invoice) => {
+  // Check if this is a Non-PO invoice
+  if (invoice.vendor_requires_po === false) {
+    return {
+      type: 'non-po',
+      badge: (
+        <div className="relative w-[34px] h-4 border border-blue-600 rounded flex items-center justify-center bg-white">
+          <span className="text-blue-600 text-[8px] font-semibold leading-none">Non-PO</span>
+        </div>
+      ),
+      tooltip: 'Non-PO Invoice'
+    };
+  }
+
+  // For PO-backed invoices (vendor_requires_po === true or null)
+  const hasPO = invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0;
+  const isRejected = invoice.processed_status === 'Auto Rejected';
+
+  if (hasPO) {
+    return {
+      type: 'linked',
+      badge: (
+        <div className="relative w-[34px] h-4 border border-green-600 rounded flex items-center justify-center bg-white">
+          <span className="text-green-600 text-[10px] font-semibold leading-none">PO</span>
+        </div>
+      ),
+      tooltip: 'PO Linked'
+    };
+  }
+  if (isRejected) {
+    return {
+      type: 'rejected',
+      badge: (
+        <div className="relative w-[34px] h-4 border border-red-600 rounded flex items-center justify-center bg-white">
+          <span className="text-red-600 text-[10px] font-semibold leading-none">PO</span>
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full flex items-center justify-center">
+            <span className="text-white text-[8px] font-bold leading-none">✗</span>
+          </div>
+        </div>
+      ),
+      tooltip: 'PO Missing & Invoice Rejected'
+    };
+  }
+  return {
+    type: 'missing',
+    badge: (
+      <div className="relative w-[34px] h-4 border border-red-600 rounded flex items-center justify-center bg-white">
+        <span className="text-red-600 text-[10px] font-semibold leading-none">PO</span>
+        <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full flex items-center justify-center">
+          <span className="text-white text-[8px] font-bold leading-none">•</span>
+        </div>
+      </div>
+    ),
+    tooltip: 'PO Missing'
+  };
 };
 
 export function EnhancedInvoiceTable({
@@ -433,7 +493,6 @@ export function EnhancedInvoiceTable({
       issue === 'Quantity Variance' ||
       issue === 'Quantity Mismatch' ||
       issue === 'Amount Mismatch' ||
-      issue === 'Line Items Mismatch' ||
       issue === 'Line Mismatch' ||
       issue === 'Vendor Not Verified' ||
       issue === 'Bank Account Not Verified' ||
@@ -839,19 +898,33 @@ export function EnhancedInvoiceTable({
                     })()}
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap">
-                    {/* Check if this is a mock invoice (starts with 'mock-', 'due-', or 'blocked-') */}
-                    {invoice.id.startsWith('mock-') || invoice.id.startsWith('due-') || invoice.id.startsWith('blocked-') ? (
-                      <span className="text-sm font-medium text-gray-950">
-                        {invoice.invoice_number}
-                      </span>
-                    ) : (
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const poStatus = getPOStatus(invoice);
+                        if (!poStatus) return null;
+
+                        return (
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="cursor-help flex-shrink-0">
+                                  {poStatus.badge}
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent>
+                                <p>{poStatus.tooltip}</p>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        );
+                      })()}
                       <Link
                         href={`/invoices/${invoice.id}`}
                         className="text-sm text-purple-600 hover:text-purple-700 font-medium"
                       >
                         {invoice.invoice_number}
                       </Link>
-                    )}
+                    </div>
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.vendor_name_snapshot ? getVendorId(invoice.vendor_name_snapshot) :
@@ -971,9 +1044,23 @@ export function EnhancedInvoiceTable({
                       // Check for processed_status first (for Auto Rejected status)
                       if (invoice.processed_status === 'Auto Rejected') {
                         return (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                            Auto Rejected
-                          </span>
+                          <div className="inline-flex items-center gap-1.5">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                              Auto Rejected
+                            </span>
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="cursor-help">
+                                    <Info className="h-4 w-4 text-red-600 flex-shrink-0" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-md z-50 whitespace-normal" side="top" align="center">
+                                  <p className="text-sm leading-relaxed">System couldn't find any PO related to this invoice and was auto rejected. A new copy was requested from the vendor.</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          </div>
                         );
                       }
 
@@ -1019,6 +1106,8 @@ export function EnhancedInvoiceTable({
 
                         const issues = (invoice.issues || []);
                         let displayIssues = issues;
+                        // Filter out "Line Items Mismatch" as it's only a category, not an actual issue
+                        displayIssues = displayIssues.filter(i => i !== 'Line Items Mismatch');
                         if (activeTab === 'blocked') {
                           displayIssues = displayIssues.filter(i => i !== 'Missing PO');
                         }

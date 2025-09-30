@@ -255,6 +255,40 @@ export const generateMockPOs = (): Record<string, POHeader> => {
       ],
       subtotal: 0,
       total: 0
+    },
+    'PO-2025-8888': {
+      id: 'mock-po-large',
+      po_number: 'PO-2025-8888',
+      vendor_name: 'Industrial Parts Ltd',
+      order_date: '2025-02-15',
+      currency: 'USD',
+      status: 'open',
+      lines: [
+        // 18 perfectly matched lines
+        { id: 'po-line-large-1', line_no: 1, description: 'Product Item 1 - High Quality Component', item_name: 'Component 1', qty_ordered: 5, uom: 'EA', unit_price: 150, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-2', line_no: 2, description: 'Product Item 2 - High Quality Component', item_name: 'Component 2', qty_ordered: 5, uom: 'EA', unit_price: 200, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-3', line_no: 3, description: 'Product Item 3 - High Quality Component', item_name: 'Component 3', qty_ordered: 5, uom: 'EA', unit_price: 250, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-4', line_no: 4, description: 'Product Item 4 - High Quality Component', item_name: 'Component 4', qty_ordered: 5, uom: 'EA', unit_price: 300, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-5', line_no: 5, description: 'Product Item 5 - High Quality Component', item_name: 'Component 5', qty_ordered: 10, uom: 'EA', unit_price: 350, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 10, qty_remaining_to_invoice: 10, status: 'open' },
+        { id: 'po-line-large-6', line_no: 6, description: 'Product Item 6 - High Quality Component', item_name: 'Component 6', qty_ordered: 5, uom: 'EA', unit_price: 400, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-7', line_no: 7, description: 'Product Item 7 - High Quality Component', item_name: 'Component 7', qty_ordered: 5, uom: 'EA', unit_price: 450, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-8', line_no: 8, description: 'Product Item 8 - High Quality Component', item_name: 'Component 8', qty_ordered: 5, uom: 'EA', unit_price: 500, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-9', line_no: 9, description: 'Product Item 9 - High Quality Component', item_name: 'Component 9', qty_ordered: 5, uom: 'EA', unit_price: 550, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-10', line_no: 10, description: 'Product Item 10 - High Quality Component', item_name: 'Component 10', qty_ordered: 10, uom: 'EA', unit_price: 600, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 10, qty_remaining_to_invoice: 10, status: 'open' },
+        { id: 'po-line-large-11', line_no: 11, description: 'Product Item 11 - High Quality Component', item_name: 'Component 11', qty_ordered: 5, uom: 'EA', unit_price: 650, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-12', line_no: 12, description: 'Product Item 12 - High Quality Component', item_name: 'Component 12', qty_ordered: 5, uom: 'EA', unit_price: 700, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-13', line_no: 13, description: 'Product Item 13 - High Quality Component', item_name: 'Component 13', qty_ordered: 5, uom: 'EA', unit_price: 750, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-14', line_no: 14, description: 'Product Item 14 - High Quality Component', item_name: 'Component 14', qty_ordered: 5, uom: 'EA', unit_price: 800, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-15', line_no: 15, description: 'Product Item 15 - High Quality Component', item_name: 'Component 15', qty_ordered: 10, uom: 'EA', unit_price: 850, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 10, qty_remaining_to_invoice: 10, status: 'open' },
+        { id: 'po-line-large-16', line_no: 16, description: 'Product Item 16 - High Quality Component', item_name: 'Component 16', qty_ordered: 5, uom: 'EA', unit_price: 900, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-17', line_no: 17, description: 'Product Item 17 - High Quality Component', item_name: 'Component 17', qty_ordered: 5, uom: 'EA', unit_price: 950, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        { id: 'po-line-large-18', line_no: 18, description: 'Product Item 18 - High Quality Component', item_name: 'Component 18', qty_ordered: 5, uom: 'EA', unit_price: 1000, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 5, qty_remaining_to_invoice: 5, status: 'open' },
+        // 2 mismatched lines: line 19 has quantity difference, line 20 has unit price difference
+        { id: 'po-line-large-19', line_no: 19, description: 'Product Item 19 - High Quality Component', item_name: 'Component 19', qty_ordered: 3, uom: 'EA', unit_price: 1050, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 3, qty_remaining_to_invoice: 3, status: 'open' },
+        { id: 'po-line-large-20', line_no: 20, description: 'Product Item 20 - High Quality Component', item_name: 'Component 20', qty_ordered: 10, uom: 'EA', unit_price: 950, qty_received_to_date: 0, qty_invoiced_to_date: 0, qty_remaining_to_receive: 10, qty_remaining_to_invoice: 10, status: 'open' }
+      ],
+      subtotal: 0,
+      total: 0
     }
   };
 

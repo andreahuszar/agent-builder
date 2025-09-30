@@ -314,15 +314,13 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     if (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0) {
       return invoice.po_numbers_cached[0];
     }
-    
-    // Check if vendor is verified Non-PO vendor
-    const isVerifiedNonPOVendor = invoice.vendor_requires_po === false && invoice.vendor_is_verified === true;
-    
-    if (isVerifiedNonPOVendor) {
+
+    // Check if this is a Non-PO vendor (PO not required)
+    if (invoice.vendor_requires_po === false) {
       return 'N/A'; // Non-PO vendor - PO not required
     }
-    
-    // All other cases: PO is missing (either required or vendor not verified)
+
+    // All other cases: PO is missing (vendor requires PO but it's not attached)
     return 'PO Missing';
   };
 

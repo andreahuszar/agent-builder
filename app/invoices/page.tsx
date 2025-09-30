@@ -39,13 +39,10 @@ export default function InvoicesPage() {
       {/* Tab Content */}
       <div>
         {activeTab === 'needs-info' && (
-          <EnhancedInvoicesClient initialInvoices={[]} />
+          <EnhancedInvoicesClient initialInvoices={[]} initialTab="needs-info" />
         )}
         {activeTab === 'blocked' && (
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Blocked Invoices</h3>
-            <p className="text-gray-500">Content coming soon...</p>
-          </div>
+          <EnhancedInvoicesClient initialInvoices={[]} initialTab="blocked" />
         )}
         {activeTab === 'in-approval' && (
           <div className="text-center py-12">

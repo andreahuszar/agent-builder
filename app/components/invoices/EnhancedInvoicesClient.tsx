@@ -97,6 +97,7 @@ interface Invoice {
 
 interface EnhancedInvoicesClientProps {
   initialInvoices: Invoice[];
+  initialTab?: string;
 }
 
 // Tab options - contextual based on invoice type
@@ -217,6 +218,53 @@ const ISSUE_TYPES: Record<string, { severity: 'critical' | 'warning' | 'info', o
   'Vendor Not Verified': { severity: 'critical', order: 15 }
 };
 
+// Exception categories for organized display
+const EXCEPTION_CATEGORIES = {
+  'Line Items Mismatch': {
+    label: 'Line Items Mismatch',
+    isCategory: true,
+    items: [
+      'Amount Mismatch',
+      'Unit Price Mismatch',
+      'UoM Mismatch',
+      'Quantity Variance',
+      'Quantity Mismatch'
+    ]
+  },
+  'Header Level': {
+    label: 'Header Level',
+    isCategory: true,
+    items: [
+      'Tax Discrepancy',
+      'Tax Rate Mismatch'
+    ]
+  },
+  'Validation': {
+    label: 'Validation',
+    isCategory: true,
+    items: [
+      'Price Tolerance'
+    ]
+  },
+  'Other': {
+    label: 'Other',
+    isCategory: true,
+    items: [
+      'Missing PO',
+      'Missing GR',
+      'Line Mismatch',
+      'Unapproved Change Order',
+      'Missing Approval',
+      'Vendor Not Verified',
+      'Bank Account Not Verified',
+      'Duplicate Suspected',
+      'Currency Issue',
+      'Missing Documentation',
+      'Payment Terms'
+    ]
+  }
+};
+
 // Separate issue pools for PO and Non-PO invoices
 const PO_INVOICE_ISSUES = [
   'Missing PO',
@@ -224,7 +272,6 @@ const PO_INVOICE_ISSUES = [
   'Quantity Variance',
   'Quantity Mismatch',
   'Amount Mismatch',
-  'Line Items Mismatch',
   'Line Mismatch',
   'Price Tolerance',
   'Unit Price Mismatch',
@@ -240,7 +287,6 @@ const NON_PO_INVOICE_ISSUES = [
   'Vendor Not Verified',
   'Bank Account Not Verified',
   'Amount Mismatch',
-  'Line Items Mismatch',
   'Duplicate Suspected',
   'Tax Discrepancy',
   'Currency Issue',
@@ -391,7 +437,7 @@ const generateSyntheticFields = (invoice: any): any => {
 };
 
 // Generate mock overdue invoices for demonstration
-export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvoicesClientProps) {
+export default function EnhancedInvoicesClient({ initialInvoices, initialTab = 'needs-info' }: EnhancedInvoicesClientProps) {
   // Initialize with just the initial invoices first
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices || []);
   const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>(initialInvoices || []);
@@ -433,7 +479,7 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   const [showQuickFixes, setShowQuickFixes] = useState(false);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState('needs-info');
+  const [activeTab, setActiveTab] = useState(initialTab);
 
   // Tab-specific filtering function
   const getTabInvoices = useCallback((tab: string, allInvoices: Invoice[]): Invoice[] => {
@@ -636,7 +682,6 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
           'Quantity Variance',
           'Quantity Mismatch',
           'Amount Mismatch',
-          'Line Items Mismatch',
           'Line Mismatch',
           'Price Tolerance',
           'Missing GR',
@@ -655,7 +700,6 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       if (activeTab === 'blocked') {
         const whitelist = new Set([
           'Amount Mismatch',
-          'Line Items Mismatch',
           'Vendor Not Verified',
           'Bank Account Not Verified',
           'Tax Discrepancy',
@@ -675,8 +719,9 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
     setSelectedExceptions(prev => {
       if (prev.size === 0) return prev;
       const allowed = new Set([
-        'Quantity Variance', 'Quantity Mismatch', 'Amount Mismatch', 'Line Items Mismatch', 'Line Mismatch', 'Price Tolerance',
-        'Vendor Not Verified', 'Bank Account Not Verified', 'Tax Discrepancy', 'Currency Issue', 'Missing GR'
+        'Quantity Variance', 'Quantity Mismatch', 'Amount Mismatch', 'Line Mismatch', 'Price Tolerance',
+        'Vendor Not Verified', 'Bank Account Not Verified', 'Tax Discrepancy', 'Currency Issue', 'Missing GR',
+        'Unit Price Mismatch', 'UoM Mismatch', 'Tax Rate Mismatch', 'Unapproved Change Order'
       ]);
       const next = new Set(Array.from(prev).filter(e => allowed.has(e)));
       return next.size === prev.size ? prev : next;
@@ -776,13 +821,46 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
     return `${selectedVendors.size} Vendors`;
   };
 
-  // Filter exceptions based on search query
+  // Filter exceptions based on search query and organize by categories
   const filteredExceptions = useMemo(() => {
-    if (!exceptionSearchQuery) return uniqueExceptions;
-    return uniqueExceptions.filter(exception =>
-      exception.toLowerCase().includes(exceptionSearchQuery.toLowerCase())
-    );
-  }, [uniqueExceptions, exceptionSearchQuery]);
+    const query = exceptionSearchQuery.toLowerCase();
+    const result: Array<{type: 'category' | 'item', label: string, categoryKey?: string}> = [];
+
+    // Go through each category
+    Object.entries(EXCEPTION_CATEGORIES).forEach(([categoryKey, category]) => {
+      // Skip "Line Items Mismatch" category for Non-PO invoices (no document to compare against)
+      if (categoryKey === 'Line Items Mismatch' && invoiceTypeFilter === 'non-po') {
+        return;
+      }
+
+      // Filter items in this category that exist in uniqueExceptions
+      const categoryItems = category.items.filter(item =>
+        uniqueExceptions.includes(item) &&
+        (!query || item.toLowerCase().includes(query))
+      );
+
+      // Only show category if it has items
+      if (categoryItems.length > 0) {
+        // Add category header
+        result.push({
+          type: 'category',
+          label: category.label,
+          categoryKey
+        });
+
+        // Add items under this category
+        categoryItems.forEach(item => {
+          result.push({
+            type: 'item',
+            label: item,
+            categoryKey
+          });
+        });
+      }
+    });
+
+    return result;
+  }, [uniqueExceptions, exceptionSearchQuery, invoiceTypeFilter]);
 
   // Handle exception filter changes
   const handleExceptionToggle = (exception: string) => {
@@ -1707,16 +1785,30 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
                         <DropdownMenuSeparator />
                         <div className="py-2">
                           {filteredExceptions.length > 0 ? (
-                            filteredExceptions.map(exception => (
-                              <DropdownMenuCheckboxItem
-                                key={exception}
-                                checked={selectedExceptions.has(exception)}
-                                onCheckedChange={() => handleExceptionToggle(exception)}
-                                onSelect={(e) => e.preventDefault()}
-                              >
-                                <span className="truncate">{exception}</span>
-                              </DropdownMenuCheckboxItem>
-                            ))
+                            filteredExceptions.map((item, index) => {
+                              if (item.type === 'category') {
+                                return (
+                                  <div
+                                    key={`category-${item.categoryKey}-${index}`}
+                                    className="px-3 py-1.5 text-xs font-normal text-gray-500 cursor-default"
+                                  >
+                                    {item.label}
+                                  </div>
+                                );
+                              } else {
+                                return (
+                                  <DropdownMenuCheckboxItem
+                                    key={`item-${item.label}-${index}`}
+                                    checked={selectedExceptions.has(item.label)}
+                                    onCheckedChange={() => handleExceptionToggle(item.label)}
+                                    onSelect={(e) => e.preventDefault()}
+                                    className="pl-6"
+                                  >
+                                    <span className="truncate">{item.label}</span>
+                                  </DropdownMenuCheckboxItem>
+                                );
+                              }
+                            })
                           ) : (
                             <div className="px-3 py-2 text-sm text-gray-500">No exceptions found</div>
                           )}
