@@ -22,6 +22,7 @@ interface DiagnosticBannerProps {
   showSaveButton?: boolean;
   onSaveClick?: () => void;
   isSaving?: boolean;
+  onCommentsClick?: () => void;
 }
 
 export function DiagnosticBanner({
@@ -41,6 +42,7 @@ export function DiagnosticBanner({
   showSaveButton = false,
   onSaveClick,
   isSaving = false,
+  onCommentsClick,
 }: DiagnosticBannerProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -232,6 +234,7 @@ export function DiagnosticBanner({
 
         {/* Comments Button */}
         <button
+          onClick={onCommentsClick}
           className="px-3 py-1.5 text-sm bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
           title="Add Comment"
         >

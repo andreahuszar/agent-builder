@@ -35,6 +35,9 @@ import * as Tooltip from '@radix-ui/react-tooltip';
 import { Badge } from '@/app/components/ui/badge';
 import { FieldErrorIndicator, useFieldErrors, FieldError } from '../FieldErrorIndicator';
 import type { LayoutMode } from './InvoiceTabs';
+import { LinkedDocumentPill } from '../LinkedDocumentPill';
+import { PODetailsDrawer } from '../PODetailsDrawer';
+import { POSearchModal } from '../POSearchModal';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -105,6 +108,11 @@ export function DetailsTab({
   const [showAIReasoning, setShowAIReasoning] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
+  // Document links state
+  const [selectedPONumber, setSelectedPONumber] = useState<string | null>(null);
+  const [isPODrawerOpen, setIsPODrawerOpen] = useState(false);
+  const [isPOSearchModalOpen, setIsPOSearchModalOpen] = useState(false);
+
   // Field error tracking for needs info mode
   const { errors: fieldErrors, addError, removeError, clearErrors, validateRequired } = useFieldErrors();
 
@@ -125,20 +133,54 @@ export function DetailsTab({
         // Clear any existing errors first
         clearErrors();
 
-        // For demo purposes, check for fields that are commonly missing
+        // Check all required fields (matching ValidatedEditableField required prop)
         const fieldsToCheck = [
-          { field: 'vendor_name_snapshot', label: 'Vendor Name' },
-          { field: 'vendor_tax_id_snapshot', label: 'Vendor Tax ID' },
-          { field: 'invoice_date', label: 'Invoice Date' },
-          { field: 'currency', label: 'Currency' }
+          { field: 'invoice_number', label: 'Invoice Number', type: 'text' },
+          { field: 'invoice_date', label: 'Invoice Date', type: 'date' },
+          { field: 'due_date', label: 'Due Date', type: 'date' },
+          { field: 'vendor_name_snapshot', label: 'Vendor Name', type: 'text' },
+          { field: 'vendor_tax_id_snapshot', label: 'Vendor Tax ID', type: 'text' },
+          { field: 'po_numbers_cached', label: 'PO Number', type: 'array' },
+          { field: 'subtotal', label: 'Subtotal', type: 'currency' },
+          { field: 'currency', label: 'Currency', type: 'text' },
+          { field: 'total', label: 'Total', type: 'currency' },
         ];
 
-        fieldsToCheck.forEach(({ field, label }) => {
+        fieldsToCheck.forEach(({ field, label, type }) => {
           const value = editedData[field];
 
-          // Check for empty or missing values
-          if (!value || value === '') {
-            addError(field, `${label} is required`, fieldRefs.current[field]);
+          // Special handling for vendor field - "Unknown Vendor" is considered invalid
+          if (field === 'vendor_name_snapshot' && value === 'Unknown Vendor') {
+            addError(field, `${label} is invalid (Unknown Vendor)`, fieldRefs.current[field]);
+            return;
+          }
+
+          // Check based on field type
+          if (type === 'array') {
+            // For array fields like po_numbers_cached
+            if (!value || (Array.isArray(value) && value.length === 0) || (Array.isArray(value) && !value[0])) {
+              addError(field, `${label} is required`, fieldRefs.current[field]);
+            }
+          } else if (type === 'date') {
+            // For date fields
+            if (!value || value === '') {
+              addError(field, `${label} is required`, fieldRefs.current[field]);
+            } else {
+              const date = new Date(value);
+              if (isNaN(date.getTime())) {
+                addError(field, `${label} is invalid`, fieldRefs.current[field]);
+              }
+            }
+          } else if (type === 'currency') {
+            // For currency/number fields
+            if (value === null || value === undefined || value === '' || isNaN(Number(value))) {
+              addError(field, `${label} is required`, fieldRefs.current[field]);
+            }
+          } else {
+            // For text fields
+            if (!value || value.toString().trim().length === 0) {
+              addError(field, `${label} is required`, fieldRefs.current[field]);
+            }
           }
         });
       }, 100);
@@ -284,6 +326,81 @@ export function DetailsTab({
     setIsEditing(false);
   };
 
+  // Document links handlers
+  const handlePOPillClick = (poNumber: string) => {
+    setSelectedPONumber(poNumber);
+    setIsPODrawerOpen(true);
+  };
+
+  const handleLinkPO = async (poNumber: string) => {
+    try {
+      const response = await fetch(`/api/invoices/${invoiceData.id}/link-po`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ poNumber }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        // Update local state with new PO
+        const updatedPONumbers = [...(editedData.po_numbers_cached || []), poNumber];
+        const updatedData = {
+          ...editedData,
+          po_numbers_cached: updatedPONumbers
+        };
+        setEditedData(updatedData);
+
+        // Notify parent if callback exists
+        if (onUpdate) {
+          onUpdate(updatedData);
+        }
+
+        console.log(`Successfully linked PO ${poNumber}`);
+      } else {
+        const error = await response.json();
+        console.error('Failed to link PO:', error);
+        alert(`Failed to link PO: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error linking PO:', error);
+      alert('Failed to link PO. Please try again.');
+    }
+  };
+
+  const handleUnlinkPO = async (poNumber: string) => {
+    try {
+      const response = await fetch(`/api/invoices/${invoiceData.id}/unlink-po/${poNumber}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        // Update local state - remove the PO
+        const updatedPONumbers = (editedData.po_numbers_cached || []).filter(
+          (po: string) => po !== poNumber
+        );
+        const updatedData = {
+          ...editedData,
+          po_numbers_cached: updatedPONumbers.length > 0 ? updatedPONumbers : null
+        };
+        setEditedData(updatedData);
+
+        // Notify parent if callback exists
+        if (onUpdate) {
+          onUpdate(updatedData);
+        }
+
+        console.log(`Successfully unlinked PO ${poNumber}`);
+      } else {
+        const error = await response.json();
+        console.error('Failed to unlink PO:', error);
+        alert(`Failed to unlink PO: ${error.error || 'Unknown error'}`);
+      }
+    } catch (error) {
+      console.error('Error unlinking PO:', error);
+      alert('Failed to unlink PO. Please try again.');
+    }
+  };
+
   // Handle scroll to show/hide FAB
   useEffect(() => {
     const scrollContainer = scrollContainerRef.current;
@@ -328,7 +445,7 @@ export function DetailsTab({
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Invoice Information</h3>
             </div>
           </div>
-          <div className="px-6 py-4 bg-white">
+          <div className="px-10 py-4 bg-white">
             <div className={`grid ${getGridCols()} gap-4`}>
               <div ref={(el) => fieldRefs.current['invoice_number'] = el}>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
@@ -492,7 +609,7 @@ export function DetailsTab({
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Financial Details</h3>
             </div>
           </div>
-          <div className="px-6 py-4 bg-white">
+          <div className="px-10 py-4 bg-white">
             {/* First Row: Subtotal, Currency, Tax Rate */}
             <div className={`grid ${getGridCols()} gap-4`}>
               <div>
@@ -681,7 +798,7 @@ export function DetailsTab({
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Payment Information</h3>
             </div>
           </div>
-          <div className="px-6 py-4 bg-white">
+          <div className="px-10 py-4 bg-white">
             <div className={`grid ${getGridCols()} gap-4`}>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
@@ -860,7 +977,7 @@ export function DetailsTab({
               )}
             </div>
           </div>
-          <div className="px-6 py-4 bg-white">
+          <div className="px-10 py-4 bg-white">
             <div className={`grid ${getGridCols()} gap-4`}>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
@@ -988,47 +1105,49 @@ export function DetailsTab({
             {/* Link Document Button - positioned absolutely */}
             <button
               className="absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
-              onClick={() => {/* No functionality yet */}}
+              onClick={() => setIsPOSearchModalOpen(true)}
             >
               <Link2 className="h-3.5 w-3.5" />
               <span>Link Document</span>
             </button>
           </div>
-          <div className="px-6 py-4 bg-white">
+          <div className="px-10 py-4 bg-white">
             {/* Check if any documents are linked */}
-            {(invoiceData.po_numbers_cached?.length > 0 || invoiceData.gr_numbers_cached?.length > 0) ? (
+            {(editedData.po_numbers_cached?.length > 0 || editedData.gr_numbers_cached?.length > 0) ? (
               <div className="space-y-4">
                 {/* Purchase Orders Section */}
-                {invoiceData.po_numbers_cached?.length > 0 && (
+                {editedData.po_numbers_cached?.length > 0 && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-2">Purchase Orders</label>
                     <div className="flex flex-wrap gap-2">
-                      {invoiceData.po_numbers_cached.map((poNumber: string) => (
-                        <span
+                      {editedData.po_numbers_cached.map((poNumber: string) => (
+                        <LinkedDocumentPill
                           key={poNumber}
-                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800"
-                        >
-                          <Hash className="h-3 w-3 mr-1" />
-                          {poNumber}
-                        </span>
+                          type="PO"
+                          number={poNumber}
+                          onClick={() => handlePOPillClick(poNumber)}
+                          onRemove={() => handleUnlinkPO(poNumber)}
+                          isEditable={isEditing}
+                        />
                       ))}
                     </div>
                   </div>
                 )}
 
                 {/* Goods Receipts Section */}
-                {invoiceData.gr_numbers_cached?.length > 0 && (
+                {editedData.gr_numbers_cached?.length > 0 && (
                   <div>
                     <label className="block text-xs font-medium text-gray-700 mb-2">Goods Receipts</label>
                     <div className="flex flex-wrap gap-2">
-                      {invoiceData.gr_numbers_cached.map((grNumber: string) => (
-                        <span
+                      {editedData.gr_numbers_cached.map((grNumber: string) => (
+                        <LinkedDocumentPill
                           key={grNumber}
-                          className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800"
-                        >
-                          <Package className="h-3 w-3 mr-1" />
-                          {grNumber}
-                        </span>
+                          type="GR"
+                          number={grNumber}
+                          onClick={() => {/* GR drawer not implemented yet */}}
+                          onRemove={() => {/* GR unlink not implemented yet */}}
+                          isEditable={false}
+                        />
                       ))}
                     </div>
                   </div>
@@ -1097,6 +1216,22 @@ export function DetailsTab({
           </button>
         </div>
       )}
+
+      {/* PO Details Drawer */}
+      <PODetailsDrawer
+        poNumber={selectedPONumber}
+        isOpen={isPODrawerOpen}
+        onClose={() => setIsPODrawerOpen(false)}
+      />
+
+      {/* PO Search Modal */}
+      <POSearchModal
+        isOpen={isPOSearchModalOpen}
+        onClose={() => setIsPOSearchModalOpen(false)}
+        onLinkPO={handleLinkPO}
+        vendorId={editedData.vendor_id}
+        vendorName={editedData.vendor_name_snapshot}
+      />
       </div>
     </Tooltip.Provider>
   );

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Maximize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash2 } from 'lucide-react';
+import { Maximize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2 } from 'lucide-react';
 
 interface InvoiceLineItem {
   id?: string;
@@ -306,7 +306,7 @@ export function LineItemsPreviewPanel({
                 <table className="w-full">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                      <th colSpan={7} className="px-4 py-2 text-left text-sm font-semibold text-gray-950 bg-white border-b">
+                      <th colSpan={isEditMode ? 8 : 7} className="px-4 py-2 text-left text-sm font-semibold text-gray-950 bg-white border-b">
                         Invoice Line Items
                       </th>
                     </tr>
@@ -318,6 +318,9 @@ export function LineItemsPreviewPanel({
                       <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
                       <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
                       <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
+                      {isEditMode && (
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase w-32">Actions</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -390,46 +393,68 @@ export function LineItemsPreviewPanel({
                           }`}>
                             {formatCurrency(line.line_total)}
                           </td>
-                          <td className="px-3 py-2 text-sm text-center">
-                            {isEditMode ? (
-                              <button
-                                onClick={() => handleRemoveLine(index)}
-                                className="p-1 text-red-600 hover:text-red-800 hover:bg-red-100 rounded transition-colors"
-                                title="Remove line"
-                              >
-                                <Trash2 className="h-4 w-4" />
-                              </button>
-                            ) : (
-                              <>
-                                {matchedPO && (
-                                  <div className="flex flex-col items-center gap-0.5">
-                                    {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
-                                      <span className="text-xs text-red-600 font-medium">
-                                        Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
-                                      </span>
-                                    )}
-                                    {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
-                                      <span className="text-xs text-red-600 font-medium">
-                                        Price: {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
-                                      </span>
-                                    )}
-                                    {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
-                                      <CheckCircle className="h-3.5 w-3.5 text-green-600" />
-                                    )}
-                                  </div>
+                          <td className="px-3 py-2 text-sm">
+                            {matchedPO && (
+                              <div className="flex flex-col items-center gap-0.5">
+                                {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
+                                  <span className="text-xs text-red-600 font-medium">
+                                    Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
+                                  </span>
                                 )}
-                                {!matchedPO && (
-                                  <span className="text-xs text-gray-400">No PO</span>
+                                {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
+                                  <span className="text-xs text-red-600 font-medium">
+                                    Price: {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
+                                  </span>
                                 )}
-                              </>
+                                {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
+                                  <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                                )}
+                              </div>
+                            )}
+                            {!matchedPO && (
+                              <span className="text-xs text-gray-400">No PO</span>
                             )}
                           </td>
+                          {isEditMode && (
+                            <td className="px-3 py-2 text-sm">
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => console.log('Split line:', index)}
+                                  className="p-1 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                                  title="Split line"
+                                >
+                                  <GitBranch className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => console.log('Copy line:', index)}
+                                  className="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                  title="Copy line"
+                                >
+                                  <Copy className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => handleRemoveLine(index)}
+                                  className="p-1 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  title="Delete line"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </button>
+                                <button
+                                  onClick={() => console.log('More actions:', index)}
+                                  className="p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
+                                  title="More actions"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </button>
+                              </div>
+                            </td>
+                          )}
                         </tr>
                       );
                     })}
                     {isEditMode && (
                       <tr className="h-[52px]">
-                        <td colSpan={7} className="px-3 py-2 align-middle">
+                        <td colSpan={8} className="px-3 py-2 align-middle">
                           <button
                             onClick={handleAddLine}
                             className="flex items-center gap-1.5 text-sm text-purple-700 hover:text-purple-900 font-medium transition-colors"
@@ -557,7 +582,7 @@ export function LineItemsPreviewPanel({
               <table className="w-full">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <th colSpan={6} className="px-4 py-2 text-left text-sm font-semibold text-gray-950 bg-white border-b">
+                    <th colSpan={7} className="px-4 py-2 text-left text-sm font-semibold text-gray-950 bg-white border-b">
                       Invoice Line Items
                     </th>
                   </tr>
@@ -568,6 +593,7 @@ export function LineItemsPreviewPanel({
                     <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
+                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase w-16"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -577,18 +603,7 @@ export function LineItemsPreviewPanel({
                       className="bg-white hover:bg-gray-50"
                     >
                       <td className="px-3 py-2 text-sm text-gray-950">
-                        <div className="flex items-center gap-2">
-                          {line.line_no}
-                          {isEditMode && (
-                            <button
-                              onClick={() => handleRemoveLine(index)}
-                              className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded"
-                              title="Remove line"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </button>
-                          )}
-                        </div>
+                        {line.line_no}
                       </td>
                       <td className="px-3 py-2 text-sm text-gray-950">
                         {isEditMode ? (
@@ -644,12 +659,23 @@ export function LineItemsPreviewPanel({
                       <td className="px-3 py-2 text-sm text-right font-medium text-gray-950">
                         {formatCurrency(line.line_total)}
                       </td>
+                      <td className="px-3 py-2 text-sm text-center">
+                        {isEditMode && (
+                          <button
+                            onClick={() => handleRemoveLine(index)}
+                            className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                            title="Remove line"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        )}
+                      </td>
                     </tr>
                   ))}
                   {/* Add new line button row */}
                   {isEditMode && (
                     <tr className="bg-gray-50 hover:bg-gray-100">
-                      <td colSpan={6} className="px-3 py-2">
+                      <td colSpan={7} className="px-3 py-2">
                         <button
                           onClick={handleAddLine}
                           className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 font-medium"
@@ -669,6 +695,7 @@ export function LineItemsPreviewPanel({
                     <td className="px-3 py-2 text-right text-sm font-bold text-gray-950">
                       {formatCurrency(editableLines.reduce((sum, line) => sum + line.line_total, 0))}
                     </td>
+                    <td></td>
                   </tr>
                 </tfoot>
               </table>

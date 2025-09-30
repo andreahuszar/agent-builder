@@ -115,7 +115,7 @@ export function ValidatedEditableField({
       ? 'border-gray-300' // Keep normal border for valid fields
       : 'border-red-500 focus:ring-red-500';
 
-  const iconColor = isValid && !isUnknownVendor ? 'text-green-600' : 'text-red-600';
+  const iconColor = isValid && !isUnknownVendor ? 'text-green-600 opacity-60' : 'text-red-600';
   const Icon = isValid && !isUnknownVendor ? Check : X;
 
   // For currency type, use a special input handler

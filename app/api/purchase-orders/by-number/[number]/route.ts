@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { isMockPO, getMockPOByNumber } from '@/app/services/mockPOService';
 
 export async function GET(
   request: NextRequest,
@@ -7,6 +8,18 @@ export async function GET(
 ) {
   try {
     const { number } = await context.params;
+
+    // Check if this is a mock PO
+    if (isMockPO(number)) {
+      console.log(`[MockPO] Fetching mock PO: ${number}`);
+      const mockPO = getMockPOByNumber(number);
+      if (mockPO) {
+        console.log(`[MockPO] Found mock PO: ${number}`);
+        return NextResponse.json(mockPO);
+      }
+      console.log(`[MockPO] Mock PO not found: ${number}`);
+      return NextResponse.json(null);
+    }
     
     const poHeader = await prisma.po_headers.findFirst({
       where: { po_number: number },

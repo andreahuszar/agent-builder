@@ -37,9 +37,12 @@ import InvoiceAgingChart from './InvoiceAgingChart';
 import InvoiceDueSoonChart from './InvoiceDueSoonChart';
 import BlockedInvoiceAnalysis from './BlockedInvoiceAnalysis';
 import { QuickFixesModal } from './QuickFixesModal';
+import { RecommendationsDrawer } from './RecommendationsDrawer';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { cn } from '@/lib/utils';
 import { getChartsInDrawerPreference } from '@/app/utils/cookies';
+import { FilterPreset } from '@/app/types/recommendations';
+import { Sparkles } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -513,6 +516,9 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
   const [chartsInDrawer, setChartsInDrawer] = useState(false);
   const [bannerExpanded, setBannerExpanded] = useState(false);
 
+  // Recommendations state
+  const [recommendationsOpen, setRecommendationsOpen] = useState(false);
+
   const router = useRouter();
 
   // Load preferences on mount
@@ -862,6 +868,31 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
       'Missing Vendor ID'
     ]);
     setSelectedExceptions(fieldIssues);
+  };
+
+  // Handle applying filter presets from recommendations
+  const handleApplyRecommendationFilter = (preset: FilterPreset) => {
+    // Clear all filters if requested
+    if (preset.clearOthers) {
+      setSelectedVendors(new Set());
+      setSelectedExceptions(new Set());
+      setSelectedApprovers(new Set());
+      setActiveQuickFilters(new Set());
+    }
+
+    // Apply filter preset
+    if (preset.exceptions) {
+      setSelectedExceptions(preset.exceptions);
+    }
+    if (preset.vendors) {
+      setSelectedVendors(preset.vendors);
+    }
+    if (preset.approvers) {
+      setSelectedApprovers(preset.approvers);
+    }
+    if (preset.quickFilters) {
+      setActiveQuickFilters(preset.quickFilters);
+    }
   };
 
   // Get display text for approver filter
@@ -1281,7 +1312,8 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
 
     return (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-3 py-1.5 mb-3">
-        <div className="flex items-center divide-x divide-gray-100">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center divide-x divide-gray-100">
           <div className="flex items-center gap-1.5 pr-4">
             <Clock className="h-3 w-3 text-purple-900" />
             <span className="text-xs text-gray-950">
@@ -1359,6 +1391,16 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
               </button>
             </div>
           )} */}
+          </div>
+
+          {/* Recommendations button - right-aligned */}
+          <button
+            onClick={() => setRecommendationsOpen(true)}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-purple-600 text-purple-600 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+          >
+            <Sparkles className="h-3.5 w-3.5" />
+            Recommendations
+          </button>
         </div>
       </div>
     );
@@ -1939,6 +1981,29 @@ export default function EnhancedInvoicesClient({ initialInvoices }: EnhancedInvo
           invoices={currentTabInvoices as any}
         />
       )} */}
+
+      {/* Recommendations Drawer */}
+      <RecommendationsDrawer
+        isOpen={recommendationsOpen}
+        onClose={() => setRecommendationsOpen(false)}
+        invoices={currentTabInvoices}
+        context={{
+          activeTab,
+          invoiceTypeFilter,
+          currentFilters: {
+            selectedVendors,
+            selectedExceptions,
+            selectedApprovers,
+            activeQuickFilters,
+          },
+        }}
+        onApplyFilter={handleApplyRecommendationFilter}
+        onQuickAction={(actionId, recommendation) => {
+          // Handle quick actions (contact, request, batch operations)
+          console.log('Quick action:', actionId, recommendation);
+          // TODO: Implement action handlers
+        }}
+      />
     </>
   );
 }

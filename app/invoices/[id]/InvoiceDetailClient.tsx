@@ -10,6 +10,7 @@ import { PODocumentTable } from '@/app/components/invoices/comparison/PODocument
 import { GRDocumentTable } from '@/app/components/invoices/comparison/GRDocumentTable';
 import { GRDocumentPreview } from '@/app/components/invoices/comparison/GRDocumentPreview';
 import { useSelection } from '@/app/context/SelectionContext';
+import { CommentsDrawer } from '@/app/components/invoices/CommentsDrawer';
 
 interface InvoiceDetailClientProps {
   invoiceId: string;
@@ -94,6 +95,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   };
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -378,12 +380,20 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         showSaveButton={true}
         onSaveClick={handleSave}
         isSaving={isSaving}
+        onCommentsClick={() => setIsCommentsOpen(true)}
       />
-      
+
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden">
         {renderContent()}
       </div>
+
+      {/* Comments Drawer */}
+      <CommentsDrawer
+        invoiceId={invoiceId}
+        isOpen={isCommentsOpen}
+        onClose={() => setIsCommentsOpen(false)}
+      />
     </div>
   );
 }

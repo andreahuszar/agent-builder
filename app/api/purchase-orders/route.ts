@@ -1,8 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { getAllMockPOs } from '@/app/services/mockPOService';
 
 export async function GET(request: NextRequest) {
   try {
+    // Check if we should use mock data
+    const useMockData = process.env.USE_MOCK_DATA === 'true' || process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+    if (useMockData) {
+      console.log(`[MockPO] Fetching all mock POs`);
+      const mockPOs = getAllMockPOs();
+
+      // Transform to match expected format
+      const purchaseOrders = mockPOs.map(po => ({
+        id: po.id,
+        po_number: po.po_number,
+        vendor_name: po.vendor_name,
+        order_date: po.order_date,
+        status: po.status,
+        currency: po.currency,
+        created_at: po.order_date,
+        total_amount: po.total
+      }));
+
+      console.log(`[MockPO] Successfully fetched ${purchaseOrders.length} mock purchase orders`);
+      return NextResponse.json({
+        purchaseOrders,
+        count: purchaseOrders.length
+      });
+    }
     const poHeaders = await prisma.po_headers.findMany({
       include: {
         vendors: true,

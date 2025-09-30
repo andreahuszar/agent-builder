@@ -235,7 +235,7 @@ export function InvoiceTabs({
         key={tab.id}
         onClick={() => setActiveTab(tab.id)}
         className={`
-          group relative flex-1 py-3 px-3 text-center text-sm font-medium 
+          group relative flex-1 h-full px-3 text-center text-sm font-medium flex items-center justify-center
           transition-colors focus:z-10
           ${tab.id === 'matching' && tab.hasIssues
             ? 'text-red-700 hover:text-red-700'
@@ -324,8 +324,8 @@ export function InvoiceTabs({
     <Tooltip.Provider>
       <div className="flex flex-col h-full w-full bg-white overflow-hidden">
         {/* Tab Navigation */}
-        <div className="border-b border-gray-200 flex-shrink-0" ref={tabContainerRef}>
-          <nav className="flex -mb-px" aria-label="Tabs">
+        <div className="border-b border-gray-200 flex-shrink-0 h-[45px]" ref={tabContainerRef}>
+          <nav className="flex items-center h-full relative" aria-label="Tabs">
             {tabs.map((tab) => renderTabButton(tab))}
           </nav>
         </div>

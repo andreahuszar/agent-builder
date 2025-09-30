@@ -1,15 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Check, 
-  X, 
+import {
+  Check,
+  X,
   AlertTriangle,
   Eye,
   EyeOff,
   Package,
   Edit2,
-  Save
+  Save,
+  Copy,
+  GitBranch,
+  Trash2,
+  MoreVertical,
+  Link2
 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 
@@ -22,6 +27,9 @@ interface LineItem {
   unit_price: number;
   net_amount: number;
   line_total: number;
+  po_line_id?: string;
+  gr_line_id?: string;
+  ses_line_id?: string;
 }
 
 interface EnhancedLineItemsTabV2Props {
@@ -61,6 +69,43 @@ export function EnhancedLineItemsTabV2({
 }: EnhancedLineItemsTabV2Props) {
   const [showComparison, setShowComparison] = useState(false);
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
+  const [selectedLineForAction, setSelectedLineForAction] = useState<LineItem | null>(null);
+  const [splitModalOpen, setSplitModalOpen] = useState(false);
+  const [poLineSelectorOpen, setPOLineSelectorOpen] = useState(false);
+
+  // Action handlers
+  const handleSplitLine = (lineId: string) => {
+    const line = lines.find(l => l.id === lineId);
+    if (line) {
+      setSelectedLineForAction(line);
+      setSplitModalOpen(true);
+    }
+  };
+
+  const handleCopyLine = (line: LineItem) => {
+    const newLine = {
+      ...line,
+      id: undefined, // Will be generated
+      line_no: lines.length + 1,
+    };
+    onLinesUpdate?.([...lines, newLine]);
+  };
+
+  const handleDeleteLine = (lineId: string) => {
+    if (confirm('Are you sure you want to delete this line?')) {
+      onLinesUpdate?.(lines.filter(l => l.id !== lineId));
+    }
+  };
+
+  const handleMoreActions = (lineId: string) => {
+    // Placeholder for dropdown menu (future implementation)
+    console.log('More actions menu for line:', lineId);
+  };
+
+  const handleReassignPOLine = (line: LineItem) => {
+    setSelectedLineForAction(line);
+    setPOLineSelectorOpen(true);
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -295,9 +340,9 @@ export function EnhancedLineItemsTabV2({
           <div className="col-span-2">Status</div>
           <div className="col-span-3">Description</div>
           <div className="col-span-2 text-center">Qty</div>
-          <div className="col-span-2 text-right">Unit Price</div>
+          <div className="col-span-1 text-right">Unit Price</div>
           <div className="col-span-2 text-right">Total</div>
-          <div className="col-span-1"></div>
+          <div className="col-span-2 text-right">Actions</div>
         </div>
       </div>
 
@@ -343,7 +388,7 @@ export function EnhancedLineItemsTabV2({
                 </div>
                 
                 {/* Unit Price */}
-                <div className="col-span-2 text-right">
+                <div className="col-span-1 text-right">
                   <div className="flex items-center justify-end">
                     <span className="text-sm font-medium text-gray-950">
                       {formatCurrency(line.unit_price)}
@@ -356,7 +401,7 @@ export function EnhancedLineItemsTabV2({
                     </div>
                   )}
                 </div>
-                
+
                 {/* Total */}
                 <div className="col-span-2 text-right">
                   <div className="text-sm font-semibold text-gray-950">
@@ -368,18 +413,131 @@ export function EnhancedLineItemsTabV2({
                     </div>
                   )}
                 </div>
-                
+
                 {/* Actions */}
-                <div className="col-span-1 text-right">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingLineId(line.id || null);
-                    }}
-                    className="p-1 text-gray-600 hover:text-purple-600"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </button>
+                <div className="col-span-2 flex items-center justify-end gap-1">
+                  <Tooltip.Root>
+                    <Tooltip.Trigger asChild>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSplitLine(line.id || '');
+                        }}
+                        className="p-1.5 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors"
+                        aria-label="Split line"
+                      >
+                        <GitBranch className="h-4 w-4" />
+                      </button>
+                    </Tooltip.Trigger>
+                    <Tooltip.Portal>
+                      <Tooltip.Content
+                        className="z-50 overflow-hidden rounded-md bg-gray-900 px-3 py-1.5 text-xs text-white shadow-md"
+                        sideOffset={5}
+                      >
+                        Split Line
+                        <Tooltip.Arrow className="fill-gray-900" />
+                      </Tooltip.Content>
+                    </Tooltip.Portal>
+                  </Tooltip.Root>
+
+                  <Tooltip.Root>
+                    <Tooltip.Trigger asChild>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleCopyLine(line);
+                        }}
+                        className="p-1.5 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                        aria-label="Copy line"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </button>
+                    </Tooltip.Trigger>
+                    <Tooltip.Portal>
+                      <Tooltip.Content
+                        className="z-50 overflow-hidden rounded-md bg-gray-900 px-3 py-1.5 text-xs text-white shadow-md"
+                        sideOffset={5}
+                      >
+                        Copy Line
+                        <Tooltip.Arrow className="fill-gray-900" />
+                      </Tooltip.Content>
+                    </Tooltip.Portal>
+                  </Tooltip.Root>
+
+                  {/* Reassign PO Line - Only show if line is linked to a PO */}
+                  {line.po_line_id && (
+                    <Tooltip.Root>
+                      <Tooltip.Trigger asChild>
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleReassignPOLine(line);
+                          }}
+                          className="p-1.5 text-gray-600 hover:text-orange-600 hover:bg-orange-50 rounded transition-colors"
+                          aria-label="Reassign PO line"
+                        >
+                          <Link2 className="h-4 w-4" />
+                        </button>
+                      </Tooltip.Trigger>
+                      <Tooltip.Portal>
+                        <Tooltip.Content
+                          className="z-50 overflow-hidden rounded-md bg-gray-900 px-3 py-1.5 text-xs text-white shadow-md"
+                          sideOffset={5}
+                        >
+                          Reassign PO Line
+                          <Tooltip.Arrow className="fill-gray-900" />
+                        </Tooltip.Content>
+                      </Tooltip.Portal>
+                    </Tooltip.Root>
+                  )}
+
+                  <Tooltip.Root>
+                    <Tooltip.Trigger asChild>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteLine(line.id || '');
+                        }}
+                        className="p-1.5 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                        aria-label="Delete line"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    </Tooltip.Trigger>
+                    <Tooltip.Portal>
+                      <Tooltip.Content
+                        className="z-50 overflow-hidden rounded-md bg-gray-900 px-3 py-1.5 text-xs text-white shadow-md"
+                        sideOffset={5}
+                      >
+                        Delete Line
+                        <Tooltip.Arrow className="fill-gray-900" />
+                      </Tooltip.Content>
+                    </Tooltip.Portal>
+                  </Tooltip.Root>
+
+                  <Tooltip.Root>
+                    <Tooltip.Trigger asChild>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleMoreActions(line.id || '');
+                        }}
+                        className="p-1.5 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
+                        aria-label="More actions"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </button>
+                    </Tooltip.Trigger>
+                    <Tooltip.Portal>
+                      <Tooltip.Content
+                        className="z-50 overflow-hidden rounded-md bg-gray-900 px-3 py-1.5 text-xs text-white shadow-md"
+                        sideOffset={5}
+                      >
+                        More Actions
+                        <Tooltip.Arrow className="fill-gray-900" />
+                      </Tooltip.Content>
+                    </Tooltip.Portal>
+                  </Tooltip.Root>
                 </div>
               </div>
             </div>

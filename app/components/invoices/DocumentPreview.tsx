@@ -214,7 +214,7 @@ export function DocumentPreview({
   const documentContent = (
     <div
       ref={containerRef}
-      className={`flex flex-col h-full bg-gray-50 rounded-lg overflow-hidden ${
+      className={`flex flex-col h-full bg-gray-50 overflow-hidden ${
         isFullscreen ? 'fixed inset-0 z-50 bg-gray-900' : ''
       }`}
     >
