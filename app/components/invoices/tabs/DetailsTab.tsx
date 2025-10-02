@@ -49,6 +49,7 @@ interface DetailsTabProps {
   hideAccountingSection?: boolean;
   hidePaymentSection?: boolean;
   hideDocumentLinksSection?: boolean;
+  showFieldErrors?: boolean;
 }
 
 export function DetailsTab({
@@ -60,7 +61,8 @@ export function DetailsTab({
   hideFloatingSaveButton = false,
   hideAccountingSection = false,
   hidePaymentSection = false,
-  hideDocumentLinksSection = false
+  hideDocumentLinksSection = false,
+  showFieldErrors = false
 }: DetailsTabProps) {
   // Calculate totals from line items for accuracy
   const calculatedSubtotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + (line.net_amount || 0), 0) || 0;
@@ -125,9 +127,9 @@ export function DetailsTab({
     setIsEditing(newEditState);
   }, [forceEditMode, forceReadOnly]);
 
-  // Validate required fields on mount for needs info mode
+  // Validate required fields on mount for needs info mode or when showFieldErrors is true
   useEffect(() => {
-    if (forceEditMode && isEditing) {
+    if ((forceEditMode && isEditing) || showFieldErrors) {
       // Use setTimeout to avoid state update issues
       const timer = setTimeout(() => {
         // Clear any existing errors first
@@ -187,7 +189,7 @@ export function DetailsTab({
 
       return () => clearTimeout(timer);
     }
-  }, [forceEditMode, isEditing, invoiceData.id]); // Only re-run when invoice changes or edit mode changes
+  }, [forceEditMode, isEditing, showFieldErrors, invoiceData.id]); // Only re-run when invoice changes or edit/show mode changes
 
   // Run validations
   const validationResults = useMemo(() => {
@@ -249,6 +251,20 @@ export function DetailsTab({
     }
     if (!calculatedSubtotal || calculatedSubtotal === 0) return '0.0';
     return ((calculatedTaxTotal / calculatedSubtotal) * 100).toFixed(1);
+  };
+
+  // Helper function to check if a field has errors
+  const hasFieldError = (fieldName: string) => {
+    return fieldErrors.some(e => e.field === fieldName);
+  };
+
+  // Helper to get read-only field styling with error highlighting
+  const getReadOnlyFieldClass = (fieldName: string, defaultValue?: string) => {
+    const baseClass = 'text-sm font-medium';
+    if (showFieldErrors && hasFieldError(fieldName)) {
+      return `${baseClass} text-red-700 border-l-2 border-red-500 pl-2 bg-red-50 py-1 rounded`;
+    }
+    return `${baseClass} text-gray-950`;
   };
 
   const getStatusBadge = (status: string) => {
@@ -429,11 +445,12 @@ export function DetailsTab({
       <div className="h-full flex flex-col relative">
         {/* Scrollable Content Area - Now takes full height */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative">
-          {/* Field Error Indicator - Only show in needs info mode when editing */}
-          {forceEditMode && isEditing && fieldErrors.length > 0 && (
+          {/* Field Error Indicator - Show when editing OR when showFieldErrors is true */}
+          {((forceEditMode && isEditing) || showFieldErrors) && fieldErrors.length > 0 && (
             <FieldErrorIndicator
               errors={fieldErrors}
               onDismiss={clearErrors}
+              readOnly={forceReadOnly || showFieldErrors}
             />
           )}
 
@@ -460,7 +477,7 @@ export function DetailsTab({
                     fieldName="invoice_number"
                   />
                 ) : (
-                  <p className="text-sm font-medium text-gray-950">{invoiceData.invoice_number}</p>
+                  <p className={getReadOnlyFieldClass('invoice_number')}>{invoiceData.invoice_number || 'Not provided'}</p>
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['invoice_date'] = el}>
@@ -477,7 +494,7 @@ export function DetailsTab({
                     fieldName="invoice_date"
                   />
                 ) : (
-                  <p className="text-sm font-medium text-gray-950">{formatDate(invoiceData.invoice_date)}</p>
+                  <p className={getReadOnlyFieldClass('invoice_date')}>{formatDate(invoiceData.invoice_date) || 'Not provided'}</p>
                 )}
               </div>
               <div>
@@ -495,7 +512,7 @@ export function DetailsTab({
                   />
                 ) : (
                   <div className="flex items-center gap-2">
-                    <p className="text-sm font-medium text-gray-950">{formatDate(invoiceData.due_date)}</p>
+                    <p className={getReadOnlyFieldClass('due_date')}>{formatDate(invoiceData.due_date) || 'Not provided'}</p>
                     {(() => {
                       const aging = getAgingInfo(invoiceData.due_date);
                       return aging ? (
@@ -521,7 +538,7 @@ export function DetailsTab({
                   />
                 ) : (
                   <div className="flex items-start gap-2">
-                    <p className="text-sm font-medium text-gray-950">{invoiceData.vendor_name_snapshot}</p>
+                    <p className={getReadOnlyFieldClass('vendor_name_snapshot')}>{invoiceData.vendor_name_snapshot || 'Not provided'}</p>
                     {invoiceData.vendor_is_verified === false && (
                       <Tooltip.Provider>
                         <Tooltip.Root>
@@ -560,7 +577,7 @@ export function DetailsTab({
                     placeholder="e.g., TAX-12345"
                   />
                 ) : (
-                  <p className="text-sm font-medium text-gray-950">
+                  <p className={getReadOnlyFieldClass('vendor_tax_id_snapshot')}>
                     {invoiceData.vendor_tax_id_snapshot || 'Not provided'}
                   </p>
                 )}
@@ -579,10 +596,10 @@ export function DetailsTab({
                     placeholder="Enter PO Number"
                   />
                 ) : (
-                  <p className="text-sm font-medium text-gray-950">
+                  <p className={getReadOnlyFieldClass('po_numbers_cached')}>
                     {invoiceData.po_numbers_cached?.length > 0
                       ? invoiceData.po_numbers_cached[0]
-                      : 'PO Missing'}
+                      : 'Not provided'}
                   </p>
                 )}
               </div>
@@ -612,7 +629,7 @@ export function DetailsTab({
           <div className="px-10 py-4 bg-white">
             {/* First Row: Subtotal, Currency, Tax Rate */}
             <div className={`grid ${getGridCols()} gap-4`}>
-              <div>
+              <div ref={(el) => fieldRefs.current['subtotal'] = el}>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Subtotal
                 </label>
@@ -626,12 +643,12 @@ export function DetailsTab({
                     currency={editedData.currency}
                   />
                 ) : (
-                  <p className="text-sm font-medium text-gray-950">
+                  <p className={getReadOnlyFieldClass('subtotal')}>
                     {formatCurrency(invoiceData.subtotal || calculatedSubtotal, invoiceData.currency)}
                   </p>
                 )}
               </div>
-              <div>
+              <div ref={(el) => fieldRefs.current['currency'] = el}>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
                   Currency
                 </label>
@@ -650,7 +667,7 @@ export function DetailsTab({
                     ]}
                   />
                 ) : (
-                  <p className="text-sm font-medium text-gray-950">{invoiceData.currency}</p>
+                  <p className={getReadOnlyFieldClass('currency')}>{invoiceData.currency || 'Not provided'}</p>
                 )}
               </div>
               <div>
@@ -753,7 +770,7 @@ export function DetailsTab({
                       currency={editedData.currency}
                     />
                   ) : (
-                    <p className="text-sm font-bold text-gray-950">
+                    <p className={`${getReadOnlyFieldClass('total')} font-bold`}>
                       {formatCurrency(invoiceData.total || calculatedTotal, invoiceData.currency)}
                     </p>
                   )}

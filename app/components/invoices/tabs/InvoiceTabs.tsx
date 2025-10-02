@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FileText, Package, GitCompare, Paperclip, Clock, Check, AlertTriangle, CheckCircle, List } from 'lucide-react';
+import { FileText, Package, GitCompare, Paperclip, Clock, Check, AlertTriangle, CheckCircle, List, MessageSquare } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { DetailsTab } from './DetailsTab';
 import { LineItemsTab } from './LineItemsTab';
@@ -10,9 +10,10 @@ import { LineItemsPreviewPanel } from '../preview/LineItemsPreviewPanel';
 import { MatchingTab } from './MatchingTab';
 import { AttachmentsTab } from './AttachmentsTab';
 import { ActivityTab } from './ActivityTab';
+import { CommunicationTab } from './CommunicationTab';
 import { InvoiceValidator } from '@/app/utils/validationService';
 
-export type TabId = 'details' | 'line-items' | 'matching' | 'attachments' | 'activity';
+export type TabId = 'details' | 'line-items' | 'matching' | 'attachments' | 'activity' | 'communication';
 export type LayoutMode = 'compact' | 'medium' | 'large';
 
 interface InvoiceTabsProps {
@@ -29,6 +30,9 @@ interface InvoiceTabsProps {
   forceEditMode?: boolean;
   forceReadOnly?: boolean;
   hideComparison?: boolean;
+  hideAttachments?: boolean;
+  showCommunication?: boolean;
+  showFieldErrors?: boolean;
 }
 
 export function InvoiceTabs({
@@ -45,6 +49,9 @@ export function InvoiceTabs({
   forceEditMode = false,
   forceReadOnly = false,
   hideComparison = false,
+  hideAttachments = false,
+  showCommunication = false,
+  showFieldErrors = false,
 }: InvoiceTabsProps) {
   // Determine initial tab based on invoice status
   const getInitialTab = (): TabId => {
@@ -222,12 +229,29 @@ export function InvoiceTabs({
       label: 'Activity',
       icon: Clock,
     },
+    {
+      id: 'communication' as TabId,
+      label: 'Communication',
+      icon: MessageSquare,
+    },
   ];
 
   // Filter tabs based on mode
-  const tabs = isNeedsInfo
-    ? allTabs.filter(tab => tab.id !== 'matching' && tab.id !== 'line-items') // Hide Exceptions and Line Items tabs in needs info mode
-    : allTabs;
+  const tabs = allTabs.filter(tab => {
+    // Hide Exceptions and Line Items tabs in needs info mode
+    if (isNeedsInfo && (tab.id === 'matching' || tab.id === 'line-items')) {
+      return false;
+    }
+    // Hide attachments if hideAttachments prop is true
+    if (tab.id === 'attachments' && hideAttachments) {
+      return false;
+    }
+    // Hide communication if showCommunication prop is false
+    if (tab.id === 'communication' && !showCommunication) {
+      return false;
+    }
+    return true;
+  });
 
   const renderTabButton = (tab: any) => {
     const tabContent = (
@@ -342,6 +366,7 @@ export function InvoiceTabs({
             hideFloatingSaveButton={forceEditMode}
             hideAccountingSection={forceEditMode}
             hidePaymentSection={forceEditMode}
+            showFieldErrors={showFieldErrors}
           />
         )}
         {activeTab === 'line-items' && (
@@ -383,6 +408,12 @@ export function InvoiceTabs({
         {activeTab === 'activity' && (
           <ActivityTab
             invoiceId={invoiceId}
+          />
+        )}
+        {activeTab === 'communication' && (
+          <CommunicationTab
+            invoiceId={invoiceId}
+            invoiceNumber={invoiceData?.invoice_number}
           />
         )}
       </div>

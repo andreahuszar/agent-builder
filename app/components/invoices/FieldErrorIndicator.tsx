@@ -12,9 +12,10 @@ export interface FieldError {
 interface FieldErrorIndicatorProps {
   errors: FieldError[];
   onDismiss?: () => void;
+  readOnly?: boolean;
 }
 
-export function FieldErrorIndicator({ errors, onDismiss }: FieldErrorIndicatorProps) {
+export function FieldErrorIndicator({ errors, onDismiss, readOnly = false }: FieldErrorIndicatorProps) {
   const [currentErrorIndex, setCurrentErrorIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
 
@@ -23,22 +24,25 @@ export function FieldErrorIndicator({ errors, onDismiss }: FieldErrorIndicatorPr
       setIsVisible(true);
       setCurrentErrorIndex(0);
 
-      // Automatically focus the first error field
-      const firstError = errors[0];
-      if (firstError?.element) {
-        // Small delay to ensure DOM is ready
-        setTimeout(() => {
-          firstError.element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          const inputElement = firstError.element?.querySelector('input, textarea, select');
-          if (inputElement instanceof HTMLElement) {
-            inputElement.focus();
-          }
-        }, 100);
+      // Only auto-focus in edit mode (not read-only)
+      if (!readOnly) {
+        // Automatically focus the first error field
+        const firstError = errors[0];
+        if (firstError?.element) {
+          // Small delay to ensure DOM is ready
+          setTimeout(() => {
+            firstError.element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            const inputElement = firstError.element?.querySelector('input, textarea, select');
+            if (inputElement instanceof HTMLElement) {
+              inputElement.focus();
+            }
+          }, 100);
+        }
       }
     } else {
       setIsVisible(false);
     }
-  }, [errors]);
+  }, [errors, readOnly]);
 
   const navigateToError = (index: number) => {
     if (index >= 0 && index < errors.length) {
@@ -77,6 +81,19 @@ export function FieldErrorIndicator({ errors, onDismiss }: FieldErrorIndicatorPr
 
   const currentError = errors[currentErrorIndex];
 
+  // Simplified banner for read-only mode
+  if (readOnly) {
+    return (
+      <div className="bg-red-50 border-b border-red-200 px-4 py-2 flex items-center gap-2 sticky top-0 z-20">
+        <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
+        <span className="text-sm font-medium text-red-900">
+          {errors.length === 1 ? '1 field needs attention' : `${errors.length} fields need attention`}
+        </span>
+      </div>
+    );
+  }
+
+  // Full banner with navigation for edit mode
   return (
     <div className="bg-red-50 border-b border-red-200 px-4 py-2 flex items-center justify-between sticky top-0 z-20">
       <div className="flex items-center gap-2">
