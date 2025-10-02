@@ -29,15 +29,13 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const isNeedsInfoMode = invoice?.status === 'needs_info' || invoice?.status === 'needs-info';
 
   useEffect(() => {
-    // Fetch match results and PO comparison data (skip for needs info)
-    if (!isNeedsInfoMode) {
-      fetchMatchResults();
-      fetchPoComparisonData();
-      if (initialInvoice?.po_id) {
-        fetchGrData();
-      }
+    // Fetch match results and PO comparison data for all invoices
+    fetchMatchResults();
+    fetchPoComparisonData();
+    if (initialInvoice?.po_id) {
+      fetchGrData();
     }
-  }, [invoiceId, initialInvoice?.po_id, isNeedsInfoMode]);
+  }, [invoiceId, initialInvoice?.po_id]);
 
   const fetchMatchResults = async () => {
     try {
@@ -132,181 +130,45 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       return <div className="h-full flex items-center justify-center text-gray-500">Loading...</div>;
     }
 
-    // For needs info status: Show editable fields on left, PDF on right
-    if (isNeedsInfoMode) {
-      return (
-        <ResizablePanel
-          defaultSizes={[25, 75]}
-          minSizes={[20, 40]}
-          storageKey={`invoice-needs-info-${invoiceId}`}
-          className="h-full"
-        >
-          {/* Invoice Tabs (Editable) - LEFT PANEL */}
-          <InvoiceTabs
-            invoiceId={invoiceId}
-            invoiceData={invoice}
-            matchResults={matchResults}
-            attachments={invoice.attachments || []}
-            selectedLineId={selectedLineId}
-            onLineSelect={selectInvoiceLine}
-            onDataUpdate={handleInvoiceUpdate}
-            storageKey={`invoice-${invoiceId}`}
-            poComparisonData={isNeedsInfoMode ? null : poComparisonData}
-            forceEditMode={true}
-            hideComparison={isNeedsInfoMode}
-          />
+    // Unified layout for ALL invoices: Fields on left (read-only), PDF on right
+    return (
+      <ResizablePanel
+        defaultSizes={[30, 70]}
+        minSizes={[25, 40]}
+        storageKey={`invoice-unified-${invoiceId}`}
+        className="h-full"
+      >
+        {/* Invoice Tabs (Read-only) - LEFT PANEL */}
+        <InvoiceTabs
+          invoiceId={invoiceId}
+          invoiceData={invoice}
+          matchResults={matchResults}
+          attachments={invoice.attachments || []}
+          selectedLineId={selectedLineId}
+          onLineSelect={selectInvoiceLine}
+          onDataUpdate={handleInvoiceUpdate}
+          storageKey={`invoice-${invoiceId}`}
+          poComparisonData={poComparisonData}
+          forceReadOnly={true}
+          hideComparison={false}
+        />
 
-          {/* Document Preview - RIGHT PANEL */}
-          <DocumentPreview
-            invoiceId={invoiceId}
-            hasAttachment={invoice.attachments && invoice.attachments.length > 0}
-            invoiceData={invoice}
-            matchResults={matchResults}
-            poComparisonData={poComparisonData}
-            hideLineComparison={isNeedsInfoMode}
-          />
-        </ResizablePanel>
-      );
-    }
-
-    // For other statuses: Show read-only fields only (no PDF)
-    if (viewMode === 'review') {
-      return (
-        <div className="h-full w-full">
-          {/* Read-only Invoice Tabs - FULL WIDTH */}
-          <InvoiceTabs
-            invoiceId={invoiceId}
-            invoiceData={invoice}
-            matchResults={matchResults}
-            attachments={invoice.attachments || []}
-            selectedLineId={selectedLineId}
-            onLineSelect={selectInvoiceLine}
-            onDataUpdate={handleInvoiceUpdate}
-            storageKey={`invoice-${invoiceId}`}
-            poComparisonData={poComparisonData}
-            forceReadOnly={true}
-          />
-        </div>
-      );
-    } else if (viewMode === '2-up') {
-      return (
-        <ResizablePanel
-          defaultSizes={[40, 60]}
-          minSizes={[25, 35]}
-          storageKey={`invoice-2up-${invoiceId}`}
-          className="h-full"
-        >
-          {/* Document Preview */}
-          <DocumentPreview
-            invoiceId={invoiceId}
-            hasAttachment={invoice.attachments && invoice.attachments.length > 0}
-            invoiceData={invoice}
-            matchResults={matchResults}
-            poComparisonData={poComparisonData}
-          />
-
-          {/* PO and Invoice Side by Side */}
-          <ResizablePanel
-            defaultSizes={[50, 50]}
-            minSizes={[30, 20]}
-            storageKey={`invoice-2up-inner-${invoiceId}`}
-            className="h-full"
-          >
-            <PODocumentTable
-              poNumber={invoice.po_numbers_cached?.[0]}
-              selectedLineId={selectedLineId}
-              onLineSelect={selectInvoiceLine}
-            />
-
-            <InvoiceTabs
-              invoiceId={invoiceId}
-              invoiceData={invoice}
-              matchResults={matchResults}
-              attachments={invoice.attachments || []}
-              selectedLineId={selectedLineId}
-              onLineSelect={selectInvoiceLine}
-              onDataUpdate={handleInvoiceUpdate}
-              storageKey={`invoice-${invoiceId}`}
-              compactMode={true}
-              forceReadOnly={true}
-            />
-          </ResizablePanel>
-        </ResizablePanel>
-      );
-    } else {
-      // 3-up mode with vertical stacking for comparison docs
-      return (
-        <MultiResizablePanel
-          defaultSizes={[35, 40, 25]}
-          minSizes={[25, 30, 20]}
-          storageKey={`invoice-3up-${invoiceId}`}
-          className="h-full"
-        >
-          {/* Document Preview */}
-          <div className="h-full w-full flex flex-col">
-            <DocumentPreview
-              invoiceId={invoiceId}
-              hasAttachment={invoice.attachments && invoice.attachments.length > 0}
-              invoiceData={invoice}
-              matchResults={matchResults}
-              poComparisonData={poComparisonData}
-            />
-          </div>
-
-          {/* Middle Panel: PO and GR/SES Stacked Vertically */}
-          <div className="h-full w-full flex flex-col">
-            <ResizablePanel
-              defaultSizes={[50, 50]}
-              minSizes={[40, 40]}
-              direction="vertical"
-              storageKey={`invoice-3up-vertical-${invoiceId}`}
-              className="h-full w-full"
-            >
-              {/* PO Table */}
-              <PODocumentTable
-                poNumber={invoice.po_numbers_cached?.[0]}
-                selectedLineId={selectedLineId}
-                onLineSelect={selectInvoiceLine}
-              />
-
-              {/* GR/SES Document */}
-              {hasGR ? (
-                <GRDocumentPreview
-                  poId={invoice.po_id}
-                  poNumber={invoice.po_numbers_cached?.[0]}
-                  selectedLineId={selectedLineId}
-                  onLineSelect={selectInvoiceLine}
-                />
-              ) : (
-                <GRDocumentTable
-                  poId={invoice.po_id}
-                  documentType="SES"
-                  selectedLineId={selectedLineId}
-                  onLineSelect={selectInvoiceLine}
-                />
-              )}
-            </ResizablePanel>
-          </div>
-
-          {/* Invoice Tabs */}
-          <div className="h-full w-full flex flex-col">
-            <InvoiceTabs
-              invoiceId={invoiceId}
-              invoiceData={invoice}
-              matchResults={matchResults}
-              attachments={invoice.attachments || []}
-              selectedLineId={selectedLineId}
-              onLineSelect={selectInvoiceLine}
-              onDataUpdate={handleInvoiceUpdate}
-              storageKey={`invoice-${invoiceId}`}
-              compactMode={true}
-              forceReadOnly={true}
-            />
-          </div>
-        </MultiResizablePanel>
-      );
-    }
+        {/* Document Preview - RIGHT PANEL */}
+        <DocumentPreview
+          invoiceId={invoiceId}
+          hasAttachment={invoice.attachments && invoice.attachments.length > 0}
+          invoiceData={invoice}
+          matchResults={matchResults}
+          poComparisonData={poComparisonData}
+          hideLineComparison={false}
+        />
+      </ResizablePanel>
+    );
   };
+
+  // OLD CODE - Commented out, will be removed in future cleanup
+  // Previous renderContent supported multiple view modes (review, 2-up, 3-up)
+  // Now using unified layout for all invoices
 
   // Determine PO status based on vendor configuration
   const getPOStatus = () => {

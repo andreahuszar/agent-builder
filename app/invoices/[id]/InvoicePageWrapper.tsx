@@ -44,15 +44,8 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
   // Check if this is a needs info status invoice
   const isNeedsInfoMode = initialInvoice.status === 'needs_info' || initialInvoice.status === 'needs-info';
 
-  const viewModeSwitcher = !isNeedsInfoMode ? (
-    <ViewModeSwitcher
-      currentMode={viewMode}
-      onModeChange={setViewMode}
-      hasGR={hasGR}
-      hasSES={hasSES}
-      hasPO={hasPO}
-    />
-  ) : undefined;
+  // ViewModeSwitcher hidden for unified layout - will be removed in future phase
+  const viewModeSwitcher = undefined;
 
   return (
     <InvoiceDetailLayout
