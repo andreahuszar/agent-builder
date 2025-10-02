@@ -340,7 +340,11 @@ export function EnhancedInvoiceTable({
   const [quickViewInvoiceId, setQuickViewInvoiceId] = useState<string | null>(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
   const [isActionsColumnVisible, setIsActionsColumnVisible] = useState(true);
+  const [isTableScrolled, setIsTableScrolled] = useState(false);
+  const [invoiceColumnWidth, setInvoiceColumnWidth] = useState(0);
   const actionsHeaderRef = useRef<HTMLTableCellElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const invoiceHeaderRef = useRef<HTMLTableCellElement>(null);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -374,6 +378,51 @@ export function EnhancedInvoiceTable({
     return () => {
       observer.disconnect();
     };
+  }, []);
+
+  // Measure Invoice No. column width with ResizeObserver
+  useEffect(() => {
+    const headerElement = invoiceHeaderRef.current;
+    if (!headerElement) return;
+
+    const updateWidth = () => {
+      const width = headerElement.offsetWidth;
+      setInvoiceColumnWidth(width);
+      console.log('Invoice column width updated:', width);
+    };
+
+    // Initial measurement
+    updateWidth();
+
+    // Watch for size changes
+    const resizeObserver = new ResizeObserver(() => {
+      updateWidth();
+    });
+
+    resizeObserver.observe(headerElement);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  // Detect horizontal scroll to show/hide sticky column shadow
+  useEffect(() => {
+    const scrollContainer = scrollContainerRef.current;
+    if (!scrollContainer) {
+      console.log('Scroll container ref not found');
+      return;
+    }
+
+    const handleScroll = () => {
+      const isScrolled = scrollContainer.scrollLeft > 0;
+      console.log('Scroll event:', { scrollLeft: scrollContainer.scrollLeft, isScrolled });
+      setIsTableScrolled(isScrolled);
+    };
+
+    scrollContainer.addEventListener('scroll', handleScroll);
+    console.log('Scroll listener added to container');
+    return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, []);
 
   // Get unique divisions from invoices
@@ -679,8 +728,15 @@ export function EnhancedInvoiceTable({
   const someSelected = selectedInvoices.size > 0 && selectedInvoices.size < invoices.length;
 
   return (
-    <div className="overflow-hidden bg-white shadow-sm ring-1 ring-gray-900/5 rounded-lg">
-      <div className="overflow-x-auto">
+    <div className="overflow-hidden bg-white shadow-sm ring-1 ring-gray-900/5 rounded-lg relative">
+      {/* Shadow overlay for sticky column - positioned at right edge of Invoice No. column */}
+      {isTableScrolled && invoiceColumnWidth > 0 && (
+        <div
+          className="absolute top-0 bottom-0 w-[16px] pointer-events-none z-20 bg-gradient-to-r from-black/[0.03] to-transparent"
+          style={{ left: `${64 + invoiceColumnWidth}px` }}
+        />
+      )}
+      <div ref={scrollContainerRef} className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
           <thead>
             <tr>
@@ -698,7 +754,9 @@ export function EnhancedInvoiceTable({
                   )}
                 </button>
               </th>
-              <th scope="col" className="sticky left-[64px] z-10 bg-white px-6 py-1.5 text-left text-sm font-semibold text-gray-950 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+              <th scope="col"
+                ref={invoiceHeaderRef}
+                className="sticky left-[64px] z-10 bg-white px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('invoice_number')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
@@ -1033,7 +1091,7 @@ export function EnhancedInvoiceTable({
                     </button>
                   </td>
                   <td className={cn(
-                    "sticky left-[64px] z-10 px-6 py-2.5 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]",
+                    "sticky left-[64px] z-10 px-6 py-2.5 whitespace-nowrap",
                     isSelected ? "bg-purple-50 group-hover:bg-purple-100" : "bg-white group-hover:bg-purple-50"
                   )}>
                     <div className="flex items-center gap-2">
@@ -1059,8 +1117,14 @@ export function EnhancedInvoiceTable({
                       <button
                         onClick={(e) => {
                           e.preventDefault();
-                          setQuickViewInvoiceId(invoice.id);
-                          setIsQuickViewOpen(true);
+                          if (isQuickViewOpen) {
+                            // Drawer already open - just switch invoice
+                            setQuickViewInvoiceId(invoice.id);
+                          } else {
+                            // Drawer closed - open with this invoice
+                            setQuickViewInvoiceId(invoice.id);
+                            setIsQuickViewOpen(true);
+                          }
                         }}
                         className="text-sm text-purple-600 hover:text-purple-700 font-medium"
                       >

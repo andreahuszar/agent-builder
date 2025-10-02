@@ -215,15 +215,7 @@ export function InvoiceQuickViewDrawer({ invoiceId, isOpen, onClose }: InvoiceQu
 
   return createPortal(
     <div className="fixed inset-0 z-50 overflow-hidden pointer-events-none">
-      {/* Backdrop */}
-      <div
-        className={`absolute inset-0 bg-black transition-opacity duration-300 pointer-events-auto ${
-          isVisible ? 'bg-opacity-30' : 'bg-opacity-0'
-        }`}
-        onClick={handleClose}
-      />
-
-      {/* Drawer */}
+      {/* Drawer - no backdrop to allow clicking on table below */}
       <div
         className={`absolute right-0 top-0 h-full w-[700px] bg-white shadow-2xl transform transition-transform duration-300 ease-out pointer-events-auto ${
           isVisible ? 'translate-x-0' : 'translate-x-full'
