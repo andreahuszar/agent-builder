@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import {
   FileText,
@@ -186,6 +186,142 @@ const getPOStatus = (invoice: Invoice) => {
   };
 };
 
+// Extracted ActionButtons component for reuse in both original and floating positions
+interface ActionButtonsProps {
+  invoice: Invoice;
+  activeTab?: string;
+  onDelete?: (invoiceId: string) => void;
+}
+
+function ActionButtons({ invoice, activeTab, onDelete }: ActionButtonsProps) {
+  return (
+    <div className="flex items-center justify-end gap-2">
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button className="p-0 hover:bg-gray-100 rounded transition-colors">
+              <UserPlus className="h-4 w-4 text-gray-700" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="bg-gray-800 text-white border-gray-800">
+            <p>Assign</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button className="p-0 hover:bg-gray-100 rounded transition-colors">
+              <MessageSquare className="h-4 w-4 text-gray-700" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent className="bg-gray-800 text-white border-gray-800">
+            <p>Comment</p>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button className="p-0 hover:bg-gray-100 rounded transition-colors">
+            <MoreHorizontal className="h-4 w-4 text-gray-700" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-52">
+          {activeTab === 'needs-info' ? (
+            <>
+              <DropdownMenuItem>Reject to Sender</DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => onDelete?.(invoice.id)}
+                className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+              >
+                <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                Archive
+              </DropdownMenuItem>
+            </>
+          ) : (
+            <>
+              {activeTab === 'blocked' ? (
+                invoice.type === 'PO' ? (
+                  <>
+                    <DropdownMenuItem>Send for Approval</DropdownMenuItem>
+                    <DropdownMenuItem>Reject to Sender</DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onDelete?.(invoice.id)}
+                      className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                      Archive
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <>
+                    <DropdownMenuItem>Send for Approval</DropdownMenuItem>
+                    <DropdownMenuItem
+                      onClick={() => onDelete?.(invoice.id)}
+                      className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                      Archive
+                    </DropdownMenuItem>
+                  </>
+                )
+              ) : activeTab === 'in-approval' && invoice.type === 'PO' ? (
+                <>
+                  <DropdownMenuItem>Reassign PO Approver</DropdownMenuItem>
+                  <DropdownMenuItem>Chase PO Approver</DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onDelete?.(invoice.id)}
+                    className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                    Archive
+                  </DropdownMenuItem>
+                </>
+              ) : activeTab === 'in-approval' && invoice.type === 'Non-PO' ? (
+                <>
+                  <DropdownMenuItem>Change Approver</DropdownMenuItem>
+                  <DropdownMenuItem>Chase Approver</DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onDelete?.(invoice.id)}
+                    className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                    Archive
+                  </DropdownMenuItem>
+                </>
+              ) : activeTab === 'ready-to-post' ? (
+                <>
+                  <DropdownMenuItem>Send for Approval</DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onDelete?.(invoice.id)}
+                    className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                    Archive
+                  </DropdownMenuItem>
+                </>
+              ) : (
+                <>
+                  <DropdownMenuItem>Send for Approval</DropdownMenuItem>
+                  <DropdownMenuItem>Change Approver</DropdownMenuItem>
+                  <DropdownMenuItem>Chase Approver</DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => onDelete?.(invoice.id)}
+                    className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2 text-red-600" />
+                    Archive
+                  </DropdownMenuItem>
+                </>
+              )}
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
 export function EnhancedInvoiceTable({
   invoices,
   selectedInvoices,
@@ -203,6 +339,8 @@ export function EnhancedInvoiceTable({
   const [divisionSearchQuery, setDivisionSearchQuery] = useState('');
   const [quickViewInvoiceId, setQuickViewInvoiceId] = useState<string | null>(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+  const [isActionsColumnVisible, setIsActionsColumnVisible] = useState(true);
+  const actionsHeaderRef = useRef<HTMLTableCellElement>(null);
 
   const handleSort = (field: SortField) => {
     if (sortField === field) {
@@ -212,6 +350,31 @@ export function EnhancedInvoiceTable({
       setSortDirection('asc');
     }
   };
+
+  // Set up Intersection Observer to detect Actions column visibility
+  useEffect(() => {
+    if (!actionsHeaderRef.current) return;
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          // When Actions column is visible (intersecting), hide floating actions
+          // When Actions column is not visible, show floating actions
+          setIsActionsColumnVisible(entry.isIntersecting);
+        });
+      },
+      {
+        root: actionsHeaderRef.current.closest('.overflow-x-auto'), // Use the scrollable container as root
+        threshold: 0.1, // Trigger when at least 10% visible
+      }
+    );
+
+    observer.observe(actionsHeaderRef.current);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, []);
 
   // Get unique divisions from invoices
   const uniqueDivisions = useMemo(() => {
@@ -838,7 +1001,7 @@ export function EnhancedInvoiceTable({
                   </button>
                 </th>
               )}
-              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
+              <th ref={actionsHeaderRef} scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
                 Actions
               </th>
             </tr>
@@ -850,7 +1013,7 @@ export function EnhancedInvoiceTable({
                 <tr
                   key={invoice.id}
                   className={cn(
-                    "group transition-colors",
+                    "group transition-colors relative",
                     isSelected ? "bg-purple-50 hover:bg-purple-100" : "hover:bg-purple-50"
                   )}
                 >
@@ -1191,164 +1354,17 @@ export function EnhancedInvoiceTable({
                     </td>
                   )}
                   <td className="px-6 py-2.5 whitespace-nowrap">
-                    <div className="flex items-center justify-end gap-2">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              className="p-0 hover:bg-gray-100 rounded transition-colors"
-                            >
-                              <UserPlus className="h-4 w-4 text-gray-700" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-gray-800 text-white border-gray-800">
-                            <p>Assign</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              className="p-0 hover:bg-gray-100 rounded transition-colors"
-                            >
-                              <MessageSquare className="h-4 w-4 text-gray-700" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-gray-800 text-white border-gray-800">
-                            <p>Comment</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button className="p-0 hover:bg-gray-100 rounded transition-colors">
-                            <MoreHorizontal className="h-4 w-4 text-gray-700" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-52">
-                          {activeTab === 'needs-info' ? (
-                            <>
-                              <DropdownMenuItem>
-                                Reject to Sender
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                onClick={() => onDelete?.(invoice.id)}
-                                className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
-                              >
-                                <Trash2 className="h-4 w-4 mr-2 text-red-600" />
-                                Archive
-                              </DropdownMenuItem>
-                            </>
-                          ) : (
-                            <>
-                              {activeTab === 'blocked' ? (
-                                // Mismatched/Blocked: no Change/Chase Approver
-                                invoice.type === 'PO' ? (
-                                  <>
-                                    <DropdownMenuItem>
-                                      Send for Approval
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem>
-                                      Reject to Sender
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => onDelete?.(invoice.id)}
-                                      className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2 text-red-600" />
-                                      Archive
-                                    </DropdownMenuItem>
-                                  </>
-                                ) : (
-                                  <>
-                                    <DropdownMenuItem>
-                                      Send for Approval
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem
-                                      onClick={() => onDelete?.(invoice.id)}
-                                      className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
-                                    >
-                                      <Trash2 className="h-4 w-4 mr-2 text-red-600" />
-                                      Archive
-                                    </DropdownMenuItem>
-                                  </>
-                                )
-                              ) : activeTab === 'in-approval' && invoice.type === 'PO' ? (
-                                // Pending approval (PO): no Send for Approval
-                                <>
-                                  <DropdownMenuItem>
-                                    Reassign PO Approver
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    Chase PO Approver
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => onDelete?.(invoice.id)}
-                                    className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2 text-red-600" />
-                                    Archive
-                                  </DropdownMenuItem>
-                                </>
-                              ) : activeTab === 'in-approval' && invoice.type === 'Non-PO' ? (
-                                // Pending approval (Non-PO): no Send for Approval, already with approver
-                                <>
-                                  <DropdownMenuItem>
-                                    Change Approver
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    Chase Approver
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => onDelete?.(invoice.id)}
-                                    className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2 text-red-600" />
-                                    Archive
-                                  </DropdownMenuItem>
-                                </>
-                              ) : activeTab === 'ready-to-post' ? (
-                                // Ready to post: only Send for Approval
-                                <>
-                                  <DropdownMenuItem>
-                                    Send for Approval
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => onDelete?.(invoice.id)}
-                                    className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2 text-red-600" />
-                                    Archive
-                                  </DropdownMenuItem>
-                                </>
-                              ) : (
-                                // Default actions (needs-info, all)
-                                <>
-                                  <DropdownMenuItem>
-                                    Send for Approval
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    Change Approver
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem>
-                                    Chase Approver
-                                  </DropdownMenuItem>
-                                  <DropdownMenuItem
-                                    onClick={() => onDelete?.(invoice.id)}
-                                    className="text-red-600 hover:bg-red-50 hover:text-red-600 focus:bg-red-50 focus:text-red-600"
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2 text-red-600" />
-                                    Archive
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </div>
+                    <ActionButtons invoice={invoice} activeTab={activeTab} onDelete={onDelete} />
                   </td>
+
+                  {/* Floating Actions - Sticky to viewport right edge, only visible when Actions column is scrolled out of view */}
+                  {!isActionsColumnVisible && (
+                    <td className="sticky right-0 px-4 py-2.5 bg-white rounded-l-lg shadow-[0_0_15px_rgba(0,0,0,0.08)] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto z-20">
+                      <div className="flex items-center">
+                        <ActionButtons invoice={invoice} activeTab={activeTab} onDelete={onDelete} />
+                      </div>
+                    </td>
+                  )}
                 </tr>
               );
             })}
