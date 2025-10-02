@@ -104,29 +104,29 @@ interface EnhancedInvoicesClientProps {
 // Tab options - contextual based on invoice type
 const getContextualTabs = (invoiceType: string) => {
   if (invoiceType === 'po') {
-    // PO mode: Hide Pending approval, show Mismatched only
+    // PO mode: Exceptions combines needs-info + mismatched
     return [
-      { id: 'needs-info', label: 'Needs info' },
-      { id: 'blocked', label: 'Mismatched' },
+      { id: 'exceptions', label: 'Exceptions' },
       { id: 'ready-to-post', label: 'Ready to post' },
+      { id: 'archived', label: 'Archived' },
       { id: 'all', label: 'All' }
     ];
   } else if (invoiceType === 'non-po') {
-    // Non-PO mode: Show all tabs with appropriate labels
+    // Non-PO mode: Exceptions combines needs-info + approval needed
     return [
-      { id: 'needs-info', label: 'Needs info' },
-      { id: 'blocked', label: 'Approval needed' },
+      { id: 'exceptions', label: 'Exceptions' },
       { id: 'in-approval', label: 'Pending approval' },
       { id: 'ready-to-post', label: 'Ready to post' },
+      { id: 'archived', label: 'Archived' },
       { id: 'all', label: 'All' }
     ];
   } else {
-    // All mode: Show all tabs with generic labels
+    // All mode: Exceptions combines needs-info + mismatched/blocked
     return [
-      { id: 'needs-info', label: 'Needs info' },
-      { id: 'blocked', label: 'Mismatched/Blocked' },
+      { id: 'exceptions', label: 'Exceptions' },
       { id: 'in-approval', label: 'Pending approval' },
       { id: 'ready-to-post', label: 'Ready to post' },
+      { id: 'archived', label: 'Archived' },
       { id: 'all', label: 'All' }
     ];
   }
@@ -514,14 +514,45 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
   const [selectedMetric, setSelectedMetric] = useState<'blocked' | 'overdue' | 'dueSoon' | null>(null);
   const [showQuickFixes, setShowQuickFixes] = useState(false);
 
-  // Tab state
-  const [activeTab, setActiveTab] = useState(initialTab);
+  // Tab state - Map old tab IDs to new 'exceptions' tab
+  const [activeTab, setActiveTab] = useState(() => {
+    if (initialTab === 'needs-info' || initialTab === 'blocked') {
+      return 'exceptions';
+    }
+    return initialTab;
+  });
 
   // Tab-specific filtering function
   const getTabInvoices = useCallback((tab: string, allInvoices: Invoice[]): Invoice[] => {
     switch(tab) {
+      case 'exceptions':
+        // Combines needs-info + blocked/mismatched
+        return allInvoices.filter(inv =>
+          // Needs info
+          inv.status === 'needs_info' ||
+          // OR Blocked/Mismatched (not in approval, has match issues)
+          (
+            !inv.approver &&
+            inv.status !== 'needs_info' &&
+            inv.match_status !== 'matched' &&
+            (
+              inv.status === 'requires_review' ||
+              inv.status === 'needs_review' ||
+              inv.status === 'blocked' ||
+              inv.match_status === 'exception' ||
+              inv.match_status === 'not_matched' ||
+              inv.match_status === 'unmatched' ||
+              inv.match_status === 'mismatch' ||
+              inv.match_status === 'over_tolerance' ||
+              inv.match_status === 'quantity_mismatch' ||
+              inv.match_status === 'amount_mismatch' ||
+              inv.match_status === 'line_mismatch'
+            )
+          )
+        );
+
       case 'needs-info':
-        // Invoices with missing critical data
+        // Invoices with missing critical data (legacy support)
         return allInvoices.filter(inv =>
           inv.status === 'needs_info'
         );
@@ -565,6 +596,10 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
           inv.status !== 'requires_review' &&
           inv.status !== 'needs_info' // Exclude needs_info
         );
+
+      case 'archived':
+        // Archived invoices - empty for now
+        return [];
 
       case 'all':
         // Show all invoices for the current type (PO/Non-PO filtering is handled upstream)
@@ -712,8 +747,8 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     // Filter to PO-related exceptions when in PO mode
     if (invoiceTypeFilter === 'po') {
       let list = Array.from(exceptions).filter(e => PO_INVOICE_ISSUES.includes(e));
-      // In blocked tab, curate to meaningful mismatches only
-      if (activeTab === 'blocked') {
+      // In exceptions tab, curate to meaningful mismatches only
+      if (activeTab === 'exceptions') {
         const whitelist = new Set([
           'Quantity Variance',
           'Quantity Mismatch',
@@ -733,7 +768,7 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
       return list.sort();
     } else if (invoiceTypeFilter === 'non-po') {
       let list = Array.from(exceptions).filter(e => NON_PO_INVOICE_ISSUES.includes(e));
-      if (activeTab === 'blocked') {
+      if (activeTab === 'exceptions') {
         const whitelist = new Set([
           'Amount Mismatch',
           'Vendor Not Verified',
@@ -749,9 +784,9 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     return Array.from(exceptions).sort();
   }, [invoices, invoiceTypeFilter, activeTab]);
 
-  // When switching to Blocked tab, drop disallowed selections from exceptions filter
+  // When switching to Exceptions tab, drop disallowed selections from exceptions filter
   useEffect(() => {
-    if (activeTab !== 'blocked') return;
+    if (activeTab !== 'exceptions') return;
     setSelectedExceptions(prev => {
       if (prev.size === 0) return prev;
       const allowed = new Set([
@@ -1056,8 +1091,8 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
 
     // Apply exception/issues filter
     if (selectedExceptions.size > 0) {
-      if (activeTab === 'needs-info') {
-        // Filter by missing fields in needs-info tab
+      if (activeTab === 'exceptions') {
+        // Filter by missing fields AND exceptions in exceptions tab
         filtered = filtered.filter(invoice => {
           const missingFields: string[] = [];
           if (!invoice.vendor_name_snapshot) missingFields.push('Missing Vendor');
@@ -1369,9 +1404,9 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
         return dueDate < now && inv.status !== 'paid';
       });
 
-      // For blocked tab, count all invoices as blocked (they're in this tab for a reason)
+      // For exceptions tab, count all invoices as blocked (they're in this tab for a reason)
       // Otherwise, look for specific blocked statuses
-      const blockedInvoices = activeTab === 'blocked' ?
+      const blockedInvoices = activeTab === 'exceptions' ?
         tabInvoices :
         tabInvoices.filter(inv =>
           inv.status === 'requires_review' ||
@@ -1473,8 +1508,8 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
               <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.overdue.value)}</span>
             </span>
           </div>
-          {/* Missing fields: only in Needs info (both PO and Non-PO) */}
-          {activeTab === 'needs-info' && (
+          {/* Missing fields: only in Exceptions tab (both PO and Non-PO) */}
+          {activeTab === 'exceptions' && (
             <button
               onClick={handleMissingFieldsClick}
               className="flex items-center gap-1.5 px-4 hover:bg-gray-50 rounded-md py-1 transition-colors"
@@ -1485,8 +1520,8 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
               </span>
             </button>
           )}
-          {/* Needs info + PO toggle: show Missing PO metric */}
-          {activeTab === 'needs-info' && invoiceTypeFilter === 'po' && (
+          {/* Exceptions + PO toggle: show Missing PO metric */}
+          {activeTab === 'exceptions' && invoiceTypeFilter === 'po' && (
             <button
               onClick={handleMissingPOClick}
               className="flex items-center gap-1.5 px-4 hover:bg-gray-50 rounded-md py-1 transition-colors"
@@ -1498,7 +1533,7 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
               </span>
             </button>
           )}
-          {activeTab === 'blocked' && (
+          {activeTab === 'exceptions' && (
             <div className="flex items-center gap-1.5 px-4">
               <AlertTriangle className="h-3 w-3 text-red-500" />
               <span className="text-xs text-gray-950">
@@ -1525,8 +1560,8 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
               </div>
             </>
           )}
-          {/* Right-aligned Quick Fixes only for PO + Mismatched/Blocked - Hidden for now */}
-          {/* {activeTab === 'blocked' && invoiceTypeFilter === 'po' && (
+          {/* Right-aligned Quick Fixes only for PO + Exceptions - Hidden for now */}
+          {/* {activeTab === 'exceptions' && invoiceTypeFilter === 'po' && (
             <div className="ml-auto pl-4">
               <button
                 onClick={() => setShowQuickFixes(true)}
@@ -1699,7 +1734,7 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
               {/* Exception/Issues Filter - Show based on tab and invoice type */}
               {activeTab !== 'ready-to-post' && (
                 <>
-                  {activeTab === 'needs-info' ? (
+                  {activeTab === 'exceptions' ? (
                     // Issues filter for needs-info tab
                     <DropdownMenu open={exceptionFilterOpen} onOpenChange={setExceptionFilterOpen}>
                       <DropdownMenuTrigger asChild>
@@ -2132,8 +2167,8 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
         />
       )}
 
-      {/* Quick Fixes Modal (PO + Mismatched/Blocked only) - Hidden for now */}
-      {/* {activeTab === 'blocked' && invoiceTypeFilter === 'po' && (
+      {/* Quick Fixes Modal (PO + Exceptions only) - Hidden for now */}
+      {/* {activeTab === 'exceptions' && invoiceTypeFilter === 'po' && (
         <QuickFixesModal
           open={showQuickFixes}
           onClose={() => setShowQuickFixes(false)}

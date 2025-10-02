@@ -379,6 +379,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         onSaveClick={handleSave}
         isSaving={isSaving}
         onCommentsClick={() => setIsCommentsOpen(true)}
+        commentsCount={3}
       />
 
       {/* Main Content Area */}

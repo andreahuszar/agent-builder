@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Check, AlertTriangle, X, ChevronDown, MessageSquare, FileCheck, FileText } from 'lucide-react';
+import { Check, AlertTriangle, X, ChevronDown, MessageSquare, FileCheck, FileText, Pause, Mail, Send, CheckCircle, Trash2 } from 'lucide-react';
 import { HelpdeskPill } from './HelpdeskPill';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
@@ -23,6 +23,7 @@ interface DiagnosticBannerProps {
   onSaveClick?: () => void;
   isSaving?: boolean;
   onCommentsClick?: () => void;
+  commentsCount?: number;
 }
 
 export function DiagnosticBanner({
@@ -43,6 +44,7 @@ export function DiagnosticBanner({
   onSaveClick,
   isSaving = false,
   onCommentsClick,
+  commentsCount = 0,
 }: DiagnosticBannerProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
 
@@ -229,17 +231,7 @@ export function DiagnosticBanner({
           disabled={isSaving}
           className="px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
         >
-          {isSaving ? 'Saving...' : 'Save & Validate'}
-        </button>
-
-        {/* Comments Button */}
-        <button
-          onClick={onCommentsClick}
-          className="px-3 py-1.5 text-sm bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
-          title="Add Comment"
-        >
-          <MessageSquare className="h-3.5 w-3.5" />
-          <span>Comments</span>
+          {isSaving ? 'Reprocessing...' : 'Reprocess'}
         </button>
 
         {/* Actions Dropdown */}
@@ -258,15 +250,77 @@ export function DiagnosticBanner({
               <button
                 onClick={() => {
                   setIsDropdownOpen(false);
-                  // Handle reject action
+                  // Handle on-hold action
                 }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors"
+                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors rounded-t-md flex items-center gap-2"
               >
-                Reject to Sender
+                <Pause className="h-4 w-4" />
+                <span>On-Hold</span>
+              </button>
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  // Handle email vendor action
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+              >
+                <Mail className="h-4 w-4" />
+                <span>Email Vendor</span>
+              </button>
+
+              <div className="border-t border-gray-200 my-1"></div>
+
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  // Handle post to ERP action
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+              >
+                <Send className="h-4 w-4" />
+                <span>Post to ERP</span>
+              </button>
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  // Handle resolve action
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+              >
+                <CheckCircle className="h-4 w-4" />
+                <span>Resolve</span>
+              </button>
+
+              <div className="border-t border-gray-200 my-1"></div>
+
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  // Handle archive action
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-red-50 hover:text-red-700 transition-colors rounded-b-md flex items-center gap-2 group"
+              >
+                <Trash2 className="h-4 w-4 group-hover:text-red-700" />
+                <span>Archive</span>
               </button>
             </div>
           )}
         </div>
+
+        {/* Comments Button */}
+        <button
+          onClick={onCommentsClick}
+          className="px-3 py-1.5 text-sm bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5 relative"
+          title="Add Comment"
+        >
+          <MessageSquare className="h-3.5 w-3.5" />
+          <span>Comments</span>
+          {commentsCount > 0 && (
+            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-semibold text-white bg-purple-900 rounded-full">
+              {commentsCount}
+            </span>
+          )}
+        </button>
       </div>
     </div>
   );

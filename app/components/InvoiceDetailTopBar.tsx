@@ -2,7 +2,6 @@
 
 import React, { memo } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
-import { CompactWorkflowProgress } from '@/app/components/invoices/CompactWorkflowProgress';
 
 interface InvoiceDetailTopBarProps {
   invoiceNumber: string;
@@ -61,13 +60,6 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
                   )}
                 </div>
               </div>
-            </div>
-          )}
-
-          {/* Workflow Progress - centered */}
-          {workflowStatus && documentType === 'invoice' && (
-            <div className="flex-1 flex justify-center">
-              <CompactWorkflowProgress currentStatus={workflowStatus} className="-mt-3" />
             </div>
           )}
 
