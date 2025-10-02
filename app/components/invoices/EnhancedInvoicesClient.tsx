@@ -93,6 +93,7 @@ interface Invoice {
   lines?: any[];
   invoice_lines?: any[];
   requisitioner?: string;
+  source?: 'db' | 'mock'; // Track invoice origin
 }
 
 interface EnhancedInvoicesClientProps {
@@ -445,23 +446,58 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
 
-  // Add mock data only on the client side after mount (hide DB-backed records)
+  // Fetch database invoices and merge with mock data on client side
   useEffect(() => {
-    const rawInvoices = [
-      // Only include mocked data to hide DB-backed invoices in lists
-      ...generateMockNeedsInfoInvoices(),
-      ...generateMockOverdueInvoices(),
-      ...generateMockDueSoonInvoices(),
-      ...generateMockBlockedInvoices(),
-      ...generateMockCreditNotes(),
-      ...generateMockProFormaInvoices()
-    ];
-    const combinedInvoices = rawInvoices.map(invoice => ({
-      ...generateSyntheticFields(invoice),
-      docType: invoice.docType || 'Invoice' // Default to 'Invoice' if not specified
-    }));
-    setInvoices(combinedInvoices);
-    setFilteredInvoices(combinedInvoices);
+    const loadInvoices = async () => {
+      let dbInvoices: Invoice[] = [];
+
+      // Fetch database invoices
+      try {
+        const response = await fetch('/api/invoices');
+        if (response.ok) {
+          const data = await response.json();
+          dbInvoices = (data.invoices || []).map((inv: any) => ({
+            ...inv,
+            source: 'db' as const,
+            docType: 'Invoice'
+          }));
+          console.log(`Loaded ${dbInvoices.length} database invoices`);
+        }
+      } catch (error) {
+        console.error('Failed to fetch database invoices:', error);
+        // Continue with mock-only mode
+      }
+
+      // Generate mock invoices
+      const mockInvoices = [
+        ...generateMockNeedsInfoInvoices(),
+        ...generateMockOverdueInvoices(),
+        ...generateMockDueSoonInvoices(),
+        ...generateMockBlockedInvoices(),
+        ...generateMockCreditNotes(),
+        ...generateMockProFormaInvoices()
+      ].map(invoice => ({
+        ...invoice,
+        source: 'mock' as const,
+        docType: invoice.docType || 'Invoice'
+      }));
+
+      // Merge database and mock invoices
+      const allInvoices = [...dbInvoices, ...mockInvoices];
+
+      // Apply synthetic fields to all invoices
+      const combinedInvoices = allInvoices.map(invoice => ({
+        ...generateSyntheticFields(invoice),
+        source: invoice.source, // Preserve source field
+        docType: invoice.docType || 'Invoice'
+      }));
+
+      console.log(`Total invoices: ${combinedInvoices.length} (${dbInvoices.length} DB + ${mockInvoices.length} mock)`);
+      setInvoices(combinedInvoices);
+      setFilteredInvoices(combinedInvoices);
+    };
+
+    loadInvoices();
   }, [initialInvoices]);
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
   const [pipelineLoading, setPipelineLoading] = useState(false);
@@ -1098,19 +1134,50 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
   }, [router]);
 
   const refreshInvoices = useCallback(async () => {
-    // Rebuild mock dataset; do not include DB-backed records
-    const rawInvoices = [
+    let dbInvoices: Invoice[] = [];
+
+    // Fetch database invoices
+    try {
+      const response = await fetch('/api/invoices');
+      if (response.ok) {
+        const data = await response.json();
+        dbInvoices = (data.invoices || []).map((inv: any) => ({
+          ...inv,
+          source: 'db' as const,
+          docType: 'Invoice'
+        }));
+        console.log(`Refreshed ${dbInvoices.length} database invoices`);
+      }
+    } catch (error) {
+      console.error('Failed to refresh database invoices:', error);
+      // Continue with mock-only mode
+    }
+
+    // Generate mock invoices
+    const mockInvoices = [
       ...generateMockNeedsInfoInvoices(),
       ...generateMockOverdueInvoices(),
       ...generateMockDueSoonInvoices(),
       ...generateMockBlockedInvoices(),
       ...generateMockCreditNotes(),
       ...generateMockProFormaInvoices()
-    ];
-    const combinedInvoices = rawInvoices.map(invoice => ({
-      ...generateSyntheticFields(invoice),
+    ].map(invoice => ({
+      ...invoice,
+      source: 'mock' as const,
       docType: invoice.docType || 'Invoice'
     }));
+
+    // Merge database and mock invoices
+    const allInvoices = [...dbInvoices, ...mockInvoices];
+
+    // Apply synthetic fields to all invoices
+    const combinedInvoices = allInvoices.map(invoice => ({
+      ...generateSyntheticFields(invoice),
+      source: invoice.source, // Preserve source field
+      docType: invoice.docType || 'Invoice'
+    }));
+
+    console.log(`Total invoices after refresh: ${combinedInvoices.length} (${dbInvoices.length} DB + ${mockInvoices.length} mock)`);
     setInvoices(combinedInvoices);
   }, []);
 
@@ -2073,6 +2140,13 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
           invoices={currentTabInvoices as any}
         />
       )} */}
+
+      {/* Upload Dialog */}
+      <UploadDialog
+        open={uploadDialogOpen}
+        onOpenChange={setUploadDialogOpen}
+        onUploadComplete={handleUploadComplete}
+      />
 
       {/* Recommendations Drawer */}
       <RecommendationsDrawer
