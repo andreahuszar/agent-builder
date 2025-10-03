@@ -923,6 +923,17 @@ export function EnhancedInvoiceTable({
                   </button>
                 </th>
               )}
+              {!isNonPOContext && (
+                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                  <button
+                    onClick={() => handleSort('poNumbers')}
+                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                  >
+                    PO No.
+                    {getSortIcon('poNumbers')}
+                  </button>
+                </th>
+              )}
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('aging')}
@@ -1045,17 +1056,6 @@ export function EnhancedInvoiceTable({
                   >
                     Type (PO/Non-PO)
                     {getSortIcon('type')}
-                  </button>
-                </th>
-              )}
-              {!isNonPOContext && (
-                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                  <button
-                    onClick={() => handleSort('poNumbers')}
-                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                  >
-                    PO No.
-                    {getSortIcon('poNumbers')}
                   </button>
                 </th>
               )}
@@ -1385,6 +1385,36 @@ export function EnhancedInvoiceTable({
                       })()}
                     </td>
                   )}
+                  {!isNonPOContext && (
+                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium">
+                      {invoice.type === 'Non-PO' ? (
+                        <span className="text-sm font-medium text-gray-950">-</span>
+                      ) : invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
+                        <div className="flex flex-col gap-1">
+                          {invoice.po_numbers_cached.map((poNumber) => (
+                            invoice.id.startsWith('mock-') || invoice.id.startsWith('due-') || invoice.id.startsWith('blocked-') ? (
+                              <span
+                                key={poNumber}
+                                className="text-sm font-medium text-gray-950"
+                              >
+                                {poNumber}
+                              </span>
+                            ) : (
+                              <button
+                                key={poNumber}
+                                onClick={() => onPOClick?.(poNumber)}
+                                className="text-purple-600 hover:text-purple-700 text-left text-sm font-medium"
+                              >
+                                {poNumber}
+                              </button>
+                            )
+                          ))}
+                        </div>
+                      ) : (
+                        <span className="text-sm font-medium text-gray-950">Missing PO</span>
+                      )}
+                    </td>
+                  )}
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {typeof window !== 'undefined' ? (() => {
                       const aging = calculateAging(invoice.due_date);
@@ -1419,36 +1449,6 @@ export function EnhancedInvoiceTable({
                   {activeTab !== 'needs-info' && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {invoice.type || (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? 'PO' : 'Non-PO')}
-                    </td>
-                  )}
-                  {!isNonPOContext && (
-                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium">
-                      {invoice.type === 'Non-PO' ? (
-                        <span className="text-sm font-medium text-gray-950">-</span>
-                      ) : invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
-                        <div className="flex flex-col gap-1">
-                          {invoice.po_numbers_cached.map((poNumber) => (
-                            invoice.id.startsWith('mock-') || invoice.id.startsWith('due-') || invoice.id.startsWith('blocked-') ? (
-                              <span
-                                key={poNumber}
-                                className="text-sm font-medium text-gray-950"
-                              >
-                                {poNumber}
-                              </span>
-                            ) : (
-                              <button
-                                key={poNumber}
-                                onClick={() => onPOClick?.(poNumber)}
-                                className="text-purple-600 hover:text-purple-700 text-left text-sm font-medium"
-                              >
-                                {poNumber}
-                              </button>
-                            )
-                          ))}
-                        </div>
-                      ) : (
-                        <span className="text-sm font-medium text-gray-950">Missing PO</span>
-                      )}
                     </td>
                   )}
                   {!isNonPOContext && (
