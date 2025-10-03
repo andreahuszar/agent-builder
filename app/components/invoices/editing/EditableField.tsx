@@ -13,6 +13,8 @@ interface EditableFieldProps {
   min?: number;
   max?: number;
   step?: number;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+  autoFocus?: boolean;
 }
 
 export function EditableField({
@@ -26,6 +28,8 @@ export function EditableField({
   min,
   max,
   step,
+  onKeyDown,
+  autoFocus = false,
 }: EditableFieldProps) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -51,6 +55,8 @@ export function EditableField({
       <select
         value={localValue}
         onChange={handleChange}
+        onKeyDown={onKeyDown}
+        autoFocus={autoFocus}
         disabled={disabled}
         className={baseClassName}
       >
@@ -68,6 +74,8 @@ export function EditableField({
       <textarea
         value={localValue || ''}
         onChange={handleChange}
+        onKeyDown={onKeyDown}
+        autoFocus={autoFocus}
         placeholder={placeholder}
         disabled={disabled}
         className={`${baseClassName} resize-none`}
@@ -96,6 +104,8 @@ export function EditableField({
         type="date"
         value={formatDateForInput(localValue)}
         onChange={handleChange}
+        onKeyDown={onKeyDown}
+        autoFocus={autoFocus}
         disabled={disabled}
         className={baseClassName}
       />
@@ -107,6 +117,8 @@ export function EditableField({
       type={type}
       value={localValue || ''}
       onChange={handleChange}
+      onKeyDown={onKeyDown}
+      autoFocus={autoFocus}
       placeholder={placeholder}
       disabled={disabled}
       min={min}

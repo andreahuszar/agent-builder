@@ -17,6 +17,8 @@ interface ValidatedEditableFieldProps {
   max?: number;
   step?: number;
   currency?: string;
+  onKeyDown?: (e: React.KeyboardEvent) => void;
+  autoFocus?: boolean;
 }
 
 export function ValidatedEditableField({
@@ -32,6 +34,8 @@ export function ValidatedEditableField({
   max,
   step,
   currency = 'USD',
+  onKeyDown,
+  autoFocus = false,
 }: ValidatedEditableFieldProps) {
   const [localValue, setLocalValue] = useState(value);
   const [isValid, setIsValid] = useState(false);
@@ -132,6 +136,8 @@ export function ValidatedEditableField({
             const numericValue = parseCurrency(e.target.value);
             handleChange(numericValue);
           }}
+          onKeyDown={onKeyDown}
+          autoFocus={autoFocus}
           placeholder={placeholder}
           disabled={disabled}
           className={`
@@ -154,6 +160,8 @@ export function ValidatedEditableField({
         <select
           value={localValue || ''}
           onChange={(e) => handleChange(e.target.value)}
+          onKeyDown={onKeyDown}
+          autoFocus={autoFocus}
           disabled={disabled}
           className={`
             w-full px-3 py-1.5 text-sm text-gray-950 bg-white border ${borderColor} rounded-md
@@ -188,6 +196,8 @@ export function ValidatedEditableField({
         min={min}
         max={max}
         step={step}
+        onKeyDown={onKeyDown}
+        autoFocus={autoFocus}
       />
     </div>
   );

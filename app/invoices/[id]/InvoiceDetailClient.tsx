@@ -133,7 +133,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     // Unified layout for ALL invoices: Fields on left (read-only), PDF on right
     return (
       <ResizablePanel
-        defaultSizes={[30, 70]}
+        defaultSizes={[67, 33]}
         minSizes={[25, 40]}
         storageKey={`invoice-unified-${invoiceId}`}
         className="h-full"
@@ -151,6 +151,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           poComparisonData={poComparisonData}
           forceReadOnly={true}
           hideComparison={false}
+          showFieldErrors={isNeedsInfoMode}
         />
 
         {/* Document Preview - RIGHT PANEL */}
@@ -161,6 +162,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           matchResults={matchResults}
           poComparisonData={poComparisonData}
           hideLineComparison={false}
+          hideLineItems={true}
         />
       </ResizablePanel>
     );
@@ -216,7 +218,49 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     return count;
   };
 
+  // Calculate missing fields count
+  const calculateMissingFieldsCount = () => {
+    let count = 0;
+    const requiredFields = [
+      'invoice_number',
+      'invoice_date',
+      'vendor_name_snapshot',
+      'vendor_tax_id_snapshot',
+      'currency'
+    ];
+
+    requiredFields.forEach(field => {
+      const value = invoice[field];
+      if (!value || value === 'Unknown Vendor' || value === 'Invalid Date') {
+        count++;
+      }
+    });
+
+    // Check PO number if vendor requires PO
+    if (invoice.vendor_requires_po && (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0)) {
+      count++;
+    }
+
+    return count;
+  };
+
+  // Calculate line items discrepancy count
+  const calculateLineItemsErrorCount = () => {
+    let count = 0;
+
+    // Check match results for variances that are not within tolerance
+    matchResults?.forEach((r: any) => {
+      if (!r.within_tolerance && r.explanation_code !== 'PERFECT_MATCH') {
+        count++;
+      }
+    });
+
+    return count;
+  };
+
   const exceptionsCount = calculateExceptionsCount();
+  const missingFieldsCount = calculateMissingFieldsCount();
+  const lineItemsErrorCount = calculateLineItemsErrorCount();
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
@@ -236,6 +280,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         poTotal={poTotal || null}
         helpdeskTicketRef={invoice.helpdesk_ticket_ref || 'TICKET-389688'}
         exceptionsCount={exceptionsCount}
+        missingFieldsCount={missingFieldsCount}
+        lineItemsErrorCount={lineItemsErrorCount}
         validationWarnings={invoice.validation_warnings}
         showSaveButton={true}
         onSaveClick={handleSave}

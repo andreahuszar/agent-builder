@@ -64,6 +64,8 @@ export function DetailsTab({
   hideDocumentLinksSection = false,
   showFieldErrors = false
 }: DetailsTabProps) {
+  // Individual field edit states for click-to-edit functionality
+  const [editingField, setEditingField] = useState<string | null>(null);
   // Calculate totals from line items for accuracy
   const calculatedSubtotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + (line.net_amount || 0), 0) || 0;
   const calculatedTaxTotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + ((line.line_total || 0) - (line.net_amount || 0)), 0) || 0;
@@ -262,9 +264,50 @@ export function DetailsTab({
   const getReadOnlyFieldClass = (fieldName: string, defaultValue?: string) => {
     const baseClass = 'text-sm font-medium';
     if (showFieldErrors && hasFieldError(fieldName)) {
-      return `${baseClass} text-red-700 border-l-2 border-red-500 pl-2 bg-red-50 py-1 rounded`;
+      return `${baseClass} text-red-700 border-l-2 border-red-500 pl-2 bg-red-50 py-1 rounded cursor-pointer hover:bg-red-100 transition-colors`;
     }
     return `${baseClass} text-gray-950`;
+  };
+
+  // Render a field - either as editable or read-only with click-to-edit
+  const renderField = (fieldName: string, fieldValue: any, fieldType: 'text' | 'date' | 'currency' | 'select', label: string, options?: any[]) => {
+    const isFieldEditing = editingField === fieldName;
+    const shouldAllowEdit = showFieldErrors && hasFieldError(fieldName) && !forceReadOnly;
+
+    if (isFieldEditing && shouldAllowEdit) {
+      return (
+        <ValidatedEditableField
+          value={editedData[fieldName]}
+          onChange={(value) => {
+            handleFieldChange(fieldName, value);
+          }}
+          type={fieldType}
+          required={true}
+          fieldName={fieldName}
+          options={options}
+          onKeyDown={(e: any) => handleKeyDown(e, fieldName, editedData[fieldName])}
+          autoFocus
+        />
+      );
+    }
+
+    if (shouldAllowEdit) {
+      return (
+        <p
+          className={getReadOnlyFieldClass(fieldName)}
+          onClick={() => setEditingField(fieldName)}
+          title="Click to edit"
+        >
+          {fieldValue || 'Not provided'}
+        </p>
+      );
+    }
+
+    return (
+      <p className={getReadOnlyFieldClass(fieldName)}>
+        {fieldValue || 'Not provided'}
+      </p>
+    );
   };
 
   const getStatusBadge = (status: string) => {
@@ -305,6 +348,43 @@ export function DetailsTab({
 
         validateRequired(field, value, fieldRefs.current[field]);
       }
+    }
+  };
+
+  // Handle Enter key save for individual field editing
+  const handleFieldSave = async (field: string, value: any) => {
+    try {
+      const updatedData = { ...editedData, [field]: value };
+
+      const response = await fetch(`/api/invoices/${invoiceData.id}/update`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ [field]: value }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setEditedData(updatedData);
+        onUpdate?.(updatedData);
+        setEditingField(null);
+        removeError(field);
+      }
+    } catch (error) {
+      console.error('Error saving field:', error);
+    }
+  };
+
+  // Handle Enter key press
+  const handleKeyDown = (e: React.KeyboardEvent, field: string, value: any) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      handleFieldSave(field, value);
+    } else if (e.key === 'Escape') {
+      setEditingField(null);
+      setEditedData((prev: any) => ({
+        ...prev,
+        [field]: invoiceData[field],
+      }));
     }
   };
 
@@ -477,7 +557,7 @@ export function DetailsTab({
                     fieldName="invoice_number"
                   />
                 ) : (
-                  <p className={getReadOnlyFieldClass('invoice_number')}>{invoiceData.invoice_number || 'Not provided'}</p>
+                  renderField('invoice_number', invoiceData.invoice_number, 'text', 'Invoice Number')
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['invoice_date'] = el}>
@@ -494,7 +574,7 @@ export function DetailsTab({
                     fieldName="invoice_date"
                   />
                 ) : (
-                  <p className={getReadOnlyFieldClass('invoice_date')}>{formatDate(invoiceData.invoice_date) || 'Not provided'}</p>
+                  renderField('invoice_date', formatDate(invoiceData.invoice_date), 'date', 'Invoice Date')
                 )}
               </div>
               <div>
@@ -538,7 +618,7 @@ export function DetailsTab({
                   />
                 ) : (
                   <div className="flex items-start gap-2">
-                    <p className={getReadOnlyFieldClass('vendor_name_snapshot')}>{invoiceData.vendor_name_snapshot || 'Not provided'}</p>
+                    {renderField('vendor_name_snapshot', invoiceData.vendor_name_snapshot, 'text', 'Vendor')}
                     {invoiceData.vendor_is_verified === false && (
                       <Tooltip.Provider>
                         <Tooltip.Root>
@@ -577,9 +657,7 @@ export function DetailsTab({
                     placeholder="e.g., TAX-12345"
                   />
                 ) : (
-                  <p className={getReadOnlyFieldClass('vendor_tax_id_snapshot')}>
-                    {invoiceData.vendor_tax_id_snapshot || 'Not provided'}
-                  </p>
+                  renderField('vendor_tax_id_snapshot', invoiceData.vendor_tax_id_snapshot, 'text', 'Vendor ID')
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['po_numbers_cached'] = el}>
@@ -596,11 +674,12 @@ export function DetailsTab({
                     placeholder="Enter PO Number"
                   />
                 ) : (
-                  <p className={getReadOnlyFieldClass('po_numbers_cached')}>
-                    {invoiceData.po_numbers_cached?.length > 0
-                      ? invoiceData.po_numbers_cached[0]
-                      : 'Not provided'}
-                  </p>
+                  renderField(
+                    'po_numbers_cached',
+                    invoiceData.po_numbers_cached?.length > 0 ? invoiceData.po_numbers_cached[0] : '',
+                    'text',
+                    'PO Number'
+                  )
                 )}
               </div>
               <div>
@@ -667,7 +746,12 @@ export function DetailsTab({
                     ]}
                   />
                 ) : (
-                  <p className={getReadOnlyFieldClass('currency')}>{invoiceData.currency || 'Not provided'}</p>
+                  renderField('currency', invoiceData.currency, 'select', 'Currency', [
+                    { value: 'USD', label: 'USD' },
+                    { value: 'EUR', label: 'EUR' },
+                    { value: 'GBP', label: 'GBP' },
+                    { value: 'JPY', label: 'JPY' },
+                  ])
                 )}
               </div>
               <div>

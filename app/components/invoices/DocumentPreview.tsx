@@ -14,6 +14,7 @@ interface DocumentPreviewProps {
   matchResults?: any[];
   poComparisonData?: any;
   hideLineComparison?: boolean;
+  hideLineItems?: boolean;
 }
 
 // Collapsible Document Preview for needs info mode
@@ -136,10 +137,11 @@ export function DocumentPreview({
   invoiceData,
   matchResults = [],
   poComparisonData,
-  hideLineComparison = false
+  hideLineComparison = false,
+  hideLineItems = false
 }: DocumentPreviewProps) {
-  // Start with 75% zoom for all documents
-  const [zoom, setZoom] = useState(0.75);
+  // Start with 50% zoom for all documents
+  const [zoom, setZoom] = useState(0.5);
   const [rotation, setRotation] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [imageError, setImageError] = useState(false);
@@ -379,6 +381,11 @@ export function DocumentPreview({
       </div>
     </div>
   );
+
+  // If hideLineItems is true, always just show the document
+  if (hideLineItems) {
+    return documentContent;
+  }
 
   // If we have line items, wrap in resizable panel with preview at bottom
   if (shouldShowPanel) {

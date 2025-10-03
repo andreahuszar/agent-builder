@@ -300,13 +300,13 @@ export function InvoiceQuickViewDrawer({ invoiceId, isOpen, onClose }: InvoiceQu
                   </div>
                 )}
 
-                {/* Open Full Details Button */}
+                {/* Open Details Button */}
                 <button
                   onClick={handleOpenFullDetails}
                   className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
                 >
                   <ExternalLink className="h-3.5 w-3.5" />
-                  <span>Open Full Details</span>
+                  <span>Open Details</span>
                 </button>
               </div>
             )}
