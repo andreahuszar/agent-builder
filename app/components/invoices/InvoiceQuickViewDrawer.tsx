@@ -217,7 +217,7 @@ export function InvoiceQuickViewDrawer({ invoiceId, isOpen, onClose }: InvoiceQu
     <div className="fixed inset-0 z-50 overflow-hidden pointer-events-none">
       {/* Drawer - no backdrop to allow clicking on table below */}
       <div
-        className={`absolute right-0 top-0 h-full w-[700px] bg-white shadow-2xl transform transition-transform duration-300 ease-out pointer-events-auto ${
+        className={`absolute right-0 top-0 h-full w-[550px] bg-white shadow-2xl transform transition-transform duration-300 ease-out pointer-events-auto ${
           isVisible ? 'translate-x-0' : 'translate-x-full'
         }`}
       >

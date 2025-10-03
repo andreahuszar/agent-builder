@@ -9,6 +9,7 @@ import {
   Check,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Filter,
   UserPlus,
   MessageSquare,
@@ -65,6 +66,8 @@ import {
   generateMockDueSoonInvoices,
   generateMockCreditNotes,
   generateMockProFormaInvoices,
+  generateMockInApprovalInvoices,
+  generateMockArchivedInvoices,
   isMockInvoice,
 } from '@/app/services/mockInvoiceService';
 
@@ -109,7 +112,7 @@ const getContextualTabs = (invoiceType: string) => {
       { id: 'exceptions', label: 'Exceptions' },
       { id: 'ready-to-post', label: 'Ready to post' },
       { id: 'archived', label: 'Archived' },
-      { id: 'all', label: 'All' }
+      { id: 'all', label: 'All (PO)' }
     ];
   } else if (invoiceType === 'non-po') {
     // Non-PO mode: Exceptions combines needs-info + approval needed
@@ -118,7 +121,7 @@ const getContextualTabs = (invoiceType: string) => {
       { id: 'in-approval', label: 'Pending approval' },
       { id: 'ready-to-post', label: 'Ready to post' },
       { id: 'archived', label: 'Archived' },
-      { id: 'all', label: 'All' }
+      { id: 'all', label: 'All (Non-PO)' }
     ];
   } else {
     // All mode: Exceptions combines needs-info + mismatched/blocked
@@ -221,6 +224,38 @@ const ISSUE_TYPES: Record<string, { severity: 'critical' | 'warning' | 'info', o
 
 // Exception categories for organized display
 const EXCEPTION_CATEGORIES = {
+  'Missing Fields': {
+    label: 'Missing Fields',
+    isCategory: true,
+    items: [
+      'Missing Vendor',
+      'Missing Date',
+      'Missing Currency',
+      'Missing Amount',
+      'Missing Vendor ID',
+      'Missing Vendor Tax ID',
+      'Missing Vendor Address',
+      'Missing Payment Method',
+      'Missing Bank Account',
+      'Missing Tax Code',
+      'Missing Line Items'
+    ]
+  },
+  'Missing PO': {
+    label: 'Missing PO',
+    isCategory: true,
+    items: [
+      'Missing PO'
+    ]
+  },
+  'Header Level': {
+    label: 'Header Level Mismatch',
+    isCategory: true,
+    items: [
+      'Tax Discrepancy',
+      'Tax Rate Mismatch'
+    ]
+  },
   'Line Items Mismatch': {
     label: 'Line Items Mismatch',
     isCategory: true,
@@ -232,29 +267,13 @@ const EXCEPTION_CATEGORIES = {
       'Quantity Mismatch'
     ]
   },
-  'Header Level': {
-    label: 'Header Level',
-    isCategory: true,
-    items: [
-      'Tax Discrepancy',
-      'Tax Rate Mismatch'
-    ]
-  },
   'Validation': {
-    label: 'Validation',
+    label: 'Validation Errors',
     isCategory: true,
     items: [
-      'Price Tolerance'
-    ]
-  },
-  'Other': {
-    label: 'Other',
-    isCategory: true,
-    items: [
-      'Missing PO',
-      'Missing GR',
-      'Line Mismatch',
+      'Price Tolerance',
       'Unapproved Change Order',
+      'Missing GR',
       'Missing Approval',
       'Vendor Not Verified',
       'Bank Account Not Verified',
@@ -264,6 +283,54 @@ const EXCEPTION_CATEGORIES = {
       'Payment Terms'
     ]
   }
+};
+
+// Helper function to format exception codes (matches EnhancedInvoiceTable)
+const formatExceptionCode = (issue: string): string => {
+  const exceptionCodes: { [key: string]: string } = {
+    // 100 series: Missing Fields
+    'Missing Vendor': '[101]',
+    'Missing Date': '[102]',
+    'Missing Currency': '[103]',
+    'Missing Amount': '[104]',
+    'Missing Vendor ID': '[105]',
+    'Missing Vendor Tax ID': '[106]',
+    'Missing Vendor Address': '[107]',
+    'Missing Payment Method': '[108]',
+    'Missing Bank Account': '[109]',
+    'Missing Tax Code': '[110]',
+    'Missing Line Items': '[111]',
+    'Missing PO': '[120]',
+    'Missing GR': '[121]',
+    'Missing Approval': '[122]',
+
+    // 200 series: Header/Tax Issues
+    'Tax Discrepancy': '[200]',
+    'Tax Rate Mismatch': '[201]',
+    'Line Mismatch': '[202]',
+    'Unit Price Mismatch': '[203]',
+    'UoM Mismatch': '[204]',
+    'Amount Mismatch': '[205]',
+    'Price Tolerance': '[206]',
+    'Quantity Variance': '[207]',
+    'Quantity Mismatch': '[208]',
+    'Line Items Mismatch': '[210]',
+
+    // 300 series: Workflow Issues
+    'Unapproved Change Order': '[301]',
+
+    // 400 series: Approval Issues
+    'Needs Approval': '[400]',
+  };
+
+  const code = exceptionCodes[issue];
+  return code ? `${code} ${issue}` : issue;
+};
+
+// Helper function to extract plain exception name from formatted code
+const extractExceptionName = (formattedLabel: string): string => {
+  // Remove exception code like "[101] " from the beginning
+  return formattedLabel.replace(/^\[\d+\]\s*/, '');
 };
 
 // Separate issue pools for PO and Non-PO invoices
@@ -398,9 +465,28 @@ const generateInvoiceIssues = (invoice: any): string[] => {
 };
 
 const generateSyntheticFields = (invoice: any): any => {
-  // Preserve needs_info status - don't generate synthetic fields for these invoices
+  // Preserve needs_info status - but generate issues for missing fields
   if (invoice.status === 'needs_info') {
     const seed = invoice.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+
+    // Generate issues based on missing fields
+    const issues: string[] = [];
+    if (!invoice.vendor_name_snapshot) issues.push('Missing Vendor');
+    if (!invoice.invoice_date) issues.push('Missing Date');
+    if (!invoice.currency) issues.push('Missing Currency');
+    if (!invoice.total || invoice.total === 0) issues.push('Missing Amount');
+    if (!invoice.vendor_id) issues.push('Missing Vendor ID');
+    if (!invoice.vendor_tax_id_snapshot) issues.push('Missing Vendor Tax ID');
+    if (!invoice.vendor_address_snapshot) issues.push('Missing Vendor Address');
+    if (!invoice.payment_method) issues.push('Missing Payment Method');
+    if (!invoice.payment_bank_details) issues.push('Missing Bank Account');
+    if (invoice.tax_rate_percent == null) issues.push('Missing Tax Code');
+    const hasLines = (invoice.lines && invoice.lines.length > 0) || (invoice.invoice_lines && invoice.invoice_lines.length > 0);
+    if (!hasLines) issues.push('Missing Line Items');
+    if (invoice.vendor_requires_po && (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0)) {
+      issues.push('Missing PO');
+    }
+
     return {
       ...invoice,
       type: invoice.vendor_requires_po ? 'PO' : 'Non-PO',
@@ -412,7 +498,25 @@ const generateSyntheticFields = (invoice: any): any => {
         ? requisitionerPool[Math.abs(seed) % requisitionerPool.length]
         : undefined,
       division: invoice.division || 'Unknown',
-      issues: []
+      issues: issues
+    };
+  }
+
+  // Preserve archived status - don't generate synthetic PO numbers for archived invoices
+  if (invoice.status === 'archived') {
+    const seed = invoice.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
+    return {
+      ...invoice,
+      type: invoice.vendor_requires_po ? 'PO' : 'Non-PO',
+      assignedTo: getRandomAssignee(seed),
+      costCentre: `CC-${String((seed % 7) + 1).padStart(3, '0')}`,
+      accountCode: `AC-${5000 + (seed % 10) + 1}`,
+      approver: undefined,
+      requisitioner: undefined,
+      division: invoice.division || getDivision(invoice.vendor_name_snapshot),
+      // Don't generate synthetic PO for archived invoices - preserve original state
+      po_numbers_cached: invoice.po_numbers_cached,
+      issues: invoice.issues || []
     };
   }
 
@@ -475,7 +579,9 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
         ...generateMockDueSoonInvoices(),
         ...generateMockBlockedInvoices(),
         ...generateMockCreditNotes(),
-        ...generateMockProFormaInvoices()
+        ...generateMockProFormaInvoices(),
+        ...generateMockInApprovalInvoices(),
+        ...generateMockArchivedInvoices()
       ].map(invoice => ({
         ...invoice,
         source: 'mock' as const,
@@ -598,8 +704,20 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
         );
 
       case 'archived':
-        // Archived invoices - empty for now
-        return [];
+        // Archived invoices
+        const archivedInvs = allInvoices.filter(inv => inv.status === 'archived');
+        console.log('[DEBUG] Archived invoices:', archivedInvs.length, archivedInvs);
+        if (archivedInvs.length > 0) {
+          console.log('[DEBUG] First archived invoice:', {
+            id: archivedInvs[0].id,
+            invoice_number: archivedInvs[0].invoice_number,
+            status: archivedInvs[0].status,
+            vendor_requires_po: archivedInvs[0].vendor_requires_po,
+            po_numbers_cached: archivedInvs[0].po_numbers_cached,
+            type: archivedInvs[0].type
+          });
+        }
+        return archivedInvs;
 
       case 'all':
         // Show all invoices for the current type (PO/Non-PO filtering is handled upstream)
@@ -624,6 +742,9 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
   const [selectedExceptions, setSelectedExceptions] = useState<Set<string>>(new Set());
   const [exceptionFilterOpen, setExceptionFilterOpen] = useState(false);
   const [exceptionSearchQuery, setExceptionSearchQuery] = useState('');
+  const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(
+    new Set(['Missing Fields', 'Missing PO', 'Line Items Mismatch', 'Header Level', 'Validation'])
+  );
   const [selectedApprovers, setSelectedApprovers] = useState<Set<string>>(new Set());
   const [approverFilterOpen, setApproverFilterOpen] = useState(false);
   const [approverSearchQuery, setApproverSearchQuery] = useState('');
@@ -840,6 +961,17 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     return Array.from(issues).sort();
   }, [invoices, getTabInvoices, invoiceTypeFilter]);
 
+  // Unified exceptions list - combines missing fields + validation exceptions
+  const unifiedExceptions = useMemo(() => {
+    if (activeTab === 'exceptions') {
+      // Combine uniqueIssues (missing fields) + uniqueExceptions (validation)
+      const combined = new Set([...uniqueIssues, ...uniqueExceptions]);
+      return Array.from(combined).sort();
+    }
+    // For other tabs, just use uniqueExceptions
+    return uniqueExceptions;
+  }, [activeTab, uniqueIssues, uniqueExceptions]);
+
   // Ensure "Missing PO" isn't applied as a filter in Non-PO view
   useEffect(() => {
     if (invoiceTypeFilter === 'non-po') {
@@ -895,7 +1027,10 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
   // Filter exceptions based on search query and organize by categories
   const filteredExceptions = useMemo(() => {
     const query = exceptionSearchQuery.toLowerCase();
-    const result: Array<{type: 'category' | 'item', label: string, categoryKey?: string}> = [];
+    const result: Array<{type: 'category' | 'item', label: string, categoryKey?: string, count?: number}> = [];
+
+    // Use unifiedExceptions which includes both missing fields and validation exceptions
+    const exceptionsToUse = unifiedExceptions;
 
     // Go through each category
     Object.entries(EXCEPTION_CATEGORIES).forEach(([categoryKey, category]) => {
@@ -904,26 +1039,32 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
         return;
       }
 
-      // Filter items in this category that exist in uniqueExceptions
+      // Skip "Missing Fields" category for non-exceptions tabs
+      if (categoryKey === 'Missing Fields' && activeTab !== 'exceptions') {
+        return;
+      }
+
+      // Filter items in this category that exist in exceptionsToUse
       const categoryItems = category.items.filter(item =>
-        uniqueExceptions.includes(item) &&
-        (!query || item.toLowerCase().includes(query))
+        exceptionsToUse.includes(item) &&
+        (!query || formatExceptionCode(item).toLowerCase().includes(query))
       );
 
       // Only show category if it has items
       if (categoryItems.length > 0) {
-        // Add category header
+        // Add category header with item count
         result.push({
           type: 'category',
           label: category.label,
-          categoryKey
+          categoryKey,
+          count: categoryItems.length
         });
 
-        // Add items under this category
+        // Add items under this category (with exception codes)
         categoryItems.forEach(item => {
           result.push({
             type: 'item',
-            label: item,
+            label: formatExceptionCode(item),
             categoryKey
           });
         });
@@ -931,7 +1072,7 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     });
 
     return result;
-  }, [uniqueExceptions, exceptionSearchQuery, invoiceTypeFilter]);
+  }, [unifiedExceptions, exceptionSearchQuery, invoiceTypeFilter, activeTab]);
 
   // Handle exception filter changes
   const handleExceptionToggle = (exception: string) => {
@@ -945,10 +1086,10 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
   };
 
   const handleSelectAllExceptions = () => {
-    if (selectedExceptions.size === uniqueExceptions.length) {
+    if (selectedExceptions.size === unifiedExceptions.length) {
       setSelectedExceptions(new Set());
     } else {
-      setSelectedExceptions(new Set(uniqueExceptions));
+      setSelectedExceptions(new Set(unifiedExceptions));
     }
   };
 
@@ -957,6 +1098,79 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     setExceptionSearchQuery('');
     setExceptionFilterOpen(false);
   };
+
+  // Category selection helpers
+  const isCategoryFullySelected = (categoryKey: string) => {
+    const category = EXCEPTION_CATEGORIES[categoryKey as keyof typeof EXCEPTION_CATEGORIES];
+    if (!category) return false;
+    const items = category.items.filter(item => unifiedExceptions.includes(item));
+    if (items.length === 0) return false;
+    return items.every(item => selectedExceptions.has(item));
+  };
+
+  const isCategoryPartiallySelected = (categoryKey: string) => {
+    const category = EXCEPTION_CATEGORIES[categoryKey as keyof typeof EXCEPTION_CATEGORIES];
+    if (!category) return false;
+    const items = category.items.filter(item => unifiedExceptions.includes(item));
+    const selectedCount = items.filter(item => selectedExceptions.has(item)).length;
+    return selectedCount > 0 && selectedCount < items.length;
+  };
+
+  const handleCategoryToggle = (categoryKey: string) => {
+    const category = EXCEPTION_CATEGORIES[categoryKey as keyof typeof EXCEPTION_CATEGORIES];
+    if (!category) return;
+
+    const items = category.items.filter(item => unifiedExceptions.includes(item));
+    const allSelected = isCategoryFullySelected(categoryKey);
+
+    const newSelected = new Set(selectedExceptions);
+    if (allSelected) {
+      // Deselect all items in category
+      items.forEach(item => newSelected.delete(item));
+    } else {
+      // Select all items in category
+      items.forEach(item => newSelected.add(item));
+    }
+    setSelectedExceptions(newSelected);
+  };
+
+  const toggleCategoryCollapse = (categoryKey: string) => {
+    const newCollapsed = new Set(collapsedCategories);
+    if (newCollapsed.has(categoryKey)) {
+      newCollapsed.delete(categoryKey);
+    } else {
+      newCollapsed.add(categoryKey);
+    }
+    setCollapsedCategories(newCollapsed);
+  };
+
+  // Auto-expand categories when searching
+  useEffect(() => {
+    if (!exceptionSearchQuery) {
+      // Reset to all collapsed when search is cleared
+      setCollapsedCategories(new Set(['Missing Fields', 'Missing PO', 'Line Items Mismatch', 'Header Level', 'Validation']));
+      return;
+    }
+
+    // Expand categories that have matching items
+    const query = exceptionSearchQuery.toLowerCase();
+    const categoriesToExpand: string[] = [];
+
+    Object.entries(EXCEPTION_CATEGORIES).forEach(([categoryKey, category]) => {
+      const hasMatch = category.items.some(item =>
+        unifiedExceptions.includes(item) &&
+        formatExceptionCode(item).toLowerCase().includes(query)
+      );
+      if (hasMatch) {
+        categoriesToExpand.push(categoryKey);
+      }
+    });
+
+    // Set collapsed to only those without matches
+    const allCategories = new Set(['Missing Fields', 'Missing PO', 'Line Items Mismatch', 'Header Level', 'Validation']);
+    categoriesToExpand.forEach(cat => allCategories.delete(cat));
+    setCollapsedCategories(allCategories);
+  }, [exceptionSearchQuery, unifiedExceptions]);
 
   // Get display text for exception filter
   const getExceptionFilterText = () => {
@@ -1006,16 +1220,10 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
   };
 
   const handleMissingFieldsClick = () => {
-    // Clear other filters and set filters for invoices with missing fields
-    // Exclude Missing PO since those don't need field validation until PO is added
+    // Clear other filters and set all Missing Fields category items
     clearExceptionFilter();
-    const fieldIssues = new Set([
-      'Missing Vendor',
-      'Missing Date',
-      'Missing Currency',
-      'Missing Amount',
-      'Missing Vendor ID'
-    ]);
+    const category = EXCEPTION_CATEGORIES['Missing Fields'];
+    const fieldIssues = new Set(category.items);
     setSelectedExceptions(fieldIssues);
   };
 
@@ -1731,207 +1939,147 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
                 </DropdownMenuContent>
               </DropdownMenu>
 
-              {/* Exception/Issues Filter - Show based on tab and invoice type */}
+              {/* Exception/Issues Filter - Unified dropdown for all tabs */}
               {activeTab !== 'ready-to-post' && (
-                <>
-                  {activeTab === 'exceptions' ? (
-                    // Issues filter for needs-info tab
-                    <DropdownMenu open={exceptionFilterOpen} onOpenChange={setExceptionFilterOpen}>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          className={cn(
-                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
-                            selectedExceptions.size > 0
-                              ? "bg-purple-100 text-purple-700 border-purple-400"
-                              : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
-                          )}
-                          style={{
-                            minWidth: '120px',
-                            maxWidth: '200px'
-                          }}
-                        >
-                          {selectedExceptions.size === 1 && (
-                            <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
-                          )}
-                          <span className="truncate flex-1 text-left">
-                            {selectedExceptions.size === 0 ? 'All Issues' :
-                             selectedExceptions.size === 1 ? Array.from(selectedExceptions)[0] :
-                             `${selectedExceptions.size} Issues`}
-                          </span>
-                          <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-72 max-h-96 overflow-y-auto" align="start">
-                        <div className="px-3 py-2 border-b">
-                          <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-gray-50">
-                            <Search className="h-3 w-3 text-gray-400" />
-                            <input
-                              type="text"
-                              placeholder="Search issues..."
-                              value={exceptionSearchQuery}
-                              onChange={(e) => setExceptionSearchQuery(e.target.value)}
-                              className="flex-1 outline-none text-sm bg-transparent"
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                          </div>
-                        </div>
-                        <div className="py-2">
-                          <DropdownMenuCheckboxItem
-                            checked={selectedExceptions.size === uniqueIssues.length}
-                            onCheckedChange={() => {
-                              if (selectedExceptions.size === uniqueIssues.length) {
-                                setSelectedExceptions(new Set());
-                              } else {
-                                setSelectedExceptions(new Set(uniqueIssues));
-                              }
-                            }}
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            <span className="font-medium">All Issues</span>
-                            <span className="ml-auto text-xs text-gray-500">
-                              {uniqueIssues.length}
-                            </span>
-                          </DropdownMenuCheckboxItem>
-                        </div>
-                        <DropdownMenuSeparator />
-                        <div className="py-2">
-                          {uniqueIssues.length > 0 ? (
-                            uniqueIssues.filter(issue =>
-                              !exceptionSearchQuery || issue.toLowerCase().includes(exceptionSearchQuery.toLowerCase())
-                            ).map(issue => (
-                              <DropdownMenuCheckboxItem
-                                key={issue}
-                                checked={selectedExceptions.has(issue)}
-                                onCheckedChange={() => {
-                                  const newSelected = new Set(selectedExceptions);
-                                  if (newSelected.has(issue)) {
-                                    newSelected.delete(issue);
-                                  } else {
-                                    newSelected.add(issue);
-                                  }
-                                  setSelectedExceptions(newSelected);
-                                }}
-                                onSelect={(e) => e.preventDefault()}
-                              >
-                                <span className="truncate">{issue}</span>
-                              </DropdownMenuCheckboxItem>
-                            ))
-                          ) : (
-                            <div className="px-3 py-2 text-sm text-gray-500">No issues found</div>
-                          )}
-                        </div>
-                        {selectedExceptions.size > 0 && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <div className="px-3 py-2">
-                              <button
-                                onClick={clearExceptionFilter}
-                                className="w-full text-left text-sm text-purple-600 hover:text-purple-700 font-medium"
-                              >
-                                Clear selection
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  ) : (
-                    // Regular exceptions filter for other tabs
-                    <DropdownMenu open={exceptionFilterOpen} onOpenChange={setExceptionFilterOpen}>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          className={cn(
-                            "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
-                            selectedExceptions.size > 0
-                              ? "bg-purple-100 text-purple-700 border-purple-400"
-                              : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
-                          )}
-                          style={{
-                            minWidth: '120px',
-                            maxWidth: '200px'
-                          }}
-                        >
-                          {selectedExceptions.size === 1 && (
-                            <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
-                          )}
-                          <span className="truncate flex-1 text-left">{getExceptionFilterText()}</span>
-                          <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent className="w-72 max-h-96 overflow-y-auto" align="start">
-                        <div className="px-3 py-2 border-b">
-                          <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-gray-50">
-                            <Search className="h-3 w-3 text-gray-400" />
-                            <input
-                              type="text"
-                              placeholder="Search exceptions..."
-                              value={exceptionSearchQuery}
-                              onChange={(e) => setExceptionSearchQuery(e.target.value)}
-                              className="flex-1 outline-none text-sm bg-transparent"
-                              onClick={(e) => e.stopPropagation()}
-                            />
-                          </div>
-                        </div>
-                        <div className="py-2">
-                          <DropdownMenuCheckboxItem
-                            checked={selectedExceptions.size === uniqueExceptions.length}
-                            onCheckedChange={handleSelectAllExceptions}
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            <span className="font-medium">All Exceptions</span>
-                            <span className="ml-auto text-xs text-gray-500">
-                              {uniqueExceptions.length}
-                            </span>
-                          </DropdownMenuCheckboxItem>
-                        </div>
-                        <DropdownMenuSeparator />
-                        <div className="py-2">
-                          {filteredExceptions.length > 0 ? (
-                            filteredExceptions.map((item, index) => {
-                              if (item.type === 'category') {
-                                return (
-                                  <div
-                                    key={`category-${item.categoryKey}-${index}`}
-                                    className="px-3 py-1.5 text-xs font-normal text-gray-500 cursor-default"
+                <DropdownMenu open={exceptionFilterOpen} onOpenChange={setExceptionFilterOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <button
+                      className={cn(
+                        "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
+                        selectedExceptions.size > 0
+                          ? "bg-purple-100 text-purple-700 border-purple-400"
+                          : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
+                      )}
+                      style={{
+                        minWidth: '120px',
+                        maxWidth: '200px'
+                      }}
+                    >
+                      {selectedExceptions.size === 1 && (
+                        <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
+                      )}
+                      <span className="truncate flex-1 text-left">
+                        {selectedExceptions.size === 0 ? 'All Exceptions' :
+                         selectedExceptions.size === 1 ? formatExceptionCode(Array.from(selectedExceptions)[0]) :
+                         `${selectedExceptions.size} Exceptions`}
+                      </span>
+                      <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+                    </button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent className="w-72 max-h-96 overflow-y-auto" align="start">
+                    <div className="px-3 py-2 border-b">
+                      <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-gray-50">
+                        <Search className="h-3 w-3 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search exceptions..."
+                          value={exceptionSearchQuery}
+                          onChange={(e) => setExceptionSearchQuery(e.target.value)}
+                          className="flex-1 outline-none text-sm bg-transparent"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      </div>
+                    </div>
+                    <div className="py-2">
+                      <DropdownMenuCheckboxItem
+                        checked={selectedExceptions.size === unifiedExceptions.length}
+                        onCheckedChange={handleSelectAllExceptions}
+                        onSelect={(e) => e.preventDefault()}
+                      >
+                        <span className="font-medium">All Exceptions</span>
+                        <span className="ml-auto text-xs text-gray-500">
+                          {unifiedExceptions.length}
+                        </span>
+                      </DropdownMenuCheckboxItem>
+                    </div>
+                    <DropdownMenuSeparator />
+                    <div className="py-2">
+                      {filteredExceptions.length > 0 ? (
+                        filteredExceptions.map((item, index) => {
+                          if (item.type === 'category') {
+                            const isCollapsed = collapsedCategories.has(item.categoryKey || '');
+                            const isFullySelected = isCategoryFullySelected(item.categoryKey || '');
+                            const isPartiallySelected = isCategoryPartiallySelected(item.categoryKey || '');
+
+                            return (
+                              <div key={`category-${item.categoryKey}-${index}`}>
+                                <div className="flex items-center gap-1.5 px-2 py-1.5 hover:bg-gray-50 rounded-md mx-1">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleCategoryCollapse(item.categoryKey || '');
+                                    }}
+                                    className="p-0.5 hover:bg-gray-100 rounded"
+                                  >
+                                    {isCollapsed ? (
+                                      <ChevronRight className="h-3.5 w-3.5 text-gray-500" />
+                                    ) : (
+                                      <ChevronDown className="h-3.5 w-3.5 text-gray-500" />
+                                    )}
+                                  </button>
+                                  <Checkbox
+                                    checked={isFullySelected}
+                                    indeterminate={isPartiallySelected}
+                                    onCheckedChange={() => handleCategoryToggle(item.categoryKey || '')}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="h-4 w-4"
+                                  />
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleCategoryCollapse(item.categoryKey || '');
+                                    }}
+                                    className="flex-1 text-left text-sm font-semibold text-gray-900 hover:text-gray-950"
                                   >
                                     {item.label}
-                                  </div>
-                                );
-                              } else {
-                                return (
-                                  <DropdownMenuCheckboxItem
-                                    key={`item-${item.label}-${index}`}
-                                    checked={selectedExceptions.has(item.label)}
-                                    onCheckedChange={() => handleExceptionToggle(item.label)}
-                                    onSelect={(e) => e.preventDefault()}
-                                    className="pl-6"
-                                  >
-                                    <span className="truncate">{item.label}</span>
-                                  </DropdownMenuCheckboxItem>
-                                );
-                              }
-                            })
-                          ) : (
-                            <div className="px-3 py-2 text-sm text-gray-500">No exceptions found</div>
-                          )}
+                                  </button>
+                                  <span className="text-xs text-gray-500 ml-auto">{item.count}</span>
+                                </div>
+                              </div>
+                            );
+                          } else {
+                            const isCollapsed = collapsedCategories.has(item.categoryKey || '');
+                            if (isCollapsed) return null;
+
+                            // Extract plain exception name from formatted label for storage
+                            const plainException = extractExceptionName(item.label);
+                            return (
+                              <div key={`item-${item.label}-${index}`} className="flex items-center gap-1.5 py-1 hover:bg-gray-50 rounded-md mx-1 pl-11">
+                                <Checkbox
+                                  checked={selectedExceptions.has(plainException)}
+                                  onCheckedChange={() => handleExceptionToggle(plainException)}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="h-4 w-4"
+                                />
+                                <label
+                                  onClick={() => handleExceptionToggle(plainException)}
+                                  className="flex-1 text-xs text-gray-800 cursor-pointer"
+                                >
+                                  {item.label}
+                                </label>
+                              </div>
+                            );
+                          }
+                        })
+                      ) : (
+                        <div className="px-3 py-2 text-sm text-gray-500">No exceptions found</div>
+                      )}
+                    </div>
+                    {selectedExceptions.size > 0 && (
+                      <>
+                        <DropdownMenuSeparator />
+                        <div className="px-3 py-2">
+                          <button
+                            onClick={clearExceptionFilter}
+                            className="w-full text-left text-sm text-purple-600 hover:text-purple-700 font-medium"
+                          >
+                            Clear selection
+                          </button>
                         </div>
-                        {selectedExceptions.size > 0 && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <div className="px-3 py-2">
-                              <button
-                                onClick={clearExceptionFilter}
-                                className="w-full text-left text-sm text-purple-600 hover:text-purple-700 font-medium"
-                              >
-                                Clear selection
-                              </button>
-                            </div>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  )}
-                </>
+                      </>
+                    )}
+                  </DropdownMenuContent>
+                </DropdownMenu>
               )}
 
               {/* Approvers Filter - Only show in in-approval tab */}

@@ -128,6 +128,48 @@ const getDivision = (vendorName: string | undefined): string => {
   return divisions[hash % divisions.length];
 };
 
+// Helper function to add exception codes to issues
+const formatExceptionCode = (issue: string): string => {
+  const exceptionCodes: { [key: string]: string } = {
+    // 100 series: Missing Fields
+    'Missing Vendor': '[101]',
+    'Missing Date': '[102]',
+    'Missing Currency': '[103]',
+    'Missing Amount': '[104]',
+    'Missing Vendor ID': '[105]',
+    'Missing Vendor Tax ID': '[106]',
+    'Missing Vendor Address': '[107]',
+    'Missing Payment Method': '[108]',
+    'Missing Bank Account': '[109]',
+    'Missing Tax Code': '[110]',
+    'Missing Line Items': '[111]',
+    'Missing PO': '[120]',
+    'Missing GR': '[121]',
+    'Missing Approval': '[122]',
+
+    // 200 series: Header/Tax Issues
+    'Tax Discrepancy': '[200]',
+    'Tax Rate Mismatch': '[201]',
+    'Line Mismatch': '[202]',
+    'Unit Price Mismatch': '[203]',
+    'UoM Mismatch': '[204]',
+    'Amount Mismatch': '[205]',
+    'Price Tolerance': '[206]',
+    'Quantity Variance': '[207]',
+    'Quantity Mismatch': '[208]',
+    'Line Items Mismatch': '[210]',
+
+    // 300 series: Workflow Issues
+    'Unapproved Change Order': '[301]',
+
+    // 400 series: Approval Issues
+    'Needs Approval': '[400]',
+  };
+
+  const code = exceptionCodes[issue];
+  return code ? `${code} ${issue}` : issue;
+};
+
 // Helper function to get PO status badge for all invoices
 const getPOStatus = (invoice: Invoice) => {
   // Check if this is a Non-PO invoice
@@ -146,6 +188,18 @@ const getPOStatus = (invoice: Invoice) => {
   // For PO-backed invoices (vendor_requires_po === true or null)
   const hasPO = invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0;
   const isRejected = invoice.processed_status === 'Auto Rejected';
+  const isArchived = invoice.status === 'archived';
+
+  // Debug for archived invoice
+  if (invoice.invoice_number === 'INV-2024-8001') {
+    console.log('[PO Badge Debug]', {
+      invoice_number: invoice.invoice_number,
+      status: invoice.status,
+      hasPO,
+      isArchived,
+      po_numbers_cached: invoice.po_numbers_cached
+    });
+  }
 
   if (hasPO) {
     return {
@@ -172,13 +226,27 @@ const getPOStatus = (invoice: Invoice) => {
       tooltip: 'PO Missing & Invoice Rejected'
     };
   }
+  if (isArchived) {
+    return {
+      type: 'archived-missing',
+      badge: (
+        <div className="relative w-[34px] h-4 border border-red-600 rounded flex items-center justify-center bg-white">
+          <span className="text-red-600 text-[10px] font-semibold leading-none">PO</span>
+          <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full flex items-center justify-center">
+            <span className="text-white text-[8px] font-bold leading-none">!</span>
+          </div>
+        </div>
+      ),
+      tooltip: 'Archived - PO Missing'
+    };
+  }
   return {
     type: 'missing',
     badge: (
       <div className="relative w-[34px] h-4 border border-red-600 rounded flex items-center justify-center bg-white">
         <span className="text-red-600 text-[10px] font-semibold leading-none">PO</span>
         <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full flex items-center justify-center">
-          <span className="text-white text-[8px] font-bold leading-none">•</span>
+          <span className="text-white text-[8px] font-bold leading-none">!</span>
         </div>
       </div>
     ),
@@ -633,6 +701,11 @@ export function EnhancedInvoiceTable({
   const getStatusColor = (status: string, hasApprover: boolean = false) => {
     const normalizedStatus = status?.toLowerCase() || '';
 
+    // Check for archived first
+    if (normalizedStatus === 'archived') {
+      return 'bg-gray-100 text-gray-700';
+    }
+
     // Override for in-approval items
     if (hasApprover && normalizedStatus !== 'approved' && normalizedStatus !== 'paid') {
       return 'bg-purple-50 text-purple-700 ring-1 ring-purple-200';
@@ -683,13 +756,15 @@ export function EnhancedInvoiceTable({
 
   const getMatchStatusColor = (matchStatus: string | undefined | null) => {
     const s = (matchStatus || '').toLowerCase();
+    // Archived
+    if (s === 'archived') return 'bg-gray-100 text-gray-700';
     // Matched
     if (s === 'matched' || s === 'full_match') return 'bg-green-100 text-green-700';
     // Within tolerance
     if (s === 'within_tolerance') return 'bg-blue-100 text-blue-700';
     // Pending (matching not yet done)
-    if (!s || s === 'pending' || s === 'in_progress') return 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200';
-    // Everything else is mismatched (incl. partial/exception variants)
+    if (!s || s === 'pending' || s === 'in_progress') return 'bg-blue-100 text-blue-700';
+    // Everything else is exception (incl. partial/exception variants)
     return 'bg-red-100 text-red-700';
   };
 
@@ -843,7 +918,7 @@ export function EnhancedInvoiceTable({
                     onClick={() => handleSort('reason')}
                     className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                   >
-                    Reason
+                    Exception Code
                     {getSortIcon('reason')}
                   </button>
                 </th>
@@ -1143,6 +1218,7 @@ export function EnhancedInvoiceTable({
                         : (activeTab === 'blocked' && invoice.type === 'Non-PO')
                         ? 'Needs Review'
                         : (
+                            invoice.status === 'archived' ? 'Archived' :
                             invoice.approver && invoice.status !== 'approved' && invoice.status !== 'paid' ? 'In Approval' :
                             invoice.status === 'needs_info' ? 'Needs info' :
                             (invoice.status === 'requires_review' || invoice.status === 'needs_review') ? 'Needs Review' :
@@ -1165,18 +1241,18 @@ export function EnhancedInvoiceTable({
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.vendor_name_snapshot ? getVendorId(invoice.vendor_name_snapshot) :
-                      <span className="text-red-600 font-semibold">Missing</span>
+                      <span className="text-red-600">[Missing]</span>
                     }
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.vendor_name_snapshot ||
-                      <span className="text-red-600 font-semibold">Missing</span>
+                      <span className="text-red-600">[Missing]</span>
                     }
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-bold text-gray-950 text-right">
                     {invoice.total !== undefined && invoice.total !== null ?
                       formatCurrency(invoice.total, invoice.currency || 'USD') :
-                      <span className="text-red-600 font-semibold">Missing</span>
+                      <span className="text-red-600">[Missing]</span>
                     }
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap">
@@ -1189,7 +1265,7 @@ export function EnhancedInvoiceTable({
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.invoice_date ? formatDate(invoice.invoice_date) :
-                      <span className="text-red-600 font-semibold">Missing</span>
+                      <span className="text-red-600">[Missing]</span>
                     }
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
@@ -1224,10 +1300,12 @@ export function EnhancedInvoiceTable({
                       const isNonPO = invoice.type === 'Non-PO';
                       let label: string;
                       let chipClass = getMatchStatusColor(invoice.match_status);
-                      if (isNonPO && (s === 'matched' || s === 'full_match' || s === 'within_tolerance')) {
-                        // In pending approval tab, non-PO invoices should show "Mismatched" if they need approval
+                      if (s === 'archived') {
+                        label = 'Archived';
+                      } else if (isNonPO && (s === 'matched' || s === 'full_match' || s === 'within_tolerance')) {
+                        // In pending approval tab, non-PO invoices should show "Exception" if they need approval
                         if (activeTab === 'in-approval') {
-                          label = 'Mismatched';
+                          label = 'Exception';
                           chipClass = 'bg-red-100 text-red-700';
                         } else {
                           label = 'Approved';
@@ -1238,9 +1316,15 @@ export function EnhancedInvoiceTable({
                       } else if (s === 'within_tolerance') {
                         label = 'Within Tolerance';
                       } else if (!s || s === 'pending' || s === 'in_progress') {
-                        label = 'Pending';
+                        // In needs-info/exceptions tab, show "Exception" instead of "Pending"
+                        if (activeTab === 'needs-info' || activeTab === 'exceptions') {
+                          label = 'Exception';
+                          chipClass = 'bg-red-100 text-red-700';
+                        } else {
+                          label = 'Pending';
+                        }
                       } else {
-                        label = 'Mismatched';
+                        label = 'Exception';
                       }
                       return (
                         <span className={cn(
@@ -1257,7 +1341,7 @@ export function EnhancedInvoiceTable({
                       {(() => {
                         // For non-PO invoices in pending approval tab, show "Needs Approval"
                         if (activeTab === 'in-approval' && invoice.type === 'Non-PO') {
-                          return (<span>Needs Approval</span>);
+                          return (<span>{formatExceptionCode('Needs Approval')}</span>);
                         }
 
                         const issues = (invoice.issues || []);
@@ -1273,7 +1357,7 @@ export function EnhancedInvoiceTable({
                         if (displayIssues.length === 0) return (<span>-</span>);
                         return (
                         <div className="flex items-center gap-1.5">
-                          <span>{displayIssues[0]}</span>
+                          <span>{formatExceptionCode(displayIssues[0])}</span>
                           {displayIssues.length > 1 && (
                             <TooltipProvider>
                               <Tooltip>
@@ -1289,7 +1373,7 @@ export function EnhancedInvoiceTable({
                                   <div className="space-y-0.5">
                                     <p className="font-semibold mb-1">All Issues:</p>
                                     {displayIssues.map((issue, idx) => (
-                                      <p key={idx} className="text-sm">• {issue}</p>
+                                      <p key={idx} className="text-sm">• {formatExceptionCode(issue)}</p>
                                     ))}
                                   </div>
                                 </TooltipContent>
@@ -1315,7 +1399,7 @@ export function EnhancedInvoiceTable({
                   </td>
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.currency ||
-                      <span className="text-red-600 font-semibold">Missing</span>
+                      <span className="text-red-600">[Missing]</span>
                     }
                   </td>
                   {activeTab !== 'needs-info' && (

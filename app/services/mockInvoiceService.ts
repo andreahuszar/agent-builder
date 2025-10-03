@@ -414,6 +414,7 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
       po_numbers_cached: poNumbersForNeedsInfo,
       gr_numbers: [],
       docType: 'Invoice',
+      issues: ['Missing Fields'], // Add Missing Fields issue for needs-info invoices
       created_at: baseDate.toISOString(),
       updated_at: baseDate.toISOString(),
       lines: lines,
@@ -816,6 +817,54 @@ export const generateMockInApprovalInvoices = (): Invoice[] => {
 };
 
 // Environment configuration for mock data
+// Generate mock archived invoices
+export const generateMockArchivedInvoices = (): Invoice[] => {
+  const now = new Date();
+  const mockInvoices: Invoice[] = [];
+
+  // PO invoice with missing PO - archived
+  mockInvoices.push({
+    id: 'archived-1',
+    invoice_number: 'INV-2024-8001',
+    vendor_name_snapshot: 'Global Manufacturing Co.',
+    vendor_id: 'VENDOR-001',
+    division: getDivision('Global Manufacturing Co.'),
+    invoice_date: '2024-11-15',
+    due_date: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString(), // 60 days ago
+    currency: 'USD',
+    total: 15750.00,
+    subtotal: 15000.00,
+    tax_total: 750.00,
+    tax_rate_percent: 5,
+    status: 'archived',
+    match_status: 'archived',
+    vendor_requires_po: true,
+    vendor_is_verified: true,
+    po_numbers_cached: [], // Missing PO
+    gr_numbers_cached: [],
+    created_at: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString(),
+    updated_at: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+    payment_method: 'Bank Transfer',
+    vendor_tax_id_snapshot: 'TAX-GM-001',
+    vendor_address_snapshot: '123 Manufacturing Blvd, Industrial Park, CA 90210',
+    type: 'PO',
+    issues: ['Missing PO'],
+    lines: [
+      {
+        line_no: 1,
+        description: 'Industrial Components Set',
+        quantity: 100,
+        unit_price: 150.00,
+        line_total: 15000.00,
+        uom: 'EA'
+      }
+    ]
+  });
+
+  console.log('[MockService] Generated archived invoices:', mockInvoices.length, mockInvoices);
+  return mockInvoices;
+};
+
 const USE_MOCK_DATA = process.env.USE_MOCK_DATA !== 'false'; // Default to true, can be disabled by setting to 'false'
 const DEBUG_MOCK = process.env.DEBUG_MOCK === 'true';
 
@@ -831,7 +880,7 @@ export const isMockInvoice = (id: string): boolean => {
     return false;
   }
 
-  const mockPrefixes = ['needs-info-', 'blocked-', 'mock-', 'due-', 'cn-', 'pf-', 'approval-'];
+  const mockPrefixes = ['needs-info-', 'blocked-', 'mock-', 'due-', 'cn-', 'pf-', 'approval-', 'archived-'];
   const isMock = mockPrefixes.some(prefix => id.startsWith(prefix));
 
   if (DEBUG_MOCK) {
@@ -844,15 +893,19 @@ export const isMockInvoice = (id: string): boolean => {
 
 // Get all mock invoices
 export const getAllMockInvoices = (): Invoice[] => {
-  return [
+  const allMocks = [
     ...generateMockNeedsInfoInvoices(),
     ...generateMockBlockedInvoices(),
     ...generateMockOverdueInvoices(),
     ...generateMockDueSoonInvoices(),
     ...generateMockCreditNotes(),
     ...generateMockProFormaInvoices(),
-    ...generateMockInApprovalInvoices()
+    ...generateMockInApprovalInvoices(),
+    ...generateMockArchivedInvoices()
   ];
+  console.log('[MockService] Total mock invoices:', allMocks.length);
+  console.log('[MockService] Archived invoices in total:', allMocks.filter(inv => inv.status === 'archived').length);
+  return allMocks;
 };
 
 // Get a specific mock invoice by ID
