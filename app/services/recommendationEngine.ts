@@ -11,64 +11,21 @@ import {
   Invoice,
   FilterPreset,
   RecommendationAction,
+  InvoiceRecommendation,
+  ComplexityGroup,
+  ComplexityLevel,
+  AnalysisResult,
 } from '@/app/types/recommendations';
 
 /**
- * Main analysis function that generates recommendations based on context
+ * Legacy function - kept for backward compatibility
+ * Use analyzeInvoicesByTab for new 3-tab structure
  */
 export function analyzeInvoices(
   invoices: Invoice[],
   context: AnalysisContext
 ): RecommendationGroup[] {
-  const recommendations: Recommendation[] = [];
-
-  // Detect issues based on active tab
-  switch (context.activeTab) {
-    case 'needs-info':
-      recommendations.push(
-        ...detectMissingPOIssues(invoices, context),
-        ...detectMissingFieldsIssues(invoices, context),
-        ...detectMissingPaymentDetails(invoices, context)
-      );
-      break;
-
-    case 'blocked':
-      recommendations.push(
-        ...detectPriceVariances(invoices, context),
-        ...detectQuantityMismatches(invoices, context),
-        ...detectMissingGR(invoices, context),
-        ...detectLineMismatches(invoices, context),
-        ...detectTaxCurrencyIssues(invoices, context),
-        ...detectVendorVerificationIssues(invoices, context)
-      );
-      break;
-
-    case 'in-approval':
-      recommendations.push(
-        ...detectDelayedApprovals(invoices, context),
-        ...detectHighValueInvoices(invoices, context),
-        ...detectApproachingDueDate(invoices, context)
-      );
-      break;
-
-    case 'ready-to-post':
-      recommendations.push(
-        ...detectEarlyPaymentDiscounts(invoices, context),
-        ...detectBatchPostingOpportunities(invoices, context)
-      );
-      break;
-
-    case 'all':
-      // For 'all' tab, show high-level insights
-      recommendations.push(
-        ...detectOverdueInvoices(invoices, context),
-        ...detectDuplicateSuspects(invoices, context)
-      );
-      break;
-  }
-
-  // Group recommendations by severity
-  return groupRecommendationsBySeverity(recommendations);
+  return analyzeInvoicesByException(invoices, context);
 }
 
 /**
@@ -98,7 +55,6 @@ function detectMissingPOIssues(
       severity: 'critical',
       impact: {
         count: missingPOInvoices.length,
-        value: missingPOInvoices.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: missingPOInvoices.map((inv) => inv.id),
       actions: [
@@ -165,10 +121,6 @@ function detectMissingFieldsIssues(
       severity: 'critical',
       impact: {
         count: missingFieldsInvoices.length,
-        value: missingFieldsInvoices.reduce(
-          (sum, inv) => sum + (inv.total || 0),
-          0
-        ),
       },
       invoiceIds: missingFieldsInvoices.map((inv) => inv.id),
       actions: [
@@ -226,7 +178,6 @@ function detectMissingPaymentDetails(
       severity: 'warning',
       impact: {
         count: missingPaymentInvoices.length,
-        value: missingPaymentInvoices.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: missingPaymentInvoices.map((inv) => inv.id),
       actions: [
@@ -276,7 +227,6 @@ function detectPriceVariances(
       severity: 'warning',
       impact: {
         count: priceVarianceInvoices.length,
-        value: priceVarianceInvoices.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: priceVarianceInvoices.map((inv) => inv.id),
       actions: [
@@ -335,7 +285,6 @@ function detectQuantityMismatches(
       severity: 'warning',
       impact: {
         count: quantityMismatchInvoices.length,
-        value: quantityMismatchInvoices.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: quantityMismatchInvoices.map((inv) => inv.id),
       actions: [
@@ -387,7 +336,6 @@ function detectMissingGR(
       severity: 'critical',
       impact: {
         count: missingGRInvoices.length,
-        value: missingGRInvoices.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: missingGRInvoices.map((inv) => inv.id),
       actions: [
@@ -442,7 +390,6 @@ function detectLineMismatches(
       severity: 'warning',
       impact: {
         count: lineMismatchInvoices.length,
-        value: lineMismatchInvoices.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: lineMismatchInvoices.map((inv) => inv.id),
       actions: [
@@ -498,7 +445,6 @@ function detectTaxCurrencyIssues(
       severity: 'info',
       impact: {
         count: taxCurrencyInvoices.length,
-        value: taxCurrencyInvoices.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: taxCurrencyInvoices.map((inv) => inv.id),
       actions: [
@@ -557,7 +503,6 @@ function detectVendorVerificationIssues(
       severity: 'critical',
       impact: {
         count: verificationInvoices.length,
-        value: verificationInvoices.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: verificationInvoices.map((inv) => inv.id),
       actions: [
@@ -612,7 +557,6 @@ function detectDelayedApprovals(
       severity: 'warning',
       impact: {
         count: delayedInvoices.length,
-        value: delayedInvoices.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: delayedInvoices.map((inv) => inv.id),
       actions: [
@@ -661,7 +605,6 @@ function detectHighValueInvoices(
       severity: 'info',
       impact: {
         count: highValueInvoices.length,
-        value: highValueInvoices.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: highValueInvoices.map((inv) => inv.id),
       actions: [
@@ -708,7 +651,6 @@ function detectApproachingDueDate(
       severity: 'warning',
       impact: {
         count: approachingDueInvoices.length,
-        value: approachingDueInvoices.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: approachingDueInvoices.map((inv) => inv.id),
       actions: [
@@ -761,7 +703,6 @@ function detectBatchPostingOpportunities(
       severity: 'info',
       impact: {
         count: invoices.length,
-        value: invoices.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: invoices.map((inv) => inv.id),
       actions: [
@@ -804,7 +745,6 @@ function detectOverdueInvoices(
       severity: 'critical',
       impact: {
         count: overdueInvoices.length,
-        value: overdueInvoices.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: overdueInvoices.map((inv) => inv.id),
       actions: [
@@ -849,7 +789,6 @@ function detectDuplicateSuspects(
       severity: 'warning',
       impact: {
         count: duplicateCandidates.length,
-        value: duplicateCandidates.reduce((sum, inv) => sum + inv.total, 0),
       },
       invoiceIds: duplicateCandidates.map((inv) => inv.id),
       actions: [
@@ -885,21 +824,18 @@ function groupRecommendationsBySeverity(
       label: 'Critical',
       recommendations: [],
       totalCount: 0,
-      totalValue: 0,
     },
     {
       severity: 'warning',
       label: 'Warnings',
       recommendations: [],
       totalCount: 0,
-      totalValue: 0,
     },
     {
       severity: 'info',
       label: 'Information',
       recommendations: [],
       totalCount: 0,
-      totalValue: 0,
     },
   ];
 
@@ -908,7 +844,6 @@ function groupRecommendationsBySeverity(
     if (group) {
       group.recommendations.push(rec);
       group.totalCount += rec.impact.count;
-      group.totalValue += rec.impact.value;
     }
   });
 
@@ -926,4 +861,206 @@ export function formatRecommendationValue(value: number): string {
     return `$${(value / 1_000).toFixed(0)}K`;
   }
   return `$${value.toFixed(0)}`;
+}
+
+/**
+ * NEW: Analyze invoices for High Impact tab
+ * Returns top 5 invoices by value with their exceptions and suggested actions
+ */
+function analyzeHighImpactInvoices(invoices: Invoice[]): InvoiceRecommendation[] {
+  // Sort by total value descending
+  const sortedInvoices = [...invoices]
+    .filter(inv => inv.total > 0)
+    .sort((a, b) => b.total - a.total)
+    .slice(0, 5); // Top 5
+
+  return sortedInvoices.map((invoice, index) => {
+    const exceptions: string[] = invoice.issues || [];
+    const suggestedActions = generateSuggestedActions(invoice, exceptions);
+
+    return {
+      invoice,
+      exceptions,
+      suggestedActions,
+      priority: index + 1,
+    };
+  });
+}
+
+/**
+ * Generate suggested actions based on invoice exceptions
+ */
+function generateSuggestedActions(invoice: Invoice, exceptions: string[]): string[] {
+  const actions: string[] = [];
+
+  if (exceptions.includes('Missing PO')) {
+    actions.push('Link purchase order or convert to Non-PO');
+  }
+  if (exceptions.some(e => e.includes('Missing'))) {
+    actions.push('Complete missing information');
+  }
+  if (exceptions.some(e => e.includes('Mismatch') || e.includes('Variance'))) {
+    actions.push('Resolve discrepancies with PO/GR');
+  }
+  if (exceptions.some(e => e.includes('Verification'))) {
+    actions.push('Request vendor verification');
+  }
+  if (actions.length === 0) {
+    actions.push('Review and approve');
+  }
+
+  return actions;
+}
+
+/**
+ * NEW: Analyze invoices by complexity (number of exceptions)
+ * Groups invoices by exception count for Quick Fixes tab
+ */
+function analyzeByComplexity(invoices: Invoice[]): ComplexityGroup[] {
+  const groups: Record<ComplexityLevel, Invoice[]> = {
+    '1-exception': [],
+    '2-exceptions': [],
+    '3-exceptions': [],
+    '4-plus-exceptions': [],
+  };
+
+  invoices.forEach(invoice => {
+    const exceptionCount = (invoice.issues || []).length;
+
+    if (exceptionCount === 1) {
+      groups['1-exception'].push(invoice);
+    } else if (exceptionCount === 2) {
+      groups['2-exceptions'].push(invoice);
+    } else if (exceptionCount === 3) {
+      groups['3-exceptions'].push(invoice);
+    } else if (exceptionCount >= 4) {
+      groups['4-plus-exceptions'].push(invoice);
+    }
+  });
+
+  // Sort invoices within each group by value (descending)
+  Object.keys(groups).forEach(key => {
+    groups[key as ComplexityLevel].sort((a, b) => b.total - a.total);
+  });
+
+  return [
+    {
+      level: '1-exception',
+      label: '1 exception (easiest)',
+      count: groups['1-exception'].length,
+      invoices: groups['1-exception'],
+      description: 'Quick wins - tackle these first for fast progress',
+    },
+    {
+      level: '2-exceptions',
+      label: '2 exceptions',
+      count: groups['2-exceptions'].length,
+      invoices: groups['2-exceptions'],
+      description: 'Moderate complexity - two issues to resolve',
+    },
+    {
+      level: '3-exceptions',
+      label: '3 exceptions',
+      count: groups['3-exceptions'].length,
+      invoices: groups['3-exceptions'],
+      description: 'More complex - three issues to address',
+    },
+    {
+      level: '4-plus-exceptions',
+      label: '4+ exceptions (complex)',
+      count: groups['4-plus-exceptions'].length,
+      invoices: groups['4-plus-exceptions'],
+      description: 'Most complex - may need escalation or special handling',
+    },
+  ].filter(group => group.count > 0); // Only return groups with invoices
+}
+
+/**
+ * NEW: Main export for tab-based analysis
+ * Replaces analyzeInvoices for the new 3-tab structure
+ */
+export function analyzeInvoicesByTab(
+  invoices: Invoice[],
+  context: AnalysisContext
+): AnalysisResult {
+  return {
+    highImpact: analyzeHighImpactInvoices(invoices),
+    quickFixes: analyzeByComplexity(invoices),
+    byException: analyzeInvoicesByException(invoices, context),
+  };
+}
+
+/**
+ * Renamed from analyzeInvoices - now used only for "By Exception" tab
+ */
+function analyzeInvoicesByException(
+  invoices: Invoice[],
+  context: AnalysisContext
+): RecommendationGroup[] {
+  const recommendations: Recommendation[] = [];
+
+  // Detect issues based on active tab
+  switch (context.activeTab) {
+    case 'exceptions':
+      // Exceptions tab combines needs-info and blocked invoices
+      recommendations.push(
+        ...detectMissingPOIssues(invoices, context),
+        ...detectMissingFieldsIssues(invoices, context),
+        ...detectMissingPaymentDetails(invoices, context),
+        ...detectPriceVariances(invoices, context),
+        ...detectQuantityMismatches(invoices, context),
+        ...detectMissingGR(invoices, context),
+        ...detectLineMismatches(invoices, context),
+        ...detectTaxCurrencyIssues(invoices, context),
+        ...detectVendorVerificationIssues(invoices, context)
+      );
+      break;
+
+    case 'needs-info':
+      recommendations.push(
+        ...detectMissingPOIssues(invoices, context),
+        ...detectMissingFieldsIssues(invoices, context),
+        ...detectMissingPaymentDetails(invoices, context)
+      );
+      break;
+
+    case 'blocked':
+      recommendations.push(
+        ...detectPriceVariances(invoices, context),
+        ...detectQuantityMismatches(invoices, context),
+        ...detectMissingGR(invoices, context),
+        ...detectLineMismatches(invoices, context),
+        ...detectTaxCurrencyIssues(invoices, context),
+        ...detectVendorVerificationIssues(invoices, context)
+      );
+      break;
+
+    case 'in-approval':
+      recommendations.push(
+        ...detectDelayedApprovals(invoices, context),
+        ...detectHighValueInvoices(invoices, context),
+        ...detectApproachingDueDate(invoices, context)
+      );
+      break;
+
+    case 'ready-to-post':
+      recommendations.push(
+        ...detectEarlyPaymentDiscounts(invoices, context),
+        ...detectBatchPostingOpportunities(invoices, context)
+      );
+      break;
+
+    case 'all':
+    case 'All (PO)':
+    case 'All (Non-PO)':
+      // For 'all' tab variants, show high-level insights
+      recommendations.push(
+        ...detectOverdueInvoices(invoices, context),
+        ...detectDuplicateSuspects(invoices, context)
+      );
+      break;
+  }
+
+  // Group recommendations by severity
+  return groupRecommendationsBySeverity(recommendations);
 }

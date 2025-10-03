@@ -238,8 +238,8 @@ export function InvoiceTabs({
 
   // Filter tabs based on mode
   const tabs = allTabs.filter(tab => {
-    // Hide Exceptions and Line Items tabs in needs info mode
-    if (isNeedsInfo && (tab.id === 'matching' || tab.id === 'line-items')) {
+    // Hide only Exceptions tab in needs info mode (always show Line Items)
+    if (isNeedsInfo && tab.id === 'matching') {
       return false;
     }
     // Hide attachments if hideAttachments prop is true

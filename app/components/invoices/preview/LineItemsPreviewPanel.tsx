@@ -582,7 +582,7 @@ export function LineItemsPreviewPanel({
               <table className="w-full">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <th colSpan={7} className="px-4 py-2 text-left text-sm font-semibold text-gray-950 bg-white border-b">
+                    <th colSpan={poLines.length > 0 ? 8 : 7} className="px-4 py-2 text-left text-sm font-semibold text-gray-950 bg-white border-b">
                       Invoice Line Items
                     </th>
                   </tr>
@@ -593,89 +593,127 @@ export function LineItemsPreviewPanel({
                     <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
                     <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
+                    {poLines.length > 0 && (
+                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
+                    )}
                     <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase w-16"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {editableLines.map((line, index) => (
-                    <tr
-                      key={line.id || line.line_no}
-                      className="bg-white hover:bg-gray-50"
-                    >
-                      <td className="px-3 py-2 text-sm text-gray-950">
-                        {line.line_no}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-gray-950">
-                        {isEditMode ? (
-                          <input
-                            type="text"
-                            value={line.description}
-                            onChange={(e) => handleLineChange(index, 'description', e.target.value)}
-                            className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-                          />
-                        ) : (
-                          <div className="truncate max-w-[400px]" title={line.description}>
-                            {line.description}
-                          </div>
+                  {editableLines.map((line, index) => {
+                    const matchedPO = getMatchedPOLine(line, index);
+                    const mismatch = hasMismatch(line, matchedPO);
+
+                    return (
+                      <tr
+                        key={line.id || line.line_no}
+                        className={`${mismatch ? 'bg-red-50' : 'bg-white hover:bg-gray-50'}`}
+                      >
+                        <td className="px-3 py-2 text-sm text-gray-950">
+                          {line.line_no}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-gray-950">
+                          {isEditMode ? (
+                            <input
+                              type="text"
+                              value={line.description}
+                              onChange={(e) => handleLineChange(index, 'description', e.target.value)}
+                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            />
+                          ) : (
+                            <div className="truncate max-w-[400px]" title={line.description}>
+                              {line.description}
+                            </div>
+                          )}
+                        </td>
+                        <td className={`px-3 py-2 text-sm text-right ${
+                          matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 ? 'text-red-600 font-semibold' : 'text-gray-950'
+                        }`}>
+                          {isEditMode ? (
+                            <input
+                              type="number"
+                              value={line.qty}
+                              onChange={(e) => handleLineChange(index, 'qty', parseFloat(e.target.value) || 0)}
+                              className="w-20 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            />
+                          ) : (
+                            line.qty
+                          )}
+                        </td>
+                        <td className="px-3 py-2 text-sm text-center text-gray-950">
+                          {isEditMode ? (
+                            <input
+                              type="text"
+                              value={line.uom}
+                              onChange={(e) => handleLineChange(index, 'uom', e.target.value)}
+                              className="w-20 px-2 py-1 text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            />
+                          ) : (
+                            line.uom
+                          )}
+                        </td>
+                        <td className={`px-3 py-2 text-sm text-right ${
+                          matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 ? 'text-red-600 font-semibold' : 'text-gray-950'
+                        }`}>
+                          {isEditMode ? (
+                            <input
+                              type="number"
+                              value={line.unit_price}
+                              onChange={(e) => handleLineChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
+                              step="0.01"
+                              className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+                            />
+                          ) : (
+                            formatCurrency(line.unit_price)
+                          )}
+                        </td>
+                        <td className={`px-3 py-2 text-sm text-right font-medium ${
+                          mismatch ? 'text-red-600' : 'text-gray-950'
+                        }`}>
+                          {formatCurrency(line.line_total)}
+                        </td>
+                        {poLines.length > 0 && (
+                          <td className="px-3 py-2 text-sm">
+                            {matchedPO && (
+                              <div className="flex flex-col items-center gap-0.5">
+                                {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
+                                  <span className="text-xs text-red-600 font-medium">
+                                    Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
+                                  </span>
+                                )}
+                                {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
+                                  <span className="text-xs text-red-600 font-medium">
+                                    Price: {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
+                                  </span>
+                                )}
+                                {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
+                                  <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                                )}
+                              </div>
+                            )}
+                            {!matchedPO && (
+                              <span className="text-xs text-gray-400">No PO</span>
+                            )}
+                          </td>
                         )}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-right text-gray-950">
-                        {isEditMode ? (
-                          <input
-                            type="number"
-                            value={line.qty}
-                            onChange={(e) => handleLineChange(index, 'qty', parseFloat(e.target.value) || 0)}
-                            className="w-20 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-                          />
-                        ) : (
-                          line.qty
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-center text-gray-950">
-                        {isEditMode ? (
-                          <input
-                            type="text"
-                            value={line.uom}
-                            onChange={(e) => handleLineChange(index, 'uom', e.target.value)}
-                            className="w-20 px-2 py-1 text-sm text-center border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-                          />
-                        ) : (
-                          line.uom
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-right text-gray-950">
-                        {isEditMode ? (
-                          <input
-                            type="number"
-                            value={line.unit_price}
-                            onChange={(e) => handleLineChange(index, 'unit_price', parseFloat(e.target.value) || 0)}
-                            step="0.01"
-                            className="w-24 px-2 py-1 text-sm text-right border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
-                          />
-                        ) : (
-                          formatCurrency(line.unit_price)
-                        )}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-right font-medium text-gray-950">
-                        {formatCurrency(line.line_total)}
-                      </td>
-                      <td className="px-3 py-2 text-sm text-center">
-                        {isEditMode && (
-                          <button
-                            onClick={() => handleRemoveLine(index)}
-                            className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                            title="Remove line"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        <td className="px-3 py-2 text-sm text-center">
+                          {isEditMode && (
+                            <button
+                              onClick={() => handleRemoveLine(index)}
+                              className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
+                              title="Remove line"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
                   {/* Add new line button row */}
                   {isEditMode && (
                     <tr className="bg-gray-50 hover:bg-gray-100">
-                      <td colSpan={7} className="px-3 py-2">
+                      <td colSpan={poLines.length > 0 ? 8 : 7} className="px-3 py-2">
                         <button
                           onClick={handleAddLine}
                           className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 font-medium"
@@ -695,6 +733,7 @@ export function LineItemsPreviewPanel({
                     <td className="px-3 py-2 text-right text-sm font-bold text-gray-950">
                       {formatCurrency(editableLines.reduce((sum, line) => sum + line.line_total, 0))}
                     </td>
+                    {poLines.length > 0 && <td></td>}
                     <td></td>
                   </tr>
                 </tfoot>

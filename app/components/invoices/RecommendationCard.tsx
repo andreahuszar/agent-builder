@@ -64,15 +64,9 @@ export function RecommendationCard({
         {/* Impact metrics */}
         <div className="flex items-center gap-4 mb-3 pl-7">
           <div>
-            <span className="text-xs text-gray-600">Invoices: </span>
+            <span className="text-xs text-gray-700">Affected invoices: </span>
             <span className="text-sm font-semibold text-gray-950">
               {recommendation.impact.count}
-            </span>
-          </div>
-          <div>
-            <span className="text-xs text-gray-600">Value: </span>
-            <span className="text-sm font-semibold text-gray-950">
-              {formatRecommendationValue(recommendation.impact.value)}
             </span>
           </div>
         </div>

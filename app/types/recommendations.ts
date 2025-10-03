@@ -7,6 +7,10 @@ export type RecommendationSeverity = 'critical' | 'warning' | 'info';
 
 export type ActionType = 'filter' | 'quick-fix' | 'batch' | 'contact' | 'request';
 
+export type RecommendationTab = 'high-impact' | 'quick-fixes' | 'by-exception';
+
+export type ComplexityLevel = '1-exception' | '2-exceptions' | '3-exceptions' | '4-plus-exceptions';
+
 export interface RecommendationAction {
   id: string;
   type: ActionType;
@@ -29,8 +33,7 @@ export interface Recommendation {
   description: string;
   severity: RecommendationSeverity;
   impact: {
-    count: number; // Number of affected invoices
-    value: number; // Total value in currency
+    count: number; // Number of affected invoices (no value)
   };
   invoiceIds: string[]; // List of affected invoice IDs
   actions: RecommendationAction[];
@@ -44,7 +47,27 @@ export interface RecommendationGroup {
   label: string;
   recommendations: Recommendation[];
   totalCount: number;
-  totalValue: number;
+}
+
+export interface InvoiceRecommendation {
+  invoice: Invoice;
+  exceptions: string[];
+  suggestedActions: string[];
+  priority: number; // For sorting
+}
+
+export interface ComplexityGroup {
+  level: ComplexityLevel;
+  label: string;
+  count: number;
+  invoices: Invoice[];
+  description: string;
+}
+
+export interface AnalysisResult {
+  highImpact: InvoiceRecommendation[];
+  quickFixes: ComplexityGroup[];
+  byException: RecommendationGroup[];
 }
 
 export interface AnalysisContext {

@@ -26,7 +26,8 @@ import {
   Tag,
   CalendarClock,
   MoreHorizontal,
-  Bell
+  Bell,
+  User
 } from 'lucide-react';
 import { EnhancedInvoiceTable } from './EnhancedInvoiceTable';
 import { UploadDialog } from './UploadDialog';
@@ -746,6 +747,9 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     new Set(['Missing Fields', 'Missing PO', 'Line Items Mismatch', 'Header Level', 'Validation'])
   );
   const [selectedApprovers, setSelectedApprovers] = useState<Set<string>>(new Set());
+
+  // Filter by specific invoice IDs (used for Quick Fixes "Show in table")
+  const [filteredInvoiceIds, setFilteredInvoiceIds] = useState<Set<string> | null>(null);
   const [approverFilterOpen, setApproverFilterOpen] = useState(false);
   const [approverSearchQuery, setApproverSearchQuery] = useState('');
   const [invoiceTypeFilter, setInvoiceTypeFilter] = useState('all');
@@ -831,6 +835,14 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
       dueSoon: { count: dueSoon.length, value: dueSoon.reduce((sum, inv) => sum + inv.total, 0) }
     };
   }, [filteredInvoices]);
+
+  // Calculate high impact recommendations count (top 5 invoices by value with issues)
+  const highImpactCount = useMemo(() => {
+    const invoicesWithIssues = currentTabInvoices.filter(inv =>
+      inv.issues && inv.issues.length > 0 && inv.total > 0
+    );
+    return Math.min(5, invoicesWithIssues.length);
+  }, [currentTabInvoices]);
 
   // Calculate quick filter counts
   const quickFilterCounts = useMemo(() => {
@@ -1097,6 +1109,7 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     setSelectedExceptions(new Set());
     setExceptionSearchQuery('');
     setExceptionFilterOpen(false);
+    setFilteredInvoiceIds(null); // Also clear invoice ID filter
   };
 
   // Category selection helpers
@@ -1220,14 +1233,50 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
   };
 
   const handleMissingFieldsClick = () => {
-    // Clear other filters and set all Missing Fields category items
+    // Clear other filters and set only the critical Missing Fields that the metric counts
+    // These match the fields checked in missingFieldsInvoices calculation (lines 1670-1676)
     clearExceptionFilter();
-    const category = EXCEPTION_CATEGORIES['Missing Fields'];
-    const fieldIssues = new Set(category.items);
-    setSelectedExceptions(fieldIssues);
+    setActiveQuickFilters(new Set()); // Also clear quick filters
+    const criticalFields = new Set([
+      'Missing Vendor',
+      'Missing Date',
+      'Missing Currency',
+      'Missing Amount',
+      'Missing Vendor ID'
+    ]);
+    setSelectedExceptions(criticalFields);
+  };
+
+  const handleDueSoonClick = () => {
+    // Clear exception filters and set due soon quick filter
+    clearExceptionFilter();
+    setActiveQuickFilters(new Set(['due-7days']));
+  };
+
+  const handleOverdueClick = () => {
+    // Clear exception filters and set overdue quick filter
+    clearExceptionFilter();
+    setActiveQuickFilters(new Set(['overdue']));
+  };
+
+  const handleMismatchedClick = () => {
+    // Clear other filters and show all exception/blocked invoices
+    clearExceptionFilter();
+    setActiveQuickFilters(new Set());
+    // In exceptions tab, just clear filters to show all exceptions
+    // The tab itself filters to blocked/mismatched invoices
   };
 
   // Handle applying filter presets from recommendations
+  const handleFilterByInvoiceIds = (invoiceIds: string[]) => {
+    // Clear other filters and set invoice ID filter
+    setSelectedVendors(new Set());
+    setSelectedExceptions(new Set());
+    setSelectedApprovers(new Set());
+    setActiveQuickFilters(new Set());
+    setFilteredInvoiceIds(new Set(invoiceIds));
+  };
+
   const handleApplyRecommendationFilter = (preset: FilterPreset) => {
     // Clear all filters if requested
     if (preset.clearOthers) {
@@ -1235,6 +1284,7 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
       setSelectedExceptions(new Set());
       setSelectedApprovers(new Set());
       setActiveQuickFilters(new Set());
+      setFilteredInvoiceIds(null); // Also clear invoice ID filter
     }
 
     // Apply filter preset
@@ -1369,8 +1419,13 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
       filtered = filtered.filter(invoice => invoice.approver && selectedApprovers.has(invoice.approver));
     }
 
+    // Invoice ID filter (from Quick Fixes "Show in table")
+    if (filteredInvoiceIds && filteredInvoiceIds.size > 0) {
+      filtered = filtered.filter(invoice => filteredInvoiceIds.has(invoice.id));
+    }
+
     setFilteredInvoices(filtered);
-  }, [searchQuery, invoices, activeView, selectedVendors, selectedExceptions, selectedApprovers, activeQuickFilters, invoiceTypeFilter, activeTab]);
+  }, [searchQuery, invoices, activeView, selectedVendors, selectedExceptions, selectedApprovers, activeQuickFilters, invoiceTypeFilter, activeTab, filteredInvoiceIds]);
 
   const handleUploadComplete = useCallback((invoiceId: string) => {
     router.push(`/invoices/${invoiceId}`);
@@ -1624,6 +1679,11 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
           inv.match_status === 'unmatched'
         );
 
+      // Pending approval invoices - invoices waiting for approver action
+      const pendingApprovalInvoices = tabInvoices.filter(inv =>
+        inv.approver || inv.status === 'in_approval' || inv.status === 'pending_approval'
+      );
+
       // Approval-specific metrics
       let waitingLongInvoices: any[] = [];
       let highValueInvoices: any[] = [];
@@ -1694,6 +1754,11 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
         missingFields: {
           count: missingFieldsInvoices.length,
           value: missingFieldsInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0)
+        },
+        // Pending approval metric - count only
+        pendingApproval: {
+          count: pendingApprovalInvoices.length,
+          value: 0
         }
       };
     }, [tabInvoices, activeTab]);
@@ -1701,93 +1766,141 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     return (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-3 py-1.5 mb-3">
         <div className="flex items-center justify-between">
-          <div className="flex items-center divide-x divide-gray-100">
-          <div className="flex items-center gap-1.5 pr-4">
-            <Clock className="h-3 w-3 text-purple-900" />
-            <span className="text-xs text-gray-950">
-              <span className="font-semibold">{tabMetrics.dueSoon.count}</span> due soon
-              <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.dueSoon.value)}</span>
-            </span>
-          </div>
-          <div className="flex items-center gap-1.5 px-4">
-            <Clock className="h-3 w-3 text-purple-900" />
-            <span className="text-xs text-gray-950">
-              <span className="font-semibold">{tabMetrics.overdue.count}</span> overdue
-              <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.overdue.value)}</span>
-            </span>
-          </div>
-          {/* Missing fields: only in Exceptions tab (both PO and Non-PO) */}
-          {activeTab === 'exceptions' && (
+          <div className="flex items-center">
+            {/* Due Soon - Always visible, clickable */}
             <button
-              onClick={handleMissingFieldsClick}
-              className="flex items-center gap-1.5 px-4 hover:bg-gray-50 rounded-md py-1 transition-colors"
+              onClick={handleDueSoonClick}
+              className="flex items-center gap-1.5 pr-4 hover:bg-gray-50 py-1 transition-colors"
             >
-              <AlertCircle className="h-3 w-3 text-red-500" />
+              <Clock className="h-3 w-3 text-purple-900" />
               <span className="text-xs text-gray-950">
-                <span className="font-semibold">{tabMetrics.missingFields.count}</span> with missing fields
+                <span className="font-semibold">{tabMetrics.dueSoon.count}</span> due soon
+                <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.dueSoon.value)}</span>
               </span>
             </button>
-          )}
-          {/* Exceptions + PO toggle: show Missing PO metric */}
-          {activeTab === 'exceptions' && invoiceTypeFilter === 'po' && (
+
+            {/* Separator */}
+            <div className="h-4 w-px bg-gray-200" />
+
+            {/* Overdue - Always visible, clickable */}
             <button
-              onClick={handleMissingPOClick}
-              className="flex items-center gap-1.5 px-4 hover:bg-gray-50 rounded-md py-1 transition-colors"
+              onClick={handleOverdueClick}
+              className="flex items-center gap-1.5 px-4 hover:bg-gray-50 py-1 transition-colors"
             >
-              <AlertTriangle className="h-3 w-3 text-orange-500" />
+              <Clock className="h-3 w-3 text-purple-900" />
               <span className="text-xs text-gray-950">
-                <span className="font-semibold">{tabMetrics.missingPO.count}</span> missing PO
-                <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.missingPO.value)}</span>
+                <span className="font-semibold">{tabMetrics.overdue.count}</span> overdue
+                <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.overdue.value)}</span>
               </span>
             </button>
-          )}
-          {activeTab === 'exceptions' && (
-            <div className="flex items-center gap-1.5 px-4">
-              <AlertTriangle className="h-3 w-3 text-red-500" />
-              <span className="text-xs text-gray-950">
-                <span className="font-semibold">{tabMetrics.blocked.count}</span> mismatched
-                <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.blocked.value)}</span>
-              </span>
-            </div>
-          )}
-          {activeTab === 'in-approval' && (
-            <>
-              <div className="flex items-center gap-1.5 px-4">
-                <Clock className="h-3 w-3 text-orange-500" />
-                <span className="text-xs text-gray-950">
-                  <span className="font-semibold">{tabMetrics.waitingLong.count}</span> waiting &gt;3 days
-                  <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.waitingLong.value)}</span>
-                </span>
-              </div>
-              <div className="flex items-center gap-1.5 px-4">
-                <DollarSign className="h-3 w-3 text-green-600" />
-                <span className="text-xs text-gray-950">
-                  <span className="font-semibold">{tabMetrics.highValue.count}</span> high value &gt;$50K
-                  <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.highValue.value)}</span>
-                </span>
-              </div>
-            </>
-          )}
-          {/* Right-aligned Quick Fixes only for PO + Exceptions - Hidden for now */}
-          {/* {activeTab === 'exceptions' && invoiceTypeFilter === 'po' && (
-            <div className="ml-auto pl-4">
-              <button
-                onClick={() => setShowQuickFixes(true)}
-                className="px-3 py-1.5 text-xs bg-purple-900 text-white rounded-md hover:bg-purple-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-              >
-                Quick Fixes
-              </button>
-            </div>
-          )} */}
+
+            {/* Missing fields: only in Exceptions tab (both PO and Non-PO) */}
+            {activeTab === 'exceptions' && (
+              <>
+                {/* Separator */}
+                <div className="h-4 w-px bg-gray-200" />
+
+                <button
+                  onClick={handleMissingFieldsClick}
+                  className="flex items-center gap-1.5 px-4 hover:bg-gray-50 py-1 transition-colors"
+                >
+                  <AlertCircle className="h-3 w-3 text-red-500" />
+                  <span className="text-xs text-gray-950">
+                    <span className="font-semibold">{tabMetrics.missingFields.count}</span> with missing fields
+                  </span>
+                </button>
+
+                {/* Separator */}
+                <div className="h-4 w-px bg-gray-200" />
+
+                {/* Mismatched - clickable, count only (no value) */}
+                <button
+                  onClick={handleMismatchedClick}
+                  className="flex items-center gap-1.5 px-4 hover:bg-gray-50 py-1 transition-colors"
+                >
+                  <AlertTriangle className="h-3 w-3 text-red-500" />
+                  <span className="text-xs text-gray-950">
+                    <span className="font-semibold">{tabMetrics.blocked.count}</span> mismatched
+                  </span>
+                </button>
+
+                {/* Pending Approval - only in exceptions tab */}
+                {tabMetrics.pendingApproval.count > 0 && (
+                  <>
+                    {/* Separator */}
+                    <div className="h-4 w-px bg-gray-200" />
+
+                    <div className="flex items-center gap-1.5 px-4">
+                      <User className="h-3 w-3 text-blue-600" />
+                      <span className="text-xs text-gray-950">
+                        <span className="font-semibold">{tabMetrics.pendingApproval.count}</span> pending approval
+                      </span>
+                    </div>
+                  </>
+                )}
+
+                {/* Missing PO - only shown in Exceptions + PO toggle */}
+                {invoiceTypeFilter === 'po' && (
+                  <>
+                    {/* Separator */}
+                    <div className="h-4 w-px bg-gray-200" />
+
+                    <button
+                      onClick={handleMissingPOClick}
+                      className="flex items-center gap-1.5 px-4 hover:bg-gray-50 py-1 transition-colors"
+                    >
+                      <AlertTriangle className="h-3 w-3 text-orange-500" />
+                      <span className="text-xs text-gray-950">
+                        <span className="font-semibold">{tabMetrics.missingPO.count}</span> missing PO
+                        <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.missingPO.value)}</span>
+                      </span>
+                    </button>
+                  </>
+                )}
+              </>
+            )}
+
+            {/* In-approval tab specific metrics */}
+            {activeTab === 'in-approval' && (
+              <>
+                {/* Separator */}
+                <div className="h-4 w-px bg-gray-200" />
+
+                <div className="flex items-center gap-1.5 px-4">
+                  <Clock className="h-3 w-3 text-orange-500" />
+                  <span className="text-xs text-gray-950">
+                    <span className="font-semibold">{tabMetrics.waitingLong.count}</span> waiting &gt;3 days
+                    <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.waitingLong.value)}</span>
+                  </span>
+                </div>
+
+                {/* Separator */}
+                <div className="h-4 w-px bg-gray-200" />
+
+                <div className="flex items-center gap-1.5 px-4">
+                  <DollarSign className="h-3 w-3 text-green-600" />
+                  <span className="text-xs text-gray-950">
+                    <span className="font-semibold">{tabMetrics.highValue.count}</span> high value &gt;$50K
+                    <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.highValue.value)}</span>
+                  </span>
+                </div>
+              </>
+            )}
           </div>
 
           {/* Recommendations button - right-aligned */}
           <button
             onClick={() => setRecommendationsOpen(true)}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs border border-purple-600 text-purple-600 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+            disabled={highImpactCount === 0}
+            className={cn(
+              "flex items-center gap-1.5 px-3 py-1.5 text-xs border rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2",
+              highImpactCount === 0
+                ? "border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed"
+                : "border-purple-600 text-purple-600 hover:bg-purple-50"
+            )}
           >
             <Sparkles className="h-3.5 w-3.5" />
-            Recommendations
+            {highImpactCount > 0 ? `${highImpactCount} Recommendations` : 'Recommendations'}
           </button>
         </div>
       </div>
@@ -2347,6 +2460,7 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
           },
         }}
         onApplyFilter={handleApplyRecommendationFilter}
+        onFilterByInvoiceIds={handleFilterByInvoiceIds}
         onQuickAction={(actionId, recommendation) => {
           // Handle quick actions (contact, request, batch operations)
           console.log('Quick action:', actionId, recommendation);
