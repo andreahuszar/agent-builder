@@ -130,15 +130,26 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       return <div className="h-full flex items-center justify-center text-gray-500">Loading...</div>;
     }
 
-    // Unified layout for ALL invoices: Fields on left (read-only), PDF on right
+    // Unified layout for ALL invoices: PDF on left, Fields on right (read-only)
     return (
       <ResizablePanel
-        defaultSizes={[67, 33]}
-        minSizes={[25, 40]}
-        storageKey={`invoice-unified-${invoiceId}`}
+        defaultSizes={[33, 67]}
+        minSizes={[20, 30]}
+        storageKey={`invoice-unified-v2-${invoiceId}`}
         className="h-full"
       >
-        {/* Invoice Tabs (Read-only) - LEFT PANEL */}
+        {/* Document Preview - LEFT PANEL */}
+        <DocumentPreview
+          invoiceId={invoiceId}
+          hasAttachment={invoice.attachments && invoice.attachments.length > 0}
+          invoiceData={invoice}
+          matchResults={matchResults}
+          poComparisonData={poComparisonData}
+          hideLineComparison={false}
+          hideLineItems={true}
+        />
+
+        {/* Invoice Tabs (Read-only) - RIGHT PANEL */}
         <InvoiceTabs
           invoiceId={invoiceId}
           invoiceData={invoice}
@@ -152,17 +163,6 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           forceReadOnly={true}
           hideComparison={false}
           showFieldErrors={isNeedsInfoMode}
-        />
-
-        {/* Document Preview - RIGHT PANEL */}
-        <DocumentPreview
-          invoiceId={invoiceId}
-          hasAttachment={invoice.attachments && invoice.attachments.length > 0}
-          invoiceData={invoice}
-          matchResults={matchResults}
-          poComparisonData={poComparisonData}
-          hideLineComparison={false}
-          hideLineItems={true}
         />
       </ResizablePanel>
     );
