@@ -18,7 +18,10 @@ import {
   Check,
   X,
   Search,
-  Info
+  Info,
+  Mail,
+  Database,
+  Upload
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -36,11 +39,13 @@ import {
 } from '@/app/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { InvoiceQuickViewDrawer } from './InvoiceQuickViewDrawer';
+import { getDivision } from '@/app/services/invoiceDataService';
 
 interface Invoice {
   id: string;
   invoice_number: string;
   vendor_name_snapshot: string;
+  customer_no?: string; // Human-readable vendor code for accounting/procurement
   division?: string;
   invoice_date: string;
   due_date: string;
@@ -63,9 +68,13 @@ interface Invoice {
   requisitioner?: string;
   created_at?: string;
   updated_at?: string;
+  data_ingestion_date?: string;
+  ingestion_source?: 'email' | 'edi' | 'manual_upload';
   issues?: string[];
   docType?: 'Invoice' | 'Credit Note' | 'Pro Forma';
   processed_status?: string;
+  dueStatus?: 'Due Soon' | 'Overdue';
+  agingBracket?: 'Current' | '1-30 days' | '31-60 days' | '61-90 days' | '90+ days';
 }
 
 interface EnhancedInvoiceTableProps {
@@ -79,95 +88,13 @@ interface EnhancedInvoiceTableProps {
   activeTab?: string;
 }
 
-type SortField = 'status' | 'docType' | 'invoice_number' | 'vendor_name_snapshot' | 'invoice_date' | 'due_date' | 'total' | 'currency' | 'match_status' | 'division' | 'type' | 'assignedTo' | 'requisitioner' | 'costCentre' | 'accountCode' | 'approver' | 'daysWithApprover' | 'vendorId' | 'aging' | 'netAmount' | 'poNumbers' | 'grNumbers' | 'reason';
+type SortField = 'status' | 'docType' | 'invoice_number' | 'vendor_name_snapshot' | 'invoice_date' | 'due_date' | 'dueStatus' | 'data_ingestion_date' | 'ingestion_source' | 'total' | 'currency' | 'match_status' | 'division' | 'type' | 'assignedTo' | 'requisitioner' | 'costCentre' | 'accountCode' | 'approver' | 'daysWithApprover' | 'vendorId' | 'aging' | 'agingBracket' | 'netAmount' | 'customer_no' | 'poNumbers' | 'grNumbers' | 'reason';
 type SortDirection = 'asc' | 'desc';
 
-// Function to map vendor names to divisions
-const getDivision = (vendorName: string | undefined): string => {
-  if (!vendorName) return 'EMEA'; // Default division
-
-  const vendor = vendorName.toLowerCase();
-
-  // EMEA mappings
-  if (vendor.includes('global') || vendor.includes('international') || vendor.includes('world') ||
-      vendor.includes('europe') || vendor.includes('gmbh') || vendor.includes('ag')) {
-    return 'EMEA';
-  }
-
-  // US Inc mappings
-  if (vendor.includes('us ') || vendor.includes('america') || vendor.includes('corp') ||
-      vendor.includes('inc') && !vendor.includes('uk')) {
-    return 'US Inc';
-  }
-
-  // Carter UK Ltd mappings
-  if (vendor.includes('uk') || vendor.includes('ltd') || vendor.includes('british') ||
-      vendor.includes('london')) {
-    return 'Carter UK Ltd';
-  }
-
-  // APAC mappings
-  if (vendor.includes('asia') || vendor.includes('pacific') || vendor.includes('tech') ||
-      vendor.includes('digital') || vendor.includes('systems')) {
-    return 'APAC';
-  }
-
-  // LATAM mappings
-  if (vendor.includes('latin') || vendor.includes('south') || vendor.includes('brazil')) {
-    return 'LATAM';
-  }
-
-  // Canada Corp mappings
-  if (vendor.includes('canada') || vendor.includes('canadian') || vendor.includes('toronto')) {
-    return 'Canada Corp';
-  }
-
-  // Consistent fallback based on vendor name hash
-  const divisions = ['EMEA', 'US Inc', 'Carter UK Ltd', 'APAC', 'LATAM', 'Canada Corp'];
-  const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return divisions[hash % divisions.length];
-};
-
-// Helper function to add exception codes to issues
+// Helper function to format exception names (removed code prefixes)
 const formatExceptionCode = (issue: string): string => {
-  const exceptionCodes: { [key: string]: string } = {
-    // 100 series: Missing Fields
-    'Missing Vendor': '[101]',
-    'Missing Date': '[102]',
-    'Missing Currency': '[103]',
-    'Missing Amount': '[104]',
-    'Missing Vendor ID': '[105]',
-    'Missing Vendor Tax ID': '[106]',
-    'Missing Vendor Address': '[107]',
-    'Missing Payment Method': '[108]',
-    'Missing Bank Account': '[109]',
-    'Missing Tax Code': '[110]',
-    'Missing Line Items': '[111]',
-    'Missing PO': '[120]',
-    'Missing GR': '[121]',
-    'Missing Approval': '[122]',
-
-    // 200 series: Header/Tax Issues
-    'Tax Discrepancy': '[200]',
-    'Tax Rate Mismatch': '[201]',
-    'Line Mismatch': '[202]',
-    'Unit Price Mismatch': '[203]',
-    'UoM Mismatch': '[204]',
-    'Amount Mismatch': '[205]',
-    'Price Tolerance': '[206]',
-    'Quantity Variance': '[207]',
-    'Quantity Mismatch': '[208]',
-    'Line Items Mismatch': '[210]',
-
-    // 300 series: Workflow Issues
-    'Unapproved Change Order': '[301]',
-
-    // 400 series: Approval Issues
-    'Needs Approval': '[400]',
-  };
-
-  const code = exceptionCodes[issue];
-  return code ? `${code} ${issue}` : issue;
+  // Simply return the issue name without exception codes
+  return issue;
 };
 
 // Helper function to get PO status badge for all invoices
@@ -219,7 +146,7 @@ const getPOStatus = (invoice: Invoice) => {
         <div className="relative w-[34px] h-4 border border-red-600 rounded flex items-center justify-center bg-white">
           <span className="text-red-600 text-[10px] font-semibold leading-none">PO</span>
           <div className="absolute -top-1 -right-1 w-3 h-3 bg-red-600 rounded-full flex items-center justify-center">
-            <span className="text-white text-[8px] font-bold leading-none">✗</span>
+            <span className="text-white text-[8px] font-bold leading-none">!</span>
           </div>
         </div>
       ),
@@ -252,6 +179,32 @@ const getPOStatus = (invoice: Invoice) => {
     ),
     tooltip: 'PO Missing'
   };
+};
+
+// Helper function to get source icon and tooltip
+const getSourceIcon = (source?: string) => {
+  switch (source) {
+    case 'email':
+      return {
+        icon: <Mail className="h-4 w-4 text-blue-600" />,
+        tooltip: 'Received via Email'
+      };
+    case 'edi':
+      return {
+        icon: <Database className="h-4 w-4 text-purple-600" />,
+        tooltip: 'Electronic Data Interchange (EDI)'
+      };
+    case 'manual_upload':
+      return {
+        icon: <Upload className="h-4 w-4 text-green-600" />,
+        tooltip: 'Manually Uploaded'
+      };
+    default:
+      return {
+        icon: <Mail className="h-4 w-4 text-gray-400" />,
+        tooltip: 'Unknown Source'
+      };
+  }
 };
 
 // Extracted ActionButtons component for reuse in both original and floating positions
@@ -409,9 +362,17 @@ export function EnhancedInvoiceTable({
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
   const [isActionsColumnVisible, setIsActionsColumnVisible] = useState(true);
   const [isTableScrolled, setIsTableScrolled] = useState(false);
+  const [sourceColumnWidth, setSourceColumnWidth] = useState(0);
+  const [ingestionDateColumnWidth, setIngestionDateColumnWidth] = useState(0);
+  const [vendorColumnWidth, setVendorColumnWidth] = useState(0);
+  const [vendorIdColumnWidth, setVendorIdColumnWidth] = useState(0);
   const [invoiceColumnWidth, setInvoiceColumnWidth] = useState(0);
   const actionsHeaderRef = useRef<HTMLTableCellElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const sourceHeaderRef = useRef<HTMLTableCellElement>(null);
+  const ingestionDateHeaderRef = useRef<HTMLTableCellElement>(null);
+  const vendorHeaderRef = useRef<HTMLTableCellElement>(null);
+  const vendorIdHeaderRef = useRef<HTMLTableCellElement>(null);
   const invoiceHeaderRef = useRef<HTMLTableCellElement>(null);
 
   const handleSort = (field: SortField) => {
@@ -445,6 +406,110 @@ export function EnhancedInvoiceTable({
 
     return () => {
       observer.disconnect();
+    };
+  }, []);
+
+  // Measure Source column width with ResizeObserver
+  useEffect(() => {
+    const headerElement = sourceHeaderRef.current;
+    if (!headerElement) return;
+
+    const updateWidth = () => {
+      const width = headerElement.offsetWidth;
+      setSourceColumnWidth(width);
+      console.log('Source column width updated:', width);
+    };
+
+    // Initial measurement
+    updateWidth();
+
+    // Watch for size changes
+    const resizeObserver = new ResizeObserver(() => {
+      updateWidth();
+    });
+
+    resizeObserver.observe(headerElement);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  // Measure Ingestion Date column width with ResizeObserver
+  useEffect(() => {
+    const headerElement = ingestionDateHeaderRef.current;
+    if (!headerElement) return;
+
+    const updateWidth = () => {
+      const width = headerElement.offsetWidth;
+      setIngestionDateColumnWidth(width);
+      console.log('Ingestion Date column width updated:', width);
+    };
+
+    // Initial measurement
+    updateWidth();
+
+    // Watch for size changes
+    const resizeObserver = new ResizeObserver(() => {
+      updateWidth();
+    });
+
+    resizeObserver.observe(headerElement);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  // Measure Vendor column width with ResizeObserver
+  useEffect(() => {
+    const headerElement = vendorHeaderRef.current;
+    if (!headerElement) return;
+
+    const updateWidth = () => {
+      const width = headerElement.offsetWidth;
+      setVendorColumnWidth(width);
+      console.log('Vendor column width updated:', width);
+    };
+
+    // Initial measurement
+    updateWidth();
+
+    // Watch for size changes
+    const resizeObserver = new ResizeObserver(() => {
+      updateWidth();
+    });
+
+    resizeObserver.observe(headerElement);
+
+    return () => {
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  // Measure Vendor ID column width with ResizeObserver
+  useEffect(() => {
+    const headerElement = vendorIdHeaderRef.current;
+    if (!headerElement) return;
+
+    const updateWidth = () => {
+      const width = headerElement.offsetWidth;
+      setVendorIdColumnWidth(width);
+      console.log('Vendor ID column width updated:', width);
+    };
+
+    // Initial measurement
+    updateWidth();
+
+    // Watch for size changes
+    const resizeObserver = new ResizeObserver(() => {
+      updateWidth();
+    });
+
+    resizeObserver.observe(headerElement);
+
+    return () => {
+      resizeObserver.disconnect();
     };
   }, []);
 
@@ -483,15 +548,25 @@ export function EnhancedInvoiceTable({
     }
 
     const handleScroll = () => {
-      const isScrolled = scrollContainer.scrollLeft > 0;
-      console.log('Scroll event:', { scrollLeft: scrollContainer.scrollLeft, isScrolled });
+      // Shadow should only appear when Source, Ingestion Date, Vendor, and Vendor ID columns have scrolled off-screen
+      const totalScrollableWidth = sourceColumnWidth + ingestionDateColumnWidth + vendorColumnWidth + vendorIdColumnWidth;
+      const isScrolled = scrollContainer.scrollLeft >= totalScrollableWidth;
+      console.log('Scroll event:', {
+        scrollLeft: scrollContainer.scrollLeft,
+        sourceColumnWidth,
+        ingestionDateColumnWidth,
+        vendorColumnWidth,
+        vendorIdColumnWidth,
+        totalScrollableWidth,
+        isScrolled
+      });
       setIsTableScrolled(isScrolled);
     };
 
     scrollContainer.addEventListener('scroll', handleScroll);
     console.log('Scroll listener added to container');
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
-  }, []);
+  }, [sourceColumnWidth, ingestionDateColumnWidth, vendorColumnWidth, vendorIdColumnWidth]);
 
   // Get unique divisions from invoices
   const uniqueDivisions = useMemo(() => {
@@ -577,6 +652,11 @@ export function EnhancedInvoiceTable({
       } else if (sortField === 'aging') {
         aValue = calculateAging(a.due_date);
         bValue = calculateAging(b.due_date);
+      } else if (sortField === 'agingBracket') {
+        // Sort aging brackets by severity (Current < 1-30 < 31-60 < 61-90 < 90+)
+        const bracketOrder = { 'Current': 0, '1-30 days': 1, '31-60 days': 2, '61-90 days': 3, '90+ days': 4 };
+        aValue = bracketOrder[calculateAgingBracket(a.due_date)] ?? 999;
+        bValue = bracketOrder[calculateAgingBracket(b.due_date)] ?? 999;
       } else if (sortField === 'netAmount') {
         aValue = a.total * 0.9;
         bValue = b.total * 0.9;
@@ -629,7 +709,7 @@ export function EnhancedInvoiceTable({
       if (bValue == null) return -1;
 
       // Handle date fields
-      if (sortField === 'invoice_date' || sortField === 'due_date') {
+      if (sortField === 'invoice_date' || sortField === 'due_date' || sortField === 'data_ingestion_date') {
         aValue = new Date(aValue as string).getTime();
         bValue = new Date(bValue as string).getTime();
       }
@@ -696,6 +776,43 @@ export function EnhancedInvoiceTable({
       default:
         return 'bg-gray-100 text-gray-700';
     }
+  };
+
+  const getDueStatusColor = (dueStatus?: 'Due Soon' | 'Overdue'): string => {
+    switch (dueStatus) {
+      case 'Overdue':
+        return 'bg-red-50 text-red-700 ring-1 ring-red-200';
+      case 'Due Soon':
+        return 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200';
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const getAgingBracketColor = (bracket?: 'Current' | '1-30 days' | '31-60 days' | '61-90 days' | '90+ days'): string => {
+    switch (bracket) {
+      case 'Current':
+        return 'bg-green-50 text-green-700 ring-1 ring-green-200';
+      case '1-30 days':
+        return 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200';
+      case '31-60 days':
+        return 'bg-orange-50 text-orange-700 ring-1 ring-orange-200';
+      case '61-90 days':
+        return 'bg-red-50 text-red-700 ring-1 ring-red-200';
+      case '90+ days':
+        return 'bg-red-100 text-red-800 ring-2 ring-red-300';
+      default:
+        return 'bg-gray-100 text-gray-700';
+    }
+  };
+
+  const calculateAgingBracket = (dueDate: string): 'Current' | '1-30 days' | '31-60 days' | '61-90 days' | '90+ days' => {
+    const aging = calculateAging(dueDate);
+    if (aging < 0) return 'Current';
+    if (aging <= 30) return '1-30 days';
+    if (aging <= 60) return '31-60 days';
+    if (aging <= 90) return '61-90 days';
+    return '90+ days';
   };
 
   const getStatusColor = (status: string, hasApprover: boolean = false) => {
@@ -804,8 +921,9 @@ export function EnhancedInvoiceTable({
 
   return (
     <div className="overflow-hidden bg-white shadow-sm ring-1 ring-gray-900/5 rounded-lg relative">
-      {/* Shadow overlay for sticky column - positioned at right edge of Invoice No. column */}
-      {isTableScrolled && invoiceColumnWidth > 0 && (
+      {/* Shadow overlay for sticky column - appears when Source, Ingestion Date, Vendor, and Vendor ID columns scroll off-screen.
+          Positioned at right edge of sticky Invoice No. column */}
+      {isTableScrolled && vendorColumnWidth > 0 && invoiceColumnWidth > 0 && (
         <div
           className="absolute top-0 bottom-0 w-[16px] pointer-events-none z-20 bg-gradient-to-r from-black/[0.03] to-transparent"
           style={{ left: `${64 + invoiceColumnWidth}px` }}
@@ -830,6 +948,50 @@ export function EnhancedInvoiceTable({
                 </button>
               </th>
               <th scope="col"
+                ref={sourceHeaderRef}
+                className="px-2 py-1.5 text-center text-sm font-semibold text-gray-950">
+                <button
+                  onClick={() => handleSort('ingestion_source')}
+                  className="flex items-center gap-1 hover:text-gray-900 w-full justify-center"
+                >
+                  Source
+                  {getSortIcon('ingestion_source')}
+                </button>
+              </th>
+              <th scope="col"
+                ref={ingestionDateHeaderRef}
+                className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <button
+                  onClick={() => handleSort('data_ingestion_date')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  <span className="whitespace-normal">Ingestion Date</span>
+                  {getSortIcon('data_ingestion_date')}
+                </button>
+              </th>
+              <th scope="col"
+                ref={vendorHeaderRef}
+                className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950 max-w-[200px]">
+                <button
+                  onClick={() => handleSort('vendor_name_snapshot')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  Vendor
+                  {getSortIcon('vendor_name_snapshot')}
+                </button>
+              </th>
+              <th scope="col"
+                ref={vendorIdHeaderRef}
+                className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <button
+                  onClick={() => handleSort('vendorId')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  Vendor ID
+                  {getSortIcon('vendorId')}
+                </button>
+              </th>
+              <th scope="col"
                 ref={invoiceHeaderRef}
                 className="sticky left-[64px] z-10 bg-white px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
@@ -842,38 +1004,58 @@ export function EnhancedInvoiceTable({
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
-                  onClick={() => handleSort('status')}
+                  onClick={() => handleSort('match_status')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  <span className="whitespace-normal">Workflow Status</span>
-                  {getSortIcon('status')}
+                  <span className="whitespace-normal">Processed Status</span>
+                  {getSortIcon('match_status')}
                 </button>
               </th>
+              {activeTab !== 'needs-info' && (
+                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                  <button
+                    onClick={() => handleSort('reason')}
+                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                  >
+                    <span className="whitespace-normal">Status Reason</span>
+                    {getSortIcon('reason')}
+                  </button>
+                </th>
+              )}
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
-                  onClick={() => handleSort('vendorId')}
+                  onClick={() => handleSort('currency')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  Vendor ID
-                  {getSortIcon('vendorId')}
-                </button>
-              </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                <button
-                  onClick={() => handleSort('vendor_name_snapshot')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  Vendor
-                  {getSortIcon('vendor_name_snapshot')}
+                  Currency
+                  {getSortIcon('currency')}
                 </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
                 <button
                   onClick={() => handleSort('total')}
-                  className="flex items-center gap-1 hover:text-gray-900 justify-end w-full"
+                  className="flex items-end gap-1 hover:text-gray-900 justify-end w-full text-right"
                 >
-                  Amount
+                  <span className="whitespace-normal text-right">Total Amount</span>
                   {getSortIcon('total')}
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
+                <button
+                  onClick={() => handleSort('netAmount')}
+                  className="flex items-end gap-1 hover:text-gray-900 justify-end w-full text-right"
+                >
+                  <span className="whitespace-normal text-right">Net Amount</span>
+                  {getSortIcon('netAmount')}
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <button
+                  onClick={() => handleSort('customer_no')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  Customer No.
+                  {getSortIcon('customer_no')}
                 </button>
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
@@ -905,25 +1087,41 @@ export function EnhancedInvoiceTable({
               </th>
               <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                 <button
-                  onClick={() => handleSort('match_status')}
+                  onClick={() => handleSort('dueStatus')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  <span className="whitespace-normal">Processed Status</span>
-                  {getSortIcon('match_status')}
+                  Due Status
+                  {getSortIcon('dueStatus')}
                 </button>
               </th>
-              {activeTab !== 'needs-info' && (
-                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                  <button
-                    onClick={() => handleSort('reason')}
-                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                  >
-                    Exception Code
-                    {getSortIcon('reason')}
-                  </button>
-                </th>
-              )}
-              {!isNonPOContext && (
+              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
+                <button
+                  onClick={() => handleSort('aging')}
+                  className="flex items-end gap-1 hover:text-gray-900 justify-end w-full text-right"
+                >
+                  Aging (days)
+                  {getSortIcon('aging')}
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <button
+                  onClick={() => handleSort('agingBracket')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  Aging Bracket
+                  {getSortIcon('agingBracket')}
+                </button>
+              </th>
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <button
+                  onClick={() => handleSort('status')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  <span className="whitespace-normal">Workflow Status</span>
+                  {getSortIcon('status')}
+                </button>
+              </th>
+              {(activeView === 'all' || activeView === 'po') && (
                 <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                   <button
                     onClick={() => handleSort('poNumbers')}
@@ -934,24 +1132,17 @@ export function EnhancedInvoiceTable({
                   </button>
                 </th>
               )}
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                <button
-                  onClick={() => handleSort('aging')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  Aging (days)
-                  {getSortIcon('aging')}
-                </button>
-              </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                <button
-                  onClick={() => handleSort('currency')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  Currency
-                  {getSortIcon('currency')}
-                </button>
-              </th>
+              {(activeView === 'all' || activeView === 'po') && (
+                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                  <button
+                    onClick={() => handleSort('grNumbers')}
+                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                  >
+                    GR No.
+                    {getSortIcon('grNumbers')}
+                  </button>
+                </th>
+              )}
               {activeTab !== 'needs-info' && (
                 <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                   <div className="flex items-center gap-1">
@@ -1039,37 +1230,6 @@ export function EnhancedInvoiceTable({
                   </div>
                 </th>
               )}
-              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
-                <button
-                  onClick={() => handleSort('netAmount')}
-                  className="flex items-center gap-1 hover:text-gray-900 justify-end w-full"
-                >
-                  Net Amount
-                  {getSortIcon('netAmount')}
-                </button>
-              </th>
-              {activeTab !== 'needs-info' && (
-                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                  <button
-                    onClick={() => handleSort('type')}
-                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                  >
-                    Type (PO/Non-PO)
-                    {getSortIcon('type')}
-                  </button>
-                </th>
-              )}
-              {!isNonPOContext && (
-                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                  <button
-                    onClick={() => handleSort('grNumbers')}
-                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                  >
-                    GR No.
-                    {getSortIcon('grNumbers')}
-                  </button>
-                </th>
-              )}
               {activeTab !== 'needs-info' && (
                 <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
                   <button
@@ -1089,26 +1249,6 @@ export function EnhancedInvoiceTable({
                   >
                     Account Code
                     {getSortIcon('accountCode')}
-                  </button>
-                </th>
-              )}
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                <button
-                  onClick={() => handleSort('assignedTo')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  Owner
-                  {getSortIcon('assignedTo')}
-                </button>
-              </th>
-              {isPOContext && (
-                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
-                  <button
-                    onClick={() => handleSort('requisitioner')}
-                    className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                  >
-                    PO Requisitioner
-                    {getSortIcon('requisitioner')}
                   </button>
                 </th>
               )}
@@ -1134,6 +1274,15 @@ export function EnhancedInvoiceTable({
                   </button>
                 </th>
               )}
+              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <button
+                  onClick={() => handleSort('assignedTo')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  Owner
+                  {getSortIcon('assignedTo')}
+                </button>
+              </th>
               <th ref={actionsHeaderRef} scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
                 Actions
               </th>
@@ -1150,6 +1299,7 @@ export function EnhancedInvoiceTable({
                     isSelected ? "bg-purple-50 hover:bg-purple-100" : "hover:bg-purple-50"
                   )}
                 >
+                  {/* 1. Checkbox (sticky left-0) */}
                   <td className={cn(
                     "sticky left-0 z-10 px-6 py-2.5 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]",
                     isSelected ? "bg-purple-50 group-hover:bg-purple-100" : "bg-white group-hover:bg-purple-50"
@@ -1165,6 +1315,41 @@ export function EnhancedInvoiceTable({
                       )}
                     </button>
                   </td>
+
+                  {/* 2. Source */}
+                  <td className="px-2 py-2.5 whitespace-nowrap text-center">
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="cursor-help inline-flex justify-center">
+                            {getSourceIcon(invoice.ingestion_source).icon}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent className="bg-gray-800 text-white border-gray-800">
+                          <p>{getSourceIcon(invoice.ingestion_source).tooltip}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </td>
+
+                  {/* 3. Ingestion Date */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {invoice.data_ingestion_date ? formatDate(invoice.data_ingestion_date) : formatDate(new Date().toISOString())}
+                  </td>
+
+                  {/* 4. Vendor */}
+                  <td className="px-6 py-2.5 text-sm font-medium text-gray-950 max-w-[200px]">
+                    <div className="truncate" title={invoice.vendor_name_snapshot || ''}>
+                      {invoice.vendor_name_snapshot || ''}
+                    </div>
+                  </td>
+
+                  {/* 5. Vendor ID */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {invoice.vendor_name_snapshot ? getVendorId(invoice.vendor_name_snapshot) : ''}
+                  </td>
+
+                  {/* 6. Invoice No. (sticky left-[64px]) */}
                   <td className={cn(
                     "sticky left-[64px] z-10 px-6 py-2.5 whitespace-nowrap",
                     isSelected ? "bg-purple-50 group-hover:bg-purple-100" : "bg-white group-hover:bg-purple-50"
@@ -1201,76 +1386,19 @@ export function EnhancedInvoiceTable({
                             setIsQuickViewOpen(true);
                           }
                         }}
-                        className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                        className={cn(
+                          "text-sm text-purple-600 hover:text-purple-700",
+                          quickViewInvoiceId === invoice.id && isQuickViewOpen
+                            ? "font-bold tracking-tight"
+                            : "font-medium"
+                        )}
                       >
                         {invoice.invoice_number}
                       </button>
                     </div>
                   </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap">
-                    {(() => {
-                      const forceReady = activeTab === 'ready-to-post';
-                      const chipClass = forceReady
-                        ? 'bg-green-50 text-green-700 ring-1 ring-green-200'
-                        : getStatusColor(invoice.status, !!invoice.approver);
-                      const label = forceReady
-                        ? 'Ready for posting'
-                        : (activeTab === 'blocked' && invoice.type === 'Non-PO')
-                        ? 'Needs Review'
-                        : (
-                            invoice.status === 'archived' ? 'Archived' :
-                            invoice.approver && invoice.status !== 'approved' && invoice.status !== 'paid' ? 'In Approval' :
-                            invoice.status === 'needs_info' ? 'Needs info' :
-                            (invoice.status === 'requires_review' || invoice.status === 'needs_review') ? 'Needs Review' :
-                            (invoice.status === 'ready_for_payment' || invoice.status === 'ready_to_pay') ? 'Ready for posting' :
-                            invoice.status === 'approved' ? 'Approved' :
-                            (invoice.status === 'pending' && !invoice.approver) ? 'Needs Review' :
-                            invoice.status === 'pending' ? 'Pending' :
-                            invoice.status === 'draft' ? 'Draft' :
-                            (invoice.status?.charAt(0).toUpperCase() + invoice.status?.slice(1).replace(/_/g, ' ') || 'Draft')
-                          );
-                      return (
-                        <span className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                          chipClass
-                        )}>
-                          {label}
-                        </span>
-                      );
-                    })()}
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {invoice.vendor_name_snapshot ? getVendorId(invoice.vendor_name_snapshot) :
-                      <span className="text-red-600">[Missing]</span>
-                    }
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {invoice.vendor_name_snapshot ||
-                      <span className="text-red-600">[Missing]</span>
-                    }
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-bold text-gray-950 text-right">
-                    {invoice.total !== undefined && invoice.total !== null ?
-                      formatCurrency(invoice.total, invoice.currency || 'USD') :
-                      <span className="text-red-600">[Missing]</span>
-                    }
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap">
-                    <span className={cn(
-                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                      getDocTypeColor(invoice.docType || 'Invoice')
-                    )}>
-                      {invoice.docType || 'Invoice'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {invoice.invoice_date ? formatDate(invoice.invoice_date) :
-                      <span className="text-red-600">[Missing]</span>
-                    }
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {formatDate(invoice.due_date)}
-                  </td>
+
+                  {/* 7. Processed Status */}
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     {(() => {
                       // Check for processed_status first (for Auto Rejected status)
@@ -1336,6 +1464,8 @@ export function EnhancedInvoiceTable({
                       );
                     })()}
                   </td>
+
+                  {/* 8. Exception Reason (conditional - not shown in needs-info tab) */}
                   {activeTab !== 'needs-info' && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {(() => {
@@ -1355,37 +1485,161 @@ export function EnhancedInvoiceTable({
                           displayIssues = displayIssues.filter(i => i !== 'Missing PO' && i !== 'Missing GR');
                         }
                         if (displayIssues.length === 0) return (<span>-</span>);
+
+                        // If only one issue, show it without tooltip
+                        if (displayIssues.length === 1) {
+                          return <span>{displayIssues[0]}</span>;
+                        }
+
+                        // If multiple issues, wrap entire cell content in tooltip
                         return (
-                        <div className="flex items-center gap-1.5">
-                          <span>{formatExceptionCode(displayIssues[0])}</span>
-                          {displayIssues.length > 1 && (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <span className={cn(
-                                    "inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium cursor-default",
-                                    getIssueSeverityColor(displayIssues.slice(1))
-                                  )}>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="flex items-center gap-1.5 cursor-help">
+                                  <span>{displayIssues[0]}</span>
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium cursor-default bg-purple-100 text-purple-900">
                                     +{displayIssues.length - 1}
                                   </span>
-                                </TooltipTrigger>
-                                <TooltipContent className="bg-gray-800 text-white border-gray-800 max-w-xs">
-                                  <div className="space-y-0.5">
-                                    <p className="font-semibold mb-1">All Issues:</p>
-                                    {displayIssues.map((issue, idx) => (
-                                      <p key={idx} className="text-sm">• {formatExceptionCode(issue)}</p>
-                                    ))}
-                                  </div>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
-                          )}
-                        </div>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent className="bg-gray-800 text-white border-gray-800 max-w-xs">
+                                <div className="space-y-0.5">
+                                  <p className="font-semibold mb-1">All Issues:</p>
+                                  {displayIssues.map((issue, idx) => (
+                                    <p key={idx} className="text-sm">• {issue}</p>
+                                  ))}
+                                </div>
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         );
                       })()}
                     </td>
                   )}
-                  {!isNonPOContext && (
+
+                  {/* 9. Currency */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {invoice.currency || ''}
+                  </td>
+
+                  {/* 14. Total Amount */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-bold text-gray-950 text-right">
+                    {invoice.total !== undefined && invoice.total !== null ?
+                      formatCurrency(invoice.total, invoice.currency || 'USD') : ''
+                    }
+                  </td>
+
+                  {/* 15. Net Amount */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
+                    {invoice.total !== undefined && invoice.total !== null ? (() => {
+                      // Mock net amount as 90% of total for demonstration
+                      const netAmount = invoice.total * 0.9;
+                      return formatCurrency(netAmount, invoice.currency || 'USD');
+                    })() :
+                      <span className="text-red-600 font-semibold">-</span>
+                    }
+                  </td>
+
+                  {/* 16. Customer No. */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {invoice.customer_no || '-'}
+                  </td>
+
+                  {/* 17. Doc. Type */}
+                  <td className="px-6 py-2.5 whitespace-nowrap">
+                    <span className={cn(
+                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                      getDocTypeColor(invoice.docType || 'Invoice')
+                    )}>
+                      {invoice.docType || 'Invoice'}
+                    </span>
+                  </td>
+
+                  {/* 17. Invoice Date */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {invoice.invoice_date ? formatDate(invoice.invoice_date) : ''}
+                  </td>
+
+                  {/* 18. Due Date */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {formatDate(invoice.due_date)}
+                  </td>
+
+                  {/* 19. Due Status */}
+                  <td className="px-6 py-2.5 whitespace-nowrap">
+                    {invoice.dueStatus ? (
+                      <span className={cn(
+                        "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                        getDueStatusColor(invoice.dueStatus)
+                      )}>
+                        {invoice.dueStatus}
+                      </span>
+                    ) : (
+                      <span className="text-sm font-medium text-gray-950">-</span>
+                    )}
+                  </td>
+
+                  {/* 20. Aging (days) */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
+                    {typeof window !== 'undefined' ? (() => {
+                      const aging = calculateAging(invoice.due_date);
+                      if (aging > 0) {
+                        return <span className="text-red-600">{aging}</span>;
+                      } else if (aging === 0) {
+                        return <span className="text-orange-600">Due today</span>;
+                      } else {
+                        return <span className="text-green-600">{Math.abs(aging)}</span>;
+                      }
+                    })() : '-'}
+                  </td>
+
+                  {/* 21. Aging Bracket */}
+                  <td className="px-6 py-2.5 whitespace-nowrap">
+                    <span className={cn(
+                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                      getAgingBracketColor(calculateAgingBracket(invoice.due_date))
+                    )}>
+                      {calculateAgingBracket(invoice.due_date)}
+                    </span>
+                  </td>
+
+                  {/* 22. Workflow Status */}
+                  <td className="px-6 py-2.5 whitespace-nowrap">
+                    {(() => {
+                      const forceReady = activeTab === 'ready-to-post';
+                      const chipClass = forceReady
+                        ? 'bg-green-50 text-green-700 ring-1 ring-green-200'
+                        : getStatusColor(invoice.status, !!invoice.approver);
+                      const label = forceReady
+                        ? 'Ready for posting'
+                        : (activeTab === 'blocked' && invoice.type === 'Non-PO')
+                        ? 'Needs Review'
+                        : (
+                            invoice.status === 'archived' ? 'Archived' :
+                            invoice.approver && invoice.status !== 'approved' && invoice.status !== 'paid' ? 'In Approval' :
+                            invoice.status === 'needs_info' ? 'Needs info' :
+                            (invoice.status === 'requires_review' || invoice.status === 'needs_review') ? 'Needs Review' :
+                            (invoice.status === 'ready_for_payment' || invoice.status === 'ready_to_pay') ? 'Ready for posting' :
+                            invoice.status === 'approved' ? 'Approved' :
+                            (invoice.status === 'pending' && !invoice.approver) ? 'Needs Review' :
+                            invoice.status === 'pending' ? 'Pending' :
+                            invoice.status === 'draft' ? 'Draft' :
+                            (invoice.status?.charAt(0).toUpperCase() + invoice.status?.slice(1).replace(/_/g, ' ') || 'Draft')
+                          );
+                      return (
+                        <span className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                          chipClass
+                        )}>
+                          {label}
+                        </span>
+                      );
+                    })()}
+                  </td>
+
+                  {/* 23. PO No. (conditional) */}
+                  {(activeView === 'all' || activeView === 'po') && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium">
                       {invoice.type === 'Non-PO' ? (
                         <span className="text-sm font-medium text-gray-950">-</span>
@@ -1415,43 +1669,9 @@ export function EnhancedInvoiceTable({
                       )}
                     </td>
                   )}
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {typeof window !== 'undefined' ? (() => {
-                      const aging = calculateAging(invoice.due_date);
-                      if (aging > 0) {
-                        return <span className="text-red-600">{aging}</span>;
-                      } else if (aging === 0) {
-                        return <span className="text-orange-600">Due today</span>;
-                      } else {
-                        return <span className="text-green-600">{Math.abs(aging)}</span>;
-                      }
-                    })() : '-'}
-                  </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {invoice.currency ||
-                      <span className="text-red-600">[Missing]</span>
-                    }
-                  </td>
-                  {activeTab !== 'needs-info' && (
-                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                      {invoice.division || getDivision(invoice.vendor_name_snapshot)}
-                    </td>
-                  )}
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
-                    {invoice.total !== undefined && invoice.total !== null ? (() => {
-                      // Mock net amount as 90% of total for demonstration
-                      const netAmount = invoice.total * 0.9;
-                      return formatCurrency(netAmount, invoice.currency || 'USD');
-                    })() :
-                      <span className="text-red-600 font-semibold">-</span>
-                    }
-                  </td>
-                  {activeTab !== 'needs-info' && (
-                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                      {invoice.type || (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? 'PO' : 'Non-PO')}
-                    </td>
-                  )}
-                  {!isNonPOContext && (
+
+                  {/* 24. GR No. (conditional) */}
+                  {(activeView === 'all' || activeView === 'po') && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {invoice.gr_numbers && invoice.gr_numbers.length > 0 ? (
                         <div className="flex flex-col gap-1">
@@ -1466,6 +1686,14 @@ export function EnhancedInvoiceTable({
                       )}
                     </td>
                   )}
+
+                  {/* 25. Division (conditional) */}
+                  {activeTab !== 'needs-info' && (
+                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                      {invoice.division || getDivision(invoice.vendor_name_snapshot)}
+                    </td>
+                  )}
+
                   {activeTab !== 'needs-info' && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {invoice.costCentre || '-'}
@@ -1474,14 +1702,6 @@ export function EnhancedInvoiceTable({
                   {activeTab !== 'needs-info' && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {invoice.accountCode || '-'}
-                    </td>
-                  )}
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {invoice.assignedTo || '-'}
-                  </td>
-                  {isPOContext && (
-                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                      {invoice.requisitioner || '-'}
                     </td>
                   )}
                   {activeTab !== 'needs-info' && (
@@ -1501,6 +1721,9 @@ export function EnhancedInvoiceTable({
                       })()}
                     </td>
                   )}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {invoice.assignedTo || '-'}
+                  </td>
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     <ActionButtons invoice={invoice} activeTab={activeTab} onDelete={onDelete} />
                   </td>

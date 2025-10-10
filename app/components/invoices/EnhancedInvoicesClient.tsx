@@ -71,6 +71,8 @@ import {
   generateMockArchivedInvoices,
   isMockInvoice,
 } from '@/app/services/mockInvoiceService';
+import { enrichInvoiceWithDemoData } from '@/app/services/invoiceDataService';
+import { UnifiedInvoice } from '@/types/invoice';
 
 interface Invoice {
   id: string;
@@ -79,6 +81,7 @@ interface Invoice {
   vendor_id?: string;
   vendor_tax_id_snapshot?: string;
   vendor_address_snapshot?: string;
+  customer_no?: string; // Human-readable vendor code for accounting/procurement
   division?: string;
   invoice_date: string;
   due_date: string;
@@ -111,27 +114,22 @@ const getContextualTabs = (invoiceType: string) => {
     // PO mode: Exceptions combines needs-info + mismatched
     return [
       { id: 'exceptions', label: 'Exceptions' },
-      { id: 'ready-to-post', label: 'Ready to post' },
-      { id: 'archived', label: 'Archived' },
-      { id: 'all', label: 'All (PO)' }
+      { id: 'all', label: 'All (PO)' },
+      { id: 'archived', label: 'Archived' }
     ];
   } else if (invoiceType === 'non-po') {
     // Non-PO mode: Exceptions combines needs-info + approval needed
     return [
       { id: 'exceptions', label: 'Exceptions' },
-      { id: 'in-approval', label: 'Pending approval' },
-      { id: 'ready-to-post', label: 'Ready to post' },
-      { id: 'archived', label: 'Archived' },
-      { id: 'all', label: 'All (Non-PO)' }
+      { id: 'all', label: 'All (Non-PO)' },
+      { id: 'archived', label: 'Archived' }
     ];
   } else {
     // All mode: Exceptions combines needs-info + mismatched/blocked
     return [
       { id: 'exceptions', label: 'Exceptions' },
-      { id: 'in-approval', label: 'Pending approval' },
-      { id: 'ready-to-post', label: 'Ready to post' },
-      { id: 'archived', label: 'Archived' },
-      { id: 'all', label: 'All' }
+      { id: 'all', label: 'All' },
+      { id: 'archived', label: 'Archived' }
     ];
   }
 };
@@ -158,51 +156,8 @@ const quickFilterOptions = [
   }
 ];
 
-// Function to map vendor names to divisions
-const getDivision = (vendorName: string | undefined): string => {
-  if (!vendorName) return 'EMEA'; // Default division
-
-  const vendor = vendorName.toLowerCase();
-
-  // EMEA mappings
-  if (vendor.includes('global') || vendor.includes('international') || vendor.includes('world') ||
-      vendor.includes('europe') || vendor.includes('gmbh') || vendor.includes('ag')) {
-    return 'EMEA';
-  }
-
-  // US Inc mappings
-  if (vendor.includes('us ') || vendor.includes('america') || vendor.includes('corp') ||
-      vendor.includes('inc') && !vendor.includes('uk')) {
-    return 'US Inc';
-  }
-
-  // Carter UK Ltd mappings
-  if (vendor.includes('uk') || vendor.includes('ltd') || vendor.includes('british') ||
-      vendor.includes('london')) {
-    return 'Carter UK Ltd';
-  }
-
-  // APAC mappings
-  if (vendor.includes('asia') || vendor.includes('pacific') || vendor.includes('tech') ||
-      vendor.includes('digital') || vendor.includes('systems')) {
-    return 'APAC';
-  }
-
-  // LATAM mappings
-  if (vendor.includes('latin') || vendor.includes('south') || vendor.includes('brazil')) {
-    return 'LATAM';
-  }
-
-  // Canada Corp mappings
-  if (vendor.includes('canada') || vendor.includes('canadian') || vendor.includes('toronto')) {
-    return 'Canada Corp';
-  }
-
-  // Consistent fallback based on vendor name hash
-  const divisions = ['EMEA', 'US Inc', 'Carter UK Ltd', 'APAC', 'LATAM', 'Canada Corp'];
-  const hash = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
-  return divisions[hash % divisions.length];
-};
+// REMOVED: getDivision function - now using centralized version from invoiceDataService
+// This ensures consistency across the entire application
 
 // Define issue types with severity levels for prioritization
 const ISSUE_TYPES: Record<string, { severity: 'critical' | 'warning' | 'info', order: number }> = {
@@ -465,82 +420,8 @@ const generateInvoiceIssues = (invoice: any): string[] => {
   });
 };
 
-const generateSyntheticFields = (invoice: any): any => {
-  // Preserve needs_info status - but generate issues for missing fields
-  if (invoice.status === 'needs_info') {
-    const seed = invoice.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-
-    // Generate issues based on missing fields
-    const issues: string[] = [];
-    if (!invoice.vendor_name_snapshot) issues.push('Missing Vendor');
-    if (!invoice.invoice_date) issues.push('Missing Date');
-    if (!invoice.currency) issues.push('Missing Currency');
-    if (!invoice.total || invoice.total === 0) issues.push('Missing Amount');
-    if (!invoice.vendor_id) issues.push('Missing Vendor ID');
-    if (!invoice.vendor_tax_id_snapshot) issues.push('Missing Vendor Tax ID');
-    if (!invoice.vendor_address_snapshot) issues.push('Missing Vendor Address');
-    if (!invoice.payment_method) issues.push('Missing Payment Method');
-    if (!invoice.payment_bank_details) issues.push('Missing Bank Account');
-    if (invoice.tax_rate_percent == null) issues.push('Missing Tax Code');
-    const hasLines = (invoice.lines && invoice.lines.length > 0) || (invoice.invoice_lines && invoice.invoice_lines.length > 0);
-    if (!hasLines) issues.push('Missing Line Items');
-    if (invoice.vendor_requires_po && (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0)) {
-      issues.push('Missing PO');
-    }
-
-    return {
-      ...invoice,
-      type: invoice.vendor_requires_po ? 'PO' : 'Non-PO',
-      assignedTo: getRandomAssignee(seed),
-      costCentre: '-',
-      accountCode: '-',
-      approver: undefined,
-      requisitioner: (invoice.vendor_requires_po && invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0)
-        ? requisitionerPool[Math.abs(seed) % requisitionerPool.length]
-        : undefined,
-      division: invoice.division || 'Unknown',
-      issues: issues
-    };
-  }
-
-  // Preserve archived status - don't generate synthetic PO numbers for archived invoices
-  if (invoice.status === 'archived') {
-    const seed = invoice.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-    return {
-      ...invoice,
-      type: invoice.vendor_requires_po ? 'PO' : 'Non-PO',
-      assignedTo: getRandomAssignee(seed),
-      costCentre: `CC-${String((seed % 7) + 1).padStart(3, '0')}`,
-      accountCode: `AC-${5000 + (seed % 10) + 1}`,
-      approver: undefined,
-      requisitioner: undefined,
-      division: invoice.division || getDivision(invoice.vendor_name_snapshot),
-      // Don't generate synthetic PO for archived invoices - preserve original state
-      po_numbers_cached: invoice.po_numbers_cached,
-      issues: invoice.issues || []
-    };
-  }
-
-  // Use invoice ID or vendor name as seed for consistent generation
-  const seed = invoice.id.split('').reduce((acc: number, char: string) => acc + char.charCodeAt(0), 0);
-
-  return {
-    ...invoice,
-    type: invoice.vendor_requires_po ? 'PO' : 'Non-PO',
-    assignedTo: getRandomAssignee(seed),
-    costCentre: `CC-${String((seed % 7) + 1).padStart(3, '0')}`,
-    accountCode: `AC-${5000 + (seed % 10) + 1}`,
-    approver: getRandomApprover(seed),
-    requisitioner: invoice.vendor_requires_po ? requisitionerPool[Math.abs(seed) % requisitionerPool.length] : undefined,
-    division: getDivision(invoice.vendor_name_snapshot),
-    po_numbers_cached: (invoice.vendor_requires_po && (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0))
-      ? [`PO-${new Date().getFullYear()}-${String(Math.abs(seed) % 9000 + 1000).padStart(4, '0')}`]
-      : invoice.po_numbers_cached,
-    issues: (Array.isArray((invoice as any).issues) && (invoice as any).issues.length > 0)
-      ? (invoice as any).issues
-      : generateInvoiceIssues(invoice)
-  };
-};
+// REMOVED: generateSyntheticFields function - replaced with centralized enrichInvoiceWithDemoData
+// from invoiceDataService for consistency across the application
 
 // Generate mock overdue invoices for demonstration
 export default function EnhancedInvoicesClient({ initialInvoices, initialTab = 'needs-info' }: EnhancedInvoicesClientProps) {
@@ -573,7 +454,7 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
         // Continue with mock-only mode
       }
 
-      // Generate mock invoices
+      // Generate mock invoices (already enriched by generators)
       const mockInvoices = [
         ...generateMockNeedsInfoInvoices(),
         ...generateMockOverdueInvoices(),
@@ -589,15 +470,12 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
         docType: invoice.docType || 'Invoice'
       }));
 
-      // Merge database and mock invoices
-      const allInvoices = [...dbInvoices, ...mockInvoices];
+      // Enrich database invoices using centralized service
+      // Mock invoices are already enriched by their generators
+      const enrichedDBInvoices = dbInvoices.map(enrichInvoiceWithDemoData);
 
-      // Apply synthetic fields to all invoices
-      const combinedInvoices = allInvoices.map(invoice => ({
-        ...generateSyntheticFields(invoice),
-        source: invoice.source, // Preserve source field
-        docType: invoice.docType || 'Invoice'
-      }));
+      // Merge enriched database invoices with mock invoices
+      const combinedInvoices = [...enrichedDBInvoices, ...mockInvoices];
 
       console.log(`Total invoices: ${combinedInvoices.length} (${dbInvoices.length} DB + ${mockInvoices.length} mock)`);
       setInvoices(combinedInvoices);
@@ -685,25 +563,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
           )
         );
 
-      case 'in-approval':
-        // Has approver assigned
-        return allInvoices.filter(inv =>
-          inv.approver &&
-          inv.status !== 'approved' &&
-          inv.status !== 'paid' &&
-          inv.status !== 'needs_info' // Exclude needs_info
-        );
-
-      case 'ready-to-post':
-        // Matched or within tolerance and ready for posting - excludes invoices with approvers
-        return allInvoices.filter(inv =>
-          !inv.approver && // Exclude invoices that have approvers (they go to in-approval)
-          (inv.match_status === 'matched' || inv.match_status === 'within_tolerance') &&
-          inv.status !== 'paid' &&
-          inv.status !== 'requires_review' &&
-          inv.status !== 'needs_info' // Exclude needs_info
-        );
-
       case 'archived':
         // Archived invoices
         const archivedInvs = allInvoices.filter(inv => inv.status === 'archived');
@@ -731,9 +590,7 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
   // Tab-specific states
   const [tabSelectedInvoices, setTabSelectedInvoices] = useState<Record<string, Set<string>>>({
     'needs-info': new Set(),
-    'blocked': new Set(),
-    'in-approval': new Set(),
-    'ready-to-post': new Set()
+    'blocked': new Set()
   });
 
   // Filter states
@@ -746,12 +603,9 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(
     new Set(['Missing Fields', 'Missing PO', 'Line Items Mismatch', 'Header Level', 'Validation'])
   );
-  const [selectedApprovers, setSelectedApprovers] = useState<Set<string>>(new Set());
 
   // Filter by specific invoice IDs (used for Quick Fixes "Show in table")
   const [filteredInvoiceIds, setFilteredInvoiceIds] = useState<Set<string> | null>(null);
-  const [approverFilterOpen, setApproverFilterOpen] = useState(false);
-  const [approverSearchQuery, setApproverSearchQuery] = useState('');
   const [invoiceTypeFilter, setInvoiceTypeFilter] = useState('all');
 
   // Interaction mode states
@@ -931,18 +785,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
       return next.size === prev.size ? prev : next;
     });
   }, [activeTab]);
-
-  // Get unique approvers from invoices in approval tab
-  const uniqueApprovers = useMemo(() => {
-    const approvers = new Set<string>();
-    const approvalInvoices = getTabInvoices('in-approval', invoices);
-    approvalInvoices.forEach(invoice => {
-      if (invoice.approver) {
-        approvers.add(invoice.approver);
-      }
-    });
-    return Array.from(approvers).sort();
-  }, [invoices, getTabInvoices]);
 
   // Get unique missing fields from needs-info invoices
   const uniqueIssues = useMemo(() => {
@@ -1192,39 +1034,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     return `${selectedExceptions.size} Exceptions`;
   };
 
-  // Filter approvers based on search query
-  const filteredApprovers = useMemo(() => {
-    if (!approverSearchQuery) return uniqueApprovers;
-    return uniqueApprovers.filter(approver =>
-      approver.toLowerCase().includes(approverSearchQuery.toLowerCase())
-    );
-  }, [uniqueApprovers, approverSearchQuery]);
-
-  // Handle approver filter changes
-  const handleApproverToggle = (approver: string) => {
-    const newSelected = new Set(selectedApprovers);
-    if (newSelected.has(approver)) {
-      newSelected.delete(approver);
-    } else {
-      newSelected.add(approver);
-    }
-    setSelectedApprovers(newSelected);
-  };
-
-  const handleSelectAllApprovers = () => {
-    if (selectedApprovers.size === uniqueApprovers.length) {
-      setSelectedApprovers(new Set());
-    } else {
-      setSelectedApprovers(new Set(uniqueApprovers));
-    }
-  };
-
-  const clearApproverFilter = () => {
-    setSelectedApprovers(new Set());
-    setApproverSearchQuery('');
-    setApproverFilterOpen(false);
-  };
-
   // Handle toolbar metric clicks
   const handleMissingPOClick = () => {
     // Clear other filters and set Missing PO filter
@@ -1272,7 +1081,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     // Clear other filters and set invoice ID filter
     setSelectedVendors(new Set());
     setSelectedExceptions(new Set());
-    setSelectedApprovers(new Set());
     setActiveQuickFilters(new Set());
     setFilteredInvoiceIds(new Set(invoiceIds));
   };
@@ -1282,7 +1090,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     if (preset.clearOthers) {
       setSelectedVendors(new Set());
       setSelectedExceptions(new Set());
-      setSelectedApprovers(new Set());
       setActiveQuickFilters(new Set());
       setFilteredInvoiceIds(null); // Also clear invoice ID filter
     }
@@ -1294,19 +1101,9 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     if (preset.vendors) {
       setSelectedVendors(preset.vendors);
     }
-    if (preset.approvers) {
-      setSelectedApprovers(preset.approvers);
-    }
     if (preset.quickFilters) {
       setActiveQuickFilters(preset.quickFilters);
     }
-  };
-
-  // Get display text for approver filter
-  const getApproverFilterText = () => {
-    if (selectedApprovers.size === 0) return 'All Approvers';
-    if (selectedApprovers.size === 1) return Array.from(selectedApprovers)[0];
-    return `${selectedApprovers.size} Approvers`;
   };
 
   // Calculate view counts
@@ -1414,18 +1211,13 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
       filtered = filtered.filter(invoice => selectedVendors.has(invoice.vendor_name_snapshot));
     }
 
-    // Approver filter
-    if (selectedApprovers.size > 0) {
-      filtered = filtered.filter(invoice => invoice.approver && selectedApprovers.has(invoice.approver));
-    }
-
     // Invoice ID filter (from Quick Fixes "Show in table")
     if (filteredInvoiceIds && filteredInvoiceIds.size > 0) {
       filtered = filtered.filter(invoice => filteredInvoiceIds.has(invoice.id));
     }
 
     setFilteredInvoices(filtered);
-  }, [searchQuery, invoices, activeView, selectedVendors, selectedExceptions, selectedApprovers, activeQuickFilters, invoiceTypeFilter, activeTab, filteredInvoiceIds]);
+  }, [searchQuery, invoices, activeView, selectedVendors, selectedExceptions, activeQuickFilters, invoiceTypeFilter, activeTab, filteredInvoiceIds]);
 
   const handleUploadComplete = useCallback((invoiceId: string) => {
     router.push(`/invoices/${invoiceId}`);
@@ -1451,29 +1243,27 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
       // Continue with mock-only mode
     }
 
-    // Generate mock invoices
+    // Generate mock invoices (already enriched by generators)
     const mockInvoices = [
       ...generateMockNeedsInfoInvoices(),
       ...generateMockOverdueInvoices(),
       ...generateMockDueSoonInvoices(),
       ...generateMockBlockedInvoices(),
       ...generateMockCreditNotes(),
-      ...generateMockProFormaInvoices()
+      ...generateMockProFormaInvoices(),
+      ...generateMockInApprovalInvoices()
     ].map(invoice => ({
       ...invoice,
       source: 'mock' as const,
       docType: invoice.docType || 'Invoice'
     }));
 
-    // Merge database and mock invoices
-    const allInvoices = [...dbInvoices, ...mockInvoices];
+    // Enrich database invoices using centralized service
+    // Mock invoices are already enriched by their generators
+    const enrichedDBInvoices = dbInvoices.map(enrichInvoiceWithDemoData);
 
-    // Apply synthetic fields to all invoices
-    const combinedInvoices = allInvoices.map(invoice => ({
-      ...generateSyntheticFields(invoice),
-      source: invoice.source, // Preserve source field
-      docType: invoice.docType || 'Invoice'
-    }));
+    // Merge enriched database invoices with mock invoices
+    const combinedInvoices = [...enrichedDBInvoices, ...mockInvoices];
 
     console.log(`Total invoices after refresh: ${combinedInvoices.length} (${dbInvoices.length} DB + ${mockInvoices.length} mock)`);
     setInvoices(combinedInvoices);
@@ -1593,22 +1383,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     setSelectedInvoices(new Set());
   };
 
-  // Count invoices with approvers for Nudge Approver button
-  const invoicesWithApprovers = useMemo(() => {
-    return Array.from(selectedInvoices).filter(id => {
-      const invoice = filteredInvoices.find(inv => inv.id === id);
-      return invoice?.approver;
-    }).length;
-  }, [selectedInvoices, filteredInvoices]);
-
-  // Count invoices with approvers for tab-specific Nudge Approver button
-  const tabInvoicesWithApprovers = useMemo(() => {
-    return Array.from(currentTabSelected).filter(id => {
-      const invoice = currentTabInvoices.find(inv => inv.id === id);
-      return invoice?.approver;
-    }).length;
-  }, [currentTabSelected, currentTabInvoices]);
-
   // Calculate counts for each tab - using filtered invoices to match table content
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -1679,14 +1453,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
           inv.match_status === 'unmatched'
         );
 
-      // Pending approval invoices - invoices waiting for approver action
-      const pendingApprovalInvoices = tabInvoices.filter(inv =>
-        inv.approver || inv.status === 'in_approval' || inv.status === 'pending_approval'
-      );
-
-      // Approval-specific metrics
-      let waitingLongInvoices: any[] = [];
-      let highValueInvoices: any[] = [];
       // Needs-info + PO context: missing PO
       const missingPOInvoices = tabInvoices.filter(inv =>
         inv.vendor_requires_po === true && (!inv.po_numbers_cached || inv.po_numbers_cached.length === 0)
@@ -1709,21 +1475,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
         );
       });
 
-      if (activeTab === 'in-approval') {
-        // Waiting >3 days - calculate from created_at or updated_at
-        const waitingThreshold = 3 * 24 * 60 * 60 * 1000; // 3 days in milliseconds
-        waitingLongInvoices = tabInvoices.filter(inv => {
-          const createdDate = new Date(inv.created_at || inv.updated_at || now);
-          return (now.getTime() - createdDate.getTime()) > waitingThreshold;
-        });
-
-        // High value >$50K
-        const highValueThreshold = 50000;
-        highValueInvoices = tabInvoices.filter(inv =>
-          Number(inv.total || 0) > highValueThreshold
-        );
-      }
-
       return {
         dueSoon: {
           count: dueSoonInvoices.length,
@@ -1737,14 +1488,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
           count: blockedInvoices.length,
           value: blockedInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0)
         },
-        waitingLong: {
-          count: waitingLongInvoices.length,
-          value: waitingLongInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0)
-        },
-        highValue: {
-          count: highValueInvoices.length,
-          value: highValueInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0)
-        },
         // Always compute; only rendered for needs-info + PO filter
         missingPO: {
           count: missingPOInvoices.length,
@@ -1754,11 +1497,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
         missingFields: {
           count: missingFieldsInvoices.length,
           value: missingFieldsInvoices.reduce((sum, inv) => sum + Number(inv.total || 0), 0)
-        },
-        // Pending approval metric - count only
-        pendingApproval: {
-          count: pendingApprovalInvoices.length,
-          value: 0
         }
       };
     }, [tabInvoices, activeTab]);
@@ -1824,21 +1562,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
                   </span>
                 </button>
 
-                {/* Pending Approval - only in exceptions tab */}
-                {tabMetrics.pendingApproval.count > 0 && (
-                  <>
-                    {/* Separator */}
-                    <div className="h-4 w-px bg-gray-200" />
-
-                    <div className="flex items-center gap-1.5 px-4">
-                      <User className="h-3 w-3 text-blue-600" />
-                      <span className="text-xs text-gray-950">
-                        <span className="font-semibold">{tabMetrics.pendingApproval.count}</span> pending approval
-                      </span>
-                    </div>
-                  </>
-                )}
-
                 {/* Missing PO - only shown in Exceptions + PO toggle */}
                 {invoiceTypeFilter === 'po' && (
                   <>
@@ -1860,44 +1583,14 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
               </>
             )}
 
-            {/* In-approval tab specific metrics */}
-            {activeTab === 'in-approval' && (
-              <>
-                {/* Separator */}
-                <div className="h-4 w-px bg-gray-200" />
-
-                <div className="flex items-center gap-1.5 px-4">
-                  <Clock className="h-3 w-3 text-orange-500" />
-                  <span className="text-xs text-gray-950">
-                    <span className="font-semibold">{tabMetrics.waitingLong.count}</span> waiting &gt;3 days
-                    <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.waitingLong.value)}</span>
-                  </span>
-                </div>
-
-                {/* Separator */}
-                <div className="h-4 w-px bg-gray-200" />
-
-                <div className="flex items-center gap-1.5 px-4">
-                  <DollarSign className="h-3 w-3 text-green-600" />
-                  <span className="text-xs text-gray-950">
-                    <span className="font-semibold">{tabMetrics.highValue.count}</span> high value &gt;$50K
-                    <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.highValue.value)}</span>
-                  </span>
-                </div>
-              </>
-            )}
           </div>
 
-          {/* Recommendations button - right-aligned */}
+          {/* Recommendations button - right-aligned - HIDDEN FOR NOW */}
           <button
             onClick={() => setRecommendationsOpen(true)}
             disabled={highImpactCount === 0}
-            className={cn(
-              "flex items-center gap-1.5 px-3 py-1.5 text-xs border rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2",
-              highImpactCount === 0
-                ? "border-gray-300 text-gray-400 bg-gray-50 cursor-not-allowed"
-                : "border-purple-600 text-purple-600 hover:bg-purple-50"
-            )}
+            className="hidden"
+            style={{ display: 'none' }}
           >
             <Sparkles className="h-3.5 w-3.5" />
             {highImpactCount > 0 ? `${highImpactCount} Recommendations` : 'Recommendations'}
@@ -1954,14 +1647,13 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
             {/* Quick filter pills with vendor filter first */}
             <div className="flex items-center gap-1.5">
               {/* Clear All link - shows when any quick filters are active OR vendor is selected */}
-              {(activeQuickFilters.size > 0 || selectedVendors.size > 0 || selectedExceptions.size > 0 || selectedApprovers.size > 0) && (
+              {(activeQuickFilters.size > 0 || selectedVendors.size > 0 || selectedExceptions.size > 0) && (
                 <>
                   <button
                     onClick={() => {
                       setActiveQuickFilters(new Set());
                       setSelectedVendors(new Set());
                       setSelectedExceptions(new Set());
-                      setSelectedApprovers(new Set());
                     }}
                     className="text-xs text-purple-600 hover:text-purple-700 font-medium"
                   >
@@ -2053,8 +1745,7 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
               </DropdownMenu>
 
               {/* Exception/Issues Filter - Unified dropdown for all tabs */}
-              {activeTab !== 'ready-to-post' && (
-                <DropdownMenu open={exceptionFilterOpen} onOpenChange={setExceptionFilterOpen}>
+              <DropdownMenu open={exceptionFilterOpen} onOpenChange={setExceptionFilterOpen}>
                   <DropdownMenuTrigger asChild>
                     <button
                       className={cn(
@@ -2146,7 +1837,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
                                   >
                                     {item.label}
                                   </button>
-                                  <span className="text-xs text-gray-500 ml-auto">{item.count}</span>
                                 </div>
                               </div>
                             );
@@ -2193,90 +1883,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
                     )}
                   </DropdownMenuContent>
                 </DropdownMenu>
-              )}
-
-              {/* Approvers Filter - Only show in in-approval tab */}
-              {activeTab === 'in-approval' && (
-                <DropdownMenu open={approverFilterOpen} onOpenChange={setApproverFilterOpen}>
-                  <DropdownMenuTrigger asChild>
-                    <button
-                      className={cn(
-                        "flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-all border relative overflow-hidden",
-                        selectedApprovers.size > 0
-                          ? "bg-purple-100 text-purple-700 border-purple-400"
-                          : "bg-white text-gray-700 border-gray-400 hover:bg-gray-50 hover:border-gray-500"
-                      )}
-                      style={{
-                        minWidth: '120px',
-                        maxWidth: '200px'
-                      }}
-                    >
-                      {selectedApprovers.size === 1 && (
-                        <CheckCircle2 className="h-3 w-3 text-green-600 flex-shrink-0" />
-                      )}
-                      <span className="truncate flex-1 text-left">{getApproverFilterText()}</span>
-                      <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent className="w-72 max-h-96 overflow-y-auto" align="start">
-                    <div className="px-3 py-2 border-b">
-                      <div className="flex items-center gap-2 px-2 py-1.5 border rounded-md bg-gray-50">
-                        <Search className="h-3 w-3 text-gray-400" />
-                        <input
-                          type="text"
-                          placeholder="Search approvers..."
-                          value={approverSearchQuery}
-                          onChange={(e) => setApproverSearchQuery(e.target.value)}
-                          className="flex-1 outline-none text-sm bg-transparent"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      </div>
-                    </div>
-                    <div className="py-2">
-                      <DropdownMenuCheckboxItem
-                        checked={selectedApprovers.size === uniqueApprovers.length}
-                        onCheckedChange={handleSelectAllApprovers}
-                        onSelect={(e) => e.preventDefault()}
-                      >
-                        <span className="font-medium">All Approvers</span>
-                        <span className="ml-auto text-xs text-gray-500">
-                          {uniqueApprovers.length}
-                        </span>
-                      </DropdownMenuCheckboxItem>
-                    </div>
-                    <DropdownMenuSeparator />
-                    <div className="py-2">
-                      {filteredApprovers.length > 0 ? (
-                        filteredApprovers.map(approver => (
-                          <DropdownMenuCheckboxItem
-                            key={approver}
-                            checked={selectedApprovers.has(approver)}
-                            onCheckedChange={() => handleApproverToggle(approver)}
-                            onSelect={(e) => e.preventDefault()}
-                          >
-                            <span className="truncate">{approver}</span>
-                          </DropdownMenuCheckboxItem>
-                        ))
-                      ) : (
-                        <div className="px-3 py-2 text-sm text-gray-500">No approvers found</div>
-                      )}
-                    </div>
-                    {selectedApprovers.size > 0 && (
-                      <>
-                        <DropdownMenuSeparator />
-                        <div className="px-3 py-2">
-                          <button
-                            onClick={clearApproverFilter}
-                            className="w-full text-left text-sm text-purple-600 hover:text-purple-700 font-medium"
-                          >
-                            Clear selection
-                          </button>
-                        </div>
-                      </>
-                    )}
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              )}
 
               {/* Removed trailing invoice count and divider per design update */}
             </div>
@@ -2291,7 +1897,7 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
           onToggleAll={toggleTabAllSelection}
           onDelete={handleDelete}
           onPOClick={handlePOClick}
-          activeView={activeView}
+          activeView={invoiceTypeFilter as 'all' | 'po' | 'non-po'}
           activeTab={activeTab}
         />
 
@@ -2351,7 +1957,7 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
               value="all"
               className="px-3 py-1 text-xs data-[state=on]:bg-purple-900 data-[state=on]:text-white data-[state=on]:shadow-sm"
             >
-              All
+              Overall
             </ToggleGroupItem>
             <ToggleGroupItem
               value="po"
@@ -2455,7 +2061,6 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
           currentFilters: {
             selectedVendors,
             selectedExceptions,
-            selectedApprovers,
             activeQuickFilters,
           },
         }}
