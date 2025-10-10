@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FileText, Package, GitCompare, Paperclip, Clock, Check, AlertTriangle, CheckCircle, List, MessageSquare } from 'lucide-react';
+import { FileText, Package, GitCompare, Paperclip, Clock, Check, AlertTriangle, CheckCircle, List, MessageSquare, Eye, FileType } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { DetailsTab } from './DetailsTab';
 import { LineItemsTab } from './LineItemsTab';
@@ -11,9 +11,10 @@ import { MatchingTab } from './MatchingTab';
 import { AttachmentsTab } from './AttachmentsTab';
 import { ActivityTab } from './ActivityTab';
 import { CommunicationTab } from './CommunicationTab';
+import { PreviewTab } from './PreviewTab';
 import { InvoiceValidator } from '@/app/utils/validationService';
 
-export type TabId = 'details' | 'line-items' | 'matching' | 'attachments' | 'activity' | 'communication';
+export type TabId = 'preview' | 'details' | 'line-items' | 'matching' | 'attachments' | 'activity' | 'communication';
 export type LayoutMode = 'compact' | 'medium' | 'large';
 
 interface InvoiceTabsProps {
@@ -31,8 +32,10 @@ interface InvoiceTabsProps {
   forceReadOnly?: boolean;
   hideComparison?: boolean;
   hideAttachments?: boolean;
+  hidePreview?: boolean;
   showCommunication?: boolean;
   showFieldErrors?: boolean;
+  initialTab?: TabId;
 }
 
 export function InvoiceTabs({
@@ -50,12 +53,14 @@ export function InvoiceTabs({
   forceReadOnly = false,
   hideComparison = false,
   hideAttachments = false,
+  hidePreview = false,
   showCommunication = false,
   showFieldErrors = false,
+  initialTab,
 }: InvoiceTabsProps) {
   // Determine initial tab based on invoice status
   const getInitialTab = (): TabId => {
-    return 'details';
+    return initialTab || 'details';
   };
 
   const [activeTab, setActiveTab] = useState<TabId>(getInitialTab());
@@ -201,6 +206,11 @@ export function InvoiceTabs({
 
   const allTabs = [
     {
+      id: 'preview' as TabId,
+      label: 'Preview',
+      icon: FileType,
+    },
+    {
       id: 'details' as TabId,
       label: 'Details',
       icon: FileText,
@@ -238,6 +248,10 @@ export function InvoiceTabs({
 
   // Filter tabs based on mode
   const tabs = allTabs.filter(tab => {
+    // Hide preview tab if hidePreview prop is true (for full invoice page)
+    if (tab.id === 'preview' && hidePreview) {
+      return false;
+    }
     // Hide only Exceptions tab in needs info mode (always show Line Items)
     if (isNeedsInfo && tab.id === 'matching') {
       return false;
@@ -356,6 +370,15 @@ export function InvoiceTabs({
 
       {/* Tab Content */}
       <div className="flex-1 overflow-y-auto">
+        {activeTab === 'preview' && (
+          <PreviewTab
+            invoiceId={invoiceId}
+            invoiceData={invoiceData}
+            matchResults={matchResults || []}
+            poComparisonData={poComparisonData}
+            attachments={attachments || []}
+          />
+        )}
         {activeTab === 'details' && (
           <DetailsTab
             invoiceData={invoiceData}

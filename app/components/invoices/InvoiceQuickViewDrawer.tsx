@@ -217,99 +217,34 @@ export function InvoiceQuickViewDrawer({ invoiceId, isOpen, onClose }: InvoiceQu
     <div className="fixed inset-0 z-50 overflow-hidden pointer-events-none">
       {/* Drawer - no backdrop to allow clicking on table below */}
       <div
-        className={`absolute right-0 top-0 h-full w-[550px] bg-white shadow-2xl transform transition-transform duration-300 ease-out pointer-events-auto ${
+        className={`absolute right-0 top-0 h-full w-[650px] bg-white shadow-2xl transform transition-transform duration-300 ease-out pointer-events-auto ${
           isVisible ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
         <div className="flex h-full flex-col">
           {/* Header */}
-          <div className="border-b border-gray-200 px-6 py-4 flex-shrink-0">
-            <div className="flex items-center justify-between mb-3">
+          <div className="border-b border-gray-200 px-4 py-2.5 flex-shrink-0">
+            <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <FileText className="h-5 w-5 text-purple-600" />
-                <h2 className="text-lg font-semibold text-gray-950">Invoice Quick View</h2>
+                <button
+                  onClick={handleClose}
+                  className="rounded-lg p-1 hover:bg-gray-100 transition-colors"
+                  aria-label="Close drawer"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+                <h2 className="text-lg font-semibold text-gray-950">
+                  {invoiceData?.invoice_number || 'Invoice'}
+                </h2>
               </div>
               <button
-                onClick={handleClose}
-                className="rounded-lg p-1 hover:bg-gray-100 transition-colors"
-                aria-label="Close drawer"
+                onClick={handleOpenFullDetails}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
               >
-                <X className="h-5 w-5 text-gray-500" />
+                <ExternalLink className="h-3.5 w-3.5" />
+                <span>Open Details</span>
               </button>
             </div>
-
-            {/* Diagnostic Pills */}
-            {invoiceData && !isLoading && (
-              <div className="flex items-center gap-2 flex-wrap">
-                {/* Total Amount */}
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
-                  <span>Total</span>
-                  <span className="font-bold">{formatCompactCurrency(invoiceData.total || 0)}</span>
-                </div>
-
-                {/* PO Status */}
-                {poStatus && (
-                  <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                    poStatus.type === 'success' ? 'bg-green-50 text-green-700' :
-                    poStatus.type === 'error' ? 'bg-red-50 text-red-700' :
-                    'bg-gray-100 text-gray-700'
-                  }`}>
-                    <span>{poStatus.label}</span>
-                  </div>
-                )}
-
-                {/* Receipt Status */}
-                {receiptStatus && (
-                  <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                    receiptStatus.type === 'success' ? 'bg-green-50 text-green-700' :
-                    receiptStatus.type === 'warning' ? 'bg-orange-50 text-orange-700' :
-                    'bg-gray-100 text-gray-700'
-                  }`}>
-                    <span>{receiptStatus.label}</span>
-                  </div>
-                )}
-
-                {/* Variance Indicator - Only for PO-based invoices */}
-                {poStatus && poStatus.type === 'success' && varianceInfo && (
-                  <div className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
-                    varianceInfo.isPerfectMatch || varianceInfo.isWithinTolerance
-                      ? 'bg-green-50 text-green-700'
-                      : 'bg-red-50 text-red-700'
-                  }`}>
-                    <span>
-                      {varianceInfo.isPerfectMatch
-                        ? 'Perfect Match'
-                        : varianceInfo.isWithinTolerance
-                          ? 'Within Tolerance'
-                          : `${varianceInfo.percentage.toFixed(1)}% variance`}
-                    </span>
-                  </div>
-                )}
-
-                {/* Exceptions Count */}
-                {exceptionsCount > 0 && (
-                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
-                    <span>{exceptionsCount} Exception{exceptionsCount !== 1 ? 's' : ''}</span>
-                  </div>
-                )}
-
-                {/* Helpdesk Ticket */}
-                {invoiceData.helpdesk_ticket_ref && (
-                  <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-blue-50 text-blue-700">
-                    <span>{invoiceData.helpdesk_ticket_ref}</span>
-                  </div>
-                )}
-
-                {/* Open Details Button */}
-                <button
-                  onClick={handleOpenFullDetails}
-                  className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-                >
-                  <ExternalLink className="h-3.5 w-3.5" />
-                  <span>Open Details</span>
-                </button>
-              </div>
-            )}
           </div>
 
           {/* Content */}
@@ -337,6 +272,7 @@ export function InvoiceQuickViewDrawer({ invoiceId, isOpen, onClose }: InvoiceQu
                 hideAttachments={true}
                 showCommunication={true}
                 showFieldErrors={isNeedsInfo}
+                initialTab="preview"
               />
             ) : (
               <div className="flex items-center justify-center h-full">

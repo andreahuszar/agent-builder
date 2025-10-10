@@ -162,6 +162,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           poComparisonData={poComparisonData}
           forceReadOnly={true}
           hideComparison={false}
+          hidePreview={true}
           showFieldErrors={isNeedsInfoMode}
         />
       </ResizablePanel>
