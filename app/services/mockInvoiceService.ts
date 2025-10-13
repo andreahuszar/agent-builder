@@ -1,89 +1,159 @@
 // Mock Invoice Service - Provides mock invoice data for UI demonstration
 // This service generates and manages mock invoices for different workflow states
+//
+// REFACTORED: Now uses centralized enrichment from invoiceDataService
+// All synthetic data generation goes through enrichInvoiceWithDemoData()
 
-interface Invoice {
-  id: string;
-  invoice_number: string;
-  vendor_name_snapshot?: string;
-  vendor_id?: string;
-  division?: string;
-  invoice_date?: string;
-  due_date: string;
-  currency?: string;
-  total?: number;
-  subtotal?: number;
-  tax_total?: number;
-  tax_rate_percent?: number;
-  shipping_total?: number;
-  other_charges_total?: number;
-  discount_total?: number;
-  status?: string;
-  match_status?: string;
-  vendor_requires_po?: boolean | null;
-  vendor_is_verified?: boolean;
-  approval_status?: string;
-  po_numbers_cached?: string[];
-  gr_numbers?: string[];
-  gr_numbers_cached?: string[];
-  docType?: string;
-  created_at?: string;
-  updated_at?: string;
-  payment_terms_id?: string;
-  terms_text?: string;
-  po_id?: string | null;
-  assigned_to_name?: string | null;
-  ledger?: string;
-  cost_center?: string;
-  cost_center_name?: string;
-  gl_code?: string;
-  department?: string;
-  accounting_notes?: string;
-  ai_classification_confidence?: number | null;
-  ai_classification_reasoning?: string;
-  extraction_field_confidences?: Record<string, number>;
-  is_manually_edited?: Record<string, boolean>;
-  payment_method?: string | null;
-  payment_bank_details?: any;
-  lines?: any[];
-  invoice_lines?: any[]; // Both lines and invoice_lines for compatibility
-  poTotal?: number | null;
-  validation_warnings?: any;
-  attachments?: any[];
-  approver?: string;
-  vendor_tax_id_snapshot?: string;
-  vendor_address_snapshot?: string;
-  issues?: string[];
-  // Synthetic fields
-  type?: string;
-  assignedTo?: string;
-  costCentre?: string;
-  exception?: string;
+import { UnifiedInvoice } from '@/types/invoice';
+import { getDivision, enrichInvoiceWithDemoData } from './invoiceDataService';
+import { seededRandom } from './mockDataConfig';
+
+// Type alias for backward compatibility
+// TODO: Migrate all code to use UnifiedInvoice directly
+type Invoice = Partial<UnifiedInvoice>;
+
+// REMOVED: Local getDivision function - now using centralized version from invoiceDataService
+// This ensures consistency across the entire application
+
+// ============================================================================
+// VENDOR-SPECIFIC INVOICE NUMBER GENERATOR
+// ============================================================================
+
+/**
+ * Generate realistic, vendor-specific invoice numbers
+ * Each vendor has their own unique numbering pattern for authenticity
+ *
+ * @param vendorName - Vendor company name
+ * @param index - Sequential number for this vendor
+ * @param date - Optional date for date-based numbering
+ * @returns Vendor-specific invoice number
+ */
+function generateVendorInvoiceNumber(vendorName: string | null | undefined, index: number, date?: Date): string {
+  // Default for missing vendor
+  if (!vendorName) {
+    return `INV-UNKNOWN-${String(index).padStart(4, '0')}`;
+  }
+
+  const vendor = vendorName.toLowerCase();
+  const year = date ? date.getFullYear() : 2025;
+  const shortYear = String(year).slice(-2);
+  const month = date ? String(date.getMonth() + 1).padStart(2, '0') : '01';
+  const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+  const monthName = date ? monthNames[date.getMonth()] : 'JAN';
+
+  // Tech/Software Companies - modern formats with prefixes
+  if (vendor.includes('tech') || vendor.includes('software') || vendor.includes('digital') || vendor.includes('data')) {
+    if (vendor.includes('supply')) {
+      return `TS-${year}-${String(index).padStart(6, '0')}`; // TechSupply format
+    }
+    if (vendor.includes('solutions')) {
+      return `TECH-INV-${shortYear}-${String(index).padStart(4, '0')}`; // Tech Solutions format
+    }
+    if (vendor.includes('components')) {
+      return `TC${shortYear}${String(index).padStart(5, '0')}`; // Technical Components compact
+    }
+    if (vendor.includes('data')) {
+      return `DC-${year}/Q${Math.ceil((date?.getMonth() || 0) / 3)}/${String(index).padStart(3, '0')}`; // DataCore quarterly
+    }
+    if (vendor.includes('cloud')) {
+      return `CW-${year}-${String(index).padStart(5, '0')}`; // CloudWave format
+    }
+    return `TECH-${shortYear}${String(index).padStart(6, '0')}`; // Generic tech
+  }
+
+  // Industrial/Manufacturing - structured codes with categories
+  if (vendor.includes('industrial') || vendor.includes('manufacturing') || vendor.includes('parts') || vendor.includes('equipment')) {
+    if (vendor.includes('global')) {
+      return `GIP-${year}-A-${String(index).padStart(4, '0')}`; // Global Industrial Parts with category
+    }
+    if (vendor.includes('equipment')) {
+      return `IEQ/${year}/${String(index).padStart(5, '0')}`; // Industrial Equipment with slashes
+    }
+    return `MFG-INV-${year}-${String(index).padStart(4, '0')}`; // Generic manufacturing
+  }
+
+  // Services/Professional - varied formats
+  if (vendor.includes('services') || vendor.includes('professional') || vendor.includes('solutions')) {
+    if (vendor.includes('global')) {
+      return `GSI-${year}-${String(index).padStart(5, '0')}`; // Global Services Inc
+    }
+    if (vendor.includes('professional') && vendor.includes('it')) {
+      return `PIT-${shortYear}${month}${String(index).padStart(3, '0')}`; // Professional IT Services date-based
+    }
+    if (vendor.includes('finance')) {
+      return `FIN-${year}/INV/${String(index).padStart(4, '0')}`; // Finance Solutions with slashes
+    }
+    if (vendor.includes('budget')) {
+      return `BS-${year}-Q${Math.ceil((date?.getMonth() || 0) / 3)}-${String(index).padStart(4, '0')}`; // Budget Systems quarterly
+    }
+    return `SRV-${year}-${String(index).padStart(5, '0')}`; // Generic services
+  }
+
+  // Utilities/Rent/Insurance - month-based numbering
+  if (vendor.includes('electric') || vendor.includes('power') || vendor.includes('utility')) {
+    return `ELEC-${year}-${monthName}-${String(index).padStart(3, '0')}`; // City Electric month-based
+  }
+  if (vendor.includes('property') || vendor.includes('commercial') && vendor.includes('management')) {
+    return `PROP-${year}-${String(index).padStart(3, '0')}-LOC`; // Property Management with location suffix
+  }
+  if (vendor.includes('insurance')) {
+    return `INS-${year}-${String(index).padStart(4, '0')}`; // Business Insurance simple
+  }
+
+  // Supply/Office - traditional formats
+  if (vendor.includes('supplies') || vendor.includes('office')) {
+    return `SUP-${String(index).padStart(7, '0')}`; // Office Supplies Direct simple sequential
+  }
+  if (vendor.includes('maintenance')) {
+    return `MNT-${year}-${String(index).padStart(5, '0')}`; // Maintenance Pro
+  }
+
+  // Corp/Large enterprises - formal structured
+  if (vendor.includes('corp') || vendor.includes('inc')) {
+    if (vendor.includes('mega')) {
+      return `MC${year}${String(index).padStart(6, '0')}`; // MegaCorp compact
+    }
+    if (vendor.includes('acme')) {
+      return `ACME/${year}/${String(index).padStart(5, '0')}`; // Acme with slashes
+    }
+    if (vendor.includes('approval')) {
+      return `ATC-INV-${year}-${String(index).padStart(4, '0')}`; // ApprovalTech Corp
+    }
+    return `CORP-${year}-${String(index).padStart(5, '0')}`; // Generic corp
+  }
+
+  // GmbH/European - different style
+  if (vendor.includes('gmbh') || vendor.includes('ag')) {
+    return `DE-${year}-${String(index).padStart(6, '0')}`; // German company format
+  }
+
+  // Ltd/UK companies - GB prefix
+  if (vendor.includes('ltd')) {
+    if (vendor.includes('tech')) {
+      return `GB-TECH-${year}/${String(index).padStart(5, '0')}`; // TechCorp Ltd
+    }
+    return `GB-${year}-${String(index).padStart(6, '0')}`; // Generic UK format
+  }
+
+  // Flow/Chain/Net - modern tech style
+  if (vendor.includes('flow') || vendor.includes('chain') || vendor.includes('wave') || vendor.includes('net')) {
+    return `${vendor.substring(0, 3).toUpperCase()}-${shortYear}${String(index).padStart(5, '0')}`; // Short prefix compact
+  }
+
+  // Build/Construction - project-based
+  if (vendor.includes('build')) {
+    return `BUILD-${year}-PRJ-${String(index).padStart(4, '0')}`; // BuildCo project-based
+  }
+
+  // Fallback - generic but varied
+  const prefixes = ['INV', 'BILL', 'DOC', 'REF'];
+  const separators = ['-', '/', '.'];
+  const hashIndex = vendorName.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const prefix = prefixes[hashIndex % prefixes.length];
+  const separator = separators[hashIndex % separators.length];
+
+  return `${prefix}${separator}${year}${separator}${String(index).padStart(5, '0')}`;
 }
-
-// Helper function to determine division based on vendor name
-const getDivision = (vendorName: string): string => {
-  if (!vendorName) return 'Unknown';
-  const name = vendorName.toLowerCase();
-  if (name.includes('tech') || name.includes('soft') || name.includes('data')) {
-    return 'Technology';
-  }
-  if (name.includes('supply') || name.includes('global') || name.includes('parts')) {
-    return 'Supply Chain';
-  }
-  if (name.includes('build') || name.includes('construct')) {
-    return 'Construction';
-  }
-  if (name.includes('cloud') || name.includes('net') || name.includes('sys')) {
-    return 'IT Services';
-  }
-  if (name.includes('office') || name.includes('maint')) {
-    return 'Operations';
-  }
-  if (name.includes('electric') || name.includes('power') || name.includes('energy')) {
-    return 'Utilities';
-  }
-  return 'General';
-};
 
 // Generate mock needs-info invoices
 export const generateMockNeedsInfoInvoices = (): Invoice[] => {
@@ -95,7 +165,6 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
     // PO-type invoices (vendors that require purchase orders)
     {
       id: 'needs-info-1',
-      invoice_number: 'INV-2025-9001',
       vendor_name_snapshot: null, // Missing vendor
       vendor_id: null,
       invoice_date: null, // Also missing invoice date
@@ -104,7 +173,6 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
     },
     {
       id: 'needs-info-2',
-      invoice_number: 'INV-2025-9002',
       vendor_name_snapshot: 'TechSupply Solutions Ltd',
       vendor_id: null, // Missing vendor ID
       currency: null, // Also missing currency
@@ -113,7 +181,6 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
     },
     {
       id: 'needs-info-3',
-      invoice_number: 'INV-2025-9003',
       vendor_name_snapshot: 'Industrial Equipment Co',
       vendor_id: 'VND-3249',
       currency: null, // Missing currency
@@ -122,7 +189,6 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
     },
     {
       id: 'needs-info-4',
-      invoice_number: 'INV-2025-9004',
       vendor_name_snapshot: 'Professional IT Services',
       vendor_id: 'VND-3326',
       total: null, // Missing total amount
@@ -132,7 +198,6 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
     // Non-PO type invoices (utilities, rent, insurance)
     {
       id: 'needs-info-5',
-      invoice_number: 'INV-2025-9005',
       vendor_name_snapshot: null, // Missing vendor
       vendor_id: null,
       vendor_requires_po: false, // Would be Non-PO type (utility/rent)
@@ -140,7 +205,6 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
     },
     {
       id: 'needs-info-6',
-      invoice_number: 'INV-2025-9006',
       vendor_name_snapshot: 'City Electric & Power',
       vendor_id: null, // Missing vendor ID
       invoice_date: null, // Missing invoice date
@@ -149,7 +213,6 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
     },
     {
       id: 'needs-info-7',
-      invoice_number: 'INV-2025-9007',
       vendor_name_snapshot: 'Commercial Property Management',
       vendor_id: 'VND-4527',
       currency: null, // Missing currency
@@ -158,7 +221,6 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
     },
     {
       id: 'needs-info-8',
-      invoice_number: 'INV-2025-9008',
       vendor_name_snapshot: 'Business Insurance Partners',
       vendor_id: null, // Missing vendor ID
       total: null, // Missing total amount
@@ -168,7 +230,6 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
     // Additional PO-type invoices to ensure we have 4 when PO filter is selected
     {
       id: 'needs-info-9',
-      invoice_number: 'INV-2025-9009',
       vendor_name_snapshot: 'Manufacturing Supplies Inc',
       vendor_id: 'VND-5234',
       invoice_date: null, // Missing invoice date
@@ -177,7 +238,6 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
     },
     {
       id: 'needs-info-10',
-      invoice_number: 'INV-2025-9010',
       vendor_name_snapshot: 'Technical Components Ltd',
       vendor_id: null, // Missing vendor ID
       vendor_requires_po: true, // PO type invoice
@@ -186,7 +246,6 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
     // New: PO-backed invoice with missing PO, pending state (not auto rejected)
     {
       id: 'needs-info-11',
-      invoice_number: 'INV-2025-9011',
       vendor_name_snapshot: 'Global Industrial Parts',
       vendor_id: 'VND-6789',
       invoice_date: '2025-02-20',
@@ -201,7 +260,7 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
 
   missingDataScenarios.forEach((scenario, index) => {
     const baseDate = new Date(now);
-    baseDate.setDate(baseDate.getDate() - Math.floor(Math.random() * 10)); // 0-10 days ago
+    baseDate.setDate(baseDate.getDate() - Math.floor(seededRandom(1000 + index) * 10)); // 0-10 days ago (deterministic)
 
     const dueDate = new Date(baseDate);
     dueDate.setDate(dueDate.getDate() + 30);
@@ -343,8 +402,8 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
       // Generate random line items for other scenarios
       const numLines = 3;
       for (let j = 0; j < numLines; j++) {
-        const qty = Math.floor(Math.random() * 10 + 1);
-        const unitPrice = Math.floor(Math.random() * 2000 + 100);
+        const qty = Math.floor(seededRandom(2000 + index * 10 + j) * 10 + 1);
+        const unitPrice = Math.floor(seededRandom(3000 + index * 10 + j) * 2000 + 100);
         const lineTotal = qty * unitPrice;
         subtotal += lineTotal;
 
@@ -391,9 +450,16 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
       processedStatus = 'Pending'; // Pending for needs-info-11 (explicitly set from scenario)
     }
 
+    // Generate vendor-specific invoice number
+    const invoiceNumber = generateVendorInvoiceNumber(scenario.vendor_name_snapshot, index + 1, baseDate);
+
+    // Generate data ingestion date (0-3 days after creation)
+    const ingestionDate = new Date(baseDate);
+    ingestionDate.setDate(ingestionDate.getDate() + Math.floor(seededRandom(4000 + index) * 4));
+
     mockInvoices.push({
       id: scenario.id,
-      invoice_number: scenario.invoice_number,
+      invoice_number: invoiceNumber,
       vendor_name_snapshot: scenario.vendor_name_snapshot || undefined,
       vendor_id: scenario.vendor_id || undefined,
       division: scenario.vendor_name_snapshot ? getDivision(scenario.vendor_name_snapshot) : 'Unknown',
@@ -417,12 +483,14 @@ export const generateMockNeedsInfoInvoices = (): Invoice[] => {
       issues: ['Missing Fields'], // Add Missing Fields issue for needs-info invoices
       created_at: baseDate.toISOString(),
       updated_at: baseDate.toISOString(),
+      data_ingestion_date: ingestionDate.toISOString().split('T')[0],
       lines: lines,
       invoice_lines: lines // Add both properties for compatibility
     } as Invoice);
   });
 
-  return mockInvoices;
+  // Enrich all invoices with demo data using centralized service
+  return mockInvoices.map(enrichInvoiceWithDemoData);
 };
 
 // Generate mock blocked invoices
@@ -437,10 +505,30 @@ export const generateMockBlockedInvoices = (): Invoice[] => {
   // Generate 12 mismatched/on-hold invoices highlighting diverse issues (no Missing PO here)
   for (let i = 1; i <= 12; i++) {
     const invoiceDate = new Date(now);
-    invoiceDate.setDate(invoiceDate.getDate() - Math.floor(Math.random() * 25 + 5)); // 5-30 days ago
+    let dueDate;
 
-    const dueDate = new Date(invoiceDate);
-    dueDate.setDate(dueDate.getDate() + 30);
+    // Create varied aging brackets for visual demonstration
+    if (i === 10) {
+      // Invoice 10: 1-30 days overdue bracket (due ~15 days ago)
+      invoiceDate.setDate(invoiceDate.getDate() - 60); // Invoice from 60 days ago
+      dueDate = new Date(invoiceDate);
+      dueDate.setDate(dueDate.getDate() + 45); // Due 15 days ago
+    } else if (i === 11) {
+      // Invoice 11: 1-30 days overdue bracket (due ~25 days ago)
+      invoiceDate.setDate(invoiceDate.getDate() - 70); // Invoice from 70 days ago
+      dueDate = new Date(invoiceDate);
+      dueDate.setDate(dueDate.getDate() + 45); // Due 25 days ago
+    } else if (i === 12) {
+      // Invoice 12: 31-60 days overdue bracket (due ~45 days ago)
+      invoiceDate.setDate(invoiceDate.getDate() - 90); // Invoice from 90 days ago
+      dueDate = new Date(invoiceDate);
+      dueDate.setDate(dueDate.getDate() + 45); // Due 45 days ago
+    } else {
+      // Invoices 1-9: Current or very recent (most exceptions are caught quickly)
+      invoiceDate.setDate(invoiceDate.getDate() - Math.floor(seededRandom(5000 + i) * 25 + 5)); // 5-30 days ago (deterministic)
+      dueDate = new Date(invoiceDate);
+      dueDate.setDate(dueDate.getDate() + 30); // Due in future or very recent
+    }
 
     const vendorName = vendors[(i - 1) % vendors.length];
 
@@ -455,16 +543,23 @@ export const generateMockBlockedInvoices = (): Invoice[] => {
     const poNumbers = isPO ? [`PO-2025-${String(2000 + i).padStart(4, '0')}`] : [];
     const grNumbers = isPO && i % 3 !== 0 ? [`GR-2025-${String(3000 + i).padStart(4, '0')}`] : [];
 
+    // Generate vendor-specific invoice number
+    const invoiceNumber = generateVendorInvoiceNumber(vendorName, i, invoiceDate);
+
+    // Generate data ingestion date (0-3 days after creation)
+    const ingestionDate = new Date(invoiceDate);
+    ingestionDate.setDate(ingestionDate.getDate() + Math.floor(seededRandom(6000 + i) * 4));
+
     const base: Invoice = {
       id: `blocked-${i}`,
-      invoice_number: `INV-2025-${String(5000 + i).padStart(4, '0')}`,
+      invoice_number: invoiceNumber,
       vendor_name_snapshot: vendorName,
       vendor_id: `VND-${String(1000 + i).padStart(4, '0')}`,
       division: getDivision(vendorName),
       invoice_date: invoiceDate.toISOString().split('T')[0],
       due_date: dueDate.toISOString().split('T')[0],
       currency: i % 4 === 0 ? 'EUR' : 'USD',
-      total: Math.floor(Math.random() * 80000 + 10000),
+      total: Math.floor(seededRandom(7000 + i) * 80000 + 10000),
       status: isPO ? 'requires_review' : 'blocked',
       match_status,
       vendor_requires_po: isPO,
@@ -475,6 +570,7 @@ export const generateMockBlockedInvoices = (): Invoice[] => {
       docType: 'Invoice',
       created_at: invoiceDate.toISOString(),
       updated_at: invoiceDate.toISOString(),
+      data_ingestion_date: ingestionDate.toISOString().split('T')[0],
       payment_method: isPO ? 'bank_transfer' : null,
       payment_bank_details: isPO ? { bank_name: 'First National Bank' } : null,
       tax_rate_percent: i % 6 === 0 ? null : 20
@@ -521,9 +617,16 @@ export const generateMockBlockedInvoices = (): Invoice[] => {
   const taxAmount20 = subtotal20 * 0.20;
   const total20 = subtotal20 + taxAmount20;
 
+  // Generate vendor-specific invoice number for blocked-20
+  const blockedInv20Number = generateVendorInvoiceNumber('Industrial Parts Ltd', 8888, invoiceDate20);
+
+  // Generate data ingestion date for blocked-20
+  const ingestionDate20 = new Date(invoiceDate20);
+  ingestionDate20.setDate(ingestionDate20.getDate() + Math.floor(seededRandom(8000) * 4));
+
   mockInvoices.push({
     id: 'blocked-20',
-    invoice_number: 'INV-2025-8888',
+    invoice_number: blockedInv20Number,
     vendor_name_snapshot: 'Industrial Parts Ltd',
     vendor_id: 'VND-2020',
     division: 'Supply Chain',
@@ -544,13 +647,15 @@ export const generateMockBlockedInvoices = (): Invoice[] => {
     docType: 'Invoice',
     created_at: invoiceDate20.toISOString(),
     updated_at: invoiceDate20.toISOString(),
+    data_ingestion_date: ingestionDate20.toISOString().split('T')[0],
     payment_method: 'bank_transfer',
     payment_bank_details: { bank_name: 'First National Bank' },
     lines: lines20,
     invoice_lines: lines20
   });
 
-  return mockInvoices;
+  // Enrich all invoices with demo data using centralized service
+  return mockInvoices.map(enrichInvoiceWithDemoData);
 };
 
 // Generate mock overdue invoices
@@ -576,33 +681,41 @@ export const generateMockOverdueInvoices = (): Invoice[] => {
       const invoiceDate = new Date(dueDate);
       invoiceDate.setDate(invoiceDate.getDate() - 30);
 
-      const vendorName = vendors[Math.floor(Math.random() * vendors.length)];
+      const vendorName = vendors[Math.floor(seededRandom(10000 + invoiceCounter) * vendors.length)];
+      const invoiceNumber = generateVendorInvoiceNumber(vendorName, 1000 + invoiceCounter, invoiceDate);
+
+      // Generate data ingestion date
+      const ingestionDate = new Date(invoiceDate);
+      ingestionDate.setDate(ingestionDate.getDate() + Math.floor(seededRandom(11000 + invoiceCounter) * 4));
+
       mockInvoices.push({
         id: `mock-${invoiceCounter}`,
-        invoice_number: `INV-2024-${String(1000 + invoiceCounter).padStart(4, '0')}`,
+        invoice_number: invoiceNumber,
         vendor_name_snapshot: vendorName,
         vendor_id: `VND-${String(100 + invoiceCounter).padStart(4, '0')}`,
         division: getDivision(vendorName),
         invoice_date: invoiceDate.toISOString().split('T')[0],
         due_date: dueDate.toISOString().split('T')[0],
         currency: 'USD',
-        total: Math.floor(Math.random() * 100000 + 10000),
+        total: Math.floor(seededRandom(12000 + invoiceCounter) * 100000 + 10000),
         status: 'overdue',
         match_status: 'matched',
-        vendor_requires_po: Math.random() > 0.5,
+        vendor_requires_po: seededRandom(13000 + invoiceCounter) > 0.5,
         vendor_is_verified: true,
         approval_status: 'approved',
         po_numbers_cached: [`PO-2024-${String(1000 + invoiceCounter).padStart(4, '0')}`],
         gr_numbers: [`GR-2024-${String(1000 + invoiceCounter).padStart(4, '0')}`],
         docType: 'Invoice',
         created_at: invoiceDate.toISOString(),
-        updated_at: invoiceDate.toISOString()
+        updated_at: invoiceDate.toISOString(),
+        data_ingestion_date: ingestionDate.toISOString().split('T')[0]
       });
       invoiceCounter++;
     }
   });
 
-  return mockInvoices;
+  // Enrich all invoices with demo data using centralized service
+  return mockInvoices.map(enrichInvoiceWithDemoData);
 };
 
 // Generate mock due soon invoices
@@ -627,19 +740,25 @@ export const generateMockDueSoonInvoices = (): Invoice[] => {
       const invoiceDate = new Date(dueDate);
       invoiceDate.setDate(invoiceDate.getDate() - 30);
 
-      const vendorName = vendors[Math.floor(Math.random() * vendors.length)];
+      const vendorName = vendors[Math.floor(seededRandom(14000 + invoiceCounter) * vendors.length)];
       const isWithinTol = (invoiceCounter === 1 || invoiceCounter === 2);
-      const isPOForThis = isWithinTol ? true : Math.random() > 0.5;
+      const isPOForThis = isWithinTol ? true : seededRandom(15000 + invoiceCounter) > 0.5;
+      const invoiceNumber = generateVendorInvoiceNumber(vendorName, invoiceCounter, invoiceDate);
+
+      // Generate data ingestion date (0-3 days after creation)
+      const ingestionDate = new Date(invoiceDate);
+      ingestionDate.setDate(ingestionDate.getDate() + Math.floor(seededRandom(16000 + invoiceCounter) * 4));
+
       mockInvoices.push({
         id: `due-${invoiceCounter}`,
-        invoice_number: `INV-2025-${String(invoiceCounter).padStart(4, '0')}`,
+        invoice_number: invoiceNumber,
         vendor_name_snapshot: vendorName,
         vendor_id: `VND-${String(200 + invoiceCounter).padStart(4, '0')}`,
         division: getDivision(vendorName),
         invoice_date: invoiceDate.toISOString().split('T')[0],
         due_date: dueDate.toISOString().split('T')[0],
         currency: 'USD',
-        total: Math.floor(Math.random() * 80000 + 5000),
+        total: Math.floor(seededRandom(17000 + invoiceCounter) * 80000 + 5000),
         status: 'pending_payment',
         match_status: isWithinTol ? 'within_tolerance' : 'matched',
         vendor_requires_po: isPOForThis,
@@ -649,13 +768,15 @@ export const generateMockDueSoonInvoices = (): Invoice[] => {
         gr_numbers: [`GR-2025-${String(invoiceCounter).padStart(4, '0')}`],
         docType: 'Invoice',
         created_at: invoiceDate.toISOString(),
-        updated_at: invoiceDate.toISOString()
+        updated_at: invoiceDate.toISOString(),
+        data_ingestion_date: ingestionDate.toISOString().split('T')[0]
       });
       invoiceCounter++;
     }
   });
 
-  return mockInvoices;
+  // Enrich all invoices with demo data using centralized service
+  return mockInvoices.map(enrichInvoiceWithDemoData);
 };
 
 // Generate mock Credit Notes
@@ -666,22 +787,30 @@ export const generateMockCreditNotes = (): Invoice[] => {
 
   for (let i = 1; i <= 2; i++) {
     const invoiceDate = new Date(now);
-    invoiceDate.setDate(invoiceDate.getDate() - Math.floor(Math.random() * 15));
+    invoiceDate.setDate(invoiceDate.getDate() - Math.floor(seededRandom(18000 + i) * 15));
 
     const dueDate = new Date(invoiceDate);
     dueDate.setDate(dueDate.getDate() + 30);
 
     const vendorName = vendors[i - 1];
+    // Credit notes use CN prefix but rest is vendor-specific
+    const baseInvNumber = generateVendorInvoiceNumber(vendorName, i, invoiceDate);
+    const creditNoteNumber = `CN-${baseInvNumber}`;
+
+    // Generate data ingestion date (0-3 days after creation)
+    const ingestionDate = new Date(invoiceDate);
+    ingestionDate.setDate(ingestionDate.getDate() + Math.floor(seededRandom(19000 + i) * 4));
+
     mockInvoices.push({
       id: `cn-${i}`,
-      invoice_number: `CN-2025-${String(i).padStart(4, '0')}`,
+      invoice_number: creditNoteNumber,
       vendor_name_snapshot: vendorName,
       vendor_id: `VND-${String(500 + i).padStart(4, '0')}`,
       division: getDivision(vendorName),
       invoice_date: invoiceDate.toISOString().split('T')[0],
       due_date: dueDate.toISOString().split('T')[0],
       currency: 'USD',
-      total: -Math.floor(Math.random() * 5000 + 1000), // Negative amount for credit notes
+      total: -Math.floor(seededRandom(20000 + i) * 5000 + 1000), // Negative amount for credit notes
       status: 'pending',
       match_status: 'matched',
       vendor_requires_po: false,
@@ -691,11 +820,13 @@ export const generateMockCreditNotes = (): Invoice[] => {
       gr_numbers: [],
       docType: 'Credit Note',
       created_at: invoiceDate.toISOString(),
-      updated_at: invoiceDate.toISOString()
+      updated_at: invoiceDate.toISOString(),
+      data_ingestion_date: ingestionDate.toISOString().split('T')[0]
     });
   }
 
-  return mockInvoices;
+  // Enrich all invoices with demo data using centralized service
+  return mockInvoices.map(enrichInvoiceWithDemoData);
 };
 
 // Generate mock Pro Forma invoices
@@ -706,22 +837,30 @@ export const generateMockProFormaInvoices = (): Invoice[] => {
 
   for (let i = 1; i <= 2; i++) {
     const invoiceDate = new Date(now);
-    invoiceDate.setDate(invoiceDate.getDate() - Math.floor(Math.random() * 10));
+    invoiceDate.setDate(invoiceDate.getDate() - Math.floor(seededRandom(21000 + i) * 10));
 
     const dueDate = new Date(invoiceDate);
     dueDate.setDate(dueDate.getDate() + 45); // Longer payment terms for pro forma
 
     const vendorName = vendors[i - 1];
+    // Pro forma invoices use PF prefix but rest is vendor-specific
+    const baseInvNumber = generateVendorInvoiceNumber(vendorName, 6000 + i, invoiceDate);
+    const proFormaNumber = `PF-${baseInvNumber}`;
+
+    // Generate data ingestion date (0-3 days after creation)
+    const ingestionDate = new Date(invoiceDate);
+    ingestionDate.setDate(ingestionDate.getDate() + Math.floor(seededRandom(22000 + i) * 4));
+
     mockInvoices.push({
       id: `pf-${i}`,
-      invoice_number: `PF-2025-${String(i).padStart(4, '0')}`,
+      invoice_number: proFormaNumber,
       vendor_name_snapshot: vendorName,
       vendor_id: `VND-${String(600 + i).padStart(4, '0')}`,
       division: getDivision(vendorName),
       invoice_date: invoiceDate.toISOString().split('T')[0],
       due_date: dueDate.toISOString().split('T')[0],
       currency: 'EUR',
-      total: Math.floor(Math.random() * 30000 + 10000),
+      total: Math.floor(seededRandom(23000 + i) * 30000 + 10000),
       status: 'requires_review',
       match_status: i === 1 ? 'amount_mismatch' : 'line_mismatch',
       vendor_requires_po: true,
@@ -732,11 +871,13 @@ export const generateMockProFormaInvoices = (): Invoice[] => {
       docType: 'Pro Forma',
       issues: i === 1 ? ['Amount Mismatch', 'Tax Rate Mismatch'] : ['Line Items Mismatch', 'UoM Mismatch'],
       created_at: invoiceDate.toISOString(),
-      updated_at: invoiceDate.toISOString()
+      updated_at: invoiceDate.toISOString(),
+      data_ingestion_date: ingestionDate.toISOString().split('T')[0]
     });
   }
 
-  return mockInvoices;
+  // Enrich all invoices with demo data using centralized service
+  return mockInvoices.map(enrichInvoiceWithDemoData);
 };
 
 // Generate mock in-approval invoices
@@ -748,22 +889,28 @@ export const generateMockInApprovalInvoices = (): Invoice[] => {
 
   for (let i = 1; i <= 4; i++) {
     const invoiceDate = new Date(now);
-    invoiceDate.setDate(invoiceDate.getDate() - Math.floor(Math.random() * 15 + 5));
+    invoiceDate.setDate(invoiceDate.getDate() - Math.floor(seededRandom(24000 + i) * 15 + 5));
 
     const dueDate = new Date(invoiceDate);
     dueDate.setDate(dueDate.getDate() + 30);
 
     const vendorName = vendors[i % vendors.length];
+    const invoiceNumber = generateVendorInvoiceNumber(vendorName, 7000 + i, invoiceDate);
+
+    // Generate data ingestion date (0-3 days after creation)
+    const ingestionDate = new Date(invoiceDate);
+    ingestionDate.setDate(ingestionDate.getDate() + Math.floor(seededRandom(25000 + i) * 4));
+
     mockInvoices.push({
       id: `approval-${i}`,
-      invoice_number: `INV-2025-${String(7000 + i).padStart(4, '0')}`,
+      invoice_number: invoiceNumber,
       vendor_name_snapshot: vendorName,
       vendor_id: `VND-${String(700 + i).padStart(4, '0')}`,
       division: getDivision(vendorName),
       invoice_date: invoiceDate.toISOString().split('T')[0],
       due_date: dueDate.toISOString().split('T')[0],
       currency: 'USD',
-      total: Math.floor(Math.random() * 75000 + 15000),
+      total: Math.floor(seededRandom(26000 + i) * 75000 + 15000),
       status: 'in_approval',
       match_status: 'matched',
       vendor_requires_po: true,
@@ -774,7 +921,8 @@ export const generateMockInApprovalInvoices = (): Invoice[] => {
       docType: 'Invoice',
       approver: approvers[i % approvers.length],
       created_at: invoiceDate.toISOString(),
-      updated_at: invoiceDate.toISOString()
+      updated_at: invoiceDate.toISOString(),
+      data_ingestion_date: ingestionDate.toISOString().split('T')[0]
     });
   }
 
@@ -783,24 +931,31 @@ export const generateMockInApprovalInvoices = (): Invoice[] => {
   const nonPOApprovers = ['Laura Bennett', 'Peter Collins', 'Nina Sanders'];
   for (let i = 1; i <= nonPOVendors.length; i++) {
     const invoiceDate = new Date(now);
-    invoiceDate.setDate(invoiceDate.getDate() - Math.floor(Math.random() * 10 + 3));
+    invoiceDate.setDate(invoiceDate.getDate() - Math.floor(seededRandom(27000 + i) * 10 + 3));
 
     const dueDate = new Date(invoiceDate);
     dueDate.setDate(dueDate.getDate() + 30);
 
     const vendorName = nonPOVendors[i - 1];
+    // Non-PO approval invoices get vendor-specific numbers
+    const invoiceNumber = generateVendorInvoiceNumber(vendorName, 900 + i, invoiceDate);
+
+    // Generate data ingestion date (0-3 days after creation)
+    const ingestionDate = new Date(invoiceDate);
+    ingestionDate.setDate(ingestionDate.getDate() + Math.floor(seededRandom(28000 + i) * 4));
+
     mockInvoices.push({
       id: `approval-nonpo-${i}`,
-      invoice_number: `NP-APPROVAL-2025-${String(i).padStart(4, '0')}`,
+      invoice_number: invoiceNumber,
       vendor_name_snapshot: vendorName,
       vendor_id: `VND-NP-${String(900 + i).padStart(4, '0')}`,
       division: getDivision(vendorName),
       invoice_date: invoiceDate.toISOString().split('T')[0],
       due_date: dueDate.toISOString().split('T')[0],
       currency: i % 2 === 0 ? 'EUR' : 'USD',
-      total: Math.floor(Math.random() * 20000 + 3000),
+      total: Math.floor(seededRandom(29000 + i) * 20000 + 3000),
       status: 'in_approval',
-      match_status: 'matched', // Non-PO doesn’t do PO/GR matching; treat as approved ready-for-approval
+      match_status: 'matched', // Non-PO doesn't do PO/GR matching; treat as approved ready-for-approval
       vendor_requires_po: false,
       vendor_is_verified: true,
       approval_status: 'pending',
@@ -809,11 +964,13 @@ export const generateMockInApprovalInvoices = (): Invoice[] => {
       docType: 'Invoice',
       approver: nonPOApprovers[i - 1],
       created_at: invoiceDate.toISOString(),
-      updated_at: invoiceDate.toISOString()
+      updated_at: invoiceDate.toISOString(),
+      data_ingestion_date: ingestionDate.toISOString().split('T')[0]
     });
   }
 
-  return mockInvoices;
+  // Enrich all invoices with demo data using centralized service
+  return mockInvoices.map(enrichInvoiceWithDemoData);
 };
 
 // Environment configuration for mock data
@@ -823,9 +980,16 @@ export const generateMockArchivedInvoices = (): Invoice[] => {
   const mockInvoices: Invoice[] = [];
 
   // PO invoice with missing PO - archived
+  const archivedDate = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
+  const archivedInvoiceNumber = generateVendorInvoiceNumber('Global Manufacturing Co.', 8001, archivedDate);
+
+  // Generate data ingestion date (0-3 days after creation)
+  const ingestionDate = new Date(archivedDate);
+  ingestionDate.setDate(ingestionDate.getDate() + Math.floor(seededRandom(30000) * 4));
+
   mockInvoices.push({
     id: 'archived-1',
-    invoice_number: 'INV-2024-8001',
+    invoice_number: archivedInvoiceNumber,
     vendor_name_snapshot: 'Global Manufacturing Co.',
     vendor_id: 'VENDOR-001',
     division: getDivision('Global Manufacturing Co.'),
@@ -844,6 +1008,7 @@ export const generateMockArchivedInvoices = (): Invoice[] => {
     gr_numbers_cached: [],
     created_at: new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000).toISOString(),
     updated_at: new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+    data_ingestion_date: ingestionDate.toISOString().split('T')[0],
     payment_method: 'Bank Transfer',
     vendor_tax_id_snapshot: 'TAX-GM-001',
     vendor_address_snapshot: '123 Manufacturing Blvd, Industrial Park, CA 90210',
@@ -862,7 +1027,8 @@ export const generateMockArchivedInvoices = (): Invoice[] => {
   });
 
   console.log('[MockService] Generated archived invoices:', mockInvoices.length, mockInvoices);
-  return mockInvoices;
+  // Enrich all invoices with demo data using centralized service
+  return mockInvoices.map(enrichInvoiceWithDemoData);
 };
 
 const USE_MOCK_DATA = process.env.USE_MOCK_DATA !== 'false'; // Default to true, can be disabled by setting to 'false'
@@ -943,8 +1109,12 @@ export const getMockPoComparisonData = (invoiceId: string): any | null => {
         id: `po-line-${index + 1}`,
         line_no: index + 1,
         description: line.description,
-        item_name: line.description,
+        item_description: line.description,
         qty_ordered: line.qty * 0.95, // Slightly different quantity for variance
+        qty_received_to_date: 0,
+        qty_invoiced_to_date: 0,
+        qty_remaining_to_receive: line.qty * 0.95,
+        qty_remaining_to_invoice: line.qty * 0.95,
         uom: line.uom || 'EA',
         unit_price: line.unit_price * 1.02, // Slightly different price for variance
         status: 'open'
@@ -1072,6 +1242,33 @@ export const getMockInvoiceById = (id: string): Invoice | null => {
   }
 };
 
+// Calculate due status based on due date
+const calculateDueStatus = (dueDate: string): 'Due Soon' | 'Overdue' | undefined => {
+  if (!dueDate) return undefined;
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  const due = new Date(dueDate);
+  due.setHours(0, 0, 0, 0);
+
+  const diffTime = due.getTime() - today.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  // Overdue if past due date
+  if (diffDays < 0) {
+    return 'Overdue';
+  }
+
+  // Due Soon if within 7 days
+  if (diffDays >= 0 && diffDays <= 7) {
+    return 'Due Soon';
+  }
+
+  // Otherwise undefined (not due soon, not overdue)
+  return undefined;
+};
+
 // Transform a minimal mock invoice to full detail structure
 const transformToFullInvoice = (invoice: Invoice): Invoice => {
   const hasTotal = invoice.total !== undefined && invoice.total !== null;
@@ -1084,8 +1281,14 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
   const subtotal = invoice.subtotal || (hasTotal ? absTotal / (1 + taxRate) : 0);
   const taxTotal = invoice.tax_total || (hasTotal ? absTotal - subtotal : 0);
 
+  // Calculate due status
+  const dueStatus = invoice.due_date ? calculateDueStatus(invoice.due_date) : undefined;
+
+  // Generate seed from invoice ID for deterministic randomization
+  const invoiceSeed = invoice.id ? invoice.id.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0) : 40000;
+
   // Use existing lines if available, otherwise generate sample line items
-  const lines = invoice.lines || invoice.invoice_lines || (hasTotal ? generateSampleLines(subtotal) : []);
+  const lines = invoice.lines || invoice.invoice_lines || (hasTotal ? generateSampleLines(subtotal, invoiceSeed) : []);
 
   return {
     ...invoice,
@@ -1095,7 +1298,7 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
       // For needs info scenarios, explicitly leave tax ID empty
       (invoice.id?.startsWith('needs-info-') ? '' : undefined),
     vendor_address_snapshot: invoice.vendor_name_snapshot
-      ? `${Math.floor(Math.random() * 999) + 1} Business Street, Suite ${Math.floor(Math.random() * 99) + 1}, Business City, BC 12345`
+      ? `${Math.floor(seededRandom(invoiceSeed + 1) * 999) + 1} Business Street, Suite ${Math.floor(seededRandom(invoiceSeed + 2) * 99) + 1}, Business City, BC 12345`
       : undefined,
     invoice_date: invoice.invoice_date || 'Date not provided',
     currency: invoice.currency || 'USD',
@@ -1106,13 +1309,14 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
     other_charges_total: 0,
     discount_total: 0,
     total: hasTotal ? invoice.total : undefined,
+    dueStatus: dueStatus,
     payment_terms_id: 'NET30',
     terms_text: 'Net 30 days',
     assigned_to_name: invoice.approver || null,
     ledger: 'Accounts Payable',
-    cost_center: `CC-${Math.floor(Math.random() * 999) + 1}`,
+    cost_center: `CC-${Math.floor(seededRandom(invoiceSeed + 3) * 999) + 1}`,
     cost_center_name: 'Operations',
-    gl_code: `GL-${Math.floor(Math.random() * 9999) + 1000}`,
+    gl_code: `GL-${Math.floor(seededRandom(invoiceSeed + 4) * 9999) + 1000}`,
     department: 'Finance',
     accounting_notes: null,
     ai_classification_confidence: hasTotal ? 0.95 : undefined,
@@ -1130,7 +1334,7 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
     payment_bank_details: invoice.vendor_name_snapshot ? {
       bank_name: 'First National Bank',
       account_name: invoice.vendor_name_snapshot,
-      account_number: '****' + Math.floor(Math.random() * 9999),
+      account_number: '****' + Math.floor(seededRandom(invoiceSeed + 5) * 9999),
       routing_number: '123456789'
     } : null,
     lines: lines,
@@ -1144,7 +1348,7 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
 };
 
 // Generate sample line items based on subtotal
-const generateSampleLines = (subtotal: number): any[] => {
+const generateSampleLines = (subtotal: number, baseSeed: number = 50000): any[] => {
   const lineCount = Math.min(5, Math.max(2, Math.floor(subtotal / 5000) + 1));
   const lines = [];
   let remainingAmount = subtotal;
@@ -1164,9 +1368,9 @@ const generateSampleLines = (subtotal: number): any[] => {
     const isLastLine = i === lineCount - 1;
     const lineAmount = isLastLine
       ? remainingAmount
-      : remainingAmount * (0.2 + Math.random() * 0.3); // 20-50% of remaining
+      : remainingAmount * (0.2 + seededRandom(baseSeed + i * 10) * 0.3); // 20-50% of remaining (deterministic)
 
-    const qty = Math.max(1, Math.floor(Math.random() * 10) + 1);
+    const qty = Math.max(1, Math.floor(seededRandom(baseSeed + i * 10 + 1) * 10) + 1);
     const unitPrice = lineAmount / qty;
 
     lines.push({
@@ -1174,7 +1378,7 @@ const generateSampleLines = (subtotal: number): any[] => {
       line_no: i + 1,
       description: sampleDescriptions[i % sampleDescriptions.length],
       qty: qty,
-      uom: ['EA', 'HR', 'UNIT', 'LICENSE'][Math.floor(Math.random() * 4)],
+      uom: ['EA', 'HR', 'UNIT', 'LICENSE'][Math.floor(seededRandom(baseSeed + i * 10 + 2) * 4)],
       unit_price: Math.round(unitPrice * 100) / 100,
       net_amount: Math.round(lineAmount * 100) / 100,
       line_total: Math.round(lineAmount * 100) / 100

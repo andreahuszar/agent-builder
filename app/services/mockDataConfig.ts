@@ -267,3 +267,26 @@ export function getSeededItem<T>(array: readonly T[], seed: number): T {
 export function generateSeed(str: string): number {
   return str.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
 }
+
+/**
+ * Seeded random number generator using Linear Congruential Generator (LCG)
+ * Returns a deterministic "random" number between 0 and 1 based on the seed
+ *
+ * @param seed - Integer seed value
+ * @returns Pseudo-random number between 0 and 1
+ */
+export function seededRandom(seed: number): number {
+  // LCG parameters (same as java.util.Random)
+  const a = 1103515245;
+  const c = 12345;
+  const m = 2 ** 31;
+
+  // Ensure seed is positive integer
+  const normalizedSeed = Math.abs(Math.floor(seed));
+
+  // Apply LCG formula
+  const next = (a * normalizedSeed + c) % m;
+
+  // Return value between 0 and 1
+  return next / m;
+}
