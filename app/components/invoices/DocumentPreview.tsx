@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ZoomIn, ZoomOut, RotateCw, Maximize2, Download, FileText } from 'lucide-react';
+import { ZoomIn, ZoomOut, RotateCw, Maximize2, Download, FileText, ChevronLeft } from 'lucide-react';
 import { FakeInvoiceDocument } from './FakeInvoiceDocument';
 import { PDFViewer } from './PDFViewer';
 import { ResizablePanel } from './ResizablePanel';
@@ -16,6 +16,8 @@ interface DocumentPreviewProps {
   hideLineComparison?: boolean;
   hideLineItems?: boolean;
   initialZoom?: number; // Allow customizing initial zoom level (default 0.75)
+  onCollapseToggle?: () => void; // Callback when collapse button clicked
+  isCollapsed?: boolean; // Current collapsed state
 }
 
 // Collapsible Document Preview for needs info mode
@@ -140,7 +142,9 @@ export function DocumentPreview({
   poComparisonData,
   hideLineComparison = false,
   hideLineItems = false,
-  initialZoom = 0.75 // Default to 75% zoom
+  initialZoom = 0.75, // Default to 75% zoom
+  onCollapseToggle,
+  isCollapsed = false
 }: DocumentPreviewProps) {
   // Start with customizable zoom level (default 75%)
   const [zoom, setZoom] = useState(initialZoom);
@@ -274,6 +278,19 @@ export function DocumentPreview({
           >
             <Maximize2 className="h-4 w-4" />
           </button>
+
+          {onCollapseToggle && !isFullscreen && (
+            <>
+              <div className="w-px h-6 bg-gray-300" />
+              <button
+                onClick={onCollapseToggle}
+                className="p-1.5 rounded hover:bg-gray-100 transition-colors text-gray-950"
+                title="Collapse Preview Panel"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+            </>
+          )}
         </div>
       </div>
 

@@ -50,6 +50,7 @@ interface LineItemsPreviewPanelProps {
   onLinesUpdate?: (lines: InvoiceLineItem[]) => void;
   showComparison?: boolean;
   startExpanded?: boolean;
+  useDetailedVarianceColumns?: boolean; // Use separate Qty Var and Price Var columns instead of Delta
 }
 
 export function LineItemsPreviewPanel({
@@ -66,6 +67,7 @@ export function LineItemsPreviewPanel({
   onLinesUpdate,
   showComparison = false,
   startExpanded = false,
+  useDetailedVarianceColumns = false,
 }: LineItemsPreviewPanelProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(!startExpanded); // Start expanded if startExpanded is true
@@ -299,14 +301,14 @@ export function LineItemsPreviewPanel({
       {(externallyControlled ? !externalCollapsed : !isCollapsed) && (
         <div className="flex-1 overflow-auto transition-all duration-200">
           {showComparison && poLines.length > 0 ? (
-            // Two column layout when PO lines exist
-            <div className="grid grid-cols-2 divide-x divide-gray-200 h-full">
+            // Two column layout when PO lines exist - Synchronized scrolling for both tables
+            <div className="grid grid-cols-2 divide-x divide-gray-200 min-h-full">
               {/* Invoice Lines */}
-              <div className="overflow-auto">
+              <div className="overflow-visible">
                 <table className="w-full">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                      <th colSpan={isEditMode ? 8 : 7} className="px-4 py-2 text-left text-sm font-semibold text-gray-950 bg-white border-b">
+                      <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 9 : 8) : (isEditMode ? 8 : 7)} className="px-4 py-2 text-left text-sm font-semibold text-gray-950 bg-white border-b">
                         Invoice Line Items
                       </th>
                     </tr>
@@ -314,10 +316,18 @@ export function LineItemsPreviewPanel({
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase">#</th>
                       <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
                       <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
+                      {useDetailedVarianceColumns && (
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty Var</th>
+                      )}
                       <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
                       <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
+                      {useDetailedVarianceColumns && (
+                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price Var</th>
+                      )}
                       <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
-                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
+                      {!useDetailedVarianceColumns && (
+                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
+                      )}
                       {isEditMode && (
                         <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase w-32">Actions</th>
                       )}
@@ -362,6 +372,23 @@ export function LineItemsPreviewPanel({
                               line.qty
                             )}
                           </td>
+                          {useDetailedVarianceColumns && (
+                            <td className="px-3 py-2 text-sm text-right">
+                              {matchedPO ? (
+                                Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 ? (
+                                  <span className={`font-semibold ${
+                                    line.qty > matchedPO.qty_ordered ? 'text-red-600' : 'text-green-600'
+                                  }`}>
+                                    {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
+                                  </span>
+                                ) : (
+                                  <CheckCircle className="h-3.5 w-3.5 text-green-600 mx-auto" />
+                                )
+                              ) : (
+                                <span className="text-xs text-gray-400">-</span>
+                              )}
+                            </td>
+                          )}
                           <td className="px-3 py-2 text-sm text-center text-gray-950">
                             {isEditMode ? (
                               <input
@@ -388,33 +415,52 @@ export function LineItemsPreviewPanel({
                               formatCurrency(line.unit_price)
                             )}
                           </td>
+                          {useDetailedVarianceColumns && (
+                            <td className="px-3 py-2 text-sm text-right">
+                              {matchedPO ? (
+                                Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 ? (
+                                  <span className={`font-semibold ${
+                                    line.unit_price > matchedPO.unit_price ? 'text-red-600' : 'text-green-600'
+                                  }`}>
+                                    {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
+                                  </span>
+                                ) : (
+                                  <CheckCircle className="h-3.5 w-3.5 text-green-600 mx-auto" />
+                                )
+                              ) : (
+                                <span className="text-xs text-gray-400">-</span>
+                              )}
+                            </td>
+                          )}
                           <td className={`px-3 py-2 text-sm text-right font-medium ${
                             mismatch ? 'text-red-600' : 'text-gray-950'
                           }`}>
                             {formatCurrency(line.line_total)}
                           </td>
-                          <td className="px-3 py-2 text-sm">
-                            {matchedPO && (
-                              <div className="flex flex-col items-center gap-0.5">
-                                {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
-                                  <span className="text-xs text-red-600 font-medium">
-                                    Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
-                                  </span>
-                                )}
-                                {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
-                                  <span className="text-xs text-red-600 font-medium">
-                                    Price: {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
-                                  </span>
-                                )}
-                                {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
-                                  <CheckCircle className="h-3.5 w-3.5 text-green-600" />
-                                )}
-                              </div>
-                            )}
-                            {!matchedPO && (
-                              <span className="text-xs text-gray-400">No PO</span>
-                            )}
-                          </td>
+                          {!useDetailedVarianceColumns && (
+                            <td className="px-3 py-2 text-sm">
+                              {matchedPO && (
+                                <div className="flex flex-col items-center gap-0.5">
+                                  {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
+                                    <span className="text-xs text-red-600 font-medium">
+                                      Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
+                                    </span>
+                                  )}
+                                  {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
+                                    <span className="text-xs text-red-600 font-medium">
+                                      Price: {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
+                                    </span>
+                                  )}
+                                  {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
+                                    <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                                  )}
+                                </div>
+                              )}
+                              {!matchedPO && (
+                                <span className="text-xs text-gray-400">No PO</span>
+                              )}
+                            </td>
+                          )}
                           {isEditMode && (
                             <td className="px-3 py-2 text-sm">
                               <div className="flex items-center justify-center gap-1">
@@ -454,7 +500,7 @@ export function LineItemsPreviewPanel({
                     })}
                     {isEditMode && (
                       <tr className="h-[52px]">
-                        <td colSpan={8} className="px-3 py-2 align-middle">
+                        <td colSpan={useDetailedVarianceColumns ? 9 : 8} className="px-3 py-2 align-middle">
                           <button
                             onClick={handleAddLine}
                             className="flex items-center gap-1.5 text-sm text-purple-700 hover:text-purple-900 font-medium transition-colors"
@@ -468,34 +514,36 @@ export function LineItemsPreviewPanel({
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
                     <tr>
-                      <td colSpan={5} className="px-3 py-2 text-right text-sm font-semibold text-gray-950">
+                      <td colSpan={useDetailedVarianceColumns ? 7 : 5} className="px-3 py-2 text-right text-sm font-semibold text-gray-950">
                         Invoice Total:
                       </td>
                       <td className="px-3 py-2 text-right text-sm font-bold text-gray-950">
                         {formatCurrency(invoiceLines.reduce((sum, line) => sum + line.line_total, 0))}
                       </td>
-                      <td className="px-3 py-2 text-center">
-                        {(() => {
-                          const invoiceTotal = invoiceLines.reduce((sum, line) => sum + line.line_total, 0);
-                          const poTotal = poLines.reduce((sum, line) => sum + (line.qty_ordered * line.unit_price), 0);
-                          const delta = invoiceTotal - poTotal;
-                          if (Math.abs(delta) > 0.01) {
-                            return (
-                              <span className={`text-xs font-bold ${delta > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                {delta > 0 ? '+' : ''}{formatCurrency(delta)}
-                              </span>
-                            );
-                          }
-                          return <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />;
-                        })()}
-                      </td>
+                      {!useDetailedVarianceColumns && (
+                        <td className="px-3 py-2 text-center">
+                          {(() => {
+                            const invoiceTotal = invoiceLines.reduce((sum, line) => sum + line.line_total, 0);
+                            const poTotal = poLines.reduce((sum, line) => sum + (line.qty_ordered * line.unit_price), 0);
+                            const delta = invoiceTotal - poTotal;
+                            if (Math.abs(delta) > 0.01) {
+                              return (
+                                <span className={`text-xs font-bold ${delta > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                                  {delta > 0 ? '+' : ''}{formatCurrency(delta)}
+                                </span>
+                              );
+                            }
+                            return <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />;
+                          })()}
+                        </td>
+                      )}
                     </tr>
                   </tfoot>
                 </table>
               </div>
 
               {/* PO Lines */}
-              <div className="overflow-auto">
+              <div className="overflow-visible">
                 <table className="w-full">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>

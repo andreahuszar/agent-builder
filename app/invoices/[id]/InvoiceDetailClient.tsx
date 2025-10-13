@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { ChevronRight } from 'lucide-react';
 import { DocumentPreview } from '@/app/components/invoices/DocumentPreview';
 import { ResizablePanel, MultiResizablePanel } from '@/app/components/invoices/ResizablePanel';
 import { ViewModeSwitcher, ViewMode } from '@/app/components/invoices/ViewModeSwitcher';
@@ -92,6 +93,23 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   };
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isPdfCollapsed, setIsPdfCollapsed] = useState(false);
+
+  // Load/save PDF collapsed state from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(`pdf-collapsed-${invoiceId}`);
+    if (saved !== null) {
+      setIsPdfCollapsed(saved === 'true');
+    }
+  }, [invoiceId]);
+
+  useEffect(() => {
+    localStorage.setItem(`pdf-collapsed-${invoiceId}`, isPdfCollapsed.toString());
+  }, [isPdfCollapsed, invoiceId]);
+
+  const handlePdfCollapseToggle = () => {
+    setIsPdfCollapsed(!isPdfCollapsed);
+  };
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -128,6 +146,43 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       return <div className="h-full flex items-center justify-center text-gray-500">Loading...</div>;
     }
 
+    // Check if PDF preview is collapsed
+    if (isPdfCollapsed) {
+      return (
+        <div className="h-full flex">
+          {/* Collapsed expand button - positioned at top */}
+          <div className="w-10 bg-gray-100 border-r border-gray-200 flex items-start justify-center pt-4 flex-shrink-0">
+            <button
+              onClick={handlePdfCollapseToggle}
+              className="p-2 rounded hover:bg-gray-200 transition-colors"
+              title="Expand Preview"
+            >
+              <ChevronRight className="h-5 w-5 text-gray-600" />
+            </button>
+          </div>
+          {/* Full width tabs */}
+          <div className="flex-1 overflow-hidden">
+            <InvoiceTabs
+              invoiceId={invoiceId}
+              invoiceData={invoice}
+              matchResults={matchResults}
+              attachments={invoice.attachments || []}
+              selectedLineId={selectedLineId}
+              onLineSelect={selectInvoiceLine}
+              onDataUpdate={handleInvoiceUpdate}
+              storageKey={`invoice-${invoiceId}`}
+              poComparisonData={poComparisonData}
+              forceReadOnly={true}
+              hideComparison={false}
+              hidePreview={true}
+              showFieldErrors={isNeedsInfoMode}
+              initialTab="details"
+            />
+          </div>
+        </div>
+      );
+    }
+
     // Unified layout for ALL invoices: PDF on left (33%), Fields on right (67%)
     return (
       <ResizablePanel
@@ -146,6 +201,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           hideLineComparison={false}
           hideLineItems={true}
           initialZoom={0.5}
+          onCollapseToggle={handlePdfCollapseToggle}
+          isCollapsed={false}
         />
 
         {/* Invoice Tabs (Read-only) - RIGHT PANEL */}
@@ -163,6 +220,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           hideComparison={false}
           hidePreview={true}
           showFieldErrors={isNeedsInfoMode}
+          initialTab="details"
         />
       </ResizablePanel>
     );

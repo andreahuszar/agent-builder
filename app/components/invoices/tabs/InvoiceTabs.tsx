@@ -377,6 +377,7 @@ export function InvoiceTabs({
               }}
               showComparison={!hideComparison && poComparisonData?.poData?.po_lines?.length > 0}
               startExpanded={true}
+              useDetailedVarianceColumns={true}
             />
           </div>
         )}
