@@ -301,11 +301,11 @@ export function LineItemsPreviewPanel({
       {(externallyControlled ? !externalCollapsed : !isCollapsed) && (
         <div className="flex-1 overflow-auto transition-all duration-200">
           {showComparison && poLines.length > 0 ? (
-            // Two column layout when PO lines exist - Synchronized scrolling for both tables
-            <div className="grid grid-cols-2 divide-x divide-gray-200 min-h-full">
+            // Horizontal scrollable layout when PO lines exist - Invoice table first, then PO table
+            <div className="flex min-h-full">
               {/* Invoice Lines */}
-              <div className="overflow-visible">
-                <table className="w-full">
+              <div className="flex-shrink-0 border-r border-gray-200">
+                <table className="min-w-max">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
                       <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 9 : 8) : (isEditMode ? 8 : 7)} className="px-4 py-2 text-left text-sm font-semibold text-gray-950 bg-white border-b">
@@ -543,8 +543,8 @@ export function LineItemsPreviewPanel({
               </div>
 
               {/* PO Lines */}
-              <div className="overflow-visible">
-                <table className="w-full">
+              <div className="flex-shrink-0">
+                <table className="min-w-max">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
                       <th colSpan={6} className="px-4 py-2 text-left text-sm font-semibold text-gray-950 bg-white border-b">
