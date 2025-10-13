@@ -84,12 +84,16 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
           detailsText = parts.join('. ');
         }
 
+        // Ensure severity is a valid value
+        const validSeverities = ['error', 'warning', 'info', 'success'];
+        const severity = validSeverities.includes(warning.severity) ? warning.severity : 'warning';
+
         issues[category as ValidationCategory].push({
           id: `db-warning-${idx}`,
           field: warning.field,
           message: warning.message,
           details: detailsText,
-          severity: warning.severity || 'warning',
+          severity,
           category: category as ValidationCategory,
         });
       });

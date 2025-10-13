@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { FileText, Package, GitCompare, Paperclip, Clock, Check, AlertTriangle, CheckCircle, List, MessageSquare, Eye, FileType } from 'lucide-react';
+import { FileText, Package, GitCompare, Paperclip, Clock, Check, AlertTriangle, CheckCircle, List, MessageSquare, Eye, FileType, Image } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { DetailsTab } from './DetailsTab';
 import { LineItemsTab } from './LineItemsTab';
@@ -9,12 +9,14 @@ import { EnhancedLineItemsTabV2 } from './EnhancedLineItemsTabV2';
 import { LineItemsPreviewPanel } from '../preview/LineItemsPreviewPanel';
 import { MatchingTab } from './MatchingTab';
 import { AttachmentsTab } from './AttachmentsTab';
-import { ActivityTab } from './ActivityTab';
-import { CommunicationTab } from './CommunicationTab';
+import { UnifiedActivityTab } from './UnifiedActivityTab';
+// import { ActivityTab } from './ActivityTab'; // deprecated - merged into UnifiedActivityTab
+// import { CommunicationTab } from './CommunicationTab'; // deprecated - merged into UnifiedActivityTab
 import { PreviewTab } from './PreviewTab';
 import { InvoiceValidator } from '@/app/utils/validationService';
+import { calculateInvoiceExceptions } from '@/app/utils/exceptionCounter';
 
-export type TabId = 'preview' | 'details' | 'line-items' | 'matching' | 'attachments' | 'activity' | 'communication';
+export type TabId = 'preview' | 'details' | 'line-items' | 'matching' | 'attachments' | 'comments';
 export type LayoutMode = 'compact' | 'medium' | 'large';
 
 interface InvoiceTabsProps {
@@ -33,6 +35,7 @@ interface InvoiceTabsProps {
   hideComparison?: boolean;
   hideAttachments?: boolean;
   hidePreview?: boolean;
+  hideExceptions?: boolean;
   showCommunication?: boolean;
   showFieldErrors?: boolean;
   initialTab?: TabId;
@@ -54,6 +57,7 @@ export function InvoiceTabs({
   hideComparison = false,
   hideAttachments = false,
   hidePreview = false,
+  hideExceptions = false,
   showCommunication = false,
   showFieldErrors = false,
   initialTab,
@@ -67,6 +71,7 @@ export function InvoiceTabs({
   const [isClient, setIsClient] = useState(false);
   const [isDynamicallyCompact, setIsDynamicallyCompact] = useState(true); // Start minimized
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('compact'); // Start in compact mode
+  const [commentsCount, setCommentsCount] = useState(2); // Initialize with expected mock count (2 real user comments)
   const tabContainerRef = useRef<HTMLDivElement>(null);
   
   // Combine prop-based and dynamic compact modes
@@ -120,100 +125,56 @@ export function InvoiceTabs({
     };
   }, []);
 
-  // Build validation issues same way as MatchingTab does
-  const validationIssues = React.useMemo(() => {
-    const issues: any[] = [];
-    const approvalLimit = 2500; // Default approval limit
-    
-    // Check vendor verification status (must match MatchingTab logic)
-    if (invoiceData?.vendor_is_verified === false) {
-      issues.push({ severity: 'error', type: 'vendor_verification' });
-    }
-    
-    // Add approval limit check - but only for invoices that aren't already approved/paid
-    const approvedStatuses = ['approved', 'paid', 'completed', 'closed', 'ready_for_payment', 'approved_ready_for_payment'];
-    const isAlreadyApproved = invoiceData?.status && approvedStatuses.includes(invoiceData.status.toLowerCase());
-    
-    if (invoiceData?.total && invoiceData.total > approvalLimit && !isAlreadyApproved) {
-      issues.push({ severity: 'error', type: 'approval' });
-    }
-    
-    // Check for uninvoiced PO lines
-    if (poComparisonData?.unmatchedPoLines && poComparisonData.unmatchedPoLines.length > 0) {
-      // Count once for all uninvoiced lines (not per line)
-      issues.push({ severity: 'error', type: 'uninvoiced' });
-    }
-    
-    // Count match results that are actual issues (avoid duplicates)
-    const processedLines = new Set<string>(); // Track processed lines
-    let hasHeaderVariance = false;
-    let lineVarianceCount = 0;
-    
-    matchResults?.forEach((r: any) => {
-      // Skip header-level TOTAL_VARIANCE_EXCEEDED if we have line-level issues
-      if (r.explanation_code === 'TOTAL_VARIANCE_EXCEEDED' && !r.invoice_line_id) {
-        hasHeaderVariance = true;
-        return; // We'll add this later only if no line issues
-      }
-      
-      // Count line variances only once per line
-      if (r.invoice_line_id && !r.within_tolerance && !processedLines.has(r.invoice_line_id)) {
-        processedLines.add(r.invoice_line_id);
-        lineVarianceCount++;
-        issues.push({ severity: 'error', type: 'variance' });
-      }
-      
-      // Count specific error codes (but avoid duplicates)
-      if (r.explanation_code === 'NO_PO') {
-        issues.push({ severity: 'error', type: 'no_po' });
+  // Use shared exception counter
+  const exceptionResult = React.useMemo(() =>
+    calculateInvoiceExceptions(invoiceData, matchResults, poComparisonData, 2500),
+    [matchResults, invoiceData, poComparisonData]
+  );
+
+  // Count ALL exceptions for badge (errors + warnings + info)
+  // Badge shows simplified total, MatchingTab shows detailed categorized breakdown
+  const totalIssuesCount = exceptionResult.counts.total;
+
+  // Calculate missing/invalid fields count for Details tab
+  // This MUST match the exact logic in InvoiceDetailClient calculateMissingFieldsCount
+  const fieldErrorsCount = React.useMemo(() => {
+    let count = 0;
+    const requiredFields = [
+      'invoice_number',
+      'invoice_date',
+      'vendor_name_snapshot',
+      'vendor_tax_id_snapshot',
+      'currency'
+    ];
+
+    requiredFields.forEach(field => {
+      const value = invoiceData?.[field];
+      // Check for falsy values, empty strings, and special placeholder values
+      if (!value || value === '' || value === 'Unknown Vendor' || value === 'Invalid Date') {
+        count++;
       }
     });
-    
-    // Only add header variance if there are no line-level variances
-    if (hasHeaderVariance && lineVarianceCount === 0) {
-      issues.push({ severity: 'error', type: 'header_variance' });
-    }
-    
-    // Get validation errors from invoice data
-    if (invoiceData) {
-      const validator = new InvoiceValidator(invoiceData);
-      const validationResults = validator.validate();
 
-      // Add validation errors with their actual severity
-      validationResults.errors.forEach(err => {
-        issues.push({ severity: err.severity || 'error' });
-      });
-      validationResults.warnings.forEach(warn => {
-        issues.push({ severity: warn.severity || 'warning' });
-      });
+    // Check PO number if vendor requires PO
+    if (invoiceData?.vendor_requires_po && (!invoiceData?.po_numbers_cached || invoiceData.po_numbers_cached.length === 0)) {
+      count++;
     }
 
-    // Add database validation warnings/errors (like bank details changes)
-    if (invoiceData?.validation_warnings && Array.isArray(invoiceData.validation_warnings)) {
-      invoiceData.validation_warnings.forEach((warning: any) => {
-        issues.push({ severity: warning.severity || 'warning', type: 'database_validation' });
-      });
-    }
-
-    return issues;
-  }, [matchResults, invoiceData, poComparisonData]);
-  
-  // Count only error-severity issues (matching what MatchingTab shows)
-  const totalIssuesCount = validationIssues.filter(i => i.severity === 'error').length;
-
-  // Check if in needs info mode
-  const isNeedsInfo = invoiceData?.status === 'needs_info' || invoiceData?.status === 'needs-info';
+    return count;
+  }, [invoiceData]);
 
   const allTabs = [
     {
       id: 'preview' as TabId,
       label: 'Preview',
-      icon: FileType,
+      icon: Image,
     },
     {
       id: 'details' as TabId,
       label: 'Details',
       icon: FileText,
+      fieldErrorsCount: fieldErrorsCount,
+      hasFieldErrors: fieldErrorsCount > 0,
     },
     {
       id: 'line-items' as TabId,
@@ -232,17 +193,13 @@ export function InvoiceTabs({
       id: 'attachments' as TabId,
       label: 'Attachments',
       icon: Paperclip,
-      count: attachments?.length,
+      count: attachments?.length || 1, // Show 1 for mock invoice PDF when no attachments
     },
     {
-      id: 'activity' as TabId,
-      label: 'Activity',
-      icon: Clock,
-    },
-    {
-      id: 'communication' as TabId,
-      label: 'Communication',
+      id: 'comments' as TabId,
+      label: 'Comments',
       icon: MessageSquare,
+      count: commentsCount,
     },
   ];
 
@@ -252,18 +209,15 @@ export function InvoiceTabs({
     if (tab.id === 'preview' && hidePreview) {
       return false;
     }
-    // Hide only Exceptions tab in needs info mode (always show Line Items)
-    if (isNeedsInfo && tab.id === 'matching') {
+    // Hide exceptions tab if hideExceptions prop is true (for quick view)
+    if (tab.id === 'matching' && hideExceptions) {
       return false;
     }
     // Hide attachments if hideAttachments prop is true
     if (tab.id === 'attachments' && hideAttachments) {
       return false;
     }
-    // Hide communication if showCommunication prop is false
-    if (tab.id === 'communication' && !showCommunication) {
-      return false;
-    }
+    // Comments tab is always shown (merged Activity + Communication)
     return true;
   });
 
@@ -285,10 +239,10 @@ export function InvoiceTabs({
       >
         <div className={`relative flex items-center justify-center ${shouldBeCompact ? 'gap-1.5' : 'gap-2'}`}>
           <tab.icon className={`h-4 w-4 flex-shrink-0 ${
-            tab.id === 'matching' && tab.hasIssues 
-              ? 'text-red-700' 
-              : activeTab === tab.id 
-              ? 'text-purple-900' 
+            tab.id === 'matching' && tab.hasIssues
+              ? 'text-red-700'
+              : activeTab === tab.id
+              ? 'text-purple-900'
               : 'text-gray-700'
           }`} />
           {!shouldBeCompact && <span className="whitespace-nowrap">{tab.label}</span>}
@@ -317,9 +271,22 @@ export function InvoiceTabs({
               </span>
             )
           )}
-          
+
+          {/* Special handling for Details tab with field errors */}
+          {tab.id === 'details' && tab.hasFieldErrors && (
+            <span className={`
+              inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium rounded-full min-w-[20px] flex-shrink-0
+              ${activeTab === tab.id
+                ? 'bg-red-100 text-red-800'
+                : 'bg-red-50 text-red-700'
+              }
+            `}>
+              {tab.fieldErrorsCount}
+            </span>
+          )}
+
           {/* Regular count badges for other tabs */}
-          {tab.id !== 'matching' && tab.count !== undefined && tab.count > 0 && (
+          {tab.id !== 'matching' && tab.id !== 'details' && tab.count !== undefined && tab.count > 0 && (
             <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium rounded-full min-w-[20px] bg-purple-100 text-purple-900 flex-shrink-0">
               {tab.count}
             </span>
@@ -328,7 +295,9 @@ export function InvoiceTabs({
         {activeTab === tab.id && (
           <span
             className={`absolute inset-x-0 bottom-0 h-0.5 z-10 ${
-              tab.id === 'matching' && tab.hasIssues ? 'bg-red-700' : 'bg-purple-900'
+              tab.id === 'matching' && tab.hasIssues
+                ? 'bg-red-700'
+                : 'bg-purple-900'
             }`}
             aria-hidden="true"
           />
@@ -428,15 +397,11 @@ export function InvoiceTabs({
             layoutMode={layoutMode}
           />
         )}
-        {activeTab === 'activity' && (
-          <ActivityTab
-            invoiceId={invoiceId}
-          />
-        )}
-        {activeTab === 'communication' && (
-          <CommunicationTab
+        {activeTab === 'comments' && (
+          <UnifiedActivityTab
             invoiceId={invoiceId}
             invoiceNumber={invoiceData?.invoice_number}
+            onCommentsCountChange={setCommentsCount}
           />
         )}
       </div>

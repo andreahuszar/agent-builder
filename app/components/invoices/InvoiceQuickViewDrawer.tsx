@@ -270,7 +270,7 @@ export function InvoiceQuickViewDrawer({ invoiceId, isOpen, onClose }: InvoiceQu
                 forceReadOnly={true}
                 hideComparison={true}
                 hideAttachments={true}
-                showCommunication={true}
+                hideExceptions={true}
                 showFieldErrors={isNeedsInfo}
                 initialTab="preview"
               />

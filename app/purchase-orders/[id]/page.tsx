@@ -49,7 +49,7 @@ async function getPurchaseOrder(id: string) {
         pl.gl_account,
         pl.status,
         (pl.qty_ordered * pl.unit_price)::float as line_total,
-        i.name as item_name
+        i.name as item_description
       FROM po_lines pl
       LEFT JOIN items i ON pl.item_id = i.id
       WHERE pl.po_id = ${id}::uuid
@@ -228,10 +228,10 @@ export default async function PurchaseOrderDetailPage({ params }: PurchaseOrderD
                       </td>
                       <td className="px-6 py-4 text-sm font-medium text-gray-950">
                         <div>
-                          {line.item_name && (
-                            <p className="font-medium">{line.item_name}</p>
+                          {line.item_description && (
+                            <p className="font-medium">{line.item_description}</p>
                           )}
-                          <p className={line.item_name ? 'text-gray-500' : ''}>{line.description}</p>
+                          <p className={line.item_description ? 'text-gray-500' : ''}>{line.description}</p>
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-950 text-right">

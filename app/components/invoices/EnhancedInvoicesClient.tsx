@@ -114,6 +114,7 @@ const getContextualTabs = (invoiceType: string) => {
     // PO mode: Exceptions combines needs-info + mismatched
     return [
       { id: 'exceptions', label: 'Exceptions' },
+      { id: 'in-approval', label: 'Pending Approval' },
       { id: 'all', label: 'All (PO)' },
       { id: 'archived', label: 'Archived' }
     ];
@@ -121,6 +122,7 @@ const getContextualTabs = (invoiceType: string) => {
     // Non-PO mode: Exceptions combines needs-info + approval needed
     return [
       { id: 'exceptions', label: 'Exceptions' },
+      { id: 'in-approval', label: 'Pending Approval' },
       { id: 'all', label: 'All (Non-PO)' },
       { id: 'archived', label: 'Archived' }
     ];
@@ -128,6 +130,7 @@ const getContextualTabs = (invoiceType: string) => {
     // All mode: Exceptions combines needs-info + mismatched/blocked
     return [
       { id: 'exceptions', label: 'Exceptions' },
+      { id: 'in-approval', label: 'Pending Approval' },
       { id: 'all', label: 'All' },
       { id: 'archived', label: 'Archived' }
     ];
@@ -561,6 +564,16 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
             inv.match_status === 'amount_mismatch' ||
             inv.match_status === 'line_mismatch'
           )
+        );
+
+      case 'in-approval':
+        // Invoices pending approval - has an approver assigned but not yet approved/paid
+        return allInvoices.filter(inv =>
+          // Has an approver assigned
+          !!inv.approver &&
+          // Not yet approved or paid
+          inv.status !== 'approved' &&
+          inv.status !== 'paid'
         );
 
       case 'archived':

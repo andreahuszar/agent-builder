@@ -15,6 +15,7 @@ interface DocumentPreviewProps {
   poComparisonData?: any;
   hideLineComparison?: boolean;
   hideLineItems?: boolean;
+  initialZoom?: number; // Allow customizing initial zoom level (default 0.75)
 }
 
 // Collapsible Document Preview for needs info mode
@@ -138,10 +139,11 @@ export function DocumentPreview({
   matchResults = [],
   poComparisonData,
   hideLineComparison = false,
-  hideLineItems = false
+  hideLineItems = false,
+  initialZoom = 0.75 // Default to 75% zoom
 }: DocumentPreviewProps) {
-  // Start with 50% zoom for all documents
-  const [zoom, setZoom] = useState(0.5);
+  // Start with customizable zoom level (default 75%)
+  const [zoom, setZoom] = useState(initialZoom);
   const [rotation, setRotation] = useState(0);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [imageError, setImageError] = useState(false);

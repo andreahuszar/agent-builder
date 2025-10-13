@@ -7,7 +7,7 @@ interface POLine {
   id: string;
   line_no: number;
   description: string;
-  item_name?: string;
+  item_description?: string;
   qty_ordered: number;
   uom: string;
   unit_price: number;
@@ -201,10 +201,10 @@ export function PODocumentTable({ poNumber, selectedLineId, onLineSelect }: PODo
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-950">
                     <div>
-                      {line.item_name && (
-                        <p className="font-medium">{line.item_name}</p>
+                      {line.item_description && (
+                        <p className="font-medium">{line.item_description}</p>
                       )}
-                      <p className={line.item_name ? 'text-gray-500' : ''}>
+                      <p className={line.item_description ? 'text-gray-500' : ''}>
                         {line.description}
                       </p>
                     </div>

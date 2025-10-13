@@ -19,7 +19,7 @@ interface POLineItem {
   id: string;
   line_no: number;
   description: string;
-  item_name?: string;
+  item_description?: string;
   qty_ordered: number;
   uom: string;
   unit_price: number;
@@ -540,7 +540,7 @@ export function LineItemsPreviewPanel({
                           <td className="px-3 py-2 text-sm text-gray-950">{matchedPO.line_no}</td>
                           <td className="px-3 py-2 text-sm text-gray-950">
                             <div className="truncate max-w-[200px]" title={matchedPO.description}>
-                              {matchedPO.item_name || matchedPO.description}
+                              {matchedPO.item_description || matchedPO.description}
                             </div>
                           </td>
                           <td className={`px-3 py-2 text-sm text-right ${

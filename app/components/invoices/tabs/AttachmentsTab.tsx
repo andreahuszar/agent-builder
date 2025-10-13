@@ -114,40 +114,18 @@ export function AttachmentsTab({ invoiceId, attachments, layoutMode = 'large' }:
     window.open(`/api/invoices/download/${invoiceId}?attachment=${attachment.id}`, '_blank');
   };
 
-  if (attachments.length === 0) {
-    return (
-      <div className="h-full flex flex-col bg-white">
-        {/* Header */}
-        <div className="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
-          <div className="flex items-center gap-2">
-            <Paperclip className="h-4 w-4 text-purple-600" />
-            <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">ATTACHMENTS</h3>
-          </div>
-        </div>
-        
-        <div className="flex flex-col items-center justify-center flex-1">
-        <FileText className="h-12 w-12 text-gray-400 mb-4" />
-        <h3 className="text-lg font-medium text-gray-950 mb-2">No Attachments</h3>
-        <p className="text-sm text-gray-500 text-center max-w-md mb-6">
-          No files have been attached to this invoice yet.
-        </p>
-        <label className="relative cursor-pointer">
-          <input
-            type="file"
-            className="sr-only"
-            onChange={handleFileUpload}
-            disabled={isUploading}
-            accept=".pdf,.png,.jpg,.jpeg,.gif,.xlsx,.xls,.csv"
-          />
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors">
-            <Upload className="h-3.5 w-3.5" />
-            <span>{isUploading ? 'Uploading...' : 'Upload Attachment'}</span>
-          </div>
-        </label>
-        </div>
-      </div>
-    );
-  }
+  // Show mock invoice PDF card even when attachments array is empty
+  const mockAttachments = attachments.length === 0 ? [
+    {
+      id: 'mock-invoice-pdf',
+      filename: `Invoice_${invoiceId}.pdf`,
+      media_type: 'application/pdf',
+      storage_url: `/api/invoices/${invoiceId}/preview`,
+      created_at: new Date().toISOString(),
+      source: 'Email Ingestion',
+      sha256: null
+    }
+  ] : attachments;
 
   return (
     <div className="h-full flex flex-col bg-white">
@@ -171,12 +149,12 @@ export function AttachmentsTab({ invoiceId, attachments, layoutMode = 'large' }:
           </div>
         </label>
       </div>
-      
+
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
 
       {/* Attachments Grid */}
       <div className={`grid ${getGridCols()} gap-4`}>
-        {attachments.map((attachment, index) => (
+        {mockAttachments.map((attachment, index) => (
           <div
             key={attachment.id || `attachment-${index}-${attachment.filename}`}
             className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow min-w-0"

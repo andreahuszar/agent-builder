@@ -6,8 +6,7 @@ import EnhancedInvoicesClient from '@/app/components/invoices/EnhancedInvoicesCl
 const TABS = [
   { id: 'needs-info', label: 'Needs info' },
   { id: 'blocked', label: 'Blocked' },
-  { id: 'in-approval', label: 'In approval' },
-  { id: 'ready-to-post', label: 'Ready to post' }
+  { id: 'in-approval', label: 'In approval' }
 ];
 
 export default function InvoicesPage() {
@@ -47,12 +46,6 @@ export default function InvoicesPage() {
         {activeTab === 'in-approval' && (
           <div className="text-center py-12">
             <h3 className="text-lg font-medium text-gray-900 mb-2">In Approval</h3>
-            <p className="text-gray-500">Content coming soon...</p>
-          </div>
-        )}
-        {activeTab === 'ready-to-post' && (
-          <div className="text-center py-12">
-            <h3 className="text-lg font-medium text-gray-900 mb-2">Ready to Post</h3>
             <p className="text-gray-500">Content coming soon...</p>
           </div>
         )}

@@ -10,7 +10,6 @@ import { PODocumentTable } from '@/app/components/invoices/comparison/PODocument
 import { GRDocumentTable } from '@/app/components/invoices/comparison/GRDocumentTable';
 import { GRDocumentPreview } from '@/app/components/invoices/comparison/GRDocumentPreview';
 import { useSelection } from '@/app/context/SelectionContext';
-import { CommentsDrawer } from '@/app/components/invoices/CommentsDrawer';
 
 interface InvoiceDetailClientProps {
   invoiceId: string;
@@ -93,7 +92,6 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   };
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isCommentsOpen, setIsCommentsOpen] = useState(false);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -130,7 +128,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       return <div className="h-full flex items-center justify-center text-gray-500">Loading...</div>;
     }
 
-    // Unified layout for ALL invoices: PDF on left, Fields on right (read-only)
+    // Unified layout for ALL invoices: PDF on left (33%), Fields on right (67%)
     return (
       <ResizablePanel
         defaultSizes={[33, 67]}
@@ -147,6 +145,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           poComparisonData={poComparisonData}
           hideLineComparison={false}
           hideLineItems={true}
+          initialZoom={0.5}
         />
 
         {/* Invoice Tabs (Read-only) - RIGHT PANEL */}
@@ -220,6 +219,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   };
 
   // Calculate missing fields count
+  // This MUST match the exact logic in InvoiceTabs fieldErrorsCount
   const calculateMissingFieldsCount = () => {
     let count = 0;
     const requiredFields = [
@@ -232,7 +232,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
     requiredFields.forEach(field => {
       const value = invoice[field];
-      if (!value || value === 'Unknown Vendor' || value === 'Invalid Date') {
+      // Check for falsy values, empty strings, and special placeholder values
+      if (!value || value === '' || value === 'Unknown Vendor' || value === 'Invalid Date') {
         count++;
       }
     });
@@ -287,21 +288,12 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         showSaveButton={true}
         onSaveClick={handleSave}
         isSaving={isSaving}
-        onCommentsClick={() => setIsCommentsOpen(true)}
-        commentsCount={3}
       />
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden">
         {renderContent()}
       </div>
-
-      {/* Comments Drawer */}
-      <CommentsDrawer
-        invoiceId={invoiceId}
-        isOpen={isCommentsOpen}
-        onClose={() => setIsCommentsOpen(false)}
-      />
     </div>
   );
 }

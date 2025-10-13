@@ -161,17 +161,19 @@ export function DiagnosticBanner({
           )}
         </div>
 
-        {/* Receipt Status */}
-        <div className={`
-          inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-          ${receiptStatus.bgColor} ${receiptStatus.color}
-        `}>
-          <ReceiptIcon className="h-3 w-3" />
-          <span>{receiptStatus.label}</span>
-        </div>
+        {/* Receipt Status - HIDDEN FOR NOW (will decide later) */}
+        {false && (
+          <div className={`
+            inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+            ${receiptStatus.bgColor} ${receiptStatus.color}
+          `}>
+            <ReceiptIcon className="h-3 w-3" />
+            <span>{receiptStatus.label}</span>
+          </div>
+        )}
 
-        {/* Variance Indicator - Only show for PO-based invoices */}
-        {poNumber && poNumber !== 'N/A' && poNumber !== '"N/A"' && varianceInfo && (
+        {/* Variance Indicator - HIDDEN FOR NOW (will decide later) */}
+        {false && poNumber && poNumber !== 'N/A' && poNumber !== '"N/A"' && varianceInfo && (
           <div className={`
             inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
             ${varianceInfo.isPerfectMatch
@@ -333,21 +335,6 @@ export function DiagnosticBanner({
             </div>
           )}
         </div>
-
-        {/* Comments Button */}
-        <button
-          onClick={onCommentsClick}
-          className="px-3 py-1.5 text-sm bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5 relative"
-          title="Add Comment"
-        >
-          <MessageSquare className="h-3.5 w-3.5" />
-          <span>Comments</span>
-          {commentsCount > 0 && (
-            <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 text-xs font-semibold text-white bg-purple-900 rounded-full">
-              {commentsCount}
-            </span>
-          )}
-        </button>
       </div>
 
       {/* Reject to Requisitioner Modal */}

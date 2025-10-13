@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { DocumentPreview } from '../DocumentPreview';
 import { ExceptionSummaryPanel } from '../ExceptionSummaryPanel';
 import { ResizablePanel } from '../ResizablePanel';
+import { calculateInvoiceExceptions, shouldShowExceptionPanel as shouldShowPanel } from '@/app/utils/exceptionCounter';
 
 interface PreviewTabProps {
   invoiceId: string;
@@ -13,58 +14,7 @@ interface PreviewTabProps {
   attachments?: any[];
 }
 
-// Helper function to count exceptions (matches logic in ExceptionSummaryPanel)
-function countExceptions(invoiceData: any, matchResults: any[], poComparisonData: any): number {
-  let count = 0;
-
-  // Line item variances
-  const lineVariances = new Set<string>();
-  matchResults?.forEach((mr: any) => {
-    if (!mr.within_tolerance && mr.explanation_code !== 'PERFECT_MATCH' && mr.invoice_line_id) {
-      lineVariances.add(mr.invoice_line_id);
-    }
-  });
-  count += lineVariances.size;
-
-  // Vendor verification
-  if (invoiceData?.vendor_is_verified === false) count++;
-
-  // Missing vendor tax ID
-  if (!invoiceData?.vendor_tax_id_snapshot || invoiceData.vendor_tax_id_snapshot === 'N/A') count++;
-
-  // PO missing
-  const hasPO = invoiceData?.po_numbers_cached && invoiceData.po_numbers_cached.length > 0;
-  const requiresPO = invoiceData?.vendor_requires_po !== false;
-  if (requiresPO && !hasPO) count++;
-
-  // GR/SES receipt status
-  const hasGR = matchResults.some((mr: any) => mr.matched_gr_line_id);
-  const hasSES = matchResults.some((mr: any) => mr.matched_ses_line_id);
-  const hasPartialReceipt = matchResults.some((mr: any) =>
-    mr.explanation_code === 'PARTIAL_RECEIPT' ||
-    (mr.gr_qty_received && mr.po_qty_ordered && mr.gr_qty_received < mr.po_qty_ordered)
-  );
-  if (hasPO && !hasGR && !hasSES) count++;
-  else if (hasPartialReceipt) count++;
-
-  // Approval limit
-  const approvalLimit = 2500;
-  const approvedStatuses = ['approved', 'paid', 'completed', 'closed', 'ready_for_payment', 'approved_ready_for_payment'];
-  const isAlreadyApproved = invoiceData?.status && approvedStatuses.includes(invoiceData.status.toLowerCase());
-  if (invoiceData?.total && invoiceData.total > approvalLimit && !isAlreadyApproved) count++;
-
-  // Uninvoiced PO lines
-  if (poComparisonData?.unmatchedPoLines && poComparisonData.unmatchedPoLines.length > 0) count++;
-
-  // Bank details changes
-  if (invoiceData?.validation_warnings && Array.isArray(invoiceData.validation_warnings)) {
-    invoiceData.validation_warnings.forEach((warning: any) => {
-      if (warning.type === 'bank_details_change') count++;
-    });
-  }
-
-  return count;
-}
+// No longer needed - using shared exception counter
 
 export function PreviewTab({
   invoiceId,
@@ -77,11 +27,13 @@ export function PreviewTab({
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [isClient, setIsClient] = useState(false);
 
-  // Count exceptions for dynamic sizing
-  const exceptionCount = React.useMemo(() =>
-    countExceptions(invoiceData, matchResults, poComparisonData),
+  // Use shared exception counter
+  const exceptionResult = React.useMemo(() =>
+    calculateInvoiceExceptions(invoiceData, matchResults, poComparisonData, 2500),
     [invoiceData, matchResults, poComparisonData]
   );
+
+  const exceptionCount = exceptionResult.counts.total;
 
   // Calculate dynamic panel size based on exception count
   // Header (~49px) + Exception item (~50-55px each with padding/spacing)
@@ -101,33 +53,11 @@ export function PreviewTab({
     return [73, 27]; // Document 73%, Exceptions 27% (3+ items)
   }, [exceptionCount]);
 
-  // Check if we should show the exception panel
-  const shouldShowExceptionPanel = React.useMemo(() => {
-    // Check if invoice is matched
-    const isMatched = invoiceData?.match_status?.toLowerCase() === 'matched' ||
-                      invoiceData?.status?.toLowerCase() === 'matched';
-
-    if (isMatched) return false;
-
-    // Check if there are any exceptions (simplified check)
-    const hasMatchIssues = matchResults?.some(mr =>
-      !mr.within_tolerance && mr.explanation_code !== 'PERFECT_MATCH'
-    );
-
-    const hasVendorIssues = invoiceData?.vendor_is_verified === false ||
-                           !invoiceData?.vendor_tax_id_snapshot ||
-                           invoiceData?.vendor_tax_id_snapshot === 'N/A';
-
-    const hasPOIssues = invoiceData?.vendor_requires_po !== false &&
-                       (!invoiceData?.po_numbers_cached || invoiceData.po_numbers_cached.length === 0);
-
-    const hasValidationIssues = invoiceData?.validation_warnings?.some((w: any) =>
-      w.type === 'bank_details_change'
-    );
-
-    return hasMatchIssues || hasVendorIssues || hasPOIssues || hasValidationIssues ||
-           (poComparisonData?.unmatchedPoLines && poComparisonData.unmatchedPoLines.length > 0);
-  }, [invoiceData, matchResults, poComparisonData]);
+  // Use shared logic to determine if exception panel should show
+  const shouldShowExceptionPanel = React.useMemo(() =>
+    shouldShowPanel(invoiceData, exceptionResult),
+    [invoiceData, exceptionResult]
+  );
 
   // Load collapse state from localStorage
   useEffect(() => {
