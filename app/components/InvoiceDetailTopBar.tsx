@@ -32,7 +32,7 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
     }
   };
   return (
-    <div className="border-b border-gray-200 bg-white/90 shadow-sm backdrop-blur-md">
+    <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/90 shadow-sm backdrop-blur-md">
       <div className="w-full px-3 sm:px-4 lg:px-6">
         <div className="flex h-16 items-center">
           {/* For needs info mode, show invoice title on left */}
