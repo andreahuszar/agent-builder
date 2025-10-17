@@ -537,8 +537,9 @@ export default function EnhancedInvoicesClient({
       switch(tab) {
         case 'po-invoices':
           // PO invoices with exceptions only (exclude pending approval)
+          // Use vendor_requires_po as fallback if type is not set
           return allInvoices.filter(inv =>
-            inv.type === 'PO' &&
+            (inv.type === 'PO' || inv.vendor_requires_po === true) &&
             !inv.approver && // Exclude pending approval
             (inv.status === 'needs_info' ||
              inv.match_status === 'exception' ||
@@ -556,8 +557,9 @@ export default function EnhancedInvoicesClient({
 
         case 'non-po-invoices':
           // Non-PO invoices with exceptions only (exclude pending approval)
+          // Use vendor_requires_po as fallback if type is not set
           return allInvoices.filter(inv =>
-            inv.type === 'Non-PO' &&
+            (inv.type === 'Non-PO' || inv.vendor_requires_po === false) &&
             !inv.approver && // Exclude pending approval
             (inv.status === 'needs_info' ||
              inv.match_status === 'exception' ||
@@ -571,8 +573,9 @@ export default function EnhancedInvoicesClient({
 
         case 'unclassified':
           // Invoices without clear type with exceptions only (exclude pending approval)
+          // This captures invoices where both type and vendor_requires_po are undefined/null
           return allInvoices.filter(inv =>
-            !inv.type &&
+            !inv.type && inv.vendor_requires_po === undefined &&
             !inv.approver && // Exclude pending approval
             (inv.status === 'needs_info' ||
              inv.match_status === 'exception' ||
