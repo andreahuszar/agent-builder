@@ -1518,7 +1518,7 @@ export default function EnhancedInvoicesClient({
   // Compact metrics banner component with card styling - contextual to current tab
   const MetricsBanner = () => {
     // Get invoices for the current tab
-    const tabInvoices = getTabInvoices(activeTab, filteredInvoices);
+    const tabInvoices = getTabInvoices(activeTab, filteredInvoices, useExceptionNavigation);
 
     // Calculate metrics specific to this tab's invoices
     const tabMetrics = useMemo(() => {
@@ -1596,6 +1596,19 @@ export default function EnhancedInvoicesClient({
       };
     }, [tabInvoices, activeTab]);
 
+    // Determine which metrics to show based on tab and navigation mode
+    const shouldShowMissingFields = useExceptionNavigation ?
+      ['po-invoices', 'non-po-invoices', 'unclassified', 'all'].includes(activeTab) :
+      activeTab === 'exceptions';
+
+    const shouldShowMismatched = useExceptionNavigation ?
+      ['po-invoices', 'all', 'unclassified'].includes(activeTab) :
+      activeTab === 'exceptions';
+
+    const shouldShowMissingPO = useExceptionNavigation ?
+      activeTab === 'po-invoices' :
+      (activeTab === 'exceptions' && invoiceTypeFilter === 'po');
+
     return (
       <div className="bg-white rounded-lg border border-gray-200 shadow-sm px-3 py-1.5 mb-3">
         <div className="flex items-center justify-between">
@@ -1627,8 +1640,8 @@ export default function EnhancedInvoicesClient({
               </span>
             </button>
 
-            {/* Missing fields: only in Exceptions tab (both PO and Non-PO) */}
-            {activeTab === 'exceptions' && (
+            {/* Missing fields - show for appropriate tabs */}
+            {shouldShowMissingFields && (
               <>
                 {/* Separator */}
                 <div className="h-4 w-px bg-gray-200" />
@@ -1642,11 +1655,15 @@ export default function EnhancedInvoicesClient({
                     <span className="font-semibold">{tabMetrics.missingFields.count}</span> with missing fields
                   </span>
                 </button>
+              </>
+            )}
 
+            {/* Mismatched - show only for tabs with comparable documents */}
+            {shouldShowMismatched && (
+              <>
                 {/* Separator */}
                 <div className="h-4 w-px bg-gray-200" />
 
-                {/* Mismatched - clickable, count only (no value) */}
                 <button
                   onClick={handleMismatchedClick}
                   className="flex items-center gap-1.5 px-4 hover:bg-gray-50 py-1 transition-colors"
@@ -1656,25 +1673,25 @@ export default function EnhancedInvoicesClient({
                     <span className="font-semibold">{tabMetrics.blocked.count}</span> mismatched
                   </span>
                 </button>
+              </>
+            )}
 
-                {/* Missing PO - only shown in Exceptions + PO toggle */}
-                {invoiceTypeFilter === 'po' && (
-                  <>
-                    {/* Separator */}
-                    <div className="h-4 w-px bg-gray-200" />
+            {/* Missing PO - show only for PO invoices tab */}
+            {shouldShowMissingPO && (
+              <>
+                {/* Separator */}
+                <div className="h-4 w-px bg-gray-200" />
 
-                    <button
-                      onClick={handleMissingPOClick}
-                      className="flex items-center gap-1.5 px-4 hover:bg-gray-50 py-1 transition-colors"
-                    >
-                      <AlertTriangle className="h-3 w-3 text-orange-500" />
-                      <span className="text-xs text-gray-950">
-                        <span className="font-semibold">{tabMetrics.missingPO.count}</span> missing PO
-                        <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.missingPO.value)}</span>
-                      </span>
-                    </button>
-                  </>
-                )}
+                <button
+                  onClick={handleMissingPOClick}
+                  className="flex items-center gap-1.5 px-4 hover:bg-gray-50 py-1 transition-colors"
+                >
+                  <AlertTriangle className="h-3 w-3 text-orange-500" />
+                  <span className="text-xs text-gray-950">
+                    <span className="font-semibold">{tabMetrics.missingPO.count}</span> missing PO
+                    <span className="text-gray-700 ml-1">• {formatValue(tabMetrics.missingPO.value)}</span>
+                  </span>
+                </button>
               </>
             )}
 
