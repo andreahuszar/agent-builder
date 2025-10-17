@@ -170,7 +170,7 @@ export function DocumentPreview({
   };
 
   const handleRotate = () => {
-    setRotation(prev => (prev + 90) % 360);
+    setRotation(prev => (prev + 15) % 360);
   };
 
   const handleFitToScreen = () => {
@@ -340,60 +340,95 @@ export function DocumentPreview({
                 />
               </div>
             ) : (
-              // Display image
-              <div 
-                className="flex items-start justify-center min-h-full"
+              // Display image with proper wrapper structure
+              <div
+                className="overflow-auto"
                 style={{
-                  paddingTop: zoom > 1 ? '20px' : '0',
-                  paddingBottom: zoom > 1 ? '20px' : '0',
+                  height: '100%',
+                  padding: '20px',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center'
                 }}
               >
-                <img
-                  ref={imageRef}
-                  src={`/api/invoices/${invoiceId}/preview`}
-                  alt="Invoice Document"
-                  className="shadow-lg transition-transform duration-200"
+                {/* Positioning/zoom wrapper */}
+                <div
                   style={{
-                    transform: `scale(${zoom}) rotate(${rotation}deg)`,
-                    transformOrigin: 'center top',
-                    maxWidth: zoom > 1 ? 'none' : '100%',
-                    width: zoom > 1 ? 'auto' : '100%',
-                    height: 'auto',
+                    display: 'inline-block',
+                    transformOrigin: 'top center',
+                    transform: `scale(${zoom})`,
+                    transition: 'transform 200ms'
                   }}
-                  onLoad={() => setIsLoading(false)}
-                  onError={() => {
-                    setIsLoading(false);
-                    setImageError(true);
-                  }}
-                />
+                >
+                  {/* Rotation wrapper */}
+                  <div
+                    style={{
+                      transform: `rotate(${rotation}deg)`,
+                      transformOrigin: 'center',
+                      transition: 'transform 200ms'
+                    }}
+                  >
+                    <img
+                      ref={imageRef}
+                      src={`/api/invoices/${invoiceId}/preview`}
+                      alt="Invoice Document"
+                      className="shadow-lg block"
+                      style={{
+                        maxWidth: zoom > 1 ? 'none' : '100%',
+                        width: 'auto',
+                        height: 'auto',
+                      }}
+                      onLoad={() => setIsLoading(false)}
+                      onError={() => {
+                        setIsLoading(false);
+                        setImageError(true);
+                      }}
+                    />
+                  </div>
+                </div>
               </div>
             )}
           </>
         ) : (
-          // Show fake invoice document when no attachment
-          <div 
-            className="flex items-start justify-center min-h-full"
+          // Show fake invoice document with proper wrapper structure
+          <div
+            className="overflow-auto"
             style={{
-              paddingTop: '20px',
-              paddingBottom: '20px',
+              height: '100%',
+              padding: '20px',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center'
             }}
           >
+            {/* Positioning/zoom wrapper */}
             <div
-              className="transition-transform duration-200 origin-top"
               style={{
-                transform: `scale(${zoom}) rotate(${rotation}deg)`,
+                display: 'inline-block',
+                transformOrigin: 'top center',
+                transform: `scale(${zoom})`,
+                transition: 'transform 200ms'
               }}
             >
-              {invoiceData ? (
-                <FakeInvoiceDocument invoice={invoiceData} scale={1} />
-              ) : (
-                <div className="bg-white shadow-lg p-12 rounded-lg">
-                  <div className="flex items-center gap-3 mb-4">
-                    <FileText className="h-8 w-8 text-purple-600" />
-                    <p className="text-gray-600">Invoice document will be displayed here</p>
+              {/* Rotation wrapper */}
+              <div
+                style={{
+                  transform: `rotate(${rotation}deg)`,
+                  transformOrigin: 'center',
+                  transition: 'transform 200ms'
+                }}
+              >
+                {invoiceData ? (
+                  <FakeInvoiceDocument invoice={invoiceData} scale={1} />
+                ) : (
+                  <div className="bg-white shadow-lg p-12 rounded-lg">
+                    <div className="flex items-center gap-3 mb-4">
+                      <FileText className="h-8 w-8 text-purple-600" />
+                      <p className="text-gray-600">Invoice document will be displayed here</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
         )}

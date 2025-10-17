@@ -106,10 +106,22 @@ interface Invoice {
 interface EnhancedInvoicesClientProps {
   initialInvoices: Invoice[];
   initialTab?: string;
+  useExceptionNavigation?: boolean;
 }
 
-// Tab options - contextual based on invoice type
-const getContextualTabs = (invoiceType: string) => {
+// Tab options - contextual based on invoice type and exception navigation mode
+const getContextualTabs = (invoiceType: string, useExceptionNavigation?: boolean) => {
+  if (useExceptionNavigation) {
+    // Exception navigation mode: Separate PO/Non-PO tabs, no archived
+    return [
+      { id: 'po-invoices', label: 'PO Invoices' },
+      { id: 'non-po-invoices', label: 'Non-PO Invoices' },
+      { id: 'unclassified', label: 'Unclassified' },
+      { id: 'all', label: 'All' }
+    ];
+  }
+
+  // Original mode
   if (invoiceType === 'po') {
     // PO mode: Exceptions combines needs-info + mismatched
     return [
@@ -427,7 +439,11 @@ const generateInvoiceIssues = (invoice: any): string[] => {
 // from invoiceDataService for consistency across the application
 
 // Generate mock overdue invoices for demonstration
-export default function EnhancedInvoicesClient({ initialInvoices, initialTab = 'needs-info' }: EnhancedInvoicesClientProps) {
+export default function EnhancedInvoicesClient({
+  initialInvoices,
+  initialTab = 'needs-info',
+  useExceptionNavigation = false
+}: EnhancedInvoicesClientProps) {
   // Initialize with just the initial invoices first
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices || []);
   const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>(initialInvoices || []);
@@ -502,8 +518,12 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
   const [selectedMetric, setSelectedMetric] = useState<'blocked' | 'overdue' | 'dueSoon' | null>(null);
   const [showQuickFixes, setShowQuickFixes] = useState(false);
 
-  // Tab state - Map old tab IDs to new 'exceptions' tab
+  // Tab state - Map old tab IDs to appropriate tabs based on mode
   const [activeTab, setActiveTab] = useState(() => {
+    if (useExceptionNavigation) {
+      // Default to po-invoices in exception navigation mode
+      return 'po-invoices';
+    }
     if (initialTab === 'needs-info' || initialTab === 'blocked') {
       return 'exceptions';
     }
@@ -511,7 +531,69 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
   });
 
   // Tab-specific filtering function
-  const getTabInvoices = useCallback((tab: string, allInvoices: Invoice[]): Invoice[] => {
+  const getTabInvoices = useCallback((tab: string, allInvoices: Invoice[], exceptionMode?: boolean): Invoice[] => {
+    // Exception navigation mode tabs
+    if (exceptionMode) {
+      switch(tab) {
+        case 'po-invoices':
+          // PO invoices with exceptions only (exclude pending approval)
+          return allInvoices.filter(inv =>
+            inv.type === 'PO' &&
+            !inv.approver && // Exclude pending approval
+            (inv.status === 'needs_info' ||
+             inv.match_status === 'exception' ||
+             inv.match_status === 'not_matched' ||
+             inv.match_status === 'unmatched' ||
+             inv.match_status === 'mismatch' ||
+             inv.match_status === 'over_tolerance' ||
+             inv.match_status === 'quantity_mismatch' ||
+             inv.match_status === 'amount_mismatch' ||
+             inv.match_status === 'line_mismatch' ||
+             inv.status === 'requires_review' ||
+             inv.status === 'needs_review' ||
+             inv.status === 'blocked')
+          );
+
+        case 'non-po-invoices':
+          // Non-PO invoices with exceptions only (exclude pending approval)
+          return allInvoices.filter(inv =>
+            inv.type === 'Non-PO' &&
+            !inv.approver && // Exclude pending approval
+            (inv.status === 'needs_info' ||
+             inv.match_status === 'exception' ||
+             inv.match_status === 'not_matched' ||
+             inv.match_status === 'unmatched' ||
+             inv.match_status === 'mismatch' ||
+             inv.status === 'requires_review' ||
+             inv.status === 'needs_review' ||
+             inv.status === 'blocked')
+          );
+
+        case 'unclassified':
+          // Invoices without clear type with exceptions only (exclude pending approval)
+          return allInvoices.filter(inv =>
+            !inv.type &&
+            !inv.approver && // Exclude pending approval
+            (inv.status === 'needs_info' ||
+             inv.match_status === 'exception' ||
+             inv.match_status === 'not_matched' ||
+             inv.match_status === 'unmatched' ||
+             inv.match_status === 'mismatch' ||
+             inv.status === 'requires_review' ||
+             inv.status === 'needs_review' ||
+             inv.status === 'blocked')
+          );
+
+        case 'all':
+          // Show ALL invoices including pending approval
+          return allInvoices;
+
+        default:
+          return allInvoices;
+      }
+    }
+
+    // Original mode tabs
     switch(tab) {
       case 'exceptions':
         // Combines needs-info + blocked/mismatched
@@ -669,8 +751,8 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
 
   // Get current tab's invoices - using filtered invoices to respect all active filters
   const currentTabInvoices = useMemo(() => {
-    return getTabInvoices(activeTab, filteredInvoices);
-  }, [activeTab, filteredInvoices, getTabInvoices]);
+    return getTabInvoices(activeTab, filteredInvoices, useExceptionNavigation);
+  }, [activeTab, filteredInvoices, getTabInvoices, useExceptionNavigation]);
 
   // Get current tab's selected invoices
   const currentTabSelected = tabSelectedInvoices[activeTab] || new Set<string>();
@@ -1399,12 +1481,12 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
   // Calculate counts for each tab - using filtered invoices to match table content
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    const contextualTabs = getContextualTabs(invoiceTypeFilter);
+    const contextualTabs = getContextualTabs(invoiceTypeFilter, useExceptionNavigation);
     contextualTabs.forEach(tab => {
-      counts[tab.id] = getTabInvoices(tab.id, filteredInvoices).length;
+      counts[tab.id] = getTabInvoices(tab.id, filteredInvoices, useExceptionNavigation).length;
     });
     return counts;
-  }, [filteredInvoices, getTabInvoices, invoiceTypeFilter]);
+  }, [filteredInvoices, getTabInvoices, invoiceTypeFilter, useExceptionNavigation]);
 
   const toggleQuickFilter = (filterId: string) => {
     setActiveQuickFilters(prev => {
@@ -1948,43 +2030,47 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
     <>
       {/* Header with Add Invoice button */}
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-950">Invoice Management</h1>
+        <h1 className="text-2xl font-bold text-gray-950">
+          {useExceptionNavigation ? 'Invoice Exceptions' : 'Invoice Management'}
+        </h1>
 
         <div className="flex items-center gap-2">
-          {/* Invoice Type Toggle */}
-          <ToggleGroup
-            type="single"
-            value={invoiceTypeFilter}
-            onValueChange={(value) => {
-              if (value) {
-                setInvoiceTypeFilter(value);
-                // Save preference to localStorage
-                if (typeof window !== 'undefined') {
-                  localStorage.setItem('invoiceTypeFilter', value);
+          {/* Invoice Type Toggle - Hide when exception navigation is ON */}
+          {!useExceptionNavigation && (
+            <ToggleGroup
+              type="single"
+              value={invoiceTypeFilter}
+              onValueChange={(value) => {
+                if (value) {
+                  setInvoiceTypeFilter(value);
+                  // Save preference to localStorage
+                  if (typeof window !== 'undefined') {
+                    localStorage.setItem('invoiceTypeFilter', value);
+                  }
                 }
-              }
-            }}
-            className="bg-white border border-gray-200 p-0.5"
-          >
-            <ToggleGroupItem
-              value="all"
-              className="px-3 py-1 text-xs data-[state=on]:bg-purple-900 data-[state=on]:text-white data-[state=on]:shadow-sm"
+              }}
+              className="bg-white border border-gray-200 p-0.5"
             >
-              Overall
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="po"
-              className="px-3 py-1 text-xs data-[state=on]:bg-purple-900 data-[state=on]:text-white data-[state=on]:shadow-sm"
-            >
-              PO
-            </ToggleGroupItem>
-            <ToggleGroupItem
-              value="non-po"
-              className="px-3 py-1 text-xs data-[state=on]:bg-purple-900 data-[state=on]:text-white data-[state=on]:shadow-sm"
-            >
-              Non-PO
-            </ToggleGroupItem>
-          </ToggleGroup>
+              <ToggleGroupItem
+                value="all"
+                className="px-3 py-1 text-xs data-[state=on]:bg-purple-900 data-[state=on]:text-white data-[state=on]:shadow-sm"
+              >
+                Overall
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="po"
+                className="px-3 py-1 text-xs data-[state=on]:bg-purple-900 data-[state=on]:text-white data-[state=on]:shadow-sm"
+              >
+                PO
+              </ToggleGroupItem>
+              <ToggleGroupItem
+                value="non-po"
+                className="px-3 py-1 text-xs data-[state=on]:bg-purple-900 data-[state=on]:text-white data-[state=on]:shadow-sm"
+              >
+                Non-PO
+              </ToggleGroupItem>
+            </ToggleGroup>
+          )}
 
           {/* Add Invoice Button */}
           <TooltipProvider>
@@ -2010,7 +2096,7 @@ export default function EnhancedInvoicesClient({ initialInvoices, initialTab = '
       <div className="mb-4">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
-            {getContextualTabs(invoiceTypeFilter).map((tab) => (
+            {getContextualTabs(invoiceTypeFilter, useExceptionNavigation).map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}

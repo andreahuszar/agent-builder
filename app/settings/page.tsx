@@ -8,7 +8,9 @@ import {
   getPOVisibilityPreference,
   setPOVisibilityPreference,
   getLaunchpadVisibilityPreference,
-  setLaunchpadVisibilityPreference
+  setLaunchpadVisibilityPreference,
+  getExceptionNavigationPreference,
+  setExceptionNavigationPreference
 } from '@/app/utils/cookies';
 
 interface SettingsContentProps {
@@ -20,6 +22,7 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
   const [chartsInDrawer, setChartsInDrawerState] = useState(false);
   const [poVisibility, setPOVisibilityState] = useState(false);
   const [launchpadVisibility, setLaunchpadVisibilityState] = useState(false);
+  const [exceptionNavigation, setExceptionNavigationState] = useState(true);
 
   // Load preferences from cookies on mount
   useEffect(() => {
@@ -31,6 +34,9 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
 
     const launchpadPreference = getLaunchpadVisibilityPreference();
     setLaunchpadVisibilityState(launchpadPreference);
+
+    const exceptionPreference = getExceptionNavigationPreference();
+    setExceptionNavigationState(exceptionPreference);
   }, []);
 
   // Handle toggle change for charts
@@ -52,6 +58,13 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
     const newValue = !launchpadVisibility;
     setLaunchpadVisibilityState(newValue);
     setLaunchpadVisibilityPreference(newValue);
+  };
+
+  // Handle toggle change for Exception Navigation
+  const handleExceptionNavigationToggle = () => {
+    const newValue = !exceptionNavigation;
+    setExceptionNavigationState(newValue);
+    setExceptionNavigationPreference(newValue);
   };
 
   return (
@@ -158,6 +171,26 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                     <span
                       className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
                         launchpadVisibility ? 'translate-x-6' : 'translate-x-1'
+                      }`}
+                    />
+                  </button>
+                </div>
+                <div className="flex items-center justify-between rounded bg-gray-50 p-4">
+                  <div>
+                    <span className="text-sm font-medium text-gray-700">Invoice navigation by exception/approval</span>
+                    <p className="text-xs text-gray-500 mt-1">Focus on exceptions with separate PO/Non-PO tabs</p>
+                  </div>
+                  <button
+                    onClick={handleExceptionNavigationToggle}
+                    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
+                      exceptionNavigation ? 'bg-purple-600' : 'bg-gray-200'
+                    }`}
+                    aria-pressed={exceptionNavigation}
+                    aria-label="Toggle exception navigation"
+                  >
+                    <span
+                      className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                        exceptionNavigation ? 'translate-x-6' : 'translate-x-1'
                       }`}
                     />
                   </button>

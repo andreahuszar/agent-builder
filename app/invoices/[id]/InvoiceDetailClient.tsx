@@ -1,12 +1,12 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, File } from 'lucide-react';
 import { DocumentPreview } from '@/app/components/invoices/DocumentPreview';
 import { ResizablePanel, MultiResizablePanel } from '@/app/components/invoices/ResizablePanel';
 import { ViewModeSwitcher, ViewMode } from '@/app/components/invoices/ViewModeSwitcher';
 import { DiagnosticBanner } from '@/app/components/invoices/DiagnosticBanner';
-import { InvoiceTabs } from '@/app/components/invoices/tabs/InvoiceTabs';
+import { InvoiceTabs, TabId } from '@/app/components/invoices/tabs/InvoiceTabs';
 import { PODocumentTable } from '@/app/components/invoices/comparison/PODocumentTable';
 import { GRDocumentTable } from '@/app/components/invoices/comparison/GRDocumentTable';
 import { GRDocumentPreview } from '@/app/components/invoices/comparison/GRDocumentPreview';
@@ -94,6 +94,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
   const [isSaving, setIsSaving] = useState(false);
   const [isPdfCollapsed, setIsPdfCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>('details');
 
   // Load/save PDF collapsed state from localStorage
   useEffect(() => {
@@ -109,6 +110,10 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
   const handlePdfCollapseToggle = () => {
     setIsPdfCollapsed(!isPdfCollapsed);
+  };
+
+  const handleTabChange = (tab: TabId) => {
+    setActiveTab(tab);
   };
 
   const handleSave = async () => {
@@ -151,13 +156,14 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       return (
         <div className="h-full flex">
           {/* Collapsed expand button - positioned at top */}
-          <div className="w-10 bg-gray-100 border-r border-gray-200 flex items-start justify-center pt-4 flex-shrink-0">
+          <div className="w-10 bg-gray-100 border-r border-gray-200 flex flex-col items-center pt-2 flex-shrink-0">
             <button
               onClick={handlePdfCollapseToggle}
-              className="p-2 rounded hover:bg-gray-200 transition-colors"
+              className="pl-1.5 pr-0 py-1.5 rounded hover:bg-gray-200 transition-colors flex items-center"
               title="Expand Preview"
             >
-              <ChevronRight className="h-5 w-5 text-gray-600" />
+              <File className="h-4 w-4 text-gray-700" />
+              <ChevronRight className="h-4 w-4 text-gray-700 -ml-0.5" />
             </button>
           </div>
           {/* Full width tabs */}
@@ -177,6 +183,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               hidePreview={true}
               showFieldErrors={isNeedsInfoMode}
               initialTab="details"
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
             />
           </div>
         </div>
@@ -221,6 +229,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           hidePreview={true}
           showFieldErrors={isNeedsInfoMode}
           initialTab="details"
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
         />
       </ResizablePanel>
     );

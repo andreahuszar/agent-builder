@@ -39,6 +39,9 @@ interface InvoiceTabsProps {
   showCommunication?: boolean;
   showFieldErrors?: boolean;
   initialTab?: TabId;
+  // Controlled tab state (optional - for parent to manage tab state)
+  activeTab?: TabId;
+  onTabChange?: (tab: TabId) => void;
 }
 
 export function InvoiceTabs({
@@ -61,13 +64,27 @@ export function InvoiceTabs({
   showCommunication = false,
   showFieldErrors = false,
   initialTab,
+  activeTab: controlledActiveTab,
+  onTabChange,
 }: InvoiceTabsProps) {
   // Determine initial tab based on invoice status
   const getInitialTab = (): TabId => {
     return initialTab || 'details';
   };
 
-  const [activeTab, setActiveTab] = useState<TabId>(getInitialTab());
+  // Use controlled state if provided, otherwise use internal state
+  const [internalActiveTab, setInternalActiveTab] = useState<TabId>(getInitialTab());
+  const activeTab = controlledActiveTab !== undefined ? controlledActiveTab : internalActiveTab;
+
+  const setActiveTab = (tab: TabId) => {
+    if (onTabChange) {
+      // Controlled mode: notify parent
+      onTabChange(tab);
+    } else {
+      // Uncontrolled mode: manage internal state
+      setInternalActiveTab(tab);
+    }
+  };
   const [isClient, setIsClient] = useState(false);
   const [isDynamicallyCompact, setIsDynamicallyCompact] = useState(true); // Start minimized
   const [layoutMode, setLayoutMode] = useState<LayoutMode>('compact'); // Start in compact mode
@@ -362,24 +379,22 @@ export function InvoiceTabs({
           />
         )}
         {activeTab === 'line-items' && (
-          <div className="p-4">
-            <LineItemsPreviewPanel
-              invoiceLines={invoiceData?.lines || invoiceData?.invoice_lines || []}
-              poLines={poComparisonData?.poData?.po_lines || []}
-              currency={invoiceData?.currency || 'USD'}
-              matchResults={matchResults || []}
-              onLinesUpdate={(lines: any[]) => {
-                onDataUpdate?.({
-                  ...invoiceData,
-                  lines,
-                  invoice_lines: lines
-                });
-              }}
-              showComparison={!hideComparison && poComparisonData?.poData?.po_lines?.length > 0}
-              startExpanded={true}
-              useDetailedVarianceColumns={true}
-            />
-          </div>
+          <LineItemsPreviewPanel
+            invoiceLines={invoiceData?.lines || invoiceData?.invoice_lines || []}
+            poLines={poComparisonData?.poData?.po_lines || []}
+            currency={invoiceData?.currency || 'USD'}
+            matchResults={matchResults || []}
+            onLinesUpdate={(lines: any[]) => {
+              onDataUpdate?.({
+                ...invoiceData,
+                lines,
+                invoice_lines: lines
+              });
+            }}
+            showComparison={!hideComparison && poComparisonData?.poData?.po_lines?.length > 0}
+            startExpanded={true}
+            useDetailedVarianceColumns={true}
+          />
         )}
         {activeTab === 'matching' && (
           <MatchingTab

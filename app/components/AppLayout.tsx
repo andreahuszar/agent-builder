@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import Navigation from './Navigation';
 import TopBar from './TopBar';
 import { MODULE_PILLS } from '@/app/constants/navigation';
-import { getPOVisibilityPreference, getLaunchpadVisibilityPreference } from '@/app/utils/cookies';
+import { getPOVisibilityPreference, getLaunchpadVisibilityPreference, getExceptionNavigationPreference } from '@/app/utils/cookies';
 
 interface AppLayoutProps {
   activeModule: string;
@@ -17,6 +17,7 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
   const [currentModule, setCurrentModule] = useState<string>(activeModule);
   const [poVisibility, setPOVisibility] = useState(false);
   const [launchpadVisibility, setLaunchpadVisibility] = useState(false);
+  const [exceptionNavigation, setExceptionNavigation] = useState(true);
 
   // Initialize with default view - Invoices for invoice-processing, first pill for others
   const pills = MODULE_PILLS[activeModule];
@@ -29,6 +30,17 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
     let pills = MODULE_PILLS[currentModule] || [];
 
     if (currentModule === 'invoice-processing') {
+      // Create a copy of pills to modify
+      pills = pills.map(pill => ({ ...pill }));
+
+      // Change "Invoices" to "Exceptions" when exception navigation is on
+      if (exceptionNavigation) {
+        const invoicesPill = pills.find(p => p.id === 'invoices');
+        if (invoicesPill) {
+          invoicesPill.label = 'Exceptions';
+        }
+      }
+
       // Filter based on visibility preferences
       pills = pills.filter(pill => {
         // Hide PO/GRs/Escalations when disabled
@@ -48,7 +60,7 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
     }
 
     return pills;
-  }, [currentModule, poVisibility, launchpadVisibility]);
+  }, [currentModule, poVisibility, launchpadVisibility, exceptionNavigation]);
 
   const handleViewChange = (view: string) => {
     setCurrentView(view);
@@ -72,6 +84,9 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
 
     const launchpadPreference = getLaunchpadVisibilityPreference();
     setLaunchpadVisibility(launchpadPreference);
+
+    const exceptionPreference = getExceptionNavigationPreference();
+    setExceptionNavigation(exceptionPreference);
   }, []);
 
   // Check hash on mount and handle browser navigation (back/forward)
@@ -123,11 +138,12 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
 
         {/* Main Content */}
         <main id="main-content" className="flex-1 overflow-y-auto">
-          {customTopBar ? children : 
-            React.isValidElement(children) && typeof children.type !== 'string' 
-              ? React.cloneElement(children as React.ReactElement<{ currentView?: string; currentModule?: string }>, { 
+          {customTopBar ? children :
+            React.isValidElement(children) && typeof children.type !== 'string'
+              ? React.cloneElement(children as React.ReactElement<{ currentView?: string; currentModule?: string; useExceptionNavigation?: boolean }>, {
                   currentView,
-                  currentModule 
+                  currentModule,
+                  useExceptionNavigation: exceptionNavigation
                 })
               : children
           }
