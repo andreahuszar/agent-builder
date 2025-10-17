@@ -508,7 +508,18 @@ export const generateMockBlockedInvoices = (): Invoice[] => {
     let dueDate;
 
     // Create varied aging brackets for visual demonstration
-    if (i === 10) {
+    // Make some blocked invoices also overdue (for PO invoices with both exceptions AND payment timing issues)
+    if (i === 1 || i === 2) {
+      // Invoice 1-2: Overdue PO invoices with exceptions (5 days overdue)
+      invoiceDate.setDate(invoiceDate.getDate() - 35);
+      dueDate = new Date(invoiceDate);
+      dueDate.setDate(dueDate.getDate() + 30); // Due 5 days ago
+    } else if (i === 3 || i === 4) {
+      // Invoice 3-4: Due soon with exceptions (due in 2 days)
+      invoiceDate.setDate(invoiceDate.getDate() - 28);
+      dueDate = new Date(invoiceDate);
+      dueDate.setDate(dueDate.getDate() + 30); // Due in 2 days
+    } else if (i === 10) {
       // Invoice 10: 1-30 days overdue bracket (due ~15 days ago)
       invoiceDate.setDate(invoiceDate.getDate() - 60); // Invoice from 60 days ago
       dueDate = new Date(invoiceDate);
@@ -524,7 +535,7 @@ export const generateMockBlockedInvoices = (): Invoice[] => {
       dueDate = new Date(invoiceDate);
       dueDate.setDate(dueDate.getDate() + 45); // Due 45 days ago
     } else {
-      // Invoices 1-9: Current or very recent (most exceptions are caught quickly)
+      // Invoices 5-9: Current or very recent (most exceptions are caught quickly)
       invoiceDate.setDate(invoiceDate.getDate() - Math.floor(seededRandom(5000 + i) * 25 + 5)); // 5-30 days ago (deterministic)
       dueDate = new Date(invoiceDate);
       dueDate.setDate(dueDate.getDate() + 30); // Due in future or very recent
@@ -562,6 +573,7 @@ export const generateMockBlockedInvoices = (): Invoice[] => {
       total: Math.floor(seededRandom(7000 + i) * 80000 + 10000),
       status: isPO ? 'requires_review' : 'blocked',
       match_status,
+      type: isPO ? 'PO' : 'Non-PO', // Explicitly set type field
       vendor_requires_po: isPO,
       vendor_is_verified: i % 5 !== 0, // some not verified
       approval_status: 'pending',
@@ -639,6 +651,7 @@ export const generateMockBlockedInvoices = (): Invoice[] => {
     total: total20,
     status: 'requires_review',
     match_status: 'quantity_mismatch',
+    type: 'PO', // Explicitly set type field for blocked-20
     vendor_requires_po: true,
     vendor_is_verified: true,
     approval_status: 'pending',
@@ -688,6 +701,7 @@ export const generateMockOverdueInvoices = (): Invoice[] => {
       const ingestionDate = new Date(invoiceDate);
       ingestionDate.setDate(ingestionDate.getDate() + Math.floor(seededRandom(11000 + invoiceCounter) * 4));
 
+      const requiresPO = seededRandom(13000 + invoiceCounter) > 0.5;
       mockInvoices.push({
         id: `mock-${invoiceCounter}`,
         invoice_number: invoiceNumber,
@@ -700,7 +714,8 @@ export const generateMockOverdueInvoices = (): Invoice[] => {
         total: Math.floor(seededRandom(12000 + invoiceCounter) * 100000 + 10000),
         status: 'overdue',
         match_status: 'matched',
-        vendor_requires_po: seededRandom(13000 + invoiceCounter) > 0.5,
+        type: requiresPO ? 'PO' : 'Non-PO', // Explicitly set type field
+        vendor_requires_po: requiresPO,
         vendor_is_verified: true,
         approval_status: 'approved',
         po_numbers_cached: [`PO-2024-${String(1000 + invoiceCounter).padStart(4, '0')}`],
@@ -761,6 +776,7 @@ export const generateMockDueSoonInvoices = (): Invoice[] => {
         total: Math.floor(seededRandom(17000 + invoiceCounter) * 80000 + 5000),
         status: 'pending_payment',
         match_status: isWithinTol ? 'within_tolerance' : 'matched',
+        type: isPOForThis ? 'PO' : 'Non-PO', // Explicitly set type field
         vendor_requires_po: isPOForThis,
         vendor_is_verified: true,
         approval_status: 'approved',
@@ -913,6 +929,7 @@ export const generateMockInApprovalInvoices = (): Invoice[] => {
       total: Math.floor(seededRandom(26000 + i) * 75000 + 15000),
       status: 'in_approval',
       match_status: 'matched',
+      type: 'PO', // Explicitly set type field - all approval invoices are PO type
       vendor_requires_po: true,
       vendor_is_verified: true,
       approval_status: 'pending',
@@ -956,6 +973,7 @@ export const generateMockInApprovalInvoices = (): Invoice[] => {
       total: Math.floor(seededRandom(29000 + i) * 20000 + 3000),
       status: 'in_approval',
       match_status: 'matched', // Non-PO doesn't do PO/GR matching; treat as approved ready-for-approval
+      type: 'Non-PO', // Explicitly set type field
       vendor_requires_po: false,
       vendor_is_verified: true,
       approval_status: 'pending',

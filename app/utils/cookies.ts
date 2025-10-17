@@ -116,6 +116,11 @@ export function setExceptionNavigationPreference(value: boolean): void {
   date.setTime(date.getTime() + (COOKIE_EXPIRY_DAYS * 24 * 60 * 60 * 1000));
   const expires = `expires=${date.toUTCString()}`;
   document.cookie = `${EXCEPTION_NAVIGATION_COOKIE}=${value};${expires};path=/`;
+
+  // Dispatch custom event to notify listeners about the preference change
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('exceptionNavigationChanged', { detail: { value } }));
+  }
 }
 
 export function getExceptionNavigationPreference(): boolean {

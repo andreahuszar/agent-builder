@@ -89,6 +89,20 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
     setExceptionNavigation(exceptionPreference);
   }, []);
 
+  // Listen for exception navigation preference changes
+  useEffect(() => {
+    const handleExceptionNavigationChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ value: boolean }>;
+      setExceptionNavigation(customEvent.detail.value);
+    };
+
+    window.addEventListener('exceptionNavigationChanged', handleExceptionNavigationChange);
+
+    return () => {
+      window.removeEventListener('exceptionNavigationChanged', handleExceptionNavigationChange);
+    };
+  }, []);
+
   // Check hash on mount and handle browser navigation (back/forward)
   useEffect(() => {
     // Check initial hash on mount

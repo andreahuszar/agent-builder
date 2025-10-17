@@ -42,7 +42,7 @@ import { QuickFixesModal } from './QuickFixesModal';
 import { RecommendationsDrawer } from './RecommendationsDrawer';
 import { Card, CardContent } from '@/app/components/ui/card';
 import { cn } from '@/lib/utils';
-import { getChartsInDrawerPreference } from '@/app/utils/cookies';
+import { getChartsInDrawerPreference, getExceptionNavigationPreference } from '@/app/utils/cookies';
 import { FilterPreset } from '@/app/types/recommendations';
 import { Sparkles } from 'lucide-react';
 import {
@@ -444,6 +444,33 @@ export default function EnhancedInvoicesClient({
   initialTab = 'needs-info',
   useExceptionNavigation = false
 }: EnhancedInvoicesClientProps) {
+  // INDEPENDENT exception navigation state - read directly from cookie
+  // Initialize with prop value to avoid hydration mismatch, then sync with cookie after mount
+  const [exceptionNavigationMode, setExceptionNavigationMode] = useState(useExceptionNavigation);
+
+  // Sync with cookie after mount (avoids hydration mismatch)
+  useEffect(() => {
+    const cookieValue = getExceptionNavigationPreference();
+    console.log('[ExceptionNav] Reading from cookie on mount:', cookieValue);
+    console.log('[ExceptionNav] Initial prop value:', useExceptionNavigation);
+    setExceptionNavigationMode(cookieValue);
+  }, []);
+
+  // Listen for exception navigation preference changes via custom events
+  useEffect(() => {
+    const handleExceptionNavigationChange = (event: Event) => {
+      const customEvent = event as CustomEvent<{ value: boolean }>;
+      console.log('[ExceptionNav] Preference changed via event:', customEvent.detail.value);
+      setExceptionNavigationMode(customEvent.detail.value);
+    };
+
+    window.addEventListener('exceptionNavigationChanged', handleExceptionNavigationChange);
+
+    return () => {
+      window.removeEventListener('exceptionNavigationChanged', handleExceptionNavigationChange);
+    };
+  }, []);
+
   // Initialize with just the initial invoices first
   const [invoices, setInvoices] = useState<Invoice[]>(initialInvoices || []);
   const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>(initialInvoices || []);
@@ -454,10 +481,14 @@ export default function EnhancedInvoicesClient({
   // Fetch database invoices and merge with mock data on client side
   useEffect(() => {
     const loadInvoices = async () => {
+      console.log('[LoadInvoices] Starting to load invoices...');
+      console.log('[LoadInvoices] exceptionNavigationMode:', exceptionNavigationMode);
+
       let dbInvoices: Invoice[] = [];
 
       // Fetch database invoices
       try {
+        console.log('[LoadInvoices] Attempting to fetch database invoices...');
         const response = await fetch('/api/invoices');
         if (response.ok) {
           const data = await response.json();
@@ -466,18 +497,24 @@ export default function EnhancedInvoicesClient({
             source: 'db' as const,
             docType: 'Invoice'
           }));
-          console.log(`Loaded ${dbInvoices.length} database invoices`);
+          console.log(`[LoadInvoices] Loaded ${dbInvoices.length} database invoices`);
+        } else {
+          console.log('[LoadInvoices] Database fetch returned non-OK status:', response.status);
         }
       } catch (error) {
-        console.error('Failed to fetch database invoices:', error);
+        console.log('[LoadInvoices] Failed to fetch database invoices (continuing with mock data):', error);
         // Continue with mock-only mode
       }
 
+      console.log('[LoadInvoices] Generating mock invoices...');
+
       // Generate mock invoices (already enriched by generators)
+      // In exception navigation mode, only include invoices with exception statuses
+      // Overdue and Due Soon invoices are payment timing metrics, not exceptions
       const mockInvoices = [
         ...generateMockNeedsInfoInvoices(),
-        ...generateMockOverdueInvoices(),
-        ...generateMockDueSoonInvoices(),
+        ...(exceptionNavigationMode ? [] : generateMockOverdueInvoices()), // Only in original mode
+        ...(exceptionNavigationMode ? [] : generateMockDueSoonInvoices()), // Only in original mode
         ...generateMockBlockedInvoices(),
         ...generateMockCreditNotes(),
         ...generateMockProFormaInvoices(),
@@ -489,6 +526,9 @@ export default function EnhancedInvoicesClient({
         docType: invoice.docType || 'Invoice'
       }));
 
+      console.log('[LoadInvoices] Mock invoices generated:', mockInvoices.length);
+      console.log('[LoadInvoices] Sample mock invoice:', mockInvoices[0]);
+
       // Enrich database invoices using centralized service
       // Mock invoices are already enriched by their generators
       const enrichedDBInvoices = dbInvoices.map(enrichInvoiceWithDemoData);
@@ -496,13 +536,95 @@ export default function EnhancedInvoicesClient({
       // Merge enriched database invoices with mock invoices
       const combinedInvoices = [...enrichedDBInvoices, ...mockInvoices];
 
-      console.log(`Total invoices: ${combinedInvoices.length} (${dbInvoices.length} DB + ${mockInvoices.length} mock)`);
+      console.log(`[LoadInvoices] Total invoices: ${combinedInvoices.length} (${dbInvoices.length} DB + ${mockInvoices.length} mock)`);
+      console.log('[LoadInvoices] Setting invoices state...');
+
       setInvoices(combinedInvoices);
       setFilteredInvoices(combinedInvoices);
+
+      console.log('[LoadInvoices] Invoices state set successfully');
     };
 
-    loadInvoices();
-  }, [initialInvoices]);
+    loadInvoices().catch(err => {
+      console.error('[LoadInvoices] Unexpected error in loadInvoices:', err);
+    });
+  }, [initialInvoices, exceptionNavigationMode]);
+
+  // Debug effect to log invoice data when loaded
+  useEffect(() => {
+    if (invoices.length > 0) {
+      console.log('[DATA LOADED] Total invoices:', invoices.length);
+
+      // Analyze type distribution
+      const typeDistribution = {
+        withTypePO: invoices.filter(inv => inv.type === 'PO').length,
+        withTypeNonPO: invoices.filter(inv => inv.type === 'Non-PO').length,
+        withTypeUndefined: invoices.filter(inv => !inv.type).length,
+        withVendorRequiresPOTrue: invoices.filter(inv => inv.vendor_requires_po === true).length,
+        withVendorRequiresPOFalse: invoices.filter(inv => inv.vendor_requires_po === false).length,
+        withVendorRequiresPOUndefined: invoices.filter(inv => inv.vendor_requires_po === undefined).length,
+      };
+      console.log('[DATA LOADED] Type distribution:', typeDistribution);
+
+      // Analyze exception status
+      const exceptionDistribution = {
+        needsInfo: invoices.filter(inv => inv.status === 'needs_info').length,
+        blocked: invoices.filter(inv => inv.status === 'blocked').length,
+        requiresReview: invoices.filter(inv => inv.status === 'requires_review' || inv.status === 'needs_review').length,
+        withApprover: invoices.filter(inv => !!inv.approver).length,
+        matchException: invoices.filter(inv =>
+          inv.match_status === 'exception' ||
+          inv.match_status === 'not_matched' ||
+          inv.match_status === 'unmatched' ||
+          inv.match_status === 'mismatch' ||
+          inv.match_status === 'over_tolerance' ||
+          inv.match_status === 'quantity_mismatch' ||
+          inv.match_status === 'amount_mismatch' ||
+          inv.match_status === 'line_mismatch'
+        ).length,
+      };
+      console.log('[DATA LOADED] Exception distribution:', exceptionDistribution);
+
+      // Check specifically for PO invoices with exceptions
+      const poInvoices = invoices.filter(inv => inv.type === 'PO' || inv.vendor_requires_po === true);
+      console.log('[DATA LOADED] PO invoices total:', poInvoices.length);
+
+      if (poInvoices.length > 0) {
+        console.log('[DATA LOADED] PO invoices sample:', poInvoices.slice(0, 3).map(inv => ({
+          id: inv.id,
+          invoice_number: inv.invoice_number,
+          type: inv.type,
+          vendor_requires_po: inv.vendor_requires_po,
+          status: inv.status,
+          match_status: inv.match_status,
+          approver: inv.approver,
+        })));
+
+        const poWithExceptions = poInvoices.filter(inv =>
+          !inv.approver && (
+            inv.status === 'needs_info' ||
+            inv.status === 'blocked' ||
+            inv.status === 'requires_review' ||
+            inv.status === 'needs_review' ||
+            inv.match_status === 'exception' ||
+            inv.match_status === 'not_matched' ||
+            inv.match_status === 'unmatched' ||
+            inv.match_status === 'mismatch' ||
+            inv.match_status === 'over_tolerance' ||
+            inv.match_status === 'quantity_mismatch' ||
+            inv.match_status === 'amount_mismatch' ||
+            inv.match_status === 'line_mismatch'
+          )
+        );
+        console.log('[DATA LOADED] PO invoices with exceptions:', poWithExceptions.length);
+
+        if (poWithExceptions.length > 0) {
+          console.log('[DATA LOADED] PO exceptions sample:', poWithExceptions.slice(0, 3));
+        }
+      }
+    }
+  }, [invoices, exceptionNavigationMode]);
+
   const [pipelineStages, setPipelineStages] = useState<PipelineStage[]>([]);
   const [pipelineLoading, setPipelineLoading] = useState(false);
   const [selectedPO, setSelectedPO] = useState<any>(null);
@@ -520,7 +642,7 @@ export default function EnhancedInvoicesClient({
 
   // Tab state - Map old tab IDs to appropriate tabs based on mode
   const [activeTab, setActiveTab] = useState(() => {
-    if (useExceptionNavigation) {
+    if (exceptionNavigationMode) {
       // Default to po-invoices in exception navigation mode
       return 'po-invoices';
     }
@@ -530,10 +652,59 @@ export default function EnhancedInvoicesClient({
     return initialTab;
   });
 
+  // Reset active tab when exception navigation mode changes
+  useEffect(() => {
+    console.log('[ActiveTab] Mode changed to:', exceptionNavigationMode);
+    if (exceptionNavigationMode) {
+      // Switching TO exception navigation mode - default to po-invoices
+      console.log('[ActiveTab] Switching to po-invoices tab');
+      setActiveTab('po-invoices');
+    } else {
+      // Switching FROM exception navigation mode - default to exceptions
+      console.log('[ActiveTab] Switching to exceptions tab');
+      setActiveTab('exceptions');
+    }
+  }, [exceptionNavigationMode]);
+
   // Tab-specific filtering function
   const getTabInvoices = useCallback((tab: string, allInvoices: Invoice[], exceptionMode?: boolean): Invoice[] => {
     // Exception navigation mode tabs
     if (exceptionMode) {
+      // Debug logging to understand the data
+      if (tab === 'po-invoices') {
+        console.log('[DEBUG] Filtering PO invoices. Total invoices:', allInvoices.length);
+        console.log('[DEBUG] Sample invoices:', allInvoices.slice(0, 5).map(inv => ({
+          id: inv.id,
+          type: inv.type,
+          vendor_requires_po: inv.vendor_requires_po,
+          status: inv.status,
+          match_status: inv.match_status,
+          approver: inv.approver
+        })));
+
+        const withTypeP0 = allInvoices.filter(inv => inv.type === 'PO');
+        const withVendorRequiresPO = allInvoices.filter(inv => inv.vendor_requires_po === true);
+        const withExceptions = allInvoices.filter(inv =>
+          inv.status === 'needs_info' ||
+          inv.match_status === 'exception' ||
+          inv.match_status === 'not_matched' ||
+          inv.match_status === 'unmatched' ||
+          inv.match_status === 'mismatch' ||
+          inv.match_status === 'over_tolerance' ||
+          inv.match_status === 'quantity_mismatch' ||
+          inv.match_status === 'amount_mismatch' ||
+          inv.match_status === 'line_mismatch' ||
+          inv.status === 'requires_review' ||
+          inv.status === 'needs_review' ||
+          inv.status === 'blocked'
+        );
+
+        console.log('[DEBUG] Invoices with type="PO":', withTypeP0.length);
+        console.log('[DEBUG] Invoices with vendor_requires_po=true:', withVendorRequiresPO.length);
+        console.log('[DEBUG] Invoices with exceptions:', withExceptions.length);
+        console.log('[DEBUG] Invoices without approver:', allInvoices.filter(inv => !inv.approver).length);
+      }
+
       switch(tab) {
         case 'po-invoices':
           // PO invoices with exceptions only (exclude pending approval)
@@ -589,6 +760,17 @@ export default function EnhancedInvoicesClient({
 
         case 'all':
           // Show ALL invoices including pending approval
+          console.log('[DEBUG] ALL tab - Total invoices:', allInvoices.length);
+          console.log('[DEBUG] ALL tab - By type:', {
+            PO: allInvoices.filter(inv => inv.type === 'PO').length,
+            NonPO: allInvoices.filter(inv => inv.type === 'Non-PO').length,
+            undefined: allInvoices.filter(inv => !inv.type).length,
+          });
+          console.log('[DEBUG] ALL tab - By vendor_requires_po:', {
+            true: allInvoices.filter(inv => inv.vendor_requires_po === true).length,
+            false: allInvoices.filter(inv => inv.vendor_requires_po === false).length,
+            undefined: allInvoices.filter(inv => inv.vendor_requires_po === undefined).length,
+          });
           return allInvoices;
 
         default:
@@ -754,8 +936,8 @@ export default function EnhancedInvoicesClient({
 
   // Get current tab's invoices - using filtered invoices to respect all active filters
   const currentTabInvoices = useMemo(() => {
-    return getTabInvoices(activeTab, filteredInvoices, useExceptionNavigation);
-  }, [activeTab, filteredInvoices, getTabInvoices, useExceptionNavigation]);
+    return getTabInvoices(activeTab, filteredInvoices, exceptionNavigationMode);
+  }, [activeTab, filteredInvoices, getTabInvoices, exceptionNavigationMode]);
 
   // Get current tab's selected invoices
   const currentTabSelected = tabSelectedInvoices[activeTab] || new Set<string>();
@@ -1226,20 +1408,23 @@ export default function EnhancedInvoicesClient({
     let filtered = [...invoices];
 
     // Apply invoice type filter from header toggle (highest priority)
-    if (invoiceTypeFilter === 'po') {
-      filtered = filtered.filter(inv => inv.type === 'PO');
-    } else if (invoiceTypeFilter === 'non-po') {
-      filtered = filtered.filter(inv => inv.type === 'Non-PO');
-    }
-    // 'all' option shows all invoices regardless of type
+    // SKIP in exception navigation mode - tabs handle their own type filtering
+    if (!exceptionNavigationMode) {
+      if (invoiceTypeFilter === 'po') {
+        filtered = filtered.filter(inv => inv.type === 'PO');
+      } else if (invoiceTypeFilter === 'non-po') {
+        filtered = filtered.filter(inv => inv.type === 'Non-PO');
+      }
+      // 'all' option shows all invoices regardless of type
 
-    // View filter (All, PO, Non-PO, Parked)
-    if (activeView === 'po') {
-      filtered = filtered.filter(inv => inv.type === 'PO');
-    } else if (activeView === 'non-po') {
-      filtered = filtered.filter(inv => inv.type === 'Non-PO');
-    } else if (activeView === 'parked') {
-      filtered = filtered.filter(inv => inv.status === 'on_hold' || inv.status === 'parked');
+      // View filter (All, PO, Non-PO, Parked)
+      if (activeView === 'po') {
+        filtered = filtered.filter(inv => inv.type === 'PO');
+      } else if (activeView === 'non-po') {
+        filtered = filtered.filter(inv => inv.type === 'Non-PO');
+      } else if (activeView === 'parked') {
+        filtered = filtered.filter(inv => inv.status === 'on_hold' || inv.status === 'parked');
+      }
     }
 
     // Apply exception/issues filter
@@ -1315,7 +1500,7 @@ export default function EnhancedInvoicesClient({
     }
 
     setFilteredInvoices(filtered);
-  }, [searchQuery, invoices, activeView, selectedVendors, selectedExceptions, activeQuickFilters, invoiceTypeFilter, activeTab, filteredInvoiceIds]);
+  }, [searchQuery, invoices, activeView, selectedVendors, selectedExceptions, activeQuickFilters, invoiceTypeFilter, activeTab, filteredInvoiceIds, exceptionNavigationMode]);
 
   const handleUploadComplete = useCallback((invoiceId: string) => {
     router.push(`/invoices/${invoiceId}`);
@@ -1484,12 +1669,12 @@ export default function EnhancedInvoicesClient({
   // Calculate counts for each tab - using filtered invoices to match table content
   const tabCounts = useMemo(() => {
     const counts: Record<string, number> = {};
-    const contextualTabs = getContextualTabs(invoiceTypeFilter, useExceptionNavigation);
+    const contextualTabs = getContextualTabs(invoiceTypeFilter, exceptionNavigationMode);
     contextualTabs.forEach(tab => {
-      counts[tab.id] = getTabInvoices(tab.id, filteredInvoices, useExceptionNavigation).length;
+      counts[tab.id] = getTabInvoices(tab.id, filteredInvoices, exceptionNavigationMode).length;
     });
     return counts;
-  }, [filteredInvoices, getTabInvoices, invoiceTypeFilter, useExceptionNavigation]);
+  }, [filteredInvoices, getTabInvoices, invoiceTypeFilter, exceptionNavigationMode]);
 
   const toggleQuickFilter = (filterId: string) => {
     setActiveQuickFilters(prev => {
@@ -1521,7 +1706,7 @@ export default function EnhancedInvoicesClient({
   // Compact metrics banner component with card styling - contextual to current tab
   const MetricsBanner = () => {
     // Get invoices for the current tab
-    const tabInvoices = getTabInvoices(activeTab, filteredInvoices, useExceptionNavigation);
+    const tabInvoices = getTabInvoices(activeTab, filteredInvoices, exceptionNavigationMode);
 
     // Calculate metrics specific to this tab's invoices
     const tabMetrics = useMemo(() => {
@@ -1600,15 +1785,15 @@ export default function EnhancedInvoicesClient({
     }, [tabInvoices, activeTab]);
 
     // Determine which metrics to show based on tab and navigation mode
-    const shouldShowMissingFields = useExceptionNavigation ?
+    const shouldShowMissingFields = exceptionNavigationMode ?
       ['po-invoices', 'non-po-invoices', 'unclassified', 'all'].includes(activeTab) :
       activeTab === 'exceptions';
 
-    const shouldShowMismatched = useExceptionNavigation ?
+    const shouldShowMismatched = exceptionNavigationMode ?
       ['po-invoices', 'all', 'unclassified'].includes(activeTab) :
       activeTab === 'exceptions';
 
-    const shouldShowMissingPO = useExceptionNavigation ?
+    const shouldShowMissingPO = exceptionNavigationMode ?
       activeTab === 'po-invoices' :
       (activeTab === 'exceptions' && invoiceTypeFilter === 'po');
 
@@ -2051,12 +2236,12 @@ export default function EnhancedInvoicesClient({
       {/* Header with Add Invoice button */}
       <div className="mb-4 flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-950">
-          {useExceptionNavigation ? 'Invoice Exceptions' : 'Invoice Management'}
+          {exceptionNavigationMode ? 'Invoice Exceptions' : 'Invoice Management'}
         </h1>
 
         <div className="flex items-center gap-2">
           {/* Invoice Type Toggle - Hide when exception navigation is ON */}
-          {!useExceptionNavigation && (
+          {!exceptionNavigationMode && (
             <ToggleGroup
               type="single"
               value={invoiceTypeFilter}
@@ -2116,7 +2301,7 @@ export default function EnhancedInvoicesClient({
       <div className="mb-4">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
-            {getContextualTabs(invoiceTypeFilter, useExceptionNavigation).map((tab) => (
+            {getContextualTabs(invoiceTypeFilter, exceptionNavigationMode).map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
