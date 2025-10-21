@@ -594,8 +594,8 @@ export function LineItemsPreviewPanel({
                 <table className="min-w-max">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                      <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 10 : 8) : (isEditMode ? 11 : 9)} className="px-4 py-2 bg-white border-b">
-                        <div className="flex items-center justify-between h-[26px]">
+                      <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 10 : 8) : (isEditMode ? 11 : 9)} className="px-4 bg-white border-b h-[42px]">
+                        <div className="flex items-center justify-between h-full">
                           <span className="text-sm font-semibold text-gray-950">Invoice</span>
                           <button
                             onClick={toggleEditMode}
@@ -902,8 +902,8 @@ export function LineItemsPreviewPanel({
                 <table className="min-w-max">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                      <th colSpan={6} className="px-4 py-2 bg-white border-b">
-                        <div className="flex items-center h-[26px]">
+                      <th colSpan={6} className="px-4 bg-white border-b h-[42px]">
+                        <div className="flex items-center h-full">
                           <span className="text-sm font-semibold text-gray-950">Purchase Order</span>
                         </div>
                       </th>
@@ -1001,8 +1001,8 @@ export function LineItemsPreviewPanel({
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     {/* Two-row header to match Invoice/PO/Variance structure */}
                     <tr>
-                      <th className="px-4 py-2 bg-white border-b border-r border-gray-200">
-                        <div className="h-[26px]"></div>
+                      <th className="px-4 bg-white border-b border-r border-gray-200 h-[42px]">
+                        <div className="h-full"></div>
                       </th>
                     </tr>
                     <tr>
@@ -1055,8 +1055,8 @@ export function LineItemsPreviewPanel({
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       {/* Two-row header to match Invoice/PO structure */}
                       <tr>
-                        <th colSpan={2} className="px-4 py-2 bg-white border-b">
-                          <div className="flex items-center h-[26px]">
+                        <th colSpan={2} className="px-4 bg-white border-b h-[42px]">
+                          <div className="flex items-center h-full">
                             <span className="text-sm font-semibold text-gray-950">Variance</span>
                           </div>
                         </th>
@@ -1150,8 +1150,8 @@ export function LineItemsPreviewPanel({
               <table className="w-full">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <th colSpan={poLines.length > 0 ? (isEditMode ? 11 : 10) : (isEditMode ? 10 : 9)} className="px-4 py-2 bg-white border-b">
-                      <div className="flex items-center justify-between h-[26px]">
+                    <th colSpan={poLines.length > 0 ? (isEditMode ? 11 : 10) : (isEditMode ? 10 : 9)} className="px-4 bg-white border-b h-[42px]">
+                      <div className="flex items-center justify-between h-full">
                         <span className="text-sm font-semibold text-gray-950">Invoice</span>
                         <button
                           onClick={toggleEditMode}
