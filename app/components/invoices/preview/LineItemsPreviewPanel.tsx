@@ -599,10 +599,10 @@ export function LineItemsPreviewPanel({
                           <span className="text-sm font-semibold text-gray-950">Invoice</span>
                           <button
                             onClick={toggleEditMode}
-                            className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                            className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
                               isEditMode
-                                ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                                : 'text-purple-700 hover:text-purple-900 hover:bg-purple-50'
+                                ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                                : 'bg-white text-gray-950 border-gray-300 hover:bg-gray-50'
                             }`}
                           >
                             {isEditMode ? 'Done' : 'Edit'}
@@ -1155,10 +1155,10 @@ export function LineItemsPreviewPanel({
                         <span className="text-sm font-semibold text-gray-950">Invoice</span>
                         <button
                           onClick={toggleEditMode}
-                          className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
+                          className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
                             isEditMode
-                              ? 'bg-purple-100 text-purple-700 hover:bg-purple-200'
-                              : 'text-purple-700 hover:text-purple-900 hover:bg-purple-50'
+                              ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                              : 'bg-white text-gray-950 border-gray-300 hover:bg-gray-50'
                           }`}
                         >
                           {isEditMode ? 'Done' : 'Edit'}
