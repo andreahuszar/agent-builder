@@ -160,7 +160,7 @@ function EmptySlot({ position, colSpan, isEditMode, isDragPlaceholder = false }:
           : 'bg-gray-50 border border-dashed border-gray-300'
       }`}
     >
-      <td colSpan={colSpan} className="px-3 py-2 text-center">
+      <td colSpan={colSpan} className="px-1.5 py-2 text-center">
         <span className="text-xs italic" style={{ color: isDragPlaceholder ? '#3B82F6' : '#9CA3AF' }}>
           {isOver ? 'Drop here' : isDragPlaceholder ? 'Item being dragged' : 'Empty slot'}
         </span>
@@ -548,7 +548,7 @@ export function LineItemsPreviewPanel({
         >
           {showComparison && poLines.length > 0 ? (
             // Horizontal scrollable layout when PO lines exist - Invoice table first, then PO table
-            <div className="flex min-h-full">
+            <div className="flex min-h-full w-full">
               {/* Invoice Lines */}
               <div className="flex-shrink-0 border-r border-gray-200">
                 <table className="min-w-max">
@@ -574,19 +574,19 @@ export function LineItemsPreviewPanel({
                       {isEditMode && (
                         <th className="px-2 py-2 text-center text-xs font-medium text-gray-800 uppercase w-8"></th>
                       )}
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase">#</th>
-                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">Status</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
-                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
+                      <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">#</th>
+                      <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">Status</th>
+                      <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
+                      <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
+                      <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
+                      <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
+                      <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
+                      <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
                       {!useDetailedVarianceColumns && (
-                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
+                        <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
                       )}
                       {isEditMode && (
-                        <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase w-32">Actions</th>
+                        <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase w-32">Actions</th>
                       )}
                     </tr>
                   </thead>
@@ -638,8 +638,8 @@ export function LineItemsPreviewPanel({
                                 <GripVertical className="h-4 w-4 text-gray-400" />
                               </td>
                             )}
-                            <td className="px-3 py-2 text-sm text-gray-950">{line.line_no}</td>
-                          <td className="px-3 py-2 text-sm text-center">
+                            <td className="px-1.5 py-2 text-xs text-gray-950">{line.line_no}</td>
+                          <td className="px-1.5 py-2 text-xs text-center">
                             {status === 'variance' && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                                 Variance
@@ -656,13 +656,13 @@ export function LineItemsPreviewPanel({
                               </span>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-950">
+                          <td className="px-1.5 py-2 text-xs text-gray-950">
                             {isEditMode ? (
                               <input
                                 type="text"
                                 value={line.description}
                                 onChange={(e) => handleLineChange(lineIndex, 'description', e.target.value)}
-                                className="w-full px-1 py-0.5 text-sm border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
+                                className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                               />
                             ) : (
                               <div className="truncate max-w-[200px]" title={line.description}>
@@ -670,12 +670,12 @@ export function LineItemsPreviewPanel({
                               </div>
                             )}
                           </td>
-                          <td className="px-3 py-2 text-sm text-gray-950">
+                          <td className="px-1.5 py-2 text-xs text-gray-950">
                             {generateSKU(line.line_no)}
                           </td>
-                          <td className={`px-3 py-2 text-sm text-right text-gray-950 ${
+                          <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
                             matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01
-                              ? isEditMode ? '' : 'bg-red-50 border border-red-300'
+                              ? 'bg-red-50 border border-red-300'
                               : ''
                           }`}>
                             {isEditMode ? (
@@ -683,7 +683,7 @@ export function LineItemsPreviewPanel({
                                 type="number"
                                 value={line.qty}
                                 onChange={(e) => handleLineChange(lineIndex, 'qty', parseFloat(e.target.value) || 0)}
-                                className={`w-20 px-1 py-0.5 text-sm text-right rounded focus:outline-none focus:border-purple-500 ${
+                                className={`w-14 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
                                   matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01
                                     ? 'border border-red-300'
                                     : 'border border-gray-300'
@@ -693,21 +693,21 @@ export function LineItemsPreviewPanel({
                               line.qty
                             )}
                           </td>
-                          <td className="px-3 py-2 text-sm text-center text-gray-950">
+                          <td className="px-1.5 py-2 text-xs text-center text-gray-950">
                             {isEditMode ? (
                               <input
                                 type="text"
                                 value={line.uom}
                                 onChange={(e) => handleLineChange(lineIndex, 'uom', e.target.value)}
-                                className="w-16 px-1 py-0.5 text-sm text-center border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
+                                className="w-16 px-1 py-0.5 text-xs text-center border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                               />
                             ) : (
                               line.uom
                             )}
                           </td>
-                          <td className={`px-3 py-2 text-sm text-right text-gray-950 ${
+                          <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
                             matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01
-                              ? isEditMode ? '' : 'bg-red-50 border border-red-300'
+                              ? 'bg-red-50 border border-red-300'
                               : ''
                           }`}>
                             {isEditMode ? (
@@ -715,7 +715,7 @@ export function LineItemsPreviewPanel({
                                 type="number"
                                 value={line.unit_price}
                                 onChange={(e) => handleLineChange(lineIndex, 'unit_price', parseFloat(e.target.value) || 0)}
-                                className={`w-24 px-1 py-0.5 text-sm text-right rounded focus:outline-none focus:border-purple-500 ${
+                                className={`w-24 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
                                   matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01
                                     ? 'border border-red-300'
                                     : 'border border-gray-300'
@@ -725,11 +725,11 @@ export function LineItemsPreviewPanel({
                               formatCurrency(line.unit_price)
                             )}
                           </td>
-                          <td className="px-3 py-2 text-sm text-right font-medium text-gray-950">
+                          <td className="px-1.5 py-2 text-xs text-right font-medium text-gray-950">
                             {formatCurrency(line.line_total)}
                           </td>
                           {!useDetailedVarianceColumns && (
-                            <td className="px-3 py-2 text-sm">
+                            <td className="px-1.5 py-2 text-xs">
                               {matchedPO && (
                                 <div className="flex flex-col items-center gap-0.5">
                                   {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
@@ -753,32 +753,25 @@ export function LineItemsPreviewPanel({
                             </td>
                           )}
                           {isEditMode && (
-                            <td className="px-3 py-2 text-sm">
+                            <td className="px-1.5 py-2 text-sm">
                               <div className="flex items-center justify-center gap-1">
                                 <button
-                                  onClick={() => console.log('Split line:', lineIndex)}
-                                  className="p-1 text-gray-600 hover:text-purple-600 hover:bg-purple-50 rounded transition-colors"
-                                  title="Split line"
+                                  onClick={() => console.log('Accept variance:', lineIndex)}
+                                  className="p-1 text-gray-900 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                                  title="Accept variance"
                                 >
-                                  <GitBranch className="h-4 w-4" />
-                                </button>
-                                <button
-                                  onClick={() => console.log('Copy line:', lineIndex)}
-                                  className="p-1 text-gray-600 hover:text-blue-600 hover:bg-blue-50 rounded transition-colors"
-                                  title="Copy line"
-                                >
-                                  <Copy className="h-4 w-4" />
+                                  <CheckCircle className="h-4 w-4" />
                                 </button>
                                 <button
                                   onClick={() => handleRemoveLine(lineIndex)}
-                                  className="p-1 text-gray-600 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                  className="p-1 text-gray-900 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                                   title="Delete line"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
                                 <button
                                   onClick={() => console.log('More actions:', lineIndex)}
-                                  className="p-1 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
+                                  className="p-1 text-gray-900 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
                                   title="More actions"
                                 >
                                   <MoreVertical className="h-4 w-4" />
@@ -813,7 +806,7 @@ export function LineItemsPreviewPanel({
                       })}
                     {isEditMode && (
                       <tr className="h-[40px]">
-                        <td colSpan={useDetailedVarianceColumns ? 10 : 11} className="px-3 py-2 align-middle">
+                        <td colSpan={useDetailedVarianceColumns ? 10 : 11} className="px-1.5 py-2 align-middle">
                           <button
                             onClick={handleAddLine}
                             className="flex items-center gap-1.5 text-sm text-purple-700 hover:text-purple-900 font-medium transition-colors"
@@ -826,15 +819,15 @@ export function LineItemsPreviewPanel({
                     )}
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
-                    <tr>
-                      <td colSpan={isEditMode ? 8 : 7} className="px-3 py-2 text-right text-sm font-semibold text-gray-950">
+                    <tr className="h-[52px]">
+                      <td colSpan={isEditMode ? 8 : 7} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950">
                         Invoice Total:
                       </td>
-                      <td className="px-3 py-2 text-right text-sm font-bold text-gray-950">
+                      <td className="px-1.5 py-2 text-right text-sm font-bold text-gray-950">
                         {formatCurrency(invoiceLines.reduce((sum, line) => sum + line.line_total, 0))}
                       </td>
                       {!useDetailedVarianceColumns && (
-                        <td className="px-3 py-2 text-center">
+                        <td className="px-1.5 py-2 text-center">
                           {(() => {
                             const invoiceTotal = invoiceLines.reduce((sum, line) => sum + line.line_total, 0);
                             const poTotal = poLines.reduce((sum, line) => sum + (line.qty_ordered * line.unit_price), 0);
@@ -852,7 +845,7 @@ export function LineItemsPreviewPanel({
                       )}
                       {/* Empty cell for Actions column in edit mode */}
                       {isEditMode && (
-                        <td className="px-3 py-2"></td>
+                        <td className="px-1.5 py-2"></td>
                       )}
                     </tr>
                   </tfoot>
@@ -871,12 +864,12 @@ export function LineItemsPreviewPanel({
                       </th>
                     </tr>
                     <tr>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase">#</th>
-                      <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
-                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
-                      <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
+                      <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">#</th>
+                      <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
+                      <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
+                      <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
+                      <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
+                      <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -893,7 +886,7 @@ export function LineItemsPreviewPanel({
                             onMouseEnter={() => handleRowHover(slot.position)}
                             onMouseLeave={handleRowLeave}
                           >
-                            <td className="px-3 py-2 text-sm text-gray-400 italic text-center align-middle" colSpan={6}>
+                            <td className="px-1.5 py-2 text-xs text-gray-400 italic text-center align-middle" colSpan={6}>
                               No PO line
                             </td>
                           </tr>
@@ -907,24 +900,24 @@ export function LineItemsPreviewPanel({
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
                         >
-                          <td className="px-3 py-2 text-sm text-gray-950">{matchedPO.line_no}</td>
-                          <td className="px-3 py-2 text-sm text-gray-950">
+                          <td className="px-1.5 py-2 text-xs text-gray-950">{matchedPO.line_no}</td>
+                          <td className="px-1.5 py-2 text-xs text-gray-950">
                             <div className="truncate max-w-[200px]" title={matchedPO.description}>
                               {matchedPO.item_description || matchedPO.description}
                             </div>
                           </td>
-                          <td className={`px-3 py-2 text-sm text-right text-gray-950 ${
+                          <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
                             invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01 ? 'bg-red-50 border border-red-300' : ''
                           }`}>
                             {matchedPO.qty_ordered}
                           </td>
-                          <td className="px-3 py-2 text-sm text-center text-gray-950">{matchedPO.uom}</td>
-                          <td className={`px-3 py-2 text-sm text-right text-gray-950 ${
+                          <td className="px-1.5 py-2 text-xs text-center text-gray-950">{matchedPO.uom}</td>
+                          <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
                             invLine && Math.abs(matchedPO.unit_price - invLine.unit_price) > 0.01 ? 'bg-red-50 border border-red-300' : ''
                           }`}>
                             {formatCurrency(matchedPO.unit_price)}
                           </td>
-                          <td className="px-3 py-2 text-sm text-right font-medium text-gray-950">
+                          <td className="px-1.5 py-2 text-xs text-right font-medium text-gray-950">
                             {formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)}
                           </td>
                         </tr>
@@ -933,25 +926,78 @@ export function LineItemsPreviewPanel({
                     {/* Empty spacer row in edit mode to match Invoice table's "Add Line" row */}
                     {isEditMode && (
                       <tr className="h-[40px]">
-                        <td colSpan={6} className="px-3 py-2"></td>
+                        <td colSpan={6} className="px-1.5 py-2"></td>
                       </tr>
                     )}
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
-                    <tr>
-                      <td colSpan={5} className="px-3 py-2 text-right text-sm font-semibold text-gray-950">
+                    <tr className="h-[52px]">
+                      <td colSpan={5} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950">
                         PO Total:
                       </td>
-                      <td className="px-3 py-2 text-right text-sm font-bold text-gray-950">
+                      <td className="px-1.5 py-2 text-right text-sm font-bold text-gray-950">
                         {formatCurrency(poLines.reduce((sum, line) => sum + (line.qty_ordered * line.unit_price), 0))}
                       </td>
                       {/* Empty cells for visual continuity with Invoice table columns */}
                       {!useDetailedVarianceColumns && (
-                        <td className="px-3 py-2"></td>
+                        <td className="px-1.5 py-2"></td>
                       )}
                       {isEditMode && (
-                        <td className="px-3 py-2"></td>
+                        <td className="px-1.5 py-2"></td>
                       )}
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* Continuation table to create visual flow between PO and Variance */}
+              <div className="flex-1">
+                <table className="w-full">
+                  <thead className="bg-gray-50 sticky top-0 z-10">
+                    {/* Two-row header to match Invoice/PO/Variance structure */}
+                    <tr>
+                      <th className="px-4 py-2 bg-white border-b border-r border-gray-200">
+                        <div className="h-[26px]"></div>
+                      </th>
+                    </tr>
+                    <tr>
+                      <th className="px-1.5 py-2 border-r border-gray-200">&nbsp;</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {slots.map((slot) => {
+                      const hasPOLine = slot.poLine !== null;
+
+                      // Only show continuation row if there's a PO line at this position
+                      // This creates visual continuity from PO table to Variance column
+                      if (!hasPOLine) {
+                        return null;
+                      }
+
+                      return (
+                        <tr
+                          key={`continuation-${slot.position}`}
+                          className={`h-[48px] border-r border-gray-200 ${
+                            hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'
+                          }`}
+                          onMouseEnter={() => handleRowHover(slot.position)}
+                          onMouseLeave={handleRowLeave}
+                        >
+                          <td className="px-1.5 py-2">&nbsp;</td>
+                        </tr>
+                      );
+                    })}
+
+                    {/* Empty spacer row in edit mode to match "Add Line" row */}
+                    {isEditMode && (
+                      <tr className="h-[40px] border-r border-gray-200 bg-white">
+                        <td className="px-1.5 py-2">&nbsp;</td>
+                      </tr>
+                    )}
+                  </tbody>
+                  <tfoot className="bg-gray-50 sticky bottom-0">
+                    <tr className="h-[52px] border-r border-gray-200">
+                      <td className="px-1.5 py-2">&nbsp;</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -971,8 +1017,8 @@ export function LineItemsPreviewPanel({
                         </th>
                       </tr>
                       <tr>
-                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty Var</th>
-                        <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price Var</th>
+                        <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty Var</th>
+                        <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price Var</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -989,7 +1035,7 @@ export function LineItemsPreviewPanel({
                               onMouseEnter={() => handleRowHover(slot.position)}
                               onMouseLeave={handleRowLeave}
                             >
-                              <td colSpan={2} className="px-3 py-2 text-center">
+                              <td colSpan={2} className="px-1.5 py-2 text-center">
                                 <span className="text-xs text-gray-400 italic">-</span>
                               </td>
                             </tr>
@@ -1004,7 +1050,7 @@ export function LineItemsPreviewPanel({
                             onMouseLeave={handleRowLeave}
                           >
                             {/* Qty Variance Column */}
-                            <td className="px-3 py-2 text-sm text-right">
+                            <td className="px-1.5 py-2 text-xs text-right">
                               {matchedPO ? (
                                 Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 ? (
                                   <span className="text-red-600 font-semibold">
@@ -1019,7 +1065,7 @@ export function LineItemsPreviewPanel({
                             </td>
 
                             {/* Price Variance Column */}
-                            <td className="px-3 py-2 text-sm text-right">
+                            <td className="px-1.5 py-2 text-xs text-right">
                               {matchedPO ? (
                                 Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 ? (
                                   <span className="text-red-600 font-semibold">
@@ -1039,14 +1085,14 @@ export function LineItemsPreviewPanel({
                       {/* Empty spacer row in edit mode to match "Add Line" row */}
                       {isEditMode && (
                         <tr className="h-[40px]">
-                          <td colSpan={2} className="px-3 py-2"></td>
+                          <td colSpan={2} className="px-1.5 py-2"></td>
                         </tr>
                       )}
                     </tbody>
                     <tfoot className="bg-gray-50 sticky bottom-0">
-                      <tr>
+                      <tr className="h-[52px]">
                         {/* Empty footer cells for visual continuity */}
-                        <td colSpan={2} className="px-3 py-2"></td>
+                        <td colSpan={2} className="px-1.5 py-2"></td>
                       </tr>
                     </tfoot>
                   </table>
@@ -1079,18 +1125,18 @@ export function LineItemsPreviewPanel({
                     {isEditMode && (
                       <th className="px-2 py-2 text-center text-xs font-medium text-gray-800 uppercase w-8"></th>
                     )}
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase">#</th>
-                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">Status</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
-                    <th className="px-3 py-2 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
-                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
-                    <th className="px-3 py-2 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
+                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">#</th>
+                    <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">Status</th>
+                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
+                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
+                    <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
+                    <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
+                    <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
+                    <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
                     {poLines.length > 0 && (
-                      <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
+                      <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
                     )}
-                    <th className="px-3 py-2 text-center text-xs font-medium text-gray-800 uppercase w-16"></th>
+                    <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase w-16"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
@@ -1140,10 +1186,10 @@ export function LineItemsPreviewPanel({
                               <GripVertical className="h-4 w-4 text-gray-400" />
                             </td>
                           )}
-                          <td className="px-3 py-2 text-sm text-gray-950">
+                          <td className="px-1.5 py-2 text-xs text-gray-950">
                             {line.line_no}
                           </td>
-                        <td className="px-3 py-2 text-sm text-center">
+                        <td className="px-1.5 py-2 text-xs text-center">
                           {status === 'variance' && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                               Variance
@@ -1160,13 +1206,13 @@ export function LineItemsPreviewPanel({
                             </span>
                           )}
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-950">
+                        <td className="px-1.5 py-2 text-xs text-gray-950">
                           {isEditMode ? (
                             <input
                               type="text"
                               value={line.description}
                               onChange={(e) => handleLineChange(lineIndex, 'description', e.target.value)}
-                              className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
+                              className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                             />
                           ) : (
                             <div className="truncate max-w-[400px]" title={line.description}>
@@ -1174,12 +1220,12 @@ export function LineItemsPreviewPanel({
                             </div>
                           )}
                         </td>
-                        <td className="px-3 py-2 text-sm text-gray-950">
+                        <td className="px-1.5 py-2 text-xs text-gray-950">
                           {generateSKU(line.line_no)}
                         </td>
-                        <td className={`px-3 py-2 text-sm text-right text-gray-950 ${
+                        <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
                           matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01
-                            ? isEditMode ? '' : 'bg-red-50 border border-red-300'
+                            ? 'bg-red-50 border border-red-300'
                             : ''
                         }`}>
                           {isEditMode ? (
@@ -1187,7 +1233,7 @@ export function LineItemsPreviewPanel({
                               type="number"
                               value={line.qty}
                               onChange={(e) => handleLineChange(lineIndex, 'qty', parseFloat(e.target.value) || 0)}
-                              className={`w-20 px-2 py-1 text-sm text-right rounded focus:outline-none focus:border-purple-500 ${
+                              className={`w-14 px-2 py-1 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
                                 matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01
                                   ? 'border border-red-300'
                                   : 'border border-gray-300'
@@ -1197,21 +1243,21 @@ export function LineItemsPreviewPanel({
                             line.qty
                           )}
                         </td>
-                        <td className="px-3 py-2 text-sm text-center text-gray-950">
+                        <td className="px-1.5 py-2 text-xs text-center text-gray-950">
                           {isEditMode ? (
                             <input
                               type="text"
                               value={line.uom}
                               onChange={(e) => handleLineChange(lineIndex, 'uom', e.target.value)}
-                              className="w-20 px-2 py-1 text-sm text-center border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
+                              className="w-20 px-2 py-1 text-xs text-center border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                             />
                           ) : (
                             line.uom
                           )}
                         </td>
-                        <td className={`px-3 py-2 text-sm text-right text-gray-950 ${
+                        <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
                           matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01
-                            ? isEditMode ? '' : 'bg-red-50 border border-red-300'
+                            ? 'bg-red-50 border border-red-300'
                             : ''
                         }`}>
                           {isEditMode ? (
@@ -1220,7 +1266,7 @@ export function LineItemsPreviewPanel({
                               value={line.unit_price}
                               onChange={(e) => handleLineChange(lineIndex, 'unit_price', parseFloat(e.target.value) || 0)}
                               step="0.01"
-                              className={`w-24 px-2 py-1 text-sm text-right rounded focus:outline-none focus:border-purple-500 ${
+                              className={`w-24 px-2 py-1 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
                                 matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01
                                   ? 'border border-red-300'
                                   : 'border border-gray-300'
@@ -1230,11 +1276,11 @@ export function LineItemsPreviewPanel({
                             formatCurrency(line.unit_price)
                           )}
                         </td>
-                        <td className="px-3 py-2 text-sm text-right font-medium text-gray-950">
+                        <td className="px-1.5 py-2 text-xs text-right font-medium text-gray-950">
                           {formatCurrency(line.line_total)}
                         </td>
                         {poLines.length > 0 && (
-                          <td className="px-3 py-2 text-sm">
+                          <td className="px-1.5 py-2 text-xs">
                             {matchedPO && (
                               <div className="flex flex-col items-center gap-0.5">
                                 {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
@@ -1257,15 +1303,24 @@ export function LineItemsPreviewPanel({
                             )}
                           </td>
                         )}
-                        <td className="px-3 py-2 text-sm text-center">
+                        <td className="px-1.5 py-2 text-xs text-center">
                           {isEditMode && (
-                            <button
-                              onClick={() => handleRemoveLine(lineIndex)}
-                              className="p-1 text-red-500 hover:text-red-700 hover:bg-red-50 rounded transition-colors"
-                              title="Remove line"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </button>
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => console.log('Accept variance:', lineIndex)}
+                                className="p-1 text-gray-900 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
+                                title="Accept variance"
+                              >
+                                <CheckCircle className="h-4 w-4" />
+                              </button>
+                              <button
+                                onClick={() => handleRemoveLine(lineIndex)}
+                                className="p-1 text-gray-900 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
+                                title="Remove line"
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </button>
+                            </div>
                           )}
                         </td>
                         </>
@@ -1296,7 +1351,7 @@ export function LineItemsPreviewPanel({
                   {/* Add new line button row */}
                   {isEditMode && (
                     <tr className="bg-gray-50 hover:bg-gray-100">
-                      <td colSpan={poLines.length > 0 ? 11 : 10} className="px-3 py-2">
+                      <td colSpan={poLines.length > 0 ? 11 : 10} className="px-1.5 py-2">
                         <button
                           onClick={handleAddLine}
                           className="flex items-center gap-2 text-sm text-purple-600 hover:text-purple-700 font-medium"
@@ -1309,11 +1364,11 @@ export function LineItemsPreviewPanel({
                   )}
                 </tbody>
                 <tfoot className="bg-gray-50 sticky bottom-0">
-                  <tr>
-                    <td colSpan={isEditMode ? 8 : 7} className="px-3 py-2 text-right text-sm font-semibold text-gray-950">
+                  <tr className="h-[52px]">
+                    <td colSpan={isEditMode ? 8 : 7} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950">
                       Invoice Total:
                     </td>
-                    <td className="px-3 py-2 text-right text-sm font-bold text-gray-950">
+                    <td className="px-1.5 py-2 text-right text-sm font-bold text-gray-950">
                       {formatCurrency(editableLines.reduce((sum, line) => sum + line.line_total, 0))}
                     </td>
                     {poLines.length > 0 && <td></td>}
@@ -1342,15 +1397,15 @@ export function LineItemsPreviewPanel({
                             <td className="px-2 py-2 text-center">
                               <GripVertical className="h-4 w-4 text-gray-400" />
                             </td>
-                            <td className="px-3 py-2 text-sm text-gray-950">#{draggedLine.line_no}</td>
-                            <td className="px-3 py-2 text-sm text-gray-950 max-w-[200px] truncate">
+                            <td className="px-1.5 py-2 text-xs text-gray-950">#{draggedLine.line_no}</td>
+                            <td className="px-1.5 py-2 text-xs text-gray-950 max-w-[200px] truncate">
                               {draggedLine.description}
                             </td>
-                            <td className="px-3 py-2 text-sm text-right text-gray-950">{draggedLine.qty}</td>
-                            <td className="px-3 py-2 text-sm text-right text-gray-950">
+                            <td className="px-1.5 py-2 text-xs text-right text-gray-950">{draggedLine.qty}</td>
+                            <td className="px-1.5 py-2 text-xs text-right text-gray-950">
                               {formatCurrency(draggedLine.unit_price)}
                             </td>
-                            <td className="px-3 py-2 text-sm text-right font-medium text-gray-950">
+                            <td className="px-1.5 py-2 text-xs text-right font-medium text-gray-950">
                               {formatCurrency(draggedLine.line_total)}
                             </td>
                           </>
