@@ -191,6 +191,8 @@ export function LineItemsPreviewPanel({
   const [editableLines, setEditableLines] = useState<InvoiceLineItem[]>(invoiceLines);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
+  const [manuallyMatchedLines, setManuallyMatchedLines] = useState<Set<string>>(new Set());
+  const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
   // Update editable lines when invoice lines change
@@ -295,6 +297,10 @@ export function LineItemsPreviewPanel({
   // Check if there's a mismatch (kept for PO comparison mode)
   const hasMismatch = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null) => {
     if (!poLine) return false;
+
+    // If line is manually marked as matched, no mismatch
+    const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
+    if (manuallyMatchedLines.has(lineId)) return false;
 
     // Check quantity mismatch
     if (Math.abs(invoiceLine.qty - poLine.qty_ordered) > 0.01) return true;
@@ -416,6 +422,33 @@ export function LineItemsPreviewPanel({
     setEditableLines(updatedLines);
     onLinesUpdate?.(updatedLines);
   };
+
+  // Mark line as manually matched
+  const handleMarkAsMatched = (lineId: string) => {
+    setManuallyMatchedLines(prev => {
+      const newSet = new Set(prev);
+      newSet.add(lineId);
+      return newSet;
+    });
+    setOpenDropdownId(null);
+  };
+
+  // Toggle dropdown for a specific line
+  const toggleDropdown = (lineId: string) => {
+    setOpenDropdownId(prev => prev === lineId ? null : lineId);
+  };
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (openDropdownId && !(event.target as Element).closest('.actions-dropdown')) {
+        setOpenDropdownId(null);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [openDropdownId]);
 
   // Toggle edit mode
   const toggleEditMode = () => {
@@ -674,7 +707,7 @@ export function LineItemsPreviewPanel({
                             {generateSKU(line.line_no)}
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                            matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01
+                            matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
                               ? 'bg-red-50 border border-red-300'
                               : ''
                           }`}>
@@ -706,7 +739,7 @@ export function LineItemsPreviewPanel({
                             )}
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                            matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01
+                            matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
                               ? 'bg-red-50 border border-red-300'
                               : ''
                           }`}>
@@ -756,26 +789,31 @@ export function LineItemsPreviewPanel({
                             <td className="px-1.5 py-2 text-sm">
                               <div className="flex items-center justify-center gap-1">
                                 <button
-                                  onClick={() => console.log('Accept variance:', lineIndex)}
-                                  className="p-1 text-gray-900 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                                  title="Accept variance"
-                                >
-                                  <CheckCircle className="h-4 w-4" />
-                                </button>
-                                <button
                                   onClick={() => handleRemoveLine(lineIndex)}
                                   className="p-1 text-gray-900 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                                   title="Delete line"
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </button>
-                                <button
-                                  onClick={() => console.log('More actions:', lineIndex)}
-                                  className="p-1 text-gray-900 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
-                                  title="More actions"
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                </button>
+                                <div className="relative actions-dropdown">
+                                  <button
+                                    onClick={() => toggleDropdown(line.id || `line-${line.line_no}`)}
+                                    className="p-1 text-gray-900 hover:bg-gray-100 rounded transition-colors"
+                                    title="More actions"
+                                  >
+                                    <MoreVertical className="h-4 w-4" />
+                                  </button>
+                                  {openDropdownId === (line.id || `line-${line.line_no}`) && (
+                                    <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                                      <button
+                                        onClick={() => handleMarkAsMatched(line.id || `line-${line.line_no}`)}
+                                        className="w-full px-4 py-2 text-left text-sm text-gray-950 hover:bg-gray-50 transition-colors"
+                                      >
+                                        Mark as Matched
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </td>
                           )}
@@ -1224,7 +1262,7 @@ export function LineItemsPreviewPanel({
                           {generateSKU(line.line_no)}
                         </td>
                         <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                          matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01
+                          matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
                             ? 'bg-red-50 border border-red-300'
                             : ''
                         }`}>
@@ -1256,7 +1294,7 @@ export function LineItemsPreviewPanel({
                           )}
                         </td>
                         <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                          matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01
+                          matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
                             ? 'bg-red-50 border border-red-300'
                             : ''
                         }`}>
@@ -1307,19 +1345,31 @@ export function LineItemsPreviewPanel({
                           {isEditMode && (
                             <div className="flex items-center justify-center gap-1">
                               <button
-                                onClick={() => console.log('Accept variance:', lineIndex)}
-                                className="p-1 text-gray-900 hover:text-green-600 hover:bg-green-50 rounded transition-colors"
-                                title="Accept variance"
-                              >
-                                <CheckCircle className="h-4 w-4" />
-                              </button>
-                              <button
                                 onClick={() => handleRemoveLine(lineIndex)}
                                 className="p-1 text-gray-900 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
                                 title="Remove line"
                               >
                                 <Trash2 className="h-4 w-4" />
                               </button>
+                              <div className="relative actions-dropdown">
+                                <button
+                                  onClick={() => toggleDropdown(line.id || `line-${line.line_no}`)}
+                                  className="p-1 text-gray-900 hover:bg-gray-100 rounded transition-colors"
+                                  title="More actions"
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </button>
+                                {openDropdownId === (line.id || `line-${line.line_no}`) && (
+                                  <div className="absolute right-0 top-full mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+                                    <button
+                                      onClick={() => handleMarkAsMatched(line.id || `line-${line.line_no}`)}
+                                      className="w-full px-4 py-2 text-left text-sm text-gray-950 hover:bg-gray-50 transition-colors"
+                                    >
+                                      Mark as Matched
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           )}
                         </td>
