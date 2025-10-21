@@ -95,6 +95,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const [isSaving, setIsSaving] = useState(false);
   const [isPdfCollapsed, setIsPdfCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('details');
+  const [isEditing, setIsEditing] = useState(false);
 
   // Load/save PDF collapsed state from localStorage
   useEffect(() => {
@@ -114,6 +115,10 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
+  };
+
+  const handleEditModeChange = (editing: boolean) => {
+    setIsEditing(editing);
   };
 
   const handleSave = async () => {
@@ -178,13 +183,14 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               onDataUpdate={handleInvoiceUpdate}
               storageKey={`invoice-${invoiceId}`}
               poComparisonData={poComparisonData}
-              forceReadOnly={true}
+              forceReadOnly={false}
               hideComparison={false}
               hidePreview={true}
               showFieldErrors={isNeedsInfoMode}
               initialTab="details"
               activeTab={activeTab}
               onTabChange={handleTabChange}
+              onEditModeChange={handleEditModeChange}
             />
           </div>
         </div>
@@ -211,6 +217,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           initialZoom={0.5}
           onCollapseToggle={handlePdfCollapseToggle}
           isCollapsed={false}
+          isEditing={isEditing}
         />
 
         {/* Invoice Tabs (Read-only) - RIGHT PANEL */}
@@ -224,13 +231,14 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           onDataUpdate={handleInvoiceUpdate}
           storageKey={`invoice-${invoiceId}`}
           poComparisonData={poComparisonData}
-          forceReadOnly={true}
+          forceReadOnly={false}
           hideComparison={false}
           hidePreview={true}
           showFieldErrors={isNeedsInfoMode}
           initialTab="details"
           activeTab={activeTab}
           onTabChange={handleTabChange}
+          onEditModeChange={handleEditModeChange}
         />
       </ResizablePanel>
     );

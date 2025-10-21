@@ -42,6 +42,8 @@ interface InvoiceTabsProps {
   // Controlled tab state (optional - for parent to manage tab state)
   activeTab?: TabId;
   onTabChange?: (tab: TabId) => void;
+  // Edit mode callback
+  onEditModeChange?: (isEditing: boolean) => void;
 }
 
 export function InvoiceTabs({
@@ -66,6 +68,7 @@ export function InvoiceTabs({
   initialTab,
   activeTab: controlledActiveTab,
   onTabChange,
+  onEditModeChange,
 }: InvoiceTabsProps) {
   // Determine initial tab based on invoice status
   const getInitialTab = (): TabId => {
@@ -376,6 +379,7 @@ export function InvoiceTabs({
             hideAccountingSection={forceEditMode}
             hidePaymentSection={forceEditMode}
             showFieldErrors={showFieldErrors}
+            onEditModeChange={onEditModeChange}
           />
         )}
         {activeTab === 'line-items' && (

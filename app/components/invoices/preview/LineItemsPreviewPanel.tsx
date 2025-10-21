@@ -602,7 +602,7 @@ export function LineItemsPreviewPanel({
                             className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
                               isEditMode
                                 ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
-                                : 'bg-white text-gray-950 border-purple-900 hover:bg-gray-50'
+                                : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
                             }`}
                           >
                             {isEditMode ? 'Done' : 'Edit'}
@@ -610,23 +610,23 @@ export function LineItemsPreviewPanel({
                         </div>
                       </th>
                     </tr>
-                    <tr>
+                    <tr className="h-[40px]">
                       {isEditMode && (
-                        <th className="px-2 py-2 text-center text-xs font-medium text-gray-800 uppercase w-8"></th>
+                        <th className="px-2 text-center text-xs font-medium text-gray-800 uppercase w-8"></th>
                       )}
-                      <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">#</th>
-                      <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">Status</th>
-                      <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
-                      <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
-                      <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
-                      <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
-                      <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
-                      <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
+                      <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
+                      <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Status</th>
+                      <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
+                      <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
+                      <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
+                      <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
+                      <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
+                      <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
                       {!useDetailedVarianceColumns && (
-                        <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
+                        <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
                       )}
                       {isEditMode && (
-                        <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase w-32">Actions</th>
+                        <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase w-32">Actions</th>
                       )}
                     </tr>
                   </thead>
@@ -908,13 +908,13 @@ export function LineItemsPreviewPanel({
                         </div>
                       </th>
                     </tr>
-                    <tr>
-                      <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">#</th>
-                      <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
-                      <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
-                      <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
-                      <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
-                      <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
+                    <tr className="h-[40px]">
+                      <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
+                      <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
+                      <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
+                      <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
+                      <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
+                      <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -1005,8 +1005,8 @@ export function LineItemsPreviewPanel({
                         <div className="h-full"></div>
                       </th>
                     </tr>
-                    <tr>
-                      <th className="px-1.5 py-2 border-r border-gray-200">&nbsp;</th>
+                    <tr className="h-[40px]">
+                      <th className="px-1.5 border-r border-gray-200">&nbsp;</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -1061,9 +1061,9 @@ export function LineItemsPreviewPanel({
                           </div>
                         </th>
                       </tr>
-                      <tr>
-                        <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty Var</th>
-                        <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price Var</th>
+                      <tr className="h-[40px]">
+                        <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Qty Var</th>
+                        <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price Var</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -1158,7 +1158,7 @@ export function LineItemsPreviewPanel({
                           className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
                             isEditMode
                               ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
-                              : 'bg-white text-gray-950 border-purple-900 hover:bg-gray-50'
+                              : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
                           }`}
                         >
                           {isEditMode ? 'Done' : 'Edit'}
@@ -1166,22 +1166,22 @@ export function LineItemsPreviewPanel({
                       </div>
                     </th>
                   </tr>
-                  <tr>
+                  <tr className="h-[40px]">
                     {isEditMode && (
-                      <th className="px-2 py-2 text-center text-xs font-medium text-gray-800 uppercase w-8"></th>
+                      <th className="px-2 text-center text-xs font-medium text-gray-800 uppercase w-8"></th>
                     )}
-                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">#</th>
-                    <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">Status</th>
-                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
-                    <th className="px-1.5 py-2 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
-                    <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
-                    <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
-                    <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
-                    <th className="px-1.5 py-2 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
+                    <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
+                    <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Status</th>
+                    <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
+                    <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
+                    <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
+                    <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
+                    <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
+                    <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
                     {poLines.length > 0 && (
-                      <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
+                      <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
                     )}
-                    <th className="px-1.5 py-2 text-center text-xs font-medium text-gray-800 uppercase w-16"></th>
+                    <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase w-16"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">

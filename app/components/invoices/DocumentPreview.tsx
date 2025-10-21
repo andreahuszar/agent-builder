@@ -18,6 +18,7 @@ interface DocumentPreviewProps {
   initialZoom?: number; // Allow customizing initial zoom level (default 0.75)
   onCollapseToggle?: () => void; // Callback when collapse button clicked
   isCollapsed?: boolean; // Current collapsed state
+  isEditing?: boolean; // Whether details tab is in edit mode (for OCR highlights)
 }
 
 // Collapsible Document Preview for needs info mode
@@ -144,7 +145,8 @@ export function DocumentPreview({
   hideLineItems = false,
   initialZoom = 0.75, // Default to 75% zoom
   onCollapseToggle,
-  isCollapsed = false
+  isCollapsed = false,
+  isEditing = false
 }: DocumentPreviewProps) {
   // Start with customizable zoom level (default 75%)
   const [zoom, setZoom] = useState(initialZoom);
@@ -419,7 +421,7 @@ export function DocumentPreview({
                 }}
               >
                 {invoiceData ? (
-                  <FakeInvoiceDocument invoice={invoiceData} scale={1} />
+                  <FakeInvoiceDocument invoice={invoiceData} scale={1} showOCRHighlights={isEditing} />
                 ) : (
                   <div className="bg-white shadow-lg p-12 rounded-lg">
                     <div className="flex items-center gap-3 mb-4">

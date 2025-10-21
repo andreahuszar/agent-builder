@@ -50,6 +50,7 @@ interface DetailsTabProps {
   hidePaymentSection?: boolean;
   hideDocumentLinksSection?: boolean;
   showFieldErrors?: boolean;
+  onEditModeChange?: (isEditing: boolean) => void;
 }
 
 export function DetailsTab({
@@ -62,7 +63,8 @@ export function DetailsTab({
   hideAccountingSection = false,
   hidePaymentSection = false,
   hideDocumentLinksSection = false,
-  showFieldErrors = false
+  showFieldErrors = false,
+  onEditModeChange
 }: DetailsTabProps) {
   // Individual field edit states for click-to-edit functionality
   const [editingField, setEditingField] = useState<string | null>(null);
@@ -101,7 +103,7 @@ export function DetailsTab({
   const getInitialEditState = () => {
     if (forceReadOnly) return false;
     if (forceEditMode) return true;
-    return true; // Default to edit mode
+    return false; // Default to read-only mode
   };
 
   const [isEditing, setIsEditing] = useState(getInitialEditState());
@@ -110,6 +112,11 @@ export function DetailsTab({
   const [showFab, setShowFab] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [showAIReasoning, setShowAIReasoning] = useState(false);
+
+  // Notify parent when edit mode changes
+  useEffect(() => {
+    onEditModeChange?.(isEditing);
+  }, [isEditing, onEditModeChange]);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Document links state
@@ -422,6 +429,31 @@ export function DetailsTab({
     setIsEditing(false);
   };
 
+  // Section-specific save handlers (frontend-only, no backend API calls)
+  const handleSaveInvoiceInfo = () => {
+    // Just notify parent component with current state
+    onUpdate?.(editedData);
+    // Keep edit mode active
+  };
+
+  const handleSaveFinancialDetails = () => {
+    // Just notify parent component with current state
+    onUpdate?.(editedData);
+    // Keep edit mode active
+  };
+
+  const handleSavePaymentInfo = () => {
+    // Just notify parent component with current state
+    onUpdate?.(editedData);
+    // Keep edit mode active
+  };
+
+  const handleSaveAccountingInfo = () => {
+    // Just notify parent component with current state
+    onUpdate?.(editedData);
+    // Keep edit mode active
+  };
+
   // Document links handlers
   const handlePOPillClick = (poNumber: string) => {
     setSelectedPONumber(poNumber);
@@ -536,11 +568,19 @@ export function DetailsTab({
 
         {/* Invoice Information Section */}
         <div>
-          <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div className="relative px-4 py-3 border-b border-gray-200 bg-gray-50">
             <div className="flex items-center gap-2">
               <File className="h-4 w-4 text-purple-600" />
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Invoice Information</h3>
             </div>
+            {!forceReadOnly && !isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+              >
+                Edit
+              </button>
+            )}
           </div>
           <div className="px-10 py-4 bg-white">
             <div className={`grid ${getGridCols()} gap-4`}>
@@ -699,11 +739,19 @@ export function DetailsTab({
 
         {/* Financial Details Section */}
         <div>
-          <div className="px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
+          <div className="relative px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
             <div className="flex items-center gap-2">
               <Coins className="h-4 w-4 text-purple-600" />
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Financial Details</h3>
             </div>
+            {!forceReadOnly && !isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+              >
+                Edit
+              </button>
+            )}
           </div>
           <div className="px-10 py-4 bg-white">
             {/* First Row: Subtotal, Currency, Tax Rate */}
@@ -893,11 +941,19 @@ export function DetailsTab({
         {/* Payment Information Section */}
         {!hidePaymentSection && (
         <div>
-          <div className="px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
+          <div className="relative px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
             <div className="flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-purple-600" />
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Payment Information</h3>
             </div>
+            {!forceReadOnly && !isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+              >
+                Edit
+              </button>
+            )}
           </div>
           <div className="px-10 py-4 bg-white">
             <div className={`grid ${getGridCols()} gap-4`}>
@@ -1068,14 +1124,24 @@ export function DetailsTab({
                 <BookOpen className="h-4 w-4 text-purple-600" />
                 <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Accounting Classification</h3>
               </div>
-              {invoiceData.ai_classification_confidence && (
-                <div className="flex items-center gap-1.5">
-                  <Brain className="h-3.5 w-3.5 text-purple-600" />
-                  <span className="text-xs font-medium text-purple-700">
-                    AI Confidence: {(invoiceData.ai_classification_confidence * 100).toFixed(0)}%
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                {invoiceData.ai_classification_confidence && (
+                  <div className="flex items-center gap-1.5">
+                    <Brain className="h-3.5 w-3.5 text-purple-600" />
+                    <span className="text-xs font-medium text-purple-700">
+                      AI Confidence: {(invoiceData.ai_classification_confidence * 100).toFixed(0)}%
+                    </span>
+                  </div>
+                )}
+                {!forceReadOnly && !isEditing && (
+                  <button
+                    onClick={() => setIsEditing(true)}
+                    className="px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           <div className="px-10 py-4 bg-white">
@@ -1203,14 +1269,24 @@ export function DetailsTab({
               <Link2 className="h-4 w-4 text-purple-600" />
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Document Links</h3>
             </div>
-            {/* Link Document Button - positioned absolutely */}
-            <button
-              className="absolute right-4 top-1/2 -translate-y-1/2 inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
-              onClick={() => setIsPOSearchModalOpen(true)}
-            >
-              <Link2 className="h-3.5 w-3.5" />
-              <span>Link Document</span>
-            </button>
+            {/* Action buttons - positioned absolutely */}
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 flex items-center gap-2">
+              {!forceReadOnly && !isEditing && (
+                <button
+                  onClick={() => setIsEditing(true)}
+                  className="px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                >
+                  Edit
+                </button>
+              )}
+              <button
+                className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
+                onClick={() => setIsPOSearchModalOpen(true)}
+              >
+                <Link2 className="h-3.5 w-3.5" />
+                <span>Link Document</span>
+              </button>
+            </div>
           </div>
           <div className="px-10 py-4 bg-white">
             {/* Check if any documents are linked */}
@@ -1268,52 +1344,24 @@ export function DetailsTab({
         </div>
       </div>
 
-      {/* Floating Action Button */}
-      {!isEditing && !forceReadOnly && !hideFloatingSaveButton && (
-        <button
-          onClick={() => setIsEditing(true)}
-          className={`
-            fixed bottom-6 right-6 z-50
-            inline-flex items-center gap-1.5 px-3 py-1.5
-            bg-purple-900 text-white rounded-full shadow-lg
-            hover:bg-purple-800 hover:shadow-xl
-            transition-all duration-200 transform text-sm
-            ${showFab ? 'translate-y-0 opacity-100' : 'translate-y-20 opacity-0 pointer-events-none'}
-          `}
-        >
-          <Edit2 className="h-3.5 w-3.5" />
-          <span className="font-medium">Edit Details</span>
-        </button>
-      )}
-
-      {/* Edit Mode Action Buttons */}
+      {/* Bottom Action Bar - Only shown in edit mode */}
       {isEditing && !hideFloatingSaveButton && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3">
+        <div className="sticky bottom-0 w-full bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-end gap-3 z-40">
           {!forceEditMode && (
             <button
               onClick={handleCancel}
-              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-full shadow-lg hover:bg-gray-50 transition-all"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-all"
             >
               <X className="h-4 w-4" />
               <span className="font-medium">Cancel</span>
             </button>
           )}
           <button
-            onClick={handleSave}
-            disabled={isSaving}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-900 text-white rounded-full shadow-lg hover:bg-purple-800 disabled:opacity-50 transition-all"
+            onClick={() => setIsEditing(false)}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-all"
           >
-            {isSaving ? (
-              <>
-                <div className="h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span className="font-medium">Saving...</span>
-              </>
-            ) : (
-              <>
-                <Check className="h-4 w-4" />
-                <span className="font-medium">Save Changes</span>
-              </>
-            )}
+            <Check className="h-4 w-4" />
+            <span className="font-medium">Save</span>
           </button>
         </div>
       )}
