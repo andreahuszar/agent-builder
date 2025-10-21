@@ -144,11 +144,18 @@ function EmptySlot({ position, colSpan, isEditMode, isDragPlaceholder = false }:
     id: `empty-slot-${position}`,
   });
 
+  // In read-only mode, show a simple empty row
   if (!isEditMode) {
-    // In read-only mode, don't show empty slots
-    return null;
+    return (
+      <tr className="h-[48px] bg-white">
+        <td colSpan={colSpan} className="px-1.5 py-2">
+          {/* Empty row filler */}
+        </td>
+      </tr>
+    );
   }
 
+  // In edit mode, show droppable slot
   return (
     <tr
       ref={setNodeRef}
@@ -646,16 +653,16 @@ export function LineItemsPreviewPanel({
                           );
                         }
 
-                        // If no invoice line at this position, show empty slot in edit mode
+                        // If no invoice line at this position, show empty slot
                         if (!line) {
-                          return isEditMode ? (
+                          return (
                             <EmptySlot
                               key={`empty-slot-${slot.position}`}
                               position={slot.position}
                               colSpan={useDetailedVarianceColumns ? (isEditMode ? 10 : 8) : (isEditMode ? 11 : 9)}
                               isEditMode={isEditMode}
                             />
-                          ) : null;
+                          );
                         }
 
                         // Find the line's index in editableLines array for handleLineChange
@@ -1199,16 +1206,16 @@ export function LineItemsPreviewPanel({
                         );
                       }
 
-                      // If no invoice line at this position, show empty slot in edit mode
+                      // If no invoice line at this position, show empty slot
                       if (!line) {
-                        return isEditMode ? (
+                        return (
                           <EmptySlot
                             key={`empty-slot-${slot.position}`}
                             position={slot.position}
                             colSpan={poLines.length > 0 ? (isEditMode ? 11 : 10) : (isEditMode ? 10 : 9)}
                             isEditMode={isEditMode}
                           />
-                        ) : null;
+                        );
                       }
 
                       // Find the line's index in editableLines array for handleLineChange
