@@ -40,30 +40,16 @@ export const generateMockPOs = (): Record<string, POHeader> => {
         {
           id: 'po-line-2',
           line_no: 2,
-          description: 'Software License - Enterprise Edition',
+          description: 'Software License - Annual Subscription',
           item_description: 'Annual Software License',
           qty_ordered: 10,
           uom: 'License',
-          unit_price: 450.00,
-          qty_received_to_date: 10,
-          qty_invoiced_to_date: 5,
-          qty_remaining_to_receive: 0,
-          qty_remaining_to_invoice: 5,
-          status: 'partially_received'
-        },
-        {
-          id: 'po-line-3',
-          line_no: 3,
-          description: 'Hardware - Server Equipment',
-          item_description: 'Dell PowerEdge R740 Server',
-          qty_ordered: 2,
-          uom: 'Units',
-          unit_price: 3500.00,
-          qty_received_to_date: 2,
+          unit_price: 200.00,
+          qty_received_to_date: 0,
           qty_invoiced_to_date: 0,
-          qty_remaining_to_receive: 0,
-          qty_remaining_to_invoice: 2,
-          status: 'received'
+          qty_remaining_to_receive: 10,
+          qty_remaining_to_invoice: 10,
+          status: 'open'
         }
       ],
       subtotal: 0,

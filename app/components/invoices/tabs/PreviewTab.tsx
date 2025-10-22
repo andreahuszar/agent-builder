@@ -37,20 +37,22 @@ export function PreviewTab({
 
   // Calculate dynamic panel size based on exception count
   // Header (~49px) + Exception item (~50-55px each with padding/spacing)
-  // Show max 3 exceptions by default, or fewer if there are fewer
+  // Increased height by ~2% for better breathing room
   // Assuming typical drawer viewport of ~700-900px height
   const getDefaultPanelSize = React.useMemo(() => {
-    const displayCount = Math.min(exceptionCount, 3);
-    // Calculate based on approximate heights:
+    const displayCount = Math.min(exceptionCount, 4);
+    // Calculate based on approximate heights with additional spacing:
     // Header: 49px + border (1px) + padding = ~50px
     // Each exception: ~50-55px (icon + text + spacing)
     // For viewport ~800px:
-    // 1 exception: ~110px = ~14%
-    // 2 exceptions: ~165px = ~20%
-    // 3+ exceptions: ~220px = ~27%
-    if (displayCount === 1) return [86, 14]; // Document 86%, Exceptions 14%
-    if (displayCount === 2) return [80, 20]; // Document 80%, Exceptions 20%
-    return [73, 27]; // Document 73%, Exceptions 27% (3+ items)
+    // 1 exception: ~128px = ~16%
+    // 2 exceptions: ~176px = ~22%
+    // 3 exceptions: ~232px = ~29%
+    // 4+ exceptions: ~256px = ~32%
+    if (displayCount === 1) return [84, 16]; // Document 84%, Exceptions 16%
+    if (displayCount === 2) return [78, 22]; // Document 78%, Exceptions 22%
+    if (displayCount === 3) return [71, 29]; // Document 71%, Exceptions 29%
+    return [68, 32]; // Document 68%, Exceptions 32% (4+ items)
   }, [exceptionCount]);
 
   // Use shared logic to determine if exception panel should show

@@ -146,10 +146,12 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
     }
 
     // Add approval limit check - but only for invoices that aren't already approved/paid
+    // Skip for PO-backed invoices since the PO itself serves as approval
     const approvedStatuses = ['approved', 'paid', 'completed', 'closed', 'ready_for_payment', 'approved_ready_for_payment'];
     const isAlreadyApproved = invoiceData?.status && approvedStatuses.includes(invoiceData.status.toLowerCase());
-    
-    if (invoiceData?.total && invoiceData.total > approvalLimit && !isAlreadyApproved) {
+    const hasPO = invoiceData?.po_numbers_cached && invoiceData.po_numbers_cached.length > 0;
+
+    if (invoiceData?.total && invoiceData.total > approvalLimit && !isAlreadyApproved && !hasPO) {
       issues.compliance.push({
         id: 'approval-limit',
         field: 'total',
@@ -573,21 +575,6 @@ export function MatchingTab({ invoiceId, matchResults, lines, invoiceData, appro
 
       {/* Content */}
       <div className="p-6 space-y-4">
-        {/* Show message if no match results yet */}
-        {matchResults.length === 0 && (
-          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
-          <div className="flex items-start gap-3">
-            <RefreshCw className="h-5 w-5 text-amber-600 mt-0.5" />
-            <div>
-              <p className="text-sm font-medium text-amber-900">Matching Not Run</p>
-              <p className="text-sm text-amber-700 mt-0.5">
-                This invoice has not been matched yet. Run the matching process to check for Purchase Orders and Goods Receipts.
-              </p>
-            </div>
-          </div>
-          </div>
-        )}
-
         {/* Validation cards */}
         <ValidationCardContainer>
         {allPassed ? (

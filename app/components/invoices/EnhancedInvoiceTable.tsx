@@ -221,7 +221,7 @@ function ActionButtons({ invoice, activeTab, onDelete }: ActionButtonsProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <button className="p-0 hover:bg-gray-100 rounded transition-colors">
-              <UserPlus className="h-4 w-4 text-gray-700" />
+              <UserPlus className="h-4 w-4 text-gray-900" />
             </button>
           </TooltipTrigger>
           <TooltipContent className="bg-gray-800 text-white border-gray-800">
@@ -233,7 +233,7 @@ function ActionButtons({ invoice, activeTab, onDelete }: ActionButtonsProps) {
         <Tooltip>
           <TooltipTrigger asChild>
             <button className="p-0 hover:bg-gray-100 rounded transition-colors">
-              <MessageSquare className="h-4 w-4 text-gray-700" />
+              <MessageSquare className="h-4 w-4 text-gray-900" />
             </button>
           </TooltipTrigger>
           <TooltipContent className="bg-gray-800 text-white border-gray-800">
@@ -244,7 +244,7 @@ function ActionButtons({ invoice, activeTab, onDelete }: ActionButtonsProps) {
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <button className="p-0 hover:bg-gray-100 rounded transition-colors">
-            <MoreHorizontal className="h-4 w-4 text-gray-700" />
+            <MoreHorizontal className="h-4 w-4 text-gray-900" />
           </button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="w-52">
@@ -734,6 +734,9 @@ export function EnhancedInvoiceTable({
     return sorted;
   }, [divisionFilteredInvoices, sortField, sortDirection]);
 
+  // Check if table has invoices to conditionally apply sticky column styling
+  const hasInvoices = sortedInvoices.length > 0;
+
   const getSortIcon = (field: SortField) => {
     if (sortField !== field) {
       return <ChevronsUpDown className="h-4 w-4 text-gray-400 flex-shrink-0" />;
@@ -922,8 +925,8 @@ export function EnhancedInvoiceTable({
   return (
     <div className="overflow-hidden bg-white shadow-sm ring-1 ring-gray-900/5 rounded-lg relative">
       {/* Shadow overlay for sticky column - appears when Source, Ingestion Date, Vendor, and Vendor ID columns scroll off-screen.
-          Positioned at right edge of sticky Invoice No. column */}
-      {isTableScrolled && vendorColumnWidth > 0 && invoiceColumnWidth > 0 && (
+          Positioned at right edge of sticky Invoice No. column. Only show when table has invoices. */}
+      {hasInvoices && isTableScrolled && vendorColumnWidth > 0 && invoiceColumnWidth > 0 && (
         <div
           className="absolute top-0 bottom-0 w-[16px] pointer-events-none z-20 bg-gradient-to-r from-black/[0.03] to-transparent"
           style={{ left: `${64 + invoiceColumnWidth}px` }}
@@ -993,7 +996,10 @@ export function EnhancedInvoiceTable({
               </th>
               <th scope="col"
                 ref={invoiceHeaderRef}
-                className="sticky left-[64px] z-10 bg-white px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                className={cn(
+                  "px-6 py-1.5 text-left text-sm font-semibold text-gray-950",
+                  hasInvoices && "sticky left-[64px] z-10 bg-white"
+                )}>
                 <button
                   onClick={() => handleSort('invoice_number')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
@@ -1294,16 +1300,29 @@ export function EnhancedInvoiceTable({
               return (
                 <tr
                   key={invoice.id}
+                  onClick={() => {
+                    if (isQuickViewOpen) {
+                      // Drawer already open - just switch invoice
+                      setQuickViewInvoiceId(invoice.id);
+                    } else {
+                      // Drawer closed - open with this invoice
+                      setQuickViewInvoiceId(invoice.id);
+                      setIsQuickViewOpen(true);
+                    }
+                  }}
                   className={cn(
-                    "group transition-colors relative",
+                    "group transition-colors relative cursor-pointer",
                     isSelected ? "bg-purple-50 hover:bg-purple-100" : "hover:bg-purple-50"
                   )}
                 >
                   {/* 1. Checkbox (sticky left-0) */}
-                  <td className={cn(
-                    "sticky left-0 z-10 px-6 py-2.5 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]",
-                    isSelected ? "bg-purple-50 group-hover:bg-purple-100" : "bg-white group-hover:bg-purple-50"
-                  )}>
+                  <td
+                    onClick={(e) => e.stopPropagation()}
+                    className={cn(
+                      "sticky left-0 z-10 px-6 py-2.5 whitespace-nowrap shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]",
+                      isSelected ? "bg-purple-50 group-hover:bg-purple-100" : "bg-white group-hover:bg-purple-50"
+                    )}
+                  >
                     <button
                       onClick={() => onToggleSelection(invoice.id)}
                       className="p-0"
@@ -1349,9 +1368,10 @@ export function EnhancedInvoiceTable({
                     {invoice.vendor_name_snapshot ? getVendorId(invoice.vendor_name_snapshot) : ''}
                   </td>
 
-                  {/* 6. Invoice No. (sticky left-[64px]) */}
+                  {/* 6. Invoice No. (sticky left-[64px] when table has invoices) */}
                   <td className={cn(
-                    "sticky left-[64px] z-10 px-6 py-2.5 whitespace-nowrap",
+                    "px-6 py-2.5 whitespace-nowrap",
+                    hasInvoices && "sticky left-[64px] z-10",
                     isSelected ? "bg-purple-50 group-hover:bg-purple-100" : "bg-white group-hover:bg-purple-50"
                   )}>
                     <div className="flex items-center gap-2">
@@ -1393,7 +1413,7 @@ export function EnhancedInvoiceTable({
                             : "font-medium"
                         )}
                       >
-                        {invoice.invoice_number}
+                        {invoice.invoice_number || 'Missing No.'}
                       </button>
                     </div>
                   </td>
@@ -1424,11 +1444,19 @@ export function EnhancedInvoiceTable({
                         );
                       }
 
+                      // Check for validation errors - these should show "Exception" even if matched
+                      const hasValidationErrors = invoice.status === 'needs_info' || !invoice.invoice_number;
+
                       const s = (invoice.match_status || '').toLowerCase();
                       const isNonPO = invoice.type === 'Non-PO';
                       let label: string;
                       let chipClass = getMatchStatusColor(invoice.match_status);
-                      if (s === 'archived') {
+
+                      if (hasValidationErrors) {
+                        // Invoices with validation errors always show "Exception"
+                        label = 'Exception';
+                        chipClass = 'bg-red-100 text-red-700';
+                      } else if (s === 'archived') {
                         label = 'Archived';
                       } else if (isNonPO && (s === 'matched' || s === 'full_match' || s === 'within_tolerance')) {
                         // In pending approval tab, non-PO invoices should show "Exception" if they need approval
@@ -1724,13 +1752,19 @@ export function EnhancedInvoiceTable({
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.assignedTo || '-'}
                   </td>
-                  <td className="px-6 py-2.5 whitespace-nowrap">
+                  <td
+                    onClick={(e) => e.stopPropagation()}
+                    className="px-6 py-2.5 whitespace-nowrap"
+                  >
                     <ActionButtons invoice={invoice} activeTab={activeTab} onDelete={onDelete} />
                   </td>
 
                   {/* Floating Actions - Sticky to viewport right edge, only visible when Actions column is scrolled out of view */}
                   {!isActionsColumnVisible && (
-                    <td className="sticky right-0 px-4 py-2.5 bg-white rounded-l-lg shadow-[0_0_15px_rgba(0,0,0,0.08)] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto z-20">
+                    <td
+                      onClick={(e) => e.stopPropagation()}
+                      className="sticky right-0 px-4 py-2.5 bg-white rounded-l-lg shadow-[0_0_15px_rgba(0,0,0,0.08)] opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none group-hover:pointer-events-auto z-20"
+                    >
                       <div className="flex items-center">
                         <ActionButtons invoice={invoice} activeTab={activeTab} onDelete={onDelete} />
                       </div>

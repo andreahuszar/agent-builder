@@ -623,7 +623,7 @@ export function LineItemsPreviewPanel({
                       <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
                       <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
                       {!useDetailedVarianceColumns && (
-                        <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
+                        <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Variance</th>
                       )}
                       {isEditMode && (
                         <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase w-32">Actions</th>
@@ -1179,7 +1179,7 @@ export function LineItemsPreviewPanel({
                     <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
                     <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
                     {poLines.length > 0 && (
-                      <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Delta</th>
+                      <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Variance</th>
                     )}
                     <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase w-16"></th>
                   </tr>

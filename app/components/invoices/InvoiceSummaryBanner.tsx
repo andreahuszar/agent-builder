@@ -39,9 +39,10 @@ export function InvoiceSummaryBanner({
   // Calculate variance
   const variance = poTotal ? invoiceTotal - poTotal : null;
   const variancePercent = poTotal ? (variance! / poTotal) * 100 : null;
-  
+
   // Determine if approval is needed
-  const needsApproval = requiresApproval || invoiceTotal > approvalLimit;
+  // Skip approval limit check for PO-backed invoices (PO serves as approval)
+  const needsApproval = !poNumber && (requiresApproval || invoiceTotal > approvalLimit);
 
   // Get variance status
   const getVarianceStatus = () => {

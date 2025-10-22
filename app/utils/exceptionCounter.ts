@@ -89,7 +89,17 @@ export function calculateInvoiceExceptions(
     });
   }
 
-  // 2. Check vendor verification status
+  // 2. Check for missing invoice number
+  if (!invoiceData?.invoice_number || invoiceData.invoice_number.trim() === '') {
+    exceptions.push({
+      severity: 'error',
+      message: 'Missing invoice number',
+      type: 'missing_invoice_number',
+      field: 'invoice_number',
+    });
+  }
+
+  // 3. Check vendor verification status
   if (invoiceData?.vendor_is_verified === false) {
     exceptions.push({
       severity: 'error',
@@ -100,7 +110,7 @@ export function calculateInvoiceExceptions(
     });
   }
 
-  // 3. Check for missing vendor tax ID
+  // 4. Check for missing vendor tax ID
   if (!invoiceData?.vendor_tax_id_snapshot || invoiceData.vendor_tax_id_snapshot === 'N/A') {
     exceptions.push({
       severity: 'error',
@@ -110,7 +120,7 @@ export function calculateInvoiceExceptions(
     });
   }
 
-  // 4. Check PO status
+  // 5. Check PO status
   const hasPO = invoiceData?.po_numbers_cached && invoiceData.po_numbers_cached.length > 0;
   const requiresPO = invoiceData?.vendor_requires_po !== false;
 
@@ -124,41 +134,12 @@ export function calculateInvoiceExceptions(
     });
   }
 
-  // 5. Check GR/SES receipt status
-  const hasGR = matchResults.some((mr: any) => mr.matched_gr_line_id);
-  const hasSES = matchResults.some((mr: any) => mr.matched_ses_line_id);
-  const hasPartialReceipt = matchResults.some((mr: any) =>
-    mr.explanation_code === 'PARTIAL_RECEIPT' ||
-    (mr.gr_qty_received && mr.po_qty_ordered && mr.gr_qty_received < mr.po_qty_ordered)
-  );
-
-  if (hasPO && !hasGR && !hasSES) {
-    exceptions.push({
-      severity: 'warning',
-      message: 'No GR/SES receipt',
-      type: 'no_receipt',
-    });
-  } else if (hasPartialReceipt) {
-    const receiptType = hasGR ? 'GR' : 'SES';
-    // Try to get actual numbers from match results
-    const partialMatch = matchResults.find((mr: any) => mr.gr_qty_received && mr.po_qty_ordered);
-    const context = partialMatch
-      ? `${partialMatch.gr_qty_received}/${partialMatch.po_qty_ordered} units received`
-      : undefined;
-
-    exceptions.push({
-      severity: 'warning',
-      message: `Partial ${receiptType} receipt`,
-      context,
-      type: 'partial_receipt',
-    });
-  }
-
-  // 6. Check approval limit (only for non-approved invoices)
+  // 6. Check approval limit (only for non-approved, non-PO invoices)
+  // Note: PO-backed invoices already have approval workflow through PO approval process
   const approvedStatuses = ['approved', 'paid', 'completed', 'closed', 'ready_for_payment', 'approved_ready_for_payment'];
   const isAlreadyApproved = invoiceData?.status && approvedStatuses.includes(invoiceData.status.toLowerCase());
 
-  if (invoiceData?.total && invoiceData.total > approvalLimit && !isAlreadyApproved) {
+  if (invoiceData?.total && invoiceData.total > approvalLimit && !isAlreadyApproved && !hasPO) {
     const formatter = new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: invoiceData.currency || 'USD',
@@ -223,12 +204,22 @@ export function shouldShowExceptionPanel(
   invoiceData: any,
   exceptionResult: ExceptionResult
 ): boolean {
-  // Don't show if invoice is fully matched
+  // Check if invoice has validation errors (takes priority over match status)
+  // Validation errors include: status='needs_info' or missing critical fields
+  const hasValidationErrors =
+    invoiceData?.status === 'needs_info' ||
+    !invoiceData?.invoice_number;  // Missing invoice number is a critical validation error
+
+  // Always show panel if there are validation errors, regardless of match_status
+  // This ensures invoices with validation errors always display the exception panel
+  if (hasValidationErrors) return true;
+
+  // Don't show if invoice is fully matched (and no validation errors)
   const isMatched = invoiceData?.match_status?.toLowerCase() === 'matched' ||
                     invoiceData?.status?.toLowerCase() === 'matched';
 
   if (isMatched) return false;
 
-  // Show if there are any exceptions
+  // Show if there are any other exceptions
   return exceptionResult.hasExceptions;
 }

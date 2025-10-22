@@ -188,10 +188,11 @@ const ISSUE_TYPES: Record<string, { severity: 'critical' | 'warning' | 'info', o
 
 // Exception categories for organized display
 const EXCEPTION_CATEGORIES = {
-  'Missing Fields': {
-    label: 'Missing Fields',
+  'Missing Field': {
+    label: 'Missing Field',
     isCategory: true,
     items: [
+      'Missing Invoice Number',
       'Missing Vendor',
       'Missing Date',
       'Missing Currency',
@@ -253,6 +254,7 @@ const EXCEPTION_CATEGORIES = {
 const formatExceptionCode = (issue: string): string => {
   const exceptionCodes: { [key: string]: string } = {
     // 100 series: Missing Fields
+    'Missing Invoice Number': '[100]',
     'Missing Vendor': '[101]',
     'Missing Date': '[102]',
     'Missing Currency': '[103]',
@@ -864,7 +866,7 @@ export default function EnhancedInvoicesClient({
   const [exceptionFilterOpen, setExceptionFilterOpen] = useState(false);
   const [exceptionSearchQuery, setExceptionSearchQuery] = useState('');
   const [collapsedCategories, setCollapsedCategories] = useState<Set<string>>(
-    new Set(['Missing Fields', 'Missing PO', 'Line Items Mismatch', 'Header Level', 'Validation'])
+    new Set(['Missing Field', 'Missing PO', 'Line Items Mismatch', 'Header Level', 'Validation'])
   );
 
   // Filter by specific invoice IDs (used for Quick Fixes "Show in table")
@@ -1057,6 +1059,7 @@ export default function EnhancedInvoicesClient({
       invoiceTypeFilter === 'po' ? inv.type === 'PO' : invoiceTypeFilter === 'non-po' ? inv.type === 'Non-PO' : true
     );
     needsInfoInvoices.forEach(invoice => {
+      if (!invoice.invoice_number) issues.add('Missing Invoice Number');
       if (!invoice.vendor_name_snapshot) issues.add('Missing Vendor');
       if (!invoice.invoice_date) issues.add('Missing Date');
       if (!invoice.currency) issues.add('Missing Currency');
@@ -1080,14 +1083,14 @@ export default function EnhancedInvoicesClient({
 
   // Unified exceptions list - combines missing fields + validation exceptions
   const unifiedExceptions = useMemo(() => {
-    if (activeTab === 'exceptions') {
+    if (activeTab === 'exceptions' || exceptionNavigationMode) {
       // Combine uniqueIssues (missing fields) + uniqueExceptions (validation)
       const combined = new Set([...uniqueIssues, ...uniqueExceptions]);
       return Array.from(combined).sort();
     }
     // For other tabs, just use uniqueExceptions
     return uniqueExceptions;
-  }, [activeTab, uniqueIssues, uniqueExceptions]);
+  }, [activeTab, uniqueIssues, uniqueExceptions, exceptionNavigationMode]);
 
   // Ensure "Missing PO" isn't applied as a filter in Non-PO view
   useEffect(() => {
@@ -1156,8 +1159,8 @@ export default function EnhancedInvoicesClient({
         return;
       }
 
-      // Skip "Missing Fields" category for non-exceptions tabs
-      if (categoryKey === 'Missing Fields' && activeTab !== 'exceptions') {
+      // Skip "Missing Field" category for non-exceptions tabs (but show in exception navigation mode)
+      if (categoryKey === 'Missing Field' && activeTab !== 'exceptions' && !exceptionNavigationMode) {
         return;
       }
 
@@ -1189,7 +1192,7 @@ export default function EnhancedInvoicesClient({
     });
 
     return result;
-  }, [unifiedExceptions, exceptionSearchQuery, invoiceTypeFilter, activeTab]);
+  }, [unifiedExceptions, exceptionSearchQuery, invoiceTypeFilter, activeTab, exceptionNavigationMode]);
 
   // Handle exception filter changes
   const handleExceptionToggle = (exception: string) => {
@@ -1285,7 +1288,7 @@ export default function EnhancedInvoicesClient({
     });
 
     // Set collapsed to only those without matches
-    const allCategories = new Set(['Missing Fields', 'Missing PO', 'Line Items Mismatch', 'Header Level', 'Validation']);
+    const allCategories = new Set(['Missing Field', 'Missing PO', 'Line Items Mismatch', 'Header Level', 'Validation']);
     categoriesToExpand.forEach(cat => allCategories.delete(cat));
     setCollapsedCategories(allCategories);
   }, [exceptionSearchQuery, unifiedExceptions]);
@@ -1305,18 +1308,10 @@ export default function EnhancedInvoicesClient({
   };
 
   const handleMissingFieldsClick = () => {
-    // Clear other filters and set only the critical Missing Fields that the metric counts
-    // These match the fields checked in missingFieldsInvoices calculation (lines 1670-1676)
+    // Clear other filters and set Missing Field filter
     clearExceptionFilter();
     setActiveQuickFilters(new Set()); // Also clear quick filters
-    const criticalFields = new Set([
-      'Missing Vendor',
-      'Missing Date',
-      'Missing Currency',
-      'Missing Amount',
-      'Missing Vendor ID'
-    ]);
-    setSelectedExceptions(criticalFields);
+    setSelectedExceptions(new Set(['Missing Field']));
   };
 
   const handleDueSoonClick = () => {
@@ -1412,25 +1407,55 @@ export default function EnhancedInvoicesClient({
 
     // Apply exception/issues filter
     if (selectedExceptions.size > 0) {
-      if (activeTab === 'exceptions') {
-        // Filter by missing fields AND exceptions in exceptions tab
+      if (activeTab === 'exceptions' || exceptionNavigationMode) {
+        // Filter by missing fields AND exceptions in exceptions tab or exception navigation mode
         filtered = filtered.filter(invoice => {
-          const missingFields: string[] = [];
-          if (!invoice.vendor_name_snapshot) missingFields.push('Missing Vendor');
-          if (!invoice.invoice_date) missingFields.push('Missing Date');
-          if (!invoice.currency) missingFields.push('Missing Currency');
-          if (!invoice.total || invoice.total === 0) missingFields.push('Missing Amount');
-          if (!invoice.vendor_id) missingFields.push('Missing Vendor ID');
-          if (!invoice.vendor_tax_id_snapshot) missingFields.push('Missing Vendor Tax ID');
-          if (!invoice.vendor_address_snapshot) missingFields.push('Missing Vendor Address');
-          if (!invoice.payment_method) missingFields.push('Missing Payment Method');
-          if (!invoice.payment_bank_details) missingFields.push('Missing Bank Account');
-          if (invoice.tax_rate_percent == null) missingFields.push('Missing Tax Code');
-          const hasLines = (invoice.lines && invoice.lines.length > 0) || (invoice.invoice_lines && invoice.invoice_lines.length > 0);
-          if (!hasLines) missingFields.push('Missing Line Items');
-          if (invoice.vendor_requires_po && (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0)) missingFields.push('Missing PO');
+          // Use boolean flag to accumulate matching conditions (OR logic)
+          let matchesFilter = false;
 
-          return missingFields.some(field => selectedExceptions.has(field));
+          // Check if parent "Missing Field" category is selected
+          // If parent is selected, show ANY invoice with ANY missing critical field
+          if (selectedExceptions.has('Missing Field')) {
+            const hasMissingFields = (
+              !invoice.invoice_number ||
+              !invoice.vendor_name_snapshot ||
+              !invoice.invoice_date ||
+              !invoice.currency ||
+              !(Number(invoice.total || 0) > 0) ||
+              !invoice.vendor_id
+            );
+            if (hasMissingFields) matchesFilter = true;
+          }
+
+          // Check for specific missing field sub-filters
+          // These provide granular filtering - only show invoices missing the SPECIFIC field
+          if (selectedExceptions.has('Missing Invoice Number') && !invoice.invoice_number) matchesFilter = true;
+          if (selectedExceptions.has('Missing Vendor') && !invoice.vendor_name_snapshot) matchesFilter = true;
+          if (selectedExceptions.has('Missing Date') && !invoice.invoice_date) matchesFilter = true;
+          if (selectedExceptions.has('Missing Currency') && !invoice.currency) matchesFilter = true;
+          if (selectedExceptions.has('Missing Amount') && !(Number(invoice.total || 0) > 0)) matchesFilter = true;
+          if (selectedExceptions.has('Missing Vendor ID') && !invoice.vendor_id) matchesFilter = true;
+          if (selectedExceptions.has('Missing Vendor Tax ID') && !invoice.vendor_tax_id_snapshot) matchesFilter = true;
+          if (selectedExceptions.has('Missing Vendor Address') && !invoice.vendor_address_snapshot) matchesFilter = true;
+          if (selectedExceptions.has('Missing Payment Method') && !invoice.payment_method) matchesFilter = true;
+          if (selectedExceptions.has('Missing Bank Account') && !invoice.payment_bank_details) matchesFilter = true;
+          if (selectedExceptions.has('Missing Tax Code') && invoice.tax_rate_percent == null) matchesFilter = true;
+          const hasLines = (invoice.lines && invoice.lines.length > 0) || (invoice.invoice_lines && invoice.invoice_lines.length > 0);
+          if (selectedExceptions.has('Missing Line Items') && !hasLines) matchesFilter = true;
+
+          // Check if "Missing PO" is selected
+          if (selectedExceptions.has('Missing PO')) {
+            const isMissingPO = invoice.vendor_requires_po && (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0);
+            if (isMissingPO) matchesFilter = true;
+          }
+
+          // Check other validation exceptions from invoice.issues array
+          // This handles non-missing-field exceptions like "Tax Discrepancy", "Line Mismatch", etc.
+          if (invoice.issues && invoice.issues.some(issue => selectedExceptions.has(issue))) {
+            matchesFilter = true;
+          }
+
+          return matchesFilter;
         });
       } else {
         // Regular exception filtering for other tabs
@@ -1726,6 +1751,7 @@ export default function EnhancedInvoicesClient({
 
         // Now check for missing fields
         return (
+          !inv?.invoice_number ||
           !inv?.vendor_name_snapshot ||
           !inv?.invoice_date ||
           !inv?.currency ||
@@ -2254,21 +2280,13 @@ export default function EnhancedInvoicesClient({
           )}
 
           {/* Add Invoice Button */}
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setUploadDialogOpen(true)}
-                  className="p-1.5 bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-                >
-                  <Plus className="h-4 w-4" strokeWidth={2} />
-                </button>
-              </TooltipTrigger>
-              <TooltipContent side="bottom">
-                Add Invoice
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <button
+            onClick={() => setUploadDialogOpen(true)}
+            className="px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
+          >
+            <Plus className="h-4 w-4" strokeWidth={2} />
+            Add Invoice
+          </button>
         </div>
       </div>
 

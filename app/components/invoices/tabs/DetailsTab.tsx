@@ -305,14 +305,14 @@ export function DetailsTab({
           onClick={() => setEditingField(fieldName)}
           title="Click to edit"
         >
-          {fieldValue || 'Not provided'}
+          {fieldValue || 'Not found'}
         </p>
       );
     }
 
     return (
       <p className={getReadOnlyFieldClass(fieldName)}>
-        {fieldValue || 'Not provided'}
+        {fieldValue || 'Not found'}
       </p>
     );
   };
@@ -632,7 +632,7 @@ export function DetailsTab({
                   />
                 ) : (
                   <div className="flex items-center gap-2">
-                    <p className={getReadOnlyFieldClass('due_date')}>{formatDate(invoiceData.due_date) || 'Not provided'}</p>
+                    <p className={getReadOnlyFieldClass('due_date')}>{formatDate(invoiceData.due_date) || 'Not found'}</p>
                     {(() => {
                       const aging = getAgingInfo(invoiceData.due_date);
                       return aging ? (

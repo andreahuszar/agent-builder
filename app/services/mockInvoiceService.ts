@@ -70,7 +70,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
 
   mockInvoices.push({
     id: 'baseline-po-1',
-    invoice_number: 'TS-2025-000001',
+    invoice_number: '',
     vendor_name_snapshot: 'TechSupply Solutions Ltd',
     vendor_id: 'VND-1001',
     invoice_date: baselinePODate.toISOString().split('T')[0],
@@ -81,7 +81,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_rate_percent: 20,
     total: baselinePOTotal,
     status: 'needs_info', // Exception status to appear in PO tab
-    match_status: 'pending',
+    match_status: 'matched', // Perfect 2-way PO match
     type: 'PO',
     vendor_requires_po: true,
     vendor_is_verified: true,
@@ -89,6 +89,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     po_numbers_cached: ['PO-2025-9001'],
     gr_numbers: [],
     docType: 'Invoice',
+    issues: ['Missing Field'],
     created_at: baselinePODate.toISOString(),
     updated_at: baselinePODate.toISOString(),
     data_ingestion_date: baselinePODate.toISOString().split('T')[0],
@@ -260,11 +261,17 @@ export const isMockInvoice = (id: string): boolean => {
 
 /**
  * Get all mock invoices (currently just 3 baseline invoices)
+ * NOTE: All invoices are transformed through transformToFullInvoice to ensure
+ * vendor snapshot fields, payment fields, and other enriched data are populated
  */
 export const getAllMockInvoices = (): Invoice[] => {
   const allMocks = generateBaselineInvoices();
   console.log('[MockService] Total mock invoices:', allMocks.length);
-  return allMocks;
+
+  // Transform each invoice to ensure all fields are properly enriched
+  const enrichedMocks = allMocks.map(invoice => transformToFullInvoice(invoice));
+
+  return enrichedMocks;
 };
 
 /**

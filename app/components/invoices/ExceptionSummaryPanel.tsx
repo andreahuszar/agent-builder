@@ -32,14 +32,8 @@ export function ExceptionSummaryPanel({
 
   const exceptionsCount = exceptions.length;
 
-  // Check if invoice is matched (fully processed)
-  const isMatched = invoiceData?.match_status?.toLowerCase() === 'matched' ||
-                    invoiceData?.status?.toLowerCase() === 'matched';
-
-  // Hide exception panel if invoice is matched OR there are no exceptions
-  if (isMatched || exceptionsCount === 0) {
-    return null;
-  }
+  // Note: The decision to show/hide this panel is made by the parent component (PreviewTab)
+  // using shouldShowExceptionPanel(). This component should not duplicate that logic.
 
   const getIcon = (severity: string) => {
     switch (severity) {
@@ -160,10 +154,10 @@ export function ExceptionSummaryPanel({
 
       {/* Exception List */}
       <div className="flex-1 overflow-y-auto px-4 py-3">
-        <div className="space-y-2.5">
+        <div className="space-y-2.5 pb-2">
           {exceptions.map((exception, index) => (
-            <div key={`${exception.type}-${index}`} className="flex items-start gap-2.5">
-              <div className="flex-shrink-0 mt-0.5">
+            <div key={`${exception.type}-${index}`} className="flex items-center gap-2.5">
+              <div className="flex-shrink-0">
                 {getIcon(exception.severity)}
               </div>
               <div className="flex-1 min-w-0">
