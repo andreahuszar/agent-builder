@@ -400,6 +400,95 @@ class SyncUtils {
   }
 
   /**
+   * Extract complete schema from database
+   */
+  static async extractSchema(dbConfig) {
+    try {
+      // Extract enums
+      const enumsQuery = `
+        SELECT t.typname as enum_name,
+               array_agg(e.enumlabel ORDER BY e.enumsortorder) as enum_values
+        FROM pg_type t
+        JOIN pg_enum e ON t.oid = e.enumtypid
+        JOIN pg_catalog.pg_namespace n ON n.oid = t.typnamespace
+        WHERE n.nspname = 'public'
+        GROUP BY t.typname
+        ORDER BY t.typname
+      `;
+
+      const enumsResult = await this.executeQuery(dbConfig, enumsQuery, true);
+      const enums = enumsResult.map(row => ({
+        name: row[0],
+        values: row[1].replace(/[{}]/g, '').split(',')
+      }));
+
+      // Extract tables
+      const tablesQuery = `
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
+          AND table_type = 'BASE TABLE'
+          AND table_name NOT LIKE '\\_prisma%'
+        ORDER BY table_name
+      `;
+
+      const tablesResult = await this.executeQuery(dbConfig, tablesQuery, true);
+      const tables = [];
+
+      for (const row of tablesResult) {
+        const tableName = row[0];
+
+        // Get CREATE TABLE statement
+        const createStmt = await this.executeQuery(
+          dbConfig,
+          `SELECT 'CREATE TABLE ' || quote_ident(table_name) || ' (' ||
+           string_agg(column_definition, ', ') || ');' as create_statement
+           FROM (
+             SELECT table_name,
+                    quote_ident(column_name) || ' ' ||
+                    CASE
+                      WHEN data_type = 'USER-DEFINED' THEN udt_name
+                      WHEN data_type = 'ARRAY' THEN udt_name
+                      ELSE data_type
+                    END ||
+                    CASE
+                      WHEN character_maximum_length IS NOT NULL
+                        THEN '(' || character_maximum_length || ')'
+                      ELSE ''
+                    END ||
+                    CASE
+                      WHEN column_default IS NOT NULL
+                        THEN ' DEFAULT ' || column_default
+                      ELSE ''
+                    END ||
+                    CASE
+                      WHEN is_nullable = 'NO'
+                        THEN ' NOT NULL'
+                      ELSE ''
+                    END as column_definition
+             FROM information_schema.columns
+             WHERE table_schema = 'public'
+               AND table_name = '${tableName}'
+             ORDER BY ordinal_position
+           ) sub
+           GROUP BY table_name`
+        );
+
+        tables.push({
+          name: tableName,
+          createStatement: createStmt
+        });
+      }
+
+      return { enums, tables };
+
+    } catch (error) {
+      console.error('Error extracting schema:', error.message);
+      throw error;
+    }
+  }
+
+  /**
    * Full table copy with ID preservation and clean slate option
    */
   static async fullTableCopy(sourceDb, targetDb, tableName, options = {}) {

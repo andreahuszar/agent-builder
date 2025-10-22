@@ -127,18 +127,24 @@ async function syncSchema() {
     if (schema.enums && schema.enums.length > 0) {
       for (const enumDef of schema.enums) {
         try {
-          const createEnum = `
-            DO $$ BEGIN
-              CREATE TYPE ${enumDef.name} AS ENUM (${enumDef.values.map(v => `'${v}'`).join(', ')});
-            EXCEPTION
-              WHEN duplicate_object THEN null;
-            END $$;
-          `;
+          // Check if enum already exists
+          const checkEnum = `SELECT EXISTS (SELECT 1 FROM pg_type WHERE typname = '${enumDef.name}')`;
+          const exists = await SyncUtils.executeQuery(DEMO_DB, checkEnum);
+
+          if (exists.includes('t')) {
+            console.log(`  ⚠️  Enum ${enumDef.name} already exists`);
+            continue;
+          }
+
+          const createEnum = `CREATE TYPE ${enumDef.name} AS ENUM (${enumDef.values.map(v => `'${v}'`).join(', ')})`;
           await SyncUtils.executeQuery(DEMO_DB, createEnum);
           console.log(`  ✅ Created enum: ${enumDef.name}`);
         } catch (error) {
-          if (options.verbose) {
-            console.log(`  ⚠️  Enum ${enumDef.name} might already exist: ${error.message}`);
+          if (error.message.includes('already exists')) {
+            console.log(`  ⚠️  Enum ${enumDef.name} already exists`);
+          } else {
+            console.error(`  ❌ Failed to create enum ${enumDef.name}:`, error.message);
+            if (!options.force) throw error;
           }
         }
       }

@@ -61,14 +61,7 @@ import {
 } from '@/app/components/ui/dropdown-menu';
 import { Checkbox } from '@/app/components/ui/checkbox';
 import {
-  generateMockNeedsInfoInvoices,
-  generateMockBlockedInvoices,
-  generateMockOverdueInvoices,
-  generateMockDueSoonInvoices,
-  generateMockCreditNotes,
-  generateMockProFormaInvoices,
-  generateMockInApprovalInvoices,
-  generateMockArchivedInvoices,
+  getAllMockInvoices,
   isMockInvoice,
 } from '@/app/services/mockInvoiceService';
 import { enrichInvoiceWithDemoData } from '@/app/services/invoiceDataService';
@@ -484,9 +477,13 @@ export default function EnhancedInvoicesClient({
       console.log('[LoadInvoices] Starting to load invoices...');
       console.log('[LoadInvoices] exceptionNavigationMode:', exceptionNavigationMode);
 
+      // DEMO MODE: Database invoices suppressed - using mock data only
+      // This allows clean baseline for building demo scenarios incrementally
       let dbInvoices: Invoice[] = [];
 
-      // Fetch database invoices
+      // Database fetch disabled for demo mode
+      // Uncomment the section below to re-enable database + mock hybrid mode
+      /*
       try {
         console.log('[LoadInvoices] Attempting to fetch database invoices...');
         const response = await fetch('/api/invoices');
@@ -503,24 +500,14 @@ export default function EnhancedInvoicesClient({
         }
       } catch (error) {
         console.log('[LoadInvoices] Failed to fetch database invoices (continuing with mock data):', error);
-        // Continue with mock-only mode
       }
+      */
 
-      console.log('[LoadInvoices] Generating mock invoices...');
+      console.log('[LoadInvoices] DEMO MODE: Using mock invoices only (database suppressed)');
 
       // Generate mock invoices (already enriched by generators)
-      // In exception navigation mode, only include invoices with exception statuses
-      // Overdue and Due Soon invoices are payment timing metrics, not exceptions
-      const mockInvoices = [
-        ...generateMockNeedsInfoInvoices(),
-        ...(exceptionNavigationMode ? [] : generateMockOverdueInvoices()), // Only in original mode
-        ...(exceptionNavigationMode ? [] : generateMockDueSoonInvoices()), // Only in original mode
-        ...generateMockBlockedInvoices(),
-        ...generateMockCreditNotes(),
-        ...generateMockProFormaInvoices(),
-        ...generateMockInApprovalInvoices(),
-        ...generateMockArchivedInvoices()
-      ].map(invoice => ({
+      // Get all mock invoices (currently 3 baseline invoices)
+      const mockInvoices = getAllMockInvoices().map(invoice => ({
         ...invoice,
         source: 'mock' as const,
         docType: invoice.docType || 'Invoice'
@@ -529,14 +516,10 @@ export default function EnhancedInvoicesClient({
       console.log('[LoadInvoices] Mock invoices generated:', mockInvoices.length);
       console.log('[LoadInvoices] Sample mock invoice:', mockInvoices[0]);
 
-      // Enrich database invoices using centralized service
-      // Mock invoices are already enriched by their generators
-      const enrichedDBInvoices = dbInvoices.map(enrichInvoiceWithDemoData);
+      // Use only mock invoices (database suppressed for demo)
+      const combinedInvoices = mockInvoices;
 
-      // Merge enriched database invoices with mock invoices
-      const combinedInvoices = [...enrichedDBInvoices, ...mockInvoices];
-
-      console.log(`[LoadInvoices] Total invoices: ${combinedInvoices.length} (${dbInvoices.length} DB + ${mockInvoices.length} mock)`);
+      console.log(`[LoadInvoices] Total invoices: ${combinedInvoices.length} (MOCK ONLY - DB suppressed for demo)`);
       console.log('[LoadInvoices] Setting invoices state...');
 
       setInvoices(combinedInvoices);
@@ -1527,15 +1510,8 @@ export default function EnhancedInvoicesClient({
     }
 
     // Generate mock invoices (already enriched by generators)
-    const mockInvoices = [
-      ...generateMockNeedsInfoInvoices(),
-      ...generateMockOverdueInvoices(),
-      ...generateMockDueSoonInvoices(),
-      ...generateMockBlockedInvoices(),
-      ...generateMockCreditNotes(),
-      ...generateMockProFormaInvoices(),
-      ...generateMockInApprovalInvoices()
-    ].map(invoice => ({
+    // Currently 3 baseline invoices
+    const mockInvoices = getAllMockInvoices().map(invoice => ({
       ...invoice,
       source: 'mock' as const,
       docType: invoice.docType || 'Invoice'
