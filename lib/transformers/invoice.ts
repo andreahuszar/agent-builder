@@ -1,16 +1,20 @@
 /**
  * Invoice Data Transformers
  * Handles conversion between database types and API response types
+ *
+ * REFACTORED: Now integrates with centralized enrichInvoiceWithDemoData
+ * to add demo/synthetic fields consistently
  */
 
 import { Prisma } from '@prisma/client';
-import type { 
-  InvoiceHeader, 
-  InvoiceLine, 
-  InvoiceWithLines, 
-  InvoiceListItem 
+import type {
+  InvoiceHeader,
+  InvoiceLine,
+  InvoiceWithLines,
+  InvoiceListItem
 } from '@/types/api';
 import type { InvoiceWithRelations } from '@/types/database';
+import { enrichInvoiceWithDemoData } from '@/app/services/invoiceDataService';
 
 /**
  * Convert Prisma Decimal to number
@@ -31,6 +35,7 @@ export function formatDate(date: Date | string | null | undefined): string {
 
 /**
  * Transform invoice header from database to API response
+ * Now includes enrichment with demo/synthetic data
  */
 export function transformInvoiceHeader(
   invoice: any,
@@ -38,8 +43,8 @@ export function transformInvoiceHeader(
   vendorBankAccounts?: any[]
 ): InvoiceHeader {
   const bankAccount = vendorBankAccounts?.[0];
-  
-  return {
+
+  const baseTransform = {
     id: invoice.id,
     invoice_number: invoice.invoice_number,
     vendor_name_snapshot: invoice.vendor_name_snapshot,
@@ -65,9 +70,12 @@ export function transformInvoiceHeader(
     vendor_approval_status: vendor?.active === false ? 'pending' : 'approved',
     bank_name: bankAccount?.bank_name || null,
     account_number_masked: bankAccount?.account_number_masked || null,
-    assigned_to_name: null, // This field doesn't exist in database
+    assigned_to_name: null, // Will be enriched
     ledger: 'Accounts Payable' // Default value
   };
+
+  // Apply demo data enrichment using centralized service
+  return enrichInvoiceWithDemoData(baseTransform);
 }
 
 /**

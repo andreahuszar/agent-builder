@@ -131,8 +131,8 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
   return (
     <Dialog.Root open={open} onOpenChange={onOpenChange}>
       <Dialog.Portal>
-        <Dialog.Overlay className="fixed inset-0 bg-black/50 animate-in fade-in-0" />
-        <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[500px] translate-x-[-50%] translate-y-[-50%] rounded-lg bg-white p-6 shadow-lg animate-in fade-in-0 zoom-in-95">
+        <Dialog.Overlay className="fixed inset-0 bg-black/50 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 z-50" />
+        <Dialog.Content className="fixed left-[50%] top-[50%] max-h-[85vh] w-[90vw] max-w-[500px] translate-x-[-50%] translate-y-[-50%] rounded-lg bg-white p-6 shadow-lg data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 z-[51]">
           <Dialog.Title className="text-lg font-semibold text-gray-950 mb-2">
             Upload Invoice
           </Dialog.Title>
@@ -140,17 +140,6 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
             Upload an invoice image or PDF to automatically extract and process the data.
           </Dialog.Description>
 
-          {/* What happens next section */}
-          <div className="bg-gray-50 rounded-lg p-4 mb-4">
-            <h3 className="text-sm font-semibold text-gray-950 mb-3">What happens next?</h3>
-            <ol className="space-y-2 text-sm text-gray-950">
-              <li>1. Your invoice will be processed using AI extraction</li>
-              <li>2. Invoice information will be automatically extracted including line items</li>
-              <li>3. You can review and edit the extracted information</li>
-              <li>4. Once approved, the invoice will be added to your system</li>
-            </ol>
-          </div>
-          
           <Dialog.Close className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-white transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
             <X className="h-4 w-4" />
             <span className="sr-only">Close</span>
@@ -161,8 +150,8 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
             {!file && (
               <div
                 className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                  dragActive 
-                    ? 'border-purple-500 bg-purple-50' 
+                  dragActive
+                    ? 'border-purple-500 bg-purple-50'
                     : 'border-gray-300 hover:border-gray-400'
                 }`}
                 onDrop={handleDrop}
@@ -192,6 +181,15 @@ export function UploadDialog({ open, onOpenChange, onUploadComplete }: UploadDia
                 />
               </div>
             )}
+
+            {/* What happens next section */}
+            <div className="bg-gray-50 rounded-lg p-4">
+              <h3 className="text-sm font-semibold text-gray-950 mb-3">What happens next?</h3>
+              <ol className="space-y-2 text-sm text-gray-950">
+                <li>1. Your invoice will be processed using AI extraction</li>
+                <li>2. Invoice information will be automatically extracted including line items</li>
+              </ol>
+            </div>
 
             {/* File Preview */}
             {file && !isLoading && (

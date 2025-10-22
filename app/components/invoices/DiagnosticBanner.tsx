@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
-import { Check, AlertTriangle, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { Check, AlertTriangle, X, ChevronDown, MessageSquare, FileCheck, FileText, Pause, Mail, Send, CheckCircle, Trash2, XCircle } from 'lucide-react';
 import { HelpdeskPill } from './HelpdeskPill';
+import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 interface DiagnosticBannerProps {
   total: number;
@@ -16,8 +17,15 @@ interface DiagnosticBannerProps {
   poTotal?: number | null;
   helpdeskTicketRef?: string | null;
   exceptionsCount?: number;
+  missingFieldsCount?: number;
+  lineItemsErrorCount?: number;
   validationWarnings?: any[];
   className?: string;
+  showSaveButton?: boolean;
+  onSaveClick?: () => void;
+  isSaving?: boolean;
+  onCommentsClick?: () => void;
+  commentsCount?: number;
 }
 
 export function DiagnosticBanner({
@@ -32,9 +40,20 @@ export function DiagnosticBanner({
   poTotal,
   helpdeskTicketRef,
   exceptionsCount = 0,
+  missingFieldsCount = 0,
+  lineItemsErrorCount = 0,
   validationWarnings = [],
   className = '',
+  showSaveButton = false,
+  onSaveClick,
+  isSaving = false,
+  onCommentsClick,
+  commentsCount = 0,
 }: DiagnosticBannerProps) {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
+  const [rejectMessage, setRejectMessage] = useState('');
+
   // Format currency in compact form
   const formatCompactCurrency = (amount: number) => {
     if (amount >= 1000000) {
@@ -111,12 +130,12 @@ export function DiagnosticBanner({
         {/* PO Status */}
         <div className={`
           inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-          ${poNumber === 'PO Missing' || poNumber === '"PO Missing"' 
+          ${poNumber === 'PO Missing' || poNumber === '"PO Missing"'
             ? 'bg-red-50 text-red-700'
             : poNumber === 'N/A' || poNumber === '"N/A"'
-              ? 'bg-green-50 text-green-700'  // Green for legitimate Non-PO
-              : poNumber 
-                ? 'bg-green-50 text-green-700' 
+              ? 'bg-gray-100 text-gray-700'  // Gray for Non-PO (neutral, like No GR/SES)
+              : poNumber
+                ? 'bg-green-50 text-green-700'
                 : 'bg-red-50 text-red-700'}
         `}>
           {poNumber === 'PO Missing' || poNumber === '"PO Missing"' ? (
@@ -126,7 +145,7 @@ export function DiagnosticBanner({
             </>
           ) : poNumber === 'N/A' || poNumber === '"N/A"' ? (
             <>
-              <Check className="h-3 w-3" />  {/* Checkmark for legitimate Non-PO */}
+              <X className="h-3 w-3" />  {/* X icon for Non-PO (matches No GR/SES styling) */}
               <span>Non-PO</span>
             </>
           ) : poNumber ? (
@@ -142,17 +161,19 @@ export function DiagnosticBanner({
           )}
         </div>
 
-        {/* Receipt Status */}
-        <div className={`
-          inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-          ${receiptStatus.bgColor} ${receiptStatus.color}
-        `}>
-          <ReceiptIcon className="h-3 w-3" />
-          <span>{receiptStatus.label}</span>
-        </div>
+        {/* Receipt Status - HIDDEN FOR NOW (will decide later) */}
+        {false && (
+          <div className={`
+            inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
+            ${receiptStatus.bgColor} ${receiptStatus.color}
+          `}>
+            <ReceiptIcon className="h-3 w-3" />
+            <span>{receiptStatus.label}</span>
+          </div>
+        )}
 
-        {/* Variance Indicator - Only show for PO-based invoices */}
-        {poNumber && poNumber !== 'N/A' && poNumber !== '"N/A"' && varianceInfo && (
+        {/* Variance Indicator - HIDDEN FOR NOW (will decide later) */}
+        {false && poNumber && poNumber !== 'N/A' && poNumber !== '"N/A"' && varianceInfo && (
           <div className={`
             inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
             ${varianceInfo.isPerfectMatch
@@ -179,11 +200,22 @@ export function DiagnosticBanner({
           </div>
         )}
 
-        {/* Exceptions Count - Show when there are exceptions */}
-        {exceptionsCount > 0 && (
+        {/* Exceptions Count - Show contextual message based on error types */}
+        {(missingFieldsCount > 0 || lineItemsErrorCount > 0) && (
           <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
             <AlertTriangle className="h-3 w-3" />
-            <span>{exceptionsCount} Exception{exceptionsCount !== 1 ? 's' : ''}</span>
+            <span>
+              {missingFieldsCount > 0 && lineItemsErrorCount > 0 ? (
+                // Both types of errors
+                `${missingFieldsCount} field${missingFieldsCount !== 1 ? 's' : ''} need${missingFieldsCount === 1 ? 's' : ''} attention, ${lineItemsErrorCount} line item${lineItemsErrorCount !== 1 ? 's' : ''} discrepancy`
+              ) : missingFieldsCount > 0 ? (
+                // Only missing fields
+                `${missingFieldsCount} field${missingFieldsCount !== 1 ? 's' : ''} need${missingFieldsCount === 1 ? 's' : ''} attention`
+              ) : (
+                // Only line items errors
+                `${lineItemsErrorCount} line item${lineItemsErrorCount !== 1 ? 's' : ''} discrepancy`
+              )}
+            </span>
           </div>
         )}
 
@@ -210,6 +242,145 @@ export function DiagnosticBanner({
           </>
         )}
       </div>
+
+      {/* Action Buttons for all invoices */}
+      <div className="ml-auto flex items-center gap-2">
+        <button
+          onClick={onSaveClick}
+          disabled={isSaving}
+          className="px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+        >
+          {isSaving ? 'Reprocessing...' : 'Reprocess'}
+        </button>
+
+        {/* Actions Dropdown */}
+        <div className="relative">
+          <button
+            onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+            className="px-3 py-1.5 text-sm bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
+          >
+            <span>Actions</span>
+            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Dropdown Menu */}
+          {isDropdownOpen && (
+            <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  // Handle on-hold action
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors rounded-t-md flex items-center gap-2"
+              >
+                <Pause className="h-4 w-4" />
+                <span>On-Hold</span>
+              </button>
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  setIsRejectModalOpen(true);
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+              >
+                <XCircle className="h-4 w-4" />
+                <span>Reject to Requisitioner</span>
+              </button>
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  // Handle email vendor action
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+              >
+                <Mail className="h-4 w-4" />
+                <span>Email Vendor</span>
+              </button>
+
+              <div className="border-t border-gray-200 my-1"></div>
+
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  // Handle post to ERP action
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+              >
+                <Send className="h-4 w-4" />
+                <span>Post to ERP</span>
+              </button>
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  // Handle resolve action
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+              >
+                <CheckCircle className="h-4 w-4" />
+                <span>Resolve</span>
+              </button>
+
+              <div className="border-t border-gray-200 my-1"></div>
+
+              <button
+                onClick={() => {
+                  setIsDropdownOpen(false);
+                  // Handle archive action
+                }}
+                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-red-50 hover:text-red-700 transition-colors rounded-b-md flex items-center gap-2 group"
+              >
+                <Trash2 className="h-4 w-4 group-hover:text-red-700" />
+                <span>Archive</span>
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Reject to Requisitioner Modal */}
+      {isRejectModalOpen && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold text-gray-950">Reject Invoice to Requisitioner</h3>
+            </div>
+            <div className="px-6 py-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Message to Requisitioner
+              </label>
+              <textarea
+                value={rejectMessage}
+                onChange={(e) => setRejectMessage(e.target.value)}
+                placeholder="Enter your rejection reason and instructions..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent resize-none"
+                rows={4}
+              />
+            </div>
+            <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-2">
+              <button
+                onClick={() => {
+                  setIsRejectModalOpen(false);
+                  setRejectMessage('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  // Fake send action
+                  console.log('Rejecting invoice with message:', rejectMessage);
+                  setIsRejectModalOpen(false);
+                  setRejectMessage('');
+                }}
+                className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 transition-colors"
+              >
+                Send Rejection
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

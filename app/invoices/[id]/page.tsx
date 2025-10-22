@@ -4,6 +4,7 @@ import { InvoiceDetailClient } from '@/app/invoices/[id]/InvoiceDetailClient';
 import { SelectionProvider } from '@/app/context/SelectionContext';
 import { InvoicePageWrapper } from './InvoicePageWrapper';
 import prisma from '@/lib/db/prisma';
+import { isMockInvoice, getMockInvoiceById } from '@/app/services/mockInvoiceService';
 
 interface InvoiceDetailPageProps {
   params: Promise<{
@@ -142,6 +143,7 @@ async function getInvoiceDataPrisma(id: string) {
         } : null),
       // Include lines in the invoice object
       lines: lines,
+      invoice_lines: lines, // Add both properties for compatibility
       poTotal: poTotal,
       // Include validation warnings from database
       validation_warnings: invoiceHeader.validation_warnings as any || null,
@@ -165,7 +167,113 @@ async function getInvoiceDataPrisma(id: string) {
 }
 
 async function getInvoiceData(id: string) {
-  return await getInvoiceDataPrisma(id);
+  console.log('[InvoiceDetailPage] Getting invoice data for ID:', id);
+
+  // Force mock data usage if environment variable is set
+  const forceMockData = process.env.USE_MOCK_DATA !== 'false';
+  const isDebugMode = process.env.DEBUG_MOCK === 'true';
+
+  if (isDebugMode) {
+    console.log('[InvoiceDetailPage] Force mock data:', forceMockData);
+    console.log('[InvoiceDetailPage] Environment USE_MOCK_DATA:', process.env.USE_MOCK_DATA);
+  }
+
+  try {
+    // Check if this is a mock invoice first
+    const isMock = isMockInvoice(id);
+    console.log('[InvoiceDetailPage] Is mock invoice:', isMock);
+
+    if (isMock) {
+      console.log('[InvoiceDetailPage] Fetching mock invoice:', id);
+      const mockInvoice = getMockInvoiceById(id);
+      if (mockInvoice) {
+        console.log('[InvoiceDetailPage] Mock invoice found:', mockInvoice.invoice_number);
+        // Transform mock invoice to match expected format
+        return {
+          ...mockInvoice,
+          // Ensure date formats match what the component expects
+          invoice_date: mockInvoice.invoice_date || 'Date not provided',
+          due_date: mockInvoice.due_date,
+          created_at: mockInvoice.created_at || new Date().toISOString(),
+          // Add any missing fields with appropriate defaults
+          vendor_approval_status: 'approved',
+          bank_name: null,
+          account_number_masked: null,
+          lines: mockInvoice.lines || [],
+          invoice_lines: mockInvoice.invoice_lines || mockInvoice.lines || [],
+          attachments: mockInvoice.attachments || []
+        };
+      } else {
+        console.log('[InvoiceDetailPage] Mock invoice not found in mock data');
+        return null;
+      }
+    }
+
+    // If forcing mock data and this doesn't look like a mock ID, check if it's a mock pattern anyway
+    if (forceMockData) {
+      const mockPrefixes = ['needs-info-', 'blocked-', 'mock-', 'due-', 'cn-', 'pf-', 'approval-'];
+      const looksLikeMock = mockPrefixes.some(prefix => id.startsWith(prefix));
+
+      if (looksLikeMock) {
+        console.log('[InvoiceDetailPage] ID looks like mock but isMockInvoice returned false, trying fallback');
+        const mockInvoice = getMockInvoiceById(id);
+        if (mockInvoice) {
+          console.log('[InvoiceDetailPage] Fallback mock invoice found:', mockInvoice.invoice_number);
+          return {
+            ...mockInvoice,
+            invoice_date: mockInvoice.invoice_date || 'Date not provided',
+            due_date: mockInvoice.due_date,
+            created_at: mockInvoice.created_at || new Date().toISOString(),
+            vendor_approval_status: 'approved',
+            bank_name: null,
+            account_number_masked: null,
+            lines: mockInvoice.lines || [],
+            invoice_lines: mockInvoice.invoice_lines || mockInvoice.lines || [],
+            attachments: mockInvoice.attachments || []
+          };
+        }
+      }
+    }
+
+    console.log('[InvoiceDetailPage] Trying database query for ID:', id);
+    // Otherwise fetch from database
+    return await getInvoiceDataPrisma(id);
+  } catch (error) {
+    console.error('[InvoiceDetailPage] Error getting invoice data:', error);
+
+    // If database query failed with UUID error and this looks like a mock ID, try mock fallback
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    if (errorMessage.includes('UUID') || errorMessage.includes('invalid character')) {
+      const mockPrefixes = ['needs-info-', 'blocked-', 'mock-', 'due-', 'cn-', 'pf-', 'approval-'];
+      const looksLikeMock = mockPrefixes.some(prefix => id.startsWith(prefix));
+
+      if (looksLikeMock) {
+        console.log('[InvoiceDetailPage] Database UUID error for mock-like ID, trying mock fallback');
+        try {
+          const mockInvoice = getMockInvoiceById(id);
+          if (mockInvoice) {
+            console.log('[InvoiceDetailPage] UUID error fallback successful:', mockInvoice.invoice_number);
+            return {
+              ...mockInvoice,
+              invoice_date: mockInvoice.invoice_date || 'Date not provided',
+              due_date: mockInvoice.due_date,
+              created_at: mockInvoice.created_at || new Date().toISOString(),
+              vendor_approval_status: 'approved',
+              bank_name: null,
+              account_number_masked: null,
+              lines: mockInvoice.lines || [],
+              invoice_lines: mockInvoice.invoice_lines || mockInvoice.lines || [],
+              attachments: mockInvoice.attachments || []
+            };
+          }
+        } catch (mockError) {
+          console.error('[InvoiceDetailPage] Mock fallback also failed:', mockError);
+        }
+      }
+    }
+
+    return null;
+  }
 }
 
 export default async function InvoiceDetailPage({ params }: InvoiceDetailPageProps) {

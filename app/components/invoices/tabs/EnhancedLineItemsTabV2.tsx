@@ -1,15 +1,20 @@
 'use client';
 
 import React, { useState } from 'react';
-import { 
-  Check, 
-  X, 
+import {
+  Check,
+  X,
   AlertTriangle,
   Eye,
   EyeOff,
   Package,
   Edit2,
-  Save
+  Save,
+  Copy,
+  GitBranch,
+  Trash2,
+  MoreVertical,
+  Link2
 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 
@@ -22,6 +27,9 @@ interface LineItem {
   unit_price: number;
   net_amount: number;
   line_total: number;
+  po_line_id?: string;
+  gr_line_id?: string;
+  ses_line_id?: string;
 }
 
 interface EnhancedLineItemsTabV2Props {
@@ -39,6 +47,7 @@ interface EnhancedLineItemsTabV2Props {
   invoiceShippingTotal?: number;
   invoiceDiscountTotal?: number;
   invoiceTotal?: number;
+  hideComparison?: boolean;
 }
 
 export function EnhancedLineItemsTabV2({
@@ -56,9 +65,47 @@ export function EnhancedLineItemsTabV2({
   invoiceShippingTotal,
   invoiceDiscountTotal,
   invoiceTotal,
+  hideComparison = false,
 }: EnhancedLineItemsTabV2Props) {
   const [showComparison, setShowComparison] = useState(false);
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
+  const [selectedLineForAction, setSelectedLineForAction] = useState<LineItem | null>(null);
+  const [splitModalOpen, setSplitModalOpen] = useState(false);
+  const [poLineSelectorOpen, setPOLineSelectorOpen] = useState(false);
+
+  // Action handlers
+  const handleSplitLine = (lineId: string) => {
+    const line = lines.find(l => l.id === lineId);
+    if (line) {
+      setSelectedLineForAction(line);
+      setSplitModalOpen(true);
+    }
+  };
+
+  const handleCopyLine = (line: LineItem) => {
+    const newLine = {
+      ...line,
+      id: undefined, // Will be generated
+      line_no: lines.length + 1,
+    };
+    onLinesUpdate?.([...lines, newLine]);
+  };
+
+  const handleDeleteLine = (lineId: string) => {
+    if (confirm('Are you sure you want to delete this line?')) {
+      onLinesUpdate?.(lines.filter(l => l.id !== lineId));
+    }
+  };
+
+  const handleMoreActions = (lineId: string) => {
+    // Placeholder for dropdown menu (future implementation)
+    console.log('More actions menu for line:', lineId);
+  };
+
+  const handleReassignPOLine = (line: LineItem) => {
+    setSelectedLineForAction(line);
+    setPOLineSelectorOpen(true);
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-US', {
@@ -160,8 +207,8 @@ export function EnhancedLineItemsTabV2({
   const discountAmount = invoiceDiscountTotal || 0;
   const total = invoiceTotal !== undefined ? invoiceTotal : calculatedSubtotal;
 
-  if (!showComparison) {
-    // Simple view without comparison
+  if (!showComparison || hideComparison) {
+    // Simple view without comparison (or when comparison is hidden)
     return (
       <div className="h-full flex flex-col bg-white">
         {/* Header */}
@@ -170,7 +217,7 @@ export function EnhancedLineItemsTabV2({
             <Package className="h-4 w-4 text-purple-600" />
             <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">LINE ITEMS</h3>
           </div>
-          {poComparisonData?.poData && (
+          {poComparisonData?.poData && !hideComparison && (
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-700">Comparing with PO</span>
               <button
@@ -196,9 +243,11 @@ export function EnhancedLineItemsTabV2({
                 onClick={() => onLineSelect?.(line.id || null)}
               >
                 <div className="flex items-start gap-4">
-                  <div className="pt-1">
-                    {getStatusBadge(comparison)}
-                  </div>
+                  {!hideComparison && (
+                    <div className="pt-1">
+                      {getStatusBadge(comparison)}
+                    </div>
+                  )}
                   
                   <div className="flex-1">
                     <h4 className="text-sm font-medium text-gray-950">{line.description}</h4>
@@ -271,27 +320,31 @@ export function EnhancedLineItemsTabV2({
           <Package className="h-4 w-4 text-purple-600" />
           <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">LINE ITEMS</h3>
         </div>
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-gray-600">Comparing with PO</span>
-          <button
-            onClick={() => setShowComparison(false)}
-            className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white rounded-full text-xs font-medium hover:bg-purple-700 transition-colors"
-          >
-            <Eye className="h-3.5 w-3.5" />
-            <span className="font-medium">{poComparisonData?.poData?.po_number}</span>
-          </button>
-        </div>
+        {!hideComparison && (
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-600">Comparing with PO</span>
+            <button
+              onClick={() => setShowComparison(false)}
+              className="inline-flex items-center gap-2 px-3 py-1.5 bg-purple-600 text-white rounded-full text-xs font-medium hover:bg-purple-700 transition-colors"
+            >
+              <Eye className="h-3.5 w-3.5" />
+              <span className="font-medium">{poComparisonData?.poData?.po_number}</span>
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Table Header */}
       <div className="px-4 py-2 bg-gray-100 border-b">
-        <div className="grid grid-cols-12 gap-2 text-xs font-medium text-gray-700">
+        <div className="grid grid-cols-24 gap-1 text-xs font-medium text-gray-700">
           <div className="col-span-2">Status</div>
-          <div className="col-span-3">Description</div>
-          <div className="col-span-2 text-center">Qty</div>
-          <div className="col-span-2 text-right">Unit Price</div>
-          <div className="col-span-2 text-right">Total</div>
-          <div className="col-span-1"></div>
+          <div className="col-span-4">Description</div>
+          <div className="col-span-3 text-center">Invoice Qty</div>
+          <div className="col-span-3 text-center">PO Qty</div>
+          <div className="col-span-3 text-right">Invoice Price</div>
+          <div className="col-span-3 text-right">PO Price</div>
+          <div className="col-span-3 text-right">Invoice Total</div>
+          <div className="col-span-3 text-right">PO Total</div>
         </div>
       </div>
 
@@ -301,79 +354,121 @@ export function EnhancedLineItemsTabV2({
         {lines.map((line) => {
           const comparison = getComparisonForLine(line.id || '');
           const po = comparison?.po;
-          
+
           return (
             <div
               key={line.id || line.line_no}
               className="px-4 py-3 border-b border-gray-100 hover:bg-gray-50"
             >
-              <div className="grid grid-cols-12 gap-2 items-center">
+              <div className="grid grid-cols-24 gap-1 items-center text-sm">
                 {/* Status */}
                 <div className="col-span-2">
                   {getStatusBadge(comparison)}
                 </div>
-                
+
                 {/* Description */}
-                <div className="col-span-3">
-                  <div className="text-sm font-medium text-gray-950">{line.description}</div>
+                <div className="col-span-4">
+                  <div className="text-sm font-medium text-gray-950 truncate" title={line.description}>
+                    {line.description}
+                  </div>
                   {po && po.description !== line.description && (
-                    <div className="text-xs text-purple-600 font-medium mt-0.5">PO: {po.description}</div>
-                  )}
-                </div>
-                
-                {/* Quantity */}
-                <div className="col-span-2 text-center">
-                  <div className="flex items-center justify-center">
-                    <span className="text-sm font-medium text-gray-950">
-                      {line.qty} {line.uom}
-                    </span>
-                    {po && getMatchIndicator(line.qty, po.qty_ordered)}
-                  </div>
-                  {po && Math.abs(line.qty - po.qty_ordered) > 0.01 && (
-                    <div className="text-xs mt-0.5">
-                      <span className="text-purple-600 font-medium">PO: {po.qty_ordered}</span> <span className="text-red-600 font-medium">({line.qty > po.qty_ordered ? '+' : ''}{line.qty - po.qty_ordered})</span>
+                    <div className="text-xs text-gray-500 mt-0.5 truncate" title={po.description}>
+                      PO: {po.description}
                     </div>
                   )}
                 </div>
-                
-                {/* Unit Price */}
-                <div className="col-span-2 text-right">
-                  <div className="flex items-center justify-end">
+
+                {/* Invoice Quantity */}
+                <div className="col-span-3 text-center">
+                  <div className="flex flex-col items-center">
                     <span className="text-sm font-medium text-gray-950">
-                      {formatCurrency(line.unit_price)}
+                      {line.qty}
                     </span>
-                    {po && getMatchIndicator(line.unit_price, po.unit_price)}
+                    <span className="text-xs text-gray-500">{line.uom}</span>
                   </div>
-                  {po && Math.abs(line.unit_price - po.unit_price) > 0.01 && (
-                    <div className="text-xs mt-0.5">
-                      <span className="text-purple-600 font-medium">PO: {formatCurrency(po.unit_price)}</span> <span className="text-red-600 font-medium">({line.unit_price > po.unit_price ? '+' : ''}{formatCurrency(line.unit_price - po.unit_price)})</span>
+                </div>
+
+                {/* PO Quantity */}
+                <div className="col-span-3 text-center">
+                  {po ? (
+                    <div className="flex flex-col items-center">
+                      <div className="flex items-center gap-1">
+                        <span className={`text-sm font-medium ${Math.abs(line.qty - po.qty_ordered) > 0.01 ? 'text-red-600' : 'text-gray-950'}`}>
+                          {po.qty_ordered}
+                        </span>
+                        {Math.abs(line.qty - po.qty_ordered) > 0.01 ? (
+                          <X className="h-3 w-3 text-red-600" />
+                        ) : (
+                          <Check className="h-3 w-3 text-green-600" />
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-500">{po.uom}</span>
+                      {Math.abs(line.qty - po.qty_ordered) > 0.01 && (
+                        <span className="text-xs text-red-600 font-medium mt-0.5">
+                          Δ {line.qty > po.qty_ordered ? '+' : ''}{(line.qty - po.qty_ordered).toFixed(2)}
+                        </span>
+                      )}
                     </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">--</span>
                   )}
                 </div>
-                
-                {/* Total */}
-                <div className="col-span-2 text-right">
-                  <div className="text-sm font-semibold text-gray-950">
+
+                {/* Invoice Unit Price */}
+                <div className="col-span-3 text-right">
+                  <span className="text-sm font-medium text-gray-950">
+                    {formatCurrency(line.unit_price)}
+                  </span>
+                </div>
+
+                {/* PO Unit Price */}
+                <div className="col-span-3 text-right">
+                  {po ? (
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-1">
+                        <span className={`text-sm font-medium ${Math.abs(line.unit_price - po.unit_price) > 0.01 ? 'text-red-600' : 'text-gray-950'}`}>
+                          {formatCurrency(po.unit_price)}
+                        </span>
+                        {Math.abs(line.unit_price - po.unit_price) > 0.01 ? (
+                          <X className="h-3 w-3 text-red-600" />
+                        ) : (
+                          <Check className="h-3 w-3 text-green-600" />
+                        )}
+                      </div>
+                      {Math.abs(line.unit_price - po.unit_price) > 0.01 && (
+                        <span className="text-xs text-red-600 font-medium mt-0.5">
+                          Δ {formatCurrency(line.unit_price - po.unit_price)}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">--</span>
+                  )}
+                </div>
+
+                {/* Invoice Total */}
+                <div className="col-span-3 text-right">
+                  <span className="text-sm font-semibold text-gray-950">
                     {formatCurrency(line.line_total)}
-                  </div>
-                  {po && (
-                    <div className="text-xs text-purple-600 font-medium mt-0.5">
-                      PO: {formatCurrency(po.qty_ordered * po.unit_price)}
-                    </div>
-                  )}
+                  </span>
                 </div>
-                
-                {/* Actions */}
-                <div className="col-span-1 text-right">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setEditingLineId(line.id || null);
-                    }}
-                    className="p-1 text-gray-600 hover:text-purple-600"
-                  >
-                    <Edit2 className="h-4 w-4" />
-                  </button>
+
+                {/* PO Total */}
+                <div className="col-span-3 text-right">
+                  {po ? (
+                    <div className="flex flex-col items-end">
+                      <span className={`text-sm font-semibold ${Math.abs(line.line_total - (po.qty_ordered * po.unit_price)) > 0.01 ? 'text-red-600' : 'text-gray-950'}`}>
+                        {formatCurrency(po.qty_ordered * po.unit_price)}
+                      </span>
+                      {Math.abs(line.line_total - (po.qty_ordered * po.unit_price)) > 0.01 && (
+                        <span className="text-xs text-red-600 font-medium mt-0.5">
+                          Δ {formatCurrency(line.line_total - (po.qty_ordered * po.unit_price))}
+                        </span>
+                      )}
+                    </div>
+                  ) : (
+                    <span className="text-xs text-gray-400">--</span>
+                  )}
                 </div>
               </div>
             </div>
@@ -396,46 +491,58 @@ export function EnhancedLineItemsTabV2({
                   key={po.id}
                   className="px-4 py-3 border-b border-gray-100 bg-red-50/20 hover:bg-red-50/30"
                 >
-                  <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="grid grid-cols-24 gap-1 items-center text-sm">
                     {/* Status */}
                     <div className="col-span-2">
                       {getStatusBadge(null, true)}
-                      <span className="text-[10px] text-gray-700 mt-1 block">PO Line #{po.line_no}</span>
+                      <span className="text-[10px] text-gray-700 mt-1 block">PO #{po.line_no}</span>
                     </div>
-                    
+
                     {/* Description */}
-                    <div className="col-span-3">
-                      <div className="text-sm text-gray-700 line-through">Not in invoice</div>
-                      <div className="text-xs text-gray-800 mt-0.5">PO: {po.description}</div>
+                    <div className="col-span-4">
+                      <div className="text-sm text-gray-500 italic truncate" title={po.description}>
+                        {po.description}
+                      </div>
+                      <div className="text-xs text-red-600 mt-0.5">Not in invoice</div>
                     </div>
-                    
-                    {/* Quantity */}
-                    <div className="col-span-2 text-center">
-                      <div className="text-sm text-gray-700">--</div>
-                      <div className="text-xs text-gray-800 mt-0.5">
-                        PO: {po.qty_ordered} {po.uom}
+
+                    {/* Invoice Quantity */}
+                    <div className="col-span-3 text-center">
+                      <span className="text-xs text-gray-400">--</span>
+                    </div>
+
+                    {/* PO Quantity */}
+                    <div className="col-span-3 text-center">
+                      <div className="flex flex-col items-center">
+                        <span className="text-sm font-medium text-gray-700">
+                          {po.qty_ordered}
+                        </span>
+                        <span className="text-xs text-gray-500">{po.uom}</span>
                       </div>
                     </div>
-                    
-                    {/* Unit Price */}
-                    <div className="col-span-2 text-right">
-                      <div className="text-sm text-gray-700">--</div>
-                      <div className="text-xs text-gray-800 mt-0.5">
-                        PO: {formatCurrency(po.unit_price)}
-                      </div>
+
+                    {/* Invoice Unit Price */}
+                    <div className="col-span-3 text-right">
+                      <span className="text-xs text-gray-400">--</span>
                     </div>
-                    
-                    {/* Total */}
-                    <div className="col-span-2 text-right">
-                      <div className="text-sm text-gray-700">--</div>
-                      <div className="text-xs text-red-600 font-medium mt-0.5">
-                        PO: {formatCurrency(po.qty_ordered * po.unit_price)}
-                      </div>
+
+                    {/* PO Unit Price */}
+                    <div className="col-span-3 text-right">
+                      <span className="text-sm font-medium text-gray-700">
+                        {formatCurrency(po.unit_price)}
+                      </span>
                     </div>
-                    
-                    {/* Actions */}
-                    <div className="col-span-1 text-right">
-                      {/* Empty for uninvoiced items */}
+
+                    {/* Invoice Total */}
+                    <div className="col-span-3 text-right">
+                      <span className="text-xs text-gray-400">--</span>
+                    </div>
+
+                    {/* PO Total */}
+                    <div className="col-span-3 text-right">
+                      <span className="text-sm font-semibold text-red-600">
+                        {formatCurrency(po.qty_ordered * po.unit_price)}
+                      </span>
                     </div>
                   </div>
                 </div>

@@ -31,6 +31,28 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **When implementing new features, USE these existing services rather than creating new ones.**
 
+### ✅ Mock Data Service (Development Speed)
+**IMPORTANT: We maintain both database and mock data for optimal development workflow**
+
+- **Database**: Fully functional PostgreSQL with real invoice data (preserved for production)
+- **Mock Data**: Temporary service at `/app/services/mockInvoiceService.ts` for rapid UI prototyping
+- **Current Mode**: Mock data is active by default for faster development iterations
+
+#### How It Works
+- **Invoice Lists**: Use mock data from `generateMock*` functions (needs-info, blocked, overdue, etc.)
+- **Invoice Details**: Auto-detects mock IDs (e.g., 'needs-info-1') and serves mock data
+- **Environment Control**: `USE_MOCK_DATA=true` (set to `false` to switch to database)
+- **Seamless Switching**: Same components work with both mock and database data
+
+#### Mock ID Patterns
+Mock invoices use prefixes: `needs-info-*`, `blocked-*`, `mock-*`, `due-*`, `cn-*`, `pf-*`, `approval-*`
+
+#### When to Use
+- ✅ **UI Development**: Fast iteration on layouts, workflows, and components
+- ✅ **Feature Prototyping**: Test new functionality without database setup
+- ✅ **Demo Scenarios**: Consistent data for presentations and testing
+- ❌ **Production**: Switch to database data before final deployment
+
 ## Development Setup
 
 ```bash
@@ -451,6 +473,10 @@ DATABASE_URL=${{xelix-postgres.DATABASE_PRIVATE_URL}}
 # AI Services (add your keys)
 OPENAI_API_KEY=sk-...
 ANTHROPIC_API_KEY=sk-ant-...
+
+# Mock Data Configuration (for development speed)
+USE_MOCK_DATA=true          # Enable mock data service
+DEBUG_MOCK=false            # Enable debug logging (optional)
 ```
 
 ### Deployment Process
@@ -617,6 +643,7 @@ px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 tran
 
 ### ✅ Implemented Features
 - **Complete Database Layer** with PostgreSQL and Prisma ORM
+- **Mock Data Service** for rapid UI development and prototyping
 - **AI Services Integration** with OpenAI and Anthropic
 - **Invoice Vision Processing** for automatic data extraction
 - **Two-tier Navigation System** with sidebar and top pills
@@ -641,11 +668,12 @@ px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 tran
 ## Important Notes for Development
 
 1. **Database is ready** - Use Prisma client at `@/lib/db`
-2. **AI services are integrated** - Use existing hooks and services
-3. **Vision extraction works** - Test with any invoice image
-4. **Local dev uses port 3001** - Always use `PORT=3001 npm run dev`
-5. **Railway handles deployment** - Just push to main branch
-6. **Don't duplicate services** - Check `/lib` and `/app/api` first
+2. **Mock data is active** - Currently using mock service for faster development (USE_MOCK_DATA=true)
+3. **AI services are integrated** - Use existing hooks and services
+4. **Vision extraction works** - Test with any invoice image
+5. **Local dev uses port 3001** - Always use `PORT=3001 npm run dev`
+6. **Railway handles deployment** - Just push to main branch
+7. **Don't duplicate services** - Check `/lib` and `/app/api` first
 
 ## Quick Start for New Features
 

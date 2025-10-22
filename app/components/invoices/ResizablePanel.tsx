@@ -11,6 +11,7 @@ interface ResizablePanelProps {
   storageKey?: string;
   direction?: 'horizontal' | 'vertical';
   className?: string;
+  disabled?: boolean;
 }
 
 export function ResizablePanel({
@@ -22,6 +23,7 @@ export function ResizablePanel({
   storageKey,
   direction = 'horizontal',
   className = '',
+  disabled = false,
 }: ResizablePanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [sizes, setSizes] = useState<number[]>(defaultSizes);
@@ -31,31 +33,19 @@ export function ResizablePanel({
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const dragStartPos = useRef<number>(0);
   const dragStartSizes = useRef<number[]>([]);
-  const [isClient, setIsClient] = useState(false);
 
-  // Load from localStorage after mount
+  // Update sizes when defaultSizes prop changes
   useEffect(() => {
-    setIsClient(true);
-    if (storageKey && typeof window !== 'undefined') {
-      const stored = localStorage.getItem(`panel-sizes-${storageKey}`);
-      if (stored) {
-        try {
-          const parsedSizes = JSON.parse(stored);
-          setSizes(parsedSizes);
-        } catch {}
-      }
-    }
-  }, [storageKey]);
+    setSizes(defaultSizes);
+  }, [defaultSizes]);
 
-  // Save sizes to localStorage when they change
+  // Call onSizeChange callback when sizes change
   useEffect(() => {
-    if (isClient && storageKey && typeof window !== 'undefined') {
-      localStorage.setItem(`panel-sizes-${storageKey}`, JSON.stringify(sizes));
-    }
     onSizeChange?.(sizes);
-  }, [sizes, storageKey, onSizeChange, isClient]);
+  }, [sizes, onSizeChange]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    if (disabled) return; // Don't allow resizing when disabled
     e.preventDefault();
     setIsDragging(true);
     setWasDragged(true);
@@ -63,7 +53,7 @@ export function ResizablePanel({
     dragStartSizes.current = [...sizes];
     document.body.style.cursor = direction === 'horizontal' ? 'col-resize' : 'row-resize';
     document.body.style.userSelect = 'none';
-  }, [direction, sizes]);
+  }, [direction, sizes, disabled]);
 
   const handleMouseEnter = useCallback(() => {
     if (hoverTimeoutRef.current) {
@@ -129,8 +119,28 @@ export function ResizablePanel({
   }, [isDragging, direction, minSizes, maxSizes]);
 
   const panels = React.Children.toArray(children);
+
+  // Handle edge cases gracefully during React rendering lifecycle
   if (panels.length !== 2) {
-    throw new Error('ResizablePanel requires exactly 2 children');
+    console.warn(`ResizablePanel: Expected 2 children, got ${panels.length}. StorageKey: ${storageKey}. Rendering fallback.`);
+
+    // Render fallback for invalid child count
+    if (panels.length === 1) {
+      // If only one child, render it without resizing
+      return <div className={className}>{panels[0]}</div>;
+    } else if (panels.length === 0) {
+      // If no children, render empty container
+      return <div className={className} />;
+    } else {
+      // If more than 2 children, render first two and warn
+      console.warn('ResizablePanel: More than 2 children provided, using first 2');
+      return (
+        <div className={className}>
+          <div>{panels[0]}</div>
+          <div>{panels[1]}</div>
+        </div>
+      );
+    }
   }
 
   const isHorizontal = direction === 'horizontal';
@@ -152,32 +162,34 @@ export function ResizablePanel({
         {panels[0]}
       </div>
 
-      {/* Divider */}
-      <div
-        onMouseDown={handleMouseDown}
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        className={`
-          ${isHorizontal ? 'w-0.5 cursor-col-resize' : 'h-0.5 cursor-row-resize'}
-          transition-colors relative
-          ${isDragging || wasDragged || isHovered 
-            ? 'bg-purple-400 hover:bg-purple-500' 
-            : 'bg-gray-300 hover:bg-gray-400'
-          }
-        `}
-        style={{
-          flexShrink: 0,
-          zIndex: 10,
-        }}
-      >
-        {/* Hover Area for Better Grabbing */}
+      {/* Divider - Hidden when disabled */}
+      {!disabled && (
         <div
+          onMouseDown={handleMouseDown}
+          onMouseEnter={handleMouseEnter}
+          onMouseLeave={handleMouseLeave}
           className={`
-            absolute ${isHorizontal ? 'inset-y-0 -left-1 -right-1' : 'inset-x-0 -top-1 -bottom-1'}
-            ${isHorizontal ? 'w-3' : 'h-3'}
+            ${isHorizontal ? 'w-px cursor-col-resize' : 'h-px cursor-row-resize'}
+            transition-colors relative
+            ${isDragging || wasDragged || isHovered
+              ? 'bg-purple-400 hover:bg-purple-500'
+              : 'bg-gray-300 hover:bg-gray-400'
+            }
           `}
-        />
-      </div>
+          style={{
+            flexShrink: 0,
+            zIndex: 10,
+          }}
+        >
+          {/* Hover Area for Better Grabbing */}
+          <div
+            className={`
+              absolute ${isHorizontal ? 'inset-y-0 -left-1 -right-1' : 'inset-x-0 -top-1 -bottom-1'}
+              ${isHorizontal ? 'w-3' : 'h-3'}
+            `}
+          />
+        </div>
+      )}
 
       {/* Second Panel */}
       <div
@@ -230,28 +242,13 @@ export function MultiResizablePanel({
   const containerRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef<number>(0);
   const dragStartSizes = useRef<number[]>([]);
-  const [isClient, setIsClient] = useState(false);
 
-  // Load from localStorage after mount
+  // Update sizes when defaultSizes prop changes
   useEffect(() => {
-    setIsClient(true);
-    if (storageKey && typeof window !== 'undefined') {
-      const stored = localStorage.getItem(`multi-panel-sizes-${storageKey}`);
-      if (stored) {
-        try {
-          const parsedSizes = JSON.parse(stored);
-          setSizes(parsedSizes);
-        } catch {}
-      }
+    if (defaultSizes) {
+      setSizes(defaultSizes);
     }
-  }, [storageKey]);
-
-  // Save to localStorage
-  useEffect(() => {
-    if (isClient && storageKey && typeof window !== 'undefined') {
-      localStorage.setItem(`multi-panel-sizes-${storageKey}`, JSON.stringify(sizes));
-    }
-  }, [sizes, storageKey, isClient]);
+  }, [defaultSizes]);
 
   const handleMouseDown = useCallback((index: number, e: React.MouseEvent) => {
     e.preventDefault();

@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { ChevronRight, File } from 'lucide-react';
 import { DocumentPreview } from '@/app/components/invoices/DocumentPreview';
 import { ResizablePanel, MultiResizablePanel } from '@/app/components/invoices/ResizablePanel';
 import { ViewModeSwitcher, ViewMode } from '@/app/components/invoices/ViewModeSwitcher';
 import { DiagnosticBanner } from '@/app/components/invoices/DiagnosticBanner';
-import { InvoiceTabs } from '@/app/components/invoices/tabs/InvoiceTabs';
+import { InvoiceTabs, TabId } from '@/app/components/invoices/tabs/InvoiceTabs';
 import { PODocumentTable } from '@/app/components/invoices/comparison/PODocumentTable';
 import { GRDocumentTable } from '@/app/components/invoices/comparison/GRDocumentTable';
 import { GRDocumentPreview } from '@/app/components/invoices/comparison/GRDocumentPreview';
@@ -24,8 +25,11 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const [grData, setGrData] = useState<any>(null);
   const { selectedLineId, selectInvoiceLine } = useSelection();
 
+  // Check if this is a needs info status invoice
+  const isNeedsInfoMode = invoice?.status === 'needs_info' || invoice?.status === 'needs-info';
+
   useEffect(() => {
-    // Fetch match results and PO comparison data
+    // Fetch match results and PO comparison data for all invoices
     fetchMatchResults();
     fetchPoComparisonData();
     if (initialInvoice?.po_id) {
@@ -88,6 +92,49 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     setInvoice(updatedData);
   };
 
+  const [isSaving, setIsSaving] = useState(false);
+  const [isPdfCollapsed, setIsPdfCollapsed] = useState(false);
+  const [activeTab, setActiveTab] = useState<TabId>('details');
+  const [isEditing, setIsEditing] = useState(false);
+
+  // Load/save PDF collapsed state from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem(`pdf-collapsed-${invoiceId}`);
+    if (saved !== null) {
+      setIsPdfCollapsed(saved === 'true');
+    }
+  }, [invoiceId]);
+
+  useEffect(() => {
+    localStorage.setItem(`pdf-collapsed-${invoiceId}`, isPdfCollapsed.toString());
+  }, [isPdfCollapsed, invoiceId]);
+
+  const handlePdfCollapseToggle = () => {
+    setIsPdfCollapsed(!isPdfCollapsed);
+  };
+
+  const handleTabChange = (tab: TabId) => {
+    setActiveTab(tab);
+  };
+
+  const handleEditModeChange = (editing: boolean) => {
+    setIsEditing(editing);
+  };
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Trigger save from the tabs component
+      // For now, just simulate the save
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      console.log('Saved invoice data');
+    } catch (error) {
+      console.error('Error saving invoice:', error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const hasPO = invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0;
   // Check for GR from both match results and direct GR data
   const hasGR = matchResults.some((mr: any) => mr.matched_gr_line_id && mr.matched_gr_line_id !== '') || 
@@ -104,132 +151,28 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const varianceAmount = poComparisonData?.poData ? invoiceTotal - poTotal : null;
 
   const renderContent = () => {
-    if (viewMode === 'review') {
+    // Ensure we have a valid invoice object before rendering ResizablePanel structure
+    if (!invoice || !invoice.id) {
+      return <div className="h-full flex items-center justify-center text-gray-500">Loading...</div>;
+    }
+
+    // Check if PDF preview is collapsed
+    if (isPdfCollapsed) {
       return (
-        <ResizablePanel
-          defaultSizes={[40, 60]}
-          minSizes={[30, 30]}
-          storageKey={`invoice-${invoiceId}`}
-          className="h-full"
-        >
-          {/* Document Preview */}
-          <DocumentPreview 
-            invoiceId={invoiceId} 
-            hasAttachment={invoice.attachments && invoice.attachments.length > 0}
-            invoiceData={invoice}
-          />
-          
-          {/* Tabs */}
-          <InvoiceTabs
-            invoiceId={invoiceId}
-            invoiceData={invoice}
-            matchResults={matchResults}
-            attachments={invoice.attachments || []}
-            selectedLineId={selectedLineId}
-            onLineSelect={selectInvoiceLine}
-            onDataUpdate={handleInvoiceUpdate}
-            storageKey={`invoice-${invoiceId}`}
-            poComparisonData={poComparisonData}
-          />
-        </ResizablePanel>
-      );
-    } else if (viewMode === '2-up') {
-      return (
-        <ResizablePanel
-          defaultSizes={[35, 65]}
-          minSizes={[25, 35]}
-          storageKey={`invoice-2up-${invoiceId}`}
-          className="h-full"
-        >
-          {/* Document Preview */}
-          <DocumentPreview 
-            invoiceId={invoiceId} 
-            hasAttachment={invoice.attachments && invoice.attachments.length > 0}
-            invoiceData={invoice}
-          />
-          
-          {/* PO and Invoice Side by Side */}
-          <ResizablePanel
-            defaultSizes={[40, 60]}
-            minSizes={[30, 35]}
-            storageKey={`invoice-2up-inner-${invoiceId}`}
-            className="h-full"
-          >
-            <PODocumentTable
-              poNumber={invoice.po_numbers_cached?.[0]}
-              selectedLineId={selectedLineId}
-              onLineSelect={selectInvoiceLine}
-            />
-            
-            <InvoiceTabs
-              invoiceId={invoiceId}
-              invoiceData={invoice}
-              matchResults={matchResults}
-              attachments={invoice.attachments || []}
-              selectedLineId={selectedLineId}
-              onLineSelect={selectInvoiceLine}
-              onDataUpdate={handleInvoiceUpdate}
-              storageKey={`invoice-${invoiceId}`}
-              compactMode={true}
-            />
-          </ResizablePanel>
-        </ResizablePanel>
-      );
-    } else {
-      // 3-up mode with vertical stacking for comparison docs
-      return (
-        <MultiResizablePanel
-          defaultSizes={[30, 35, 35]}
-          minSizes={[25, 30, 35]}
-          storageKey={`invoice-3up-${invoiceId}`}
-          className="h-full"
-        >
-          {/* Document Preview */}
-          <div className="h-full w-full flex flex-col">
-            <DocumentPreview 
-              invoiceId={invoiceId} 
-              hasAttachment={invoice.attachments && invoice.attachments.length > 0}
-              invoiceData={invoice}
-            />
-          </div>
-          
-          {/* Middle Panel: PO and GR/SES Stacked Vertically */}
-          <div className="h-full w-full flex flex-col">
-            <ResizablePanel
-              defaultSizes={[50, 50]}
-              minSizes={[40, 40]}
-              direction="vertical"
-              storageKey={`invoice-3up-vertical-${invoiceId}`}
-              className="h-full w-full"
+        <div className="h-full flex">
+          {/* Collapsed expand button - positioned at top */}
+          <div className="w-10 bg-gray-100 border-r border-gray-200 flex flex-col items-center pt-2 flex-shrink-0">
+            <button
+              onClick={handlePdfCollapseToggle}
+              className="pl-1.5 pr-0 py-1.5 rounded hover:bg-gray-200 transition-colors flex items-center"
+              title="Expand Preview"
             >
-              {/* PO Table */}
-              <PODocumentTable
-                poNumber={invoice.po_numbers_cached?.[0]}
-                selectedLineId={selectedLineId}
-                onLineSelect={selectInvoiceLine}
-              />
-              
-              {/* GR/SES Document */}
-              {hasGR ? (
-                <GRDocumentPreview
-                  poId={invoice.po_id}
-                  poNumber={invoice.po_numbers_cached?.[0]}
-                  selectedLineId={selectedLineId}
-                  onLineSelect={selectInvoiceLine}
-                />
-              ) : (
-                <GRDocumentTable
-                  poId={invoice.po_id}
-                  documentType="SES"
-                  selectedLineId={selectedLineId}
-                  onLineSelect={selectInvoiceLine}
-                />
-              )}
-            </ResizablePanel>
+              <File className="h-4 w-4 text-gray-700" />
+              <ChevronRight className="h-4 w-4 text-gray-700 -ml-0.5" />
+            </button>
           </div>
-          
-          {/* Invoice Tabs */}
-          <div className="h-full w-full flex flex-col">
+          {/* Full width tabs */}
+          <div className="flex-1 overflow-hidden">
             <InvoiceTabs
               invoiceId={invoiceId}
               invoiceData={invoice}
@@ -239,13 +182,71 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               onLineSelect={selectInvoiceLine}
               onDataUpdate={handleInvoiceUpdate}
               storageKey={`invoice-${invoiceId}`}
-              compactMode={true}
+              poComparisonData={poComparisonData}
+              forceReadOnly={false}
+              hideComparison={false}
+              hidePreview={true}
+              showFieldErrors={isNeedsInfoMode}
+              initialTab="details"
+              activeTab={activeTab}
+              onTabChange={handleTabChange}
+              onEditModeChange={handleEditModeChange}
             />
           </div>
-        </MultiResizablePanel>
+        </div>
       );
     }
+
+    // Unified layout for ALL invoices: PDF on left (33%), Fields on right (67%)
+    return (
+      <ResizablePanel
+        defaultSizes={[33, 67]}
+        minSizes={[20, 30]}
+        storageKey={`invoice-unified-v2-${invoiceId}`}
+        className="h-full"
+      >
+        {/* Document Preview - LEFT PANEL */}
+        <DocumentPreview
+          invoiceId={invoiceId}
+          hasAttachment={invoice.attachments && invoice.attachments.length > 0}
+          invoiceData={invoice}
+          matchResults={matchResults}
+          poComparisonData={poComparisonData}
+          hideLineComparison={false}
+          hideLineItems={true}
+          initialZoom={0.5}
+          onCollapseToggle={handlePdfCollapseToggle}
+          isCollapsed={false}
+          isEditing={isEditing}
+        />
+
+        {/* Invoice Tabs (Read-only) - RIGHT PANEL */}
+        <InvoiceTabs
+          invoiceId={invoiceId}
+          invoiceData={invoice}
+          matchResults={matchResults}
+          attachments={invoice.attachments || []}
+          selectedLineId={selectedLineId}
+          onLineSelect={selectInvoiceLine}
+          onDataUpdate={handleInvoiceUpdate}
+          storageKey={`invoice-${invoiceId}`}
+          poComparisonData={poComparisonData}
+          forceReadOnly={false}
+          hideComparison={false}
+          hidePreview={true}
+          showFieldErrors={isNeedsInfoMode}
+          initialTab="details"
+          activeTab={activeTab}
+          onTabChange={handleTabChange}
+          onEditModeChange={handleEditModeChange}
+        />
+      </ResizablePanel>
+    );
   };
+
+  // OLD CODE - Commented out, will be removed in future cleanup
+  // Previous renderContent supported multiple view modes (review, 2-up, 3-up)
+  // Now using unified layout for all invoices
 
   // Determine PO status based on vendor configuration
   const getPOStatus = () => {
@@ -253,15 +254,13 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     if (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0) {
       return invoice.po_numbers_cached[0];
     }
-    
-    // Check if vendor is verified Non-PO vendor
-    const isVerifiedNonPOVendor = invoice.vendor_requires_po === false && invoice.vendor_is_verified === true;
-    
-    if (isVerifiedNonPOVendor) {
+
+    // Check if this is a Non-PO vendor (PO not required)
+    if (invoice.vendor_requires_po === false) {
       return 'N/A'; // Non-PO vendor - PO not required
     }
-    
-    // All other cases: PO is missing (either required or vendor not verified)
+
+    // All other cases: PO is missing (vendor requires PO but it's not attached)
     return 'PO Missing';
   };
 
@@ -295,7 +294,51 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     return count;
   };
 
+  // Calculate missing fields count
+  // This MUST match the exact logic in InvoiceTabs fieldErrorsCount
+  const calculateMissingFieldsCount = () => {
+    let count = 0;
+    const requiredFields = [
+      'invoice_number',
+      'invoice_date',
+      'vendor_name_snapshot',
+      'vendor_tax_id_snapshot',
+      'currency'
+    ];
+
+    requiredFields.forEach(field => {
+      const value = invoice[field];
+      // Check for falsy values, empty strings, and special placeholder values
+      if (!value || value === '' || value === 'Unknown Vendor' || value === 'Invalid Date') {
+        count++;
+      }
+    });
+
+    // Check PO number if vendor requires PO
+    if (invoice.vendor_requires_po && (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0)) {
+      count++;
+    }
+
+    return count;
+  };
+
+  // Calculate line items discrepancy count
+  const calculateLineItemsErrorCount = () => {
+    let count = 0;
+
+    // Check match results for variances that are not within tolerance
+    matchResults?.forEach((r: any) => {
+      if (!r.within_tolerance && r.explanation_code !== 'PERFECT_MATCH') {
+        count++;
+      }
+    });
+
+    return count;
+  };
+
   const exceptionsCount = calculateExceptionsCount();
+  const missingFieldsCount = calculateMissingFieldsCount();
+  const lineItemsErrorCount = calculateLineItemsErrorCount();
 
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col">
@@ -313,11 +356,16 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         hasSES={hasSES}
         varianceAmount={varianceAmount}
         poTotal={poTotal || null}
-        helpdeskTicketRef={invoice.helpdesk_ticket_ref || `TICKET-${invoice.id ? parseInt(invoice.id.substring(0, 6), 16) % 10000 + 380000 : '380000'}`}
+        helpdeskTicketRef={invoice.helpdesk_ticket_ref || 'TICKET-389688'}
         exceptionsCount={exceptionsCount}
+        missingFieldsCount={missingFieldsCount}
+        lineItemsErrorCount={lineItemsErrorCount}
         validationWarnings={invoice.validation_warnings}
+        showSaveButton={true}
+        onSaveClick={handleSave}
+        isSaving={isSaving}
       />
-      
+
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden">
         {renderContent()}

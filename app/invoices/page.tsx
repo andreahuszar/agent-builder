@@ -1,9 +1,31 @@
-export default function InvoicesPage() {
+'use client';
+
+import AppLayout from '@/app/components/AppLayout';
+import EnhancedInvoicesClient from '@/app/components/invoices/EnhancedInvoicesClient';
+
+interface InvoicesContentProps {
+  currentView?: string;
+  currentModule?: string;
+  useExceptionNavigation?: boolean;
+}
+
+function InvoicesContent({ useExceptionNavigation = false }: InvoicesContentProps) {
+  // Let EnhancedInvoicesClient handle all tabs and navigation
   return (
     <div className="w-full px-4 py-6 sm:px-6 lg:px-8">
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold text-gray-950">Invoices</h1>
-      </div>
+      <EnhancedInvoicesClient
+        initialInvoices={[]}
+        initialTab="exceptions"
+        useExceptionNavigation={useExceptionNavigation}
+      />
     </div>
+  );
+}
+
+export default function InvoicesPage() {
+  return (
+    <AppLayout activeModule="invoice-processing">
+      <InvoicesContent />
+    </AppLayout>
   );
 }

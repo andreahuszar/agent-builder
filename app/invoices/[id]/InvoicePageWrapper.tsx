@@ -41,22 +41,19 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
     fetchMatchInfo();
   }, [invoiceId]);
 
-  const viewModeSwitcher = (
-    <ViewModeSwitcher
-      currentMode={viewMode}
-      onModeChange={setViewMode}
-      hasGR={hasGR}
-      hasSES={hasSES}
-      hasPO={hasPO}
-    />
-  );
+  // Check if this is a needs info status invoice
+  const isNeedsInfoMode = initialInvoice.status === 'needs_info' || initialInvoice.status === 'needs-info';
+
+  // ViewModeSwitcher hidden for unified layout - will be removed in future phase
+  const viewModeSwitcher = undefined;
 
   return (
-    <InvoiceDetailLayout 
+    <InvoiceDetailLayout
       invoiceNumber={invoiceNumber}
       vendorName={initialInvoice.vendor_name_snapshot}
       viewModeSwitcher={viewModeSwitcher}
       workflowStatus={initialInvoice.status || 'draft'}
+      isNeedsInfo={isNeedsInfoMode}
     >
       <InvoiceDetailClientWithViewMode
         invoiceId={invoiceId}

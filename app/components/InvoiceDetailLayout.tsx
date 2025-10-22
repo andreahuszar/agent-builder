@@ -11,9 +11,10 @@ interface InvoiceDetailLayoutProps {
   documentType?: 'invoice' | 'purchase-order';
   viewModeSwitcher?: React.ReactNode;
   workflowStatus?: string;
+  isNeedsInfo?: boolean;
 }
 
-export default function InvoiceDetailLayout({ invoiceNumber, vendorName, children, documentType = 'invoice', viewModeSwitcher, workflowStatus }: InvoiceDetailLayoutProps) {
+export default function InvoiceDetailLayout({ invoiceNumber, vendorName, children, documentType = 'invoice', viewModeSwitcher, workflowStatus, isNeedsInfo = false }: InvoiceDetailLayoutProps) {
   const handleBackClick = () => {
     // Navigate to appropriate view based on document type
     const hash = documentType === 'purchase-order' ? 'purchase-orders' : 'invoices';
@@ -28,6 +29,7 @@ export default function InvoiceDetailLayout({ invoiceNumber, vendorName, childre
       documentType={documentType}
       viewModeSwitcher={viewModeSwitcher}
       workflowStatus={workflowStatus}
+      isNeedsInfo={isNeedsInfo}
     />
   );
 

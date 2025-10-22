@@ -12,12 +12,13 @@ import DashboardClient from './dashboard/DashboardClient';
 import LaunchpadClient from './launchpad/LaunchpadClient';
 import { Plus, Search, Filter } from 'lucide-react';
 
+
 interface InvoiceProcessingContentProps {
   currentView?: string;
   currentModule?: string;
 }
 
-function InvoiceProcessingContent({ currentView = 'launchpad' }: InvoiceProcessingContentProps) {
+function InvoiceProcessingContent({ currentView = 'invoices' }: InvoiceProcessingContentProps) {
   const [invoices, setInvoices] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [loading, setLoading] = useState(false);

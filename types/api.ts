@@ -32,6 +32,7 @@ export interface InvoiceHeader {
   gr_numbers_cached?: string[];
   po_id: string | null;
   created_at: string;
+  data_ingestion_date?: string; // Date when invoice was ingested into system
   vendor_id: string;
   vendor_requires_po: boolean | null;
   vendor_is_verified: boolean;
@@ -40,6 +41,26 @@ export interface InvoiceHeader {
   account_number_masked: string | null;
   assigned_to_name: string | null;
   ledger: string;
+  ingestion_source?: 'email' | 'edi' | 'manual_upload'; // Source of invoice ingestion
+
+  // ========================================================================
+  // Demo/Synthetic Fields (generated on frontend for demo purposes)
+  // These fields are NOT stored in the database and are enriched at runtime
+  // ========================================================================
+  division?: string; // Business division (EMEA, US Inc, etc.)
+  assigned_to_email?: string; // Email of assigned owner
+  cost_center?: string; // Cost center code (e.g., CC-1001)
+  cost_center_name?: string; // Cost center name (e.g., IT Infrastructure)
+  department?: string; // Department name
+  project_code?: string; // Project code if applicable
+  priority?: 'urgent' | 'high' | 'normal' | 'low'; // Calculated priority
+  risk_score?: number; // Calculated risk score (0-100)
+  days_in_queue?: number; // Days since creation
+  aging_bucket?: string; // Aging category (0-30, 31-60, etc.)
+  issues?: string[]; // Array of issue codes/descriptions
+  source?: 'db' | 'mock'; // Data source indicator
+  docType?: string; // Document type (Invoice, Credit Note, Pro Forma)
+  type?: string; // Invoice type classification (PO, Non-PO)
 }
 
 export interface InvoiceLine {

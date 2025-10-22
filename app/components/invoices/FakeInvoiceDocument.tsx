@@ -7,9 +7,10 @@ import { formatVendorAddress, formatBillToAddress, formatAddressLines } from '@/
 interface FakeInvoiceDocumentProps {
   invoice: any;
   scale?: number;
+  showOCRHighlights?: boolean;
 }
 
-export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentProps) {
+export function FakeInvoiceDocument({ invoice, scale = 1, showOCRHighlights = false }: FakeInvoiceDocumentProps) {
   const formatCurrency = (amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -25,6 +26,32 @@ export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentP
       month: 'long',
       day: 'numeric',
     });
+  };
+
+  // OCR highlight wrapper component
+  const FieldWithOCR = ({ children, fieldName, className = '' }: { children: React.ReactNode; fieldName: string; className?: string }) => {
+    if (!showOCRHighlights) {
+      return <>{children}</>;
+    }
+
+    // Get confidence from invoice extraction data
+    const confidence = invoice.extraction_field_confidences?.[fieldName] ?? 0.92; // Default high confidence
+    const confidencePercent = Math.round(confidence * 100);
+
+    return (
+      <span className={`relative inline-block ${className}`}>
+        <span className="relative z-10">{children}</span>
+        <span
+          className="absolute inset-0 bg-purple-300 opacity-30 pointer-events-none rounded-sm"
+          style={{ margin: '-2px -4px' }}
+        />
+        <span
+          className="absolute -top-5 left-0 text-[10px] font-medium text-purple-700 bg-white px-1 rounded whitespace-nowrap"
+        >
+          {confidencePercent}%
+        </span>
+      </span>
+    );
   };
 
   // Calculate totals
@@ -63,7 +90,9 @@ export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentP
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  {invoice.vendor_name_snapshot || 'Vendor Name'}
+                  <FieldWithOCR fieldName="vendor_name_snapshot">
+                    {invoice.vendor_name_snapshot || 'Vendor Name'}
+                  </FieldWithOCR>
                 </h1>
                 <p className="text-sm text-gray-600">Professional Services</p>
               </div>
@@ -103,20 +132,36 @@ export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentP
             <div className="space-y-1 text-sm">
               <div className="flex justify-between gap-4">
                 <span className="text-gray-600">Invoice #:</span>
-                <span className="font-semibold">{invoice.invoice_number}</span>
+                <span className="font-semibold">
+                  <FieldWithOCR fieldName="invoice_number">
+                    {invoice.invoice_number}
+                  </FieldWithOCR>
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-600">Date:</span>
-                <span className="font-semibold">{formatDate(invoice.invoice_date)}</span>
+                <span className="font-semibold">
+                  <FieldWithOCR fieldName="invoice_date">
+                    {formatDate(invoice.invoice_date)}
+                  </FieldWithOCR>
+                </span>
               </div>
               <div className="flex justify-between gap-4">
                 <span className="text-gray-600">Due Date:</span>
-                <span className="font-semibold">{formatDate(invoice.due_date)}</span>
+                <span className="font-semibold">
+                  <FieldWithOCR fieldName="due_date">
+                    {formatDate(invoice.due_date)}
+                  </FieldWithOCR>
+                </span>
               </div>
               {invoice.po_numbers_cached?.[0] && (
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-600">PO #:</span>
-                  <span className="font-semibold">{invoice.po_numbers_cached[0]}</span>
+                  <span className="font-semibold">
+                    <FieldWithOCR fieldName="po_numbers_cached">
+                      {invoice.po_numbers_cached[0]}
+                    </FieldWithOCR>
+                  </span>
                 </div>
               )}
             </div>
@@ -211,7 +256,9 @@ export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentP
               <div className="flex justify-between py-2 border-b border-gray-200">
                 <span className="text-sm text-gray-600">Subtotal:</span>
                 <span className="text-sm font-medium text-gray-900">
-                  {formatCurrency(subtotal, invoice.currency)}
+                  <FieldWithOCR fieldName="subtotal">
+                    {formatCurrency(subtotal, invoice.currency)}
+                  </FieldWithOCR>
                 </span>
               </div>
               {taxTotal > 0 && (
@@ -220,7 +267,9 @@ export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentP
                     Tax{taxRate > 0 ? ` (${taxRate.toFixed(1)}%)` : ''}:
                   </span>
                   <span className="text-sm font-medium text-gray-900">
-                    {formatCurrency(taxTotal, invoice.currency)}
+                    <FieldWithOCR fieldName="tax_total">
+                      {formatCurrency(taxTotal, invoice.currency)}
+                    </FieldWithOCR>
                   </span>
                 </div>
               )}
@@ -251,7 +300,9 @@ export function FakeInvoiceDocument({ invoice, scale = 1 }: FakeInvoiceDocumentP
               <div className="flex justify-between py-3 border-b-2 border-gray-900">
                 <span className="text-base font-semibold text-gray-900">Total Due:</span>
                 <span className="text-xl font-bold text-gray-900">
-                  {formatCurrency(total, invoice.currency)}
+                  <FieldWithOCR fieldName="total">
+                    {formatCurrency(total, invoice.currency)}
+                  </FieldWithOCR>
                 </span>
               </div>
             </div>
