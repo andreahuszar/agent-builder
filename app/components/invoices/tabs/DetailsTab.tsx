@@ -24,7 +24,8 @@ import {
   ChevronDown,
   ChevronUp,
   FileText,
-  Package
+  Package,
+  Sparkles
 } from 'lucide-react';
 import { EditableField } from '../editing/EditableField';
 import { ValidatedEditableField } from '../editing/ValidatedEditableField';
@@ -38,6 +39,7 @@ import type { LayoutMode } from './InvoiceTabs';
 import { LinkedDocumentPill } from '../LinkedDocumentPill';
 import { PODetailsDrawer } from '../PODetailsDrawer';
 import { POSearchModal } from '../POSearchModal';
+import { AISuggestionCard } from '../AISuggestionCard';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -51,6 +53,9 @@ interface DetailsTabProps {
   hideDocumentLinksSection?: boolean;
   showFieldErrors?: boolean;
   onEditModeChange?: (isEditing: boolean) => void;
+  onFieldAccept?: (fieldName: string, value: string) => void;
+  onFieldReject?: (fieldName: string) => void;
+  onFieldFocus?: (fieldName: string | null) => void; // Highlight field in PDF when focused
 }
 
 export function DetailsTab({
@@ -64,10 +69,15 @@ export function DetailsTab({
   hidePaymentSection = false,
   hideDocumentLinksSection = false,
   showFieldErrors = false,
-  onEditModeChange
+  onEditModeChange,
+  onFieldAccept,
+  onFieldReject,
+  onFieldFocus
 }: DetailsTabProps) {
   // Individual field edit states for click-to-edit functionality
   const [editingField, setEditingField] = useState<string | null>(null);
+  // Track which field's AI suggestion is expanded
+  const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
   // Calculate totals from line items for accuracy
   const calculatedSubtotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + (line.net_amount || 0), 0) || 0;
   const calculatedTaxTotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + ((line.line_total || 0) - (line.net_amount || 0)), 0) || 0;
@@ -281,6 +291,10 @@ export function DetailsTab({
     const isFieldEditing = editingField === fieldName;
     const shouldAllowEdit = showFieldErrors && hasFieldError(fieldName) && !forceReadOnly;
 
+    // Check for AI candidate suggestions
+    const candidates = invoiceData?.ocr_extractions?.[fieldName]?.candidates || [];
+    const hasCandidate = candidates.length > 0 && onFieldAccept && onFieldReject;
+
     if (isFieldEditing && shouldAllowEdit) {
       return (
         <ValidatedEditableField
@@ -299,6 +313,57 @@ export function DetailsTab({
     }
 
     if (shouldAllowEdit) {
+      // If field is missing/invalid AND we have an AI candidate, show fix suggestion button
+      if (!fieldValue && hasCandidate) {
+        return (
+          <div>
+            <p
+              className={getReadOnlyFieldClass(fieldName)}
+              onClick={() => setEditingField(fieldName)}
+              title="Click to edit"
+            >
+              Not found
+            </p>
+            <button
+              onClick={() => {
+                const newExpanded = expandedSuggestion === fieldName ? null : fieldName;
+                setExpandedSuggestion(newExpanded);
+                // Highlight field in PDF when suggestion card opens
+                if (onFieldFocus) {
+                  onFieldFocus(newExpanded);
+                }
+              }}
+              className="mt-1 flex items-center gap-1 text-sm text-purple-600 hover:text-purple-700 transition-colors"
+            >
+              <Sparkles className="h-3 w-3" />
+              {expandedSuggestion === fieldName ? 'Hide Suggestion' : 'Fix Suggestion'}
+            </button>
+            {expandedSuggestion === fieldName && (
+              <div className="mt-2">
+                <AISuggestionCard
+                  candidate={candidates[0]}
+                  onAccept={() => {
+                    onFieldAccept!(fieldName, candidates[0].value);
+                    setExpandedSuggestion(null);
+                    setEditingField(null);
+                  }}
+                  onReject={() => {
+                    onFieldReject!(fieldName);
+                    setExpandedSuggestion(null);
+                  }}
+                  onClose={() => {
+                    setExpandedSuggestion(null);
+                    if (onFieldFocus) {
+                      onFieldFocus(null);
+                    }
+                  }}
+                />
+              </div>
+            )}
+          </div>
+        );
+      }
+
       return (
         <p
           className={getReadOnlyFieldClass(fieldName)}

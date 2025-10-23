@@ -19,6 +19,9 @@ interface DocumentPreviewProps {
   onCollapseToggle?: () => void; // Callback when collapse button clicked
   isCollapsed?: boolean; // Current collapsed state
   isEditing?: boolean; // Whether details tab is in edit mode (for OCR highlights)
+  onFieldAccept?: (fieldName: string, value: string) => void; // Accept AI candidate suggestion
+  onFieldReject?: (fieldName: string) => void; // Reject AI candidate suggestion
+  focusedFieldName?: string | null; // Field to highlight (when Details tab card is open)
 }
 
 // Collapsible Document Preview for needs info mode
@@ -146,7 +149,10 @@ export function DocumentPreview({
   initialZoom = 0.75, // Default to 75% zoom
   onCollapseToggle,
   isCollapsed = false,
-  isEditing = false
+  isEditing = false,
+  onFieldAccept,
+  onFieldReject,
+  focusedFieldName = null
 }: DocumentPreviewProps) {
   // Start with customizable zoom level (default 75%)
   const [zoom, setZoom] = useState(initialZoom);
@@ -421,7 +427,14 @@ export function DocumentPreview({
                 }}
               >
                 {invoiceData ? (
-                  <FakeInvoiceDocument invoice={invoiceData} scale={1} showOCRHighlights={isEditing} />
+                  <FakeInvoiceDocument
+                    invoice={invoiceData}
+                    scale={1}
+                    showOCRHighlights={isEditing}
+                    onFieldAccept={onFieldAccept}
+                    onFieldReject={onFieldReject}
+                    focusedFieldName={focusedFieldName}
+                  />
                 ) : (
                   <div className="bg-white shadow-lg p-12 rounded-lg">
                     <div className="flex items-center gap-3 mb-4">

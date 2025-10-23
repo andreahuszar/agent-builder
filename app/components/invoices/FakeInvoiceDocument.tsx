@@ -3,14 +3,25 @@
 import React from 'react';
 import { Building2, Mail, Phone, Globe, Calendar, FileText, DollarSign } from 'lucide-react';
 import { formatVendorAddress, formatBillToAddress, formatAddressLines } from '@/app/lib/addressFormatter';
+import { EditableField } from './EditableField';
 
 interface FakeInvoiceDocumentProps {
   invoice: any;
   scale?: number;
   showOCRHighlights?: boolean;
+  onFieldAccept?: (fieldName: string, value: string) => void;
+  onFieldReject?: (fieldName: string) => void;
+  focusedFieldName?: string | null;
 }
 
-export function FakeInvoiceDocument({ invoice, scale = 1, showOCRHighlights = false }: FakeInvoiceDocumentProps) {
+export function FakeInvoiceDocument({
+  invoice,
+  scale = 1,
+  showOCRHighlights = false,
+  onFieldAccept,
+  onFieldReject,
+  focusedFieldName = null
+}: FakeInvoiceDocumentProps) {
   const formatCurrency = (amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
@@ -68,8 +79,44 @@ export function FakeInvoiceDocument({ invoice, scale = 1, showOCRHighlights = fa
   const taxRate = invoice.tax_rate_percent || 
     (subtotal > 0 && taxTotal > 0 ? ((taxTotal / subtotal) * 100) : 0);
 
+  // Get display configuration
+  const displayConfig = invoice.display_config || {};
+  const isCompactLayout = displayConfig.template === 'compact';
+  const invoiceNumberPlacement = displayConfig.layout?.invoiceNumberPlacement || 'top-right';
+  const showInvoiceNumberLabel = displayConfig.layout?.showInvoiceNumberLabel !== false;
+
+  // Check if a field is interactive (supports AI candidates)
+  const interactiveFields = displayConfig.interactiveFields || [];
+  const isInteractiveField = (fieldName: string) => interactiveFields.includes(fieldName);
+
+  // Render a field with EditableField wrapper if interactive, otherwise normal
+  const renderField = (fieldName: string, content: React.ReactNode, className?: string) => {
+    if (isInteractiveField(fieldName) && onFieldAccept && onFieldReject) {
+      // Check if there's an AI candidate for this field
+      const candidates = invoice.ocr_extractions?.[fieldName]?.candidates || [];
+      const hasCandidate = candidates.length > 0;
+
+      // Use candidate value if available (show unconfirmed AI suggestion)
+      const displayValue = hasCandidate ? candidates[0].value : content;
+
+      return (
+        <EditableField
+          fieldName={fieldName}
+          value={displayValue}
+          invoice={invoice}
+          onAccept={onFieldAccept}
+          onReject={onFieldReject}
+          className={className}
+          showAsUnconfirmed={hasCandidate}
+          isFocused={focusedFieldName === fieldName}
+        />
+      );
+    }
+    return <span className={className}>{content}</span>;
+  };
+
   return (
-    <div 
+    <div
       className="bg-white shadow-lg mx-auto"
       style={{
         width: `${794 * scale}px`,
@@ -80,23 +127,120 @@ export function FakeInvoiceDocument({ invoice, scale = 1, showOCRHighlights = fa
       }}
     >
       <div className="p-12">
-        {/* Header */}
-        <div className="flex justify-between items-start mb-8">
-          <div>
-            {/* Company Logo/Name */}
-            <div className="flex items-center gap-3 mb-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg flex items-center justify-center">
-                <FileText className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">
-                  <FieldWithOCR fieldName="vendor_name_snapshot">
-                    {invoice.vendor_name_snapshot || 'Vendor Name'}
-                  </FieldWithOCR>
-                </h1>
-                <p className="text-sm text-gray-600">Professional Services</p>
+        {/* Header - Conditional Layout */}
+        {isCompactLayout && invoiceNumberPlacement === 'above-logo' ? (
+          // Compact Layout: Centered with Invoice Number Above Logo
+          <div className="mb-8">
+            {/* Invoice Number Above Logo (no label) - Show placeholder if missing */}
+            <div className="text-center mb-3">
+              {renderField(
+                'invoice_number',
+                <FieldWithOCR fieldName="invoice_number">
+                  {invoice.invoice_number || '[Invoice Number]'}
+                </FieldWithOCR>,
+                `text-sm ${invoice.invoice_number ? 'text-gray-600' : 'text-gray-400 italic'}`
+              )}
+            </div>
+
+            {/* Centered Company Logo/Name */}
+            <div className="text-center">
+              <div className="inline-flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg flex items-center justify-center">
+                  <FileText className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-left">
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    <FieldWithOCR fieldName="vendor_name_snapshot">
+                      {invoice.vendor_name_snapshot || 'Vendor Name'}
+                    </FieldWithOCR>
+                  </h1>
+                  <p className="text-sm text-gray-600">Professional Services</p>
+                </div>
               </div>
             </div>
+
+            {/* Vendor Address - Centered */}
+            <div className="text-sm text-gray-600 space-y-1 text-center mb-6">
+              {invoice.vendor_address_snapshot ? (
+                formatAddressLines(invoice.vendor_address_snapshot).map((line, index) => (
+                  <p key={index}>{line}</p>
+                ))
+              ) : (
+                <>
+                  <p>{invoice.vendor_name_snapshot || 'Vendor Name'}</p>
+                  <p>Address not available</p>
+                </>
+              )}
+              <div className="flex items-center gap-4 justify-center mt-2">
+                <span className="flex items-center gap-1">
+                  <Mail className="h-3 w-3" />
+                  {invoice.vendor_email || 'billing@company.com'}
+                </span>
+                <span className="flex items-center gap-1">
+                  <Phone className="h-3 w-3" />
+                  {invoice.vendor_phone || '(555) 123-4567'}
+                </span>
+              </div>
+            </div>
+
+            {/* Invoice Details - Centered */}
+            <div className="text-center">
+              <h2 className="text-4xl font-bold text-gray-900 mb-4">INVOICE</h2>
+              <div className="inline-block text-left space-y-1 text-sm">
+                {/* Only show invoice number if not already shown above */}
+                {!invoice.invoice_number && (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-gray-600">Invoice #:</span>
+                    <span className="font-semibold text-gray-400">Not provided</span>
+                  </div>
+                )}
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-600">Date:</span>
+                  <span className="font-semibold">
+                    <FieldWithOCR fieldName="invoice_date">
+                      {formatDate(invoice.invoice_date)}
+                    </FieldWithOCR>
+                  </span>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-600">Due Date:</span>
+                  <span className="font-semibold">
+                    <FieldWithOCR fieldName="due_date">
+                      {formatDate(invoice.due_date)}
+                    </FieldWithOCR>
+                  </span>
+                </div>
+                {invoice.po_numbers_cached?.[0] && (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-gray-600">PO #:</span>
+                    <span className="font-semibold">
+                      <FieldWithOCR fieldName="po_numbers_cached">
+                        {invoice.po_numbers_cached[0]}
+                      </FieldWithOCR>
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          // Standard Layout: Two-column with Invoice Details on Right
+          <div className="flex justify-between items-start mb-8">
+            <div>
+              {/* Company Logo/Name */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-800 rounded-lg flex items-center justify-center">
+                  <FileText className="h-6 w-6 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    <FieldWithOCR fieldName="vendor_name_snapshot">
+                      {invoice.vendor_name_snapshot || 'Vendor Name'}
+                    </FieldWithOCR>
+                  </h1>
+                  <p className="text-sm text-gray-600">Professional Services</p>
+                </div>
+              </div>
             
             {/* Vendor Address */}
             <div className="text-sm text-gray-600 space-y-1">
@@ -167,6 +311,7 @@ export function FakeInvoiceDocument({ invoice, scale = 1, showOCRHighlights = fa
             </div>
           </div>
         </div>
+        )}
 
         {/* Bill To Section */}
         <div className="mb-8 p-4 bg-gray-50 rounded-lg">

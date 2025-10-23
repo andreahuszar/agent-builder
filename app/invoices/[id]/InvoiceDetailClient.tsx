@@ -92,10 +92,45 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     setInvoice(updatedData);
   };
 
+  // Field candidate accept handler
+  const handleFieldAccept = (fieldName: string, value: string) => {
+    setInvoice((prev: any) => {
+      const updated = { ...prev };
+      // Update the field value
+      updated[fieldName] = value;
+
+      // Remove the candidate from ocr_extractions
+      if (updated.ocr_extractions?.[fieldName]) {
+        const newExtractions = { ...updated.ocr_extractions };
+        delete newExtractions[fieldName];
+        updated.ocr_extractions = newExtractions;
+      }
+
+      return updated;
+    });
+  };
+
+  // Field candidate reject handler
+  const handleFieldReject = (fieldName: string) => {
+    setInvoice((prev: any) => {
+      const updated = { ...prev };
+
+      // Remove the candidate from ocr_extractions
+      if (updated.ocr_extractions?.[fieldName]) {
+        const newExtractions = { ...updated.ocr_extractions };
+        delete newExtractions[fieldName];
+        updated.ocr_extractions = newExtractions;
+      }
+
+      return updated;
+    });
+  };
+
   const [isSaving, setIsSaving] = useState(false);
   const [isPdfCollapsed, setIsPdfCollapsed] = useState(false);
   const [activeTab, setActiveTab] = useState<TabId>('details');
   const [isEditing, setIsEditing] = useState(false);
+  const [focusedFieldName, setFocusedFieldName] = useState<string | null>(null);
 
   // Load/save PDF collapsed state from localStorage
   useEffect(() => {
@@ -191,6 +226,9 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               activeTab={activeTab}
               onTabChange={handleTabChange}
               onEditModeChange={handleEditModeChange}
+              onFieldAccept={handleFieldAccept}
+              onFieldReject={handleFieldReject}
+              onFieldFocus={setFocusedFieldName}
             />
           </div>
         </div>
@@ -218,6 +256,9 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           onCollapseToggle={handlePdfCollapseToggle}
           isCollapsed={false}
           isEditing={isEditing}
+          onFieldAccept={handleFieldAccept}
+          onFieldReject={handleFieldReject}
+          focusedFieldName={focusedFieldName}
         />
 
         {/* Invoice Tabs (Read-only) - RIGHT PANEL */}
@@ -239,6 +280,9 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           activeTab={activeTab}
           onTabChange={handleTabChange}
           onEditModeChange={handleEditModeChange}
+          onFieldAccept={handleFieldAccept}
+          onFieldReject={handleFieldReject}
+          onFieldFocus={setFocusedFieldName}
         />
       </ResizablePanel>
     );

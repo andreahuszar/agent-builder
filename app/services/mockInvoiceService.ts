@@ -94,7 +94,31 @@ export const generateBaselineInvoices = (): Invoice[] => {
     updated_at: baselinePODate.toISOString(),
     data_ingestion_date: baselinePODate.toISOString().split('T')[0],
     lines: baselinePOLines,
-    invoice_lines: baselinePOLines
+    invoice_lines: baselinePOLines,
+    // OCR extraction results with AI candidate suggestion
+    ocr_extractions: {
+      invoice_number: {
+        value: null, // System didn't capture it
+        confidence: 0.0,
+        candidates: [
+          {
+            value: 'INV-2025-0123',
+            confidence: 0.78,
+            source: 'Claude Vision',
+            reason: 'Found in document header area above company logo'
+          }
+        ]
+      }
+    },
+    // Display configuration for compact layout
+    display_config: {
+      template: 'compact',
+      interactiveFields: ['invoice_number'], // Enable AI suggestions for this field
+      layout: {
+        invoiceNumberPlacement: 'above-logo',
+        showInvoiceNumberLabel: false
+      }
+    }
   } as Invoice);
 
   // ========================================================================

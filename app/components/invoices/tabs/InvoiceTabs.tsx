@@ -44,6 +44,10 @@ interface InvoiceTabsProps {
   onTabChange?: (tab: TabId) => void;
   // Edit mode callback
   onEditModeChange?: (isEditing: boolean) => void;
+  // Field candidate handlers for AI suggestions
+  onFieldAccept?: (fieldName: string, value: string) => void;
+  onFieldReject?: (fieldName: string) => void;
+  onFieldFocus?: (fieldName: string | null) => void;
 }
 
 export function InvoiceTabs({
@@ -69,6 +73,9 @@ export function InvoiceTabs({
   activeTab: controlledActiveTab,
   onTabChange,
   onEditModeChange,
+  onFieldAccept,
+  onFieldReject,
+  onFieldFocus,
 }: InvoiceTabsProps) {
   // Determine initial tab based on invoice status
   const getInitialTab = (): TabId => {
@@ -380,6 +387,9 @@ export function InvoiceTabs({
             hidePaymentSection={forceEditMode}
             showFieldErrors={showFieldErrors}
             onEditModeChange={onEditModeChange}
+            onFieldAccept={onFieldAccept}
+            onFieldReject={onFieldReject}
+            onFieldFocus={onFieldFocus}
           />
         )}
         {activeTab === 'line-items' && (
