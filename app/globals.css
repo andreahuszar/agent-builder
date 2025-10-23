@@ -159,3 +159,16 @@ select:focus-visible,
     transform: translateY(0);
   }
 }
+
+.animate-pulseRing {
+  animation: pulseRing 1.5s ease-in-out infinite;
+}
+
+@keyframes pulseRing {
+  0%, 100% {
+    opacity: 0.4;
+  }
+  50% {
+    opacity: 1;
+  }
+}

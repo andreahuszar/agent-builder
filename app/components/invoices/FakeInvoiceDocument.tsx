@@ -4,6 +4,7 @@ import React from 'react';
 import { Building2, Mail, Phone, Globe, Calendar, FileText, DollarSign } from 'lucide-react';
 import { formatVendorAddress, formatBillToAddress, formatAddressLines } from '@/app/lib/addressFormatter';
 import { EditableField } from './EditableField';
+import { getConfidenceColors } from '@/app/utils/confidenceColors';
 
 interface FakeInvoiceDocumentProps {
   invoice: any;
@@ -12,6 +13,9 @@ interface FakeInvoiceDocumentProps {
   onFieldAccept?: (fieldName: string, value: string) => void;
   onFieldReject?: (fieldName: string) => void;
   focusedFieldName?: string | null;
+  isSelectionMode?: boolean;
+  onValueSelected?: (value: string, context: string) => void;
+  onCancelSelection?: () => void;
 }
 
 export function FakeInvoiceDocument({
@@ -20,7 +24,10 @@ export function FakeInvoiceDocument({
   showOCRHighlights = false,
   onFieldAccept,
   onFieldReject,
-  focusedFieldName = null
+  focusedFieldName = null,
+  isSelectionMode = false,
+  onValueSelected,
+  onCancelSelection
 }: FakeInvoiceDocumentProps) {
   const formatCurrency = (amount: number, currency: string = 'USD') => {
     return new Intl.NumberFormat('en-US', {
@@ -49,18 +56,60 @@ export function FakeInvoiceDocument({
     const confidence = invoice.extraction_field_confidences?.[fieldName] ?? 0.92; // Default high confidence
     const confidencePercent = Math.round(confidence * 100);
 
+    // Get confidence-based colors
+    const colors = getConfidenceColors(confidence);
+
+    // Check if this field is currently focused
+    const isFocused = focusedFieldName === fieldName;
+
     return (
       <span className={`relative inline-block ${className}`}>
         <span className="relative z-10">{children}</span>
+        {/* Confidence-based highlight background */}
         <span
-          className="absolute inset-0 bg-purple-300 opacity-30 pointer-events-none rounded-sm"
+          className={`absolute inset-0 ${colors.highlight} opacity-30 pointer-events-none rounded-sm`}
           style={{ margin: '-2px -4px' }}
         />
+        {/* Animated ring outline when focused */}
+        {isFocused && (
+          <span
+            className={`absolute inset-0 pointer-events-none rounded-sm ring-4 ${colors.outline} ring-offset-2 animate-pulseRing`}
+            style={{ margin: '-2px -4px' }}
+          />
+        )}
+        {/* Confidence percentage badge */}
         <span
-          className="absolute -top-5 left-0 text-[10px] font-medium text-purple-700 bg-white px-1 rounded whitespace-nowrap"
+          className={`absolute top-0 left-full ml-1 text-[10px] font-medium ${colors.pill.text} bg-white px-1 rounded whitespace-nowrap`}
         >
           {confidencePercent}%
         </span>
+      </span>
+    );
+  };
+
+  // SelectableText wrapper - makes text clickable in selection mode
+  const SelectableText = ({ children, label }: { children: React.ReactNode; label: string }) => {
+    if (!isSelectionMode) {
+      return <>{children}</>;
+    }
+
+    const handleClick = (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (onValueSelected && typeof children === 'string') {
+        // Extract the value and create context description
+        const value = children.trim();
+        const context = `Found near label "${label}"`;
+        onValueSelected(value, context);
+      }
+    };
+
+    return (
+      <span
+        onClick={handleClick}
+        className="cursor-crosshair hover:bg-purple-100 hover:ring-2 hover:ring-purple-900 rounded px-1 transition-all"
+        title={`Click to select this as the custom field value`}
+      >
+        {children}
       </span>
     );
   };
@@ -117,7 +166,7 @@ export function FakeInvoiceDocument({
 
   return (
     <div
-      className="bg-white shadow-lg mx-auto"
+      className="bg-white shadow-lg mx-auto relative"
       style={{
         width: `${794 * scale}px`,
         minHeight: `${1123 * scale}px`,
@@ -126,6 +175,24 @@ export function FakeInvoiceDocument({
         fontSize: `${16 * scale}px`,
       }}
     >
+      {/* Selection Mode Overlay */}
+      {isSelectionMode && (
+        <div className="absolute inset-0 z-50 bg-purple-50 bg-opacity-20 ring-4 ring-purple-900 ring-inset pointer-events-none">
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-purple-900 text-white px-4 py-2 rounded-b-md shadow-lg text-sm font-medium flex items-center gap-3 pointer-events-auto">
+            <span className="text-lg">👆</span>
+            <span>Click on the value in the document</span>
+            {onCancelSelection && (
+              <button
+                onClick={onCancelSelection}
+                className="ml-2 px-3 py-1 text-xs font-medium bg-white bg-opacity-20 hover:bg-opacity-30 rounded transition-colors"
+              >
+                Cancel
+              </button>
+            )}
+          </div>
+        </div>
+      )}
+
       <div className="p-12">
         {/* Header - Conditional Layout */}
         {isCompactLayout && invoiceNumberPlacement === 'above-logo' ? (
@@ -138,7 +205,7 @@ export function FakeInvoiceDocument({
                 <FieldWithOCR fieldName="invoice_number">
                   {invoice.invoice_number || '[Invoice Number]'}
                 </FieldWithOCR>,
-                `text-sm ${invoice.invoice_number ? 'text-gray-600' : 'text-gray-400 italic'}`
+                `text-sm font-semibold ${invoice.invoice_number ? 'text-black' : 'text-gray-400 italic'}`
               )}
             </div>
 
@@ -160,7 +227,7 @@ export function FakeInvoiceDocument({
             </div>
 
             {/* Vendor Address - Centered */}
-            <div className="text-sm text-gray-600 space-y-1 text-center mb-6">
+            <div className="text-sm text-gray-800 space-y-1 text-center mb-6">
               {invoice.vendor_address_snapshot ? (
                 formatAddressLines(invoice.vendor_address_snapshot).map((line, index) => (
                   <p key={index}>{line}</p>
@@ -190,12 +257,12 @@ export function FakeInvoiceDocument({
                 {/* Only show invoice number if not already shown above */}
                 {!invoice.invoice_number && (
                   <div className="flex justify-between gap-4">
-                    <span className="text-gray-600">Invoice #:</span>
+                    <span className="text-gray-800">Invoice #:</span>
                     <span className="font-semibold text-gray-400">Not provided</span>
                   </div>
                 )}
                 <div className="flex justify-between gap-4">
-                  <span className="text-gray-600">Date:</span>
+                  <span className="text-gray-800">Date:</span>
                   <span className="font-semibold">
                     <FieldWithOCR fieldName="invoice_date">
                       {formatDate(invoice.invoice_date)}
@@ -203,7 +270,7 @@ export function FakeInvoiceDocument({
                   </span>
                 </div>
                 <div className="flex justify-between gap-4">
-                  <span className="text-gray-600">Due Date:</span>
+                  <span className="text-gray-800">Due Date:</span>
                   <span className="font-semibold">
                     <FieldWithOCR fieldName="due_date">
                       {formatDate(invoice.due_date)}
@@ -212,7 +279,7 @@ export function FakeInvoiceDocument({
                 </div>
                 {invoice.po_numbers_cached?.[0] && (
                   <div className="flex justify-between gap-4">
-                    <span className="text-gray-600">PO #:</span>
+                    <span className="text-gray-800">PO #:</span>
                     <span className="font-semibold">
                       <FieldWithOCR fieldName="po_numbers_cached">
                         {invoice.po_numbers_cached[0]}
@@ -220,6 +287,16 @@ export function FakeInvoiceDocument({
                     </span>
                   </div>
                 )}
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-800">Project Ref:</span>
+                  <span className="font-semibold">
+                    <FieldWithOCR fieldName="job_number">
+                      <SelectableText label="Project Ref">
+                        WO-2025-445
+                      </SelectableText>
+                    </FieldWithOCR>
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -243,7 +320,7 @@ export function FakeInvoiceDocument({
               </div>
             
             {/* Vendor Address */}
-            <div className="text-sm text-gray-600 space-y-1">
+            <div className="text-sm text-gray-800 space-y-1">
               {invoice.vendor_address_snapshot ? (
                 formatAddressLines(
                   // Handle both nested (bill_to style) and direct (vendor_address style) structures
@@ -275,15 +352,15 @@ export function FakeInvoiceDocument({
             <h2 className="text-4xl font-bold text-gray-900 mb-2">INVOICE</h2>
             <div className="space-y-1 text-sm">
               <div className="flex justify-between gap-4">
-                <span className="text-gray-600">Invoice #:</span>
-                <span className="font-semibold">
+                <span className="text-gray-800">Invoice #:</span>
+                <span className="font-semibold text-black">
                   <FieldWithOCR fieldName="invoice_number">
                     {invoice.invoice_number}
                   </FieldWithOCR>
                 </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-gray-600">Date:</span>
+                <span className="text-gray-800">Date:</span>
                 <span className="font-semibold">
                   <FieldWithOCR fieldName="invoice_date">
                     {formatDate(invoice.invoice_date)}
@@ -291,7 +368,7 @@ export function FakeInvoiceDocument({
                 </span>
               </div>
               <div className="flex justify-between gap-4">
-                <span className="text-gray-600">Due Date:</span>
+                <span className="text-gray-800">Due Date:</span>
                 <span className="font-semibold">
                   <FieldWithOCR fieldName="due_date">
                     {formatDate(invoice.due_date)}
@@ -300,7 +377,7 @@ export function FakeInvoiceDocument({
               </div>
               {invoice.po_numbers_cached?.[0] && (
                 <div className="flex justify-between gap-4">
-                  <span className="text-gray-600">PO #:</span>
+                  <span className="text-gray-800">PO #:</span>
                   <span className="font-semibold">
                     <FieldWithOCR fieldName="po_numbers_cached">
                       {invoice.po_numbers_cached[0]}
@@ -308,6 +385,16 @@ export function FakeInvoiceDocument({
                   </span>
                 </div>
               )}
+              <div className="flex justify-between gap-4">
+                <span className="text-gray-800">Project Ref:</span>
+                <span className="font-semibold">
+                  <FieldWithOCR fieldName="job_number">
+                    <SelectableText label="Project Ref">
+                      WO-2025-445
+                    </SelectableText>
+                  </FieldWithOCR>
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -461,7 +548,7 @@ export function FakeInvoiceDocument({
             {invoice.terms_text || 'Net 30 - Payment due within 30 days of invoice date'}
           </p>
           <p className="text-sm text-gray-700 mt-2">
-            Please reference invoice number <span className="font-semibold">{invoice.invoice_number}</span> with your payment.
+            Please reference invoice number <span className="font-semibold text-black">{invoice.invoice_number}</span> with your payment.
           </p>
         </div>
 

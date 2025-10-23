@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Maximize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical } from 'lucide-react';
+import { Maximize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical, Zap } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, useDroppable, DragOverlay, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
+import * as Tooltip from '@radix-ui/react-tooltip';
+import { SmartMatchPopover } from '../SmartMatchPopover';
+import { useToast } from '@/app/components/ui/Toast';
 
 interface InvoiceLineItem {
   id?: string;
@@ -200,7 +203,10 @@ export function LineItemsPreviewPanel({
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
   const [manuallyMatchedLines, setManuallyMatchedLines] = useState<Set<string>>(new Set());
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
+  const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
+  const [unmatchedLines, setUnmatchedLines] = useState<Set<string>>(new Set());
   const containerRef = useRef<HTMLDivElement>(null);
+  const { showToast } = useToast();
 
   // Update editable lines when invoice lines change
   // Always initialize display_position to ensure lines are visible in read-only mode
@@ -246,6 +252,13 @@ export function LineItemsPreviewPanel({
 
   const handleRowLeave = () => {
     setHoveredPosition(null);
+  };
+
+  // Handle smart match unmatch action
+  const handleUnmatch = (lineId: string) => {
+    setUnmatchedLines(prev => new Set(prev).add(lineId));
+    setOpenPopoverId(null);
+    showToast("Match removed. These descriptions won't auto-match in future invoices.", 'info');
   };
 
   // Handle fullscreen change events
@@ -325,9 +338,27 @@ export function LineItemsPreviewPanel({
 
   // Get status for an invoice line
   const getLineStatus = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): 'variance' | 'matched' | 'missing' => {
+    const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
+
+    // Check if manually unmatched first - this overrides other status
+    if (unmatchedLines.has(lineId)) {
+      return 'variance';
+    }
+
     if (!poLine) return 'missing';
     if (hasMismatch(invoiceLine, poLine)) return 'variance';
     return 'matched';
+  };
+
+  // Check if descriptions differ between invoice and PO line (for smart match indicator)
+  const hasDescriptionDifference = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): boolean => {
+    if (!poLine) return false;
+
+    const invDesc = invoiceLine.description.trim().toLowerCase();
+    const poDesc = (poLine.description || '').trim().toLowerCase();
+
+    // Consider "different" if descriptions don't match and neither contains the other
+    return invDesc !== poDesc && !invDesc.includes(poDesc) && !poDesc.includes(invDesc);
   };
 
   // Generate random SKU for display purposes
@@ -696,7 +727,11 @@ export function LineItemsPreviewPanel({
                               </span>
                             )}
                           </td>
-                          <td className="px-1.5 py-2 text-xs text-gray-950">
+                          <td className={`px-1.5 py-2 text-xs text-gray-950 ${
+                            matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`)
+                              ? 'bg-red-50 border border-red-300'
+                              : ''
+                          }`}>
                             {isEditMode ? (
                               <input
                                 type="text"
@@ -705,8 +740,43 @@ export function LineItemsPreviewPanel({
                                 className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                               />
                             ) : (
-                              <div className="truncate max-w-[200px]" title={line.description}>
-                                {line.description}
+                              <div className="flex items-center gap-1.5">
+                                {matchedPO && hasDescriptionDifference(line, matchedPO) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
+                                  <Tooltip.Provider>
+                                    <Tooltip.Root delayDuration={200} open={openPopoverId === `invoice-${line.id || `line-${line.line_no}`}` ? false : undefined}>
+                                      <SmartMatchPopover
+                                        invoiceDescription={line.description}
+                                        poDescription={matchedPO.description}
+                                        invoiceLine={line}
+                                        poLine={matchedPO}
+                                        onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
+                                        open={openPopoverId === `invoice-${line.id || `line-${line.line_no}`}`}
+                                        onOpenChange={(open) => setOpenPopoverId(open ? `invoice-${line.id || `line-${line.line_no}`}` : null)}
+                                      >
+                                        <Tooltip.Trigger asChild>
+                                          <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                          </span>
+                                        </Tooltip.Trigger>
+                                      </SmartMatchPopover>
+                                      <Tooltip.Portal>
+                                        <Tooltip.Content
+                                          className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
+                                          sideOffset={5}
+                                        >
+                                          <div className="space-y-1">
+                                            <p className="font-semibold">Smart Match Applied</p>
+                                            <p>Click to review or unmatch</p>
+                                          </div>
+                                          <Tooltip.Arrow className="fill-gray-900" />
+                                        </Tooltip.Content>
+                                      </Tooltip.Portal>
+                                    </Tooltip.Root>
+                                  </Tooltip.Provider>
+                                )}
+                                <div className="truncate max-w-[200px]" title={line.description}>
+                                  {line.description}
+                                </div>
                               </div>
                             )}
                           </td>
@@ -946,9 +1016,48 @@ export function LineItemsPreviewPanel({
                           onMouseLeave={handleRowLeave}
                         >
                           <td className="px-1.5 py-2 text-xs text-gray-950">{matchedPO.line_no}</td>
-                          <td className="px-1.5 py-2 text-xs text-gray-950">
-                            <div className="truncate max-w-[200px]" title={matchedPO.description}>
-                              {matchedPO.item_description || matchedPO.description}
+                          <td className={`px-1.5 py-2 text-xs text-gray-950 ${
+                            invLine && unmatchedLines.has(invLine.id || `line-${invLine.line_no}`)
+                              ? 'bg-red-50 border border-red-300'
+                              : ''
+                          }`}>
+                            <div className="flex items-center gap-1.5">
+                              {invLine && hasDescriptionDifference(invLine, matchedPO) && !unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && (
+                                <Tooltip.Provider>
+                                  <Tooltip.Root delayDuration={200} open={openPopoverId === `po-${invLine.id || `line-${invLine.line_no}`}` ? false : undefined}>
+                                    <SmartMatchPopover
+                                      invoiceDescription={invLine.description}
+                                      poDescription={matchedPO.description}
+                                      invoiceLine={invLine}
+                                      poLine={matchedPO}
+                                      onUnmatch={() => handleUnmatch(invLine.id || `line-${invLine.line_no}`)}
+                                      open={openPopoverId === `po-${invLine.id || `line-${invLine.line_no}`}`}
+                                      onOpenChange={(open) => setOpenPopoverId(open ? `po-${invLine.id || `line-${invLine.line_no}`}` : null)}
+                                    >
+                                      <Tooltip.Trigger asChild>
+                                        <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                          <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                        </span>
+                                      </Tooltip.Trigger>
+                                    </SmartMatchPopover>
+                                    <Tooltip.Portal>
+                                      <Tooltip.Content
+                                        className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
+                                        sideOffset={5}
+                                      >
+                                        <div className="space-y-1">
+                                          <p className="font-semibold">Smart Match Applied</p>
+                                          <p>Click to review or unmatch</p>
+                                        </div>
+                                        <Tooltip.Arrow className="fill-gray-900" />
+                                      </Tooltip.Content>
+                                    </Tooltip.Portal>
+                                  </Tooltip.Root>
+                                </Tooltip.Provider>
+                              )}
+                              <div className="truncate max-w-[200px]" title={matchedPO.description}>
+                                {matchedPO.item_description || matchedPO.description}
+                              </div>
                             </div>
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
@@ -1251,7 +1360,11 @@ export function LineItemsPreviewPanel({
                             </span>
                           )}
                         </td>
-                        <td className="px-1.5 py-2 text-xs text-gray-950">
+                        <td className={`px-1.5 py-2 text-xs text-gray-950 ${
+                          matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`)
+                            ? 'bg-red-50 border border-red-300'
+                            : ''
+                        }`}>
                           {isEditMode ? (
                             <input
                               type="text"
@@ -1260,8 +1373,43 @@ export function LineItemsPreviewPanel({
                               className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                             />
                           ) : (
-                            <div className="truncate max-w-[400px]" title={line.description}>
-                              {line.description}
+                            <div className="flex items-center gap-1.5">
+                              {matchedPO && hasDescriptionDifference(line, matchedPO) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
+                                <Tooltip.Provider>
+                                  <Tooltip.Root delayDuration={200} open={openPopoverId === `invoice-detailed-${line.id || `line-${line.line_no}`}` ? false : undefined}>
+                                    <SmartMatchPopover
+                                      invoiceDescription={line.description}
+                                      poDescription={matchedPO.description}
+                                      invoiceLine={line}
+                                      poLine={matchedPO}
+                                      onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
+                                      open={openPopoverId === `invoice-detailed-${line.id || `line-${line.line_no}`}`}
+                                      onOpenChange={(open) => setOpenPopoverId(open ? `invoice-detailed-${line.id || `line-${line.line_no}`}` : null)}
+                                    >
+                                      <Tooltip.Trigger asChild>
+                                        <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                          <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                        </span>
+                                      </Tooltip.Trigger>
+                                    </SmartMatchPopover>
+                                    <Tooltip.Portal>
+                                      <Tooltip.Content
+                                        className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
+                                        sideOffset={5}
+                                      >
+                                        <div className="space-y-1">
+                                          <p className="font-semibold">Smart Match Applied</p>
+                                          <p>Click to review or unmatch</p>
+                                        </div>
+                                        <Tooltip.Arrow className="fill-gray-900" />
+                                      </Tooltip.Content>
+                                    </Tooltip.Portal>
+                                  </Tooltip.Root>
+                                </Tooltip.Provider>
+                              )}
+                              <div className="truncate max-w-[400px]" title={line.description}>
+                                {line.description}
+                              </div>
                             </div>
                           )}
                         </td>

@@ -16,6 +16,14 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
   const [hasGR, setHasGR] = useState(false);
   const [hasSES, setHasSES] = useState(false);
   const [hasPO, setHasPO] = useState(false);
+  const [assignedUserName, setAssignedUserName] = useState<string | null>(
+    initialInvoice.assigned_to_name || null
+  );
+
+  // Reactive invoice number state (updates when teaching accepts new value)
+  const [reactiveInvoiceNumber, setReactiveInvoiceNumber] = useState<string>(
+    initialInvoice.invoice_number || invoiceNumber
+  );
 
   // Check for PO attachment
   useEffect(() => {
@@ -44,41 +52,61 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
   // Check if this is a needs info status invoice
   const isNeedsInfoMode = initialInvoice.status === 'needs_info' || initialInvoice.status === 'needs-info';
 
+  // Handle user assignment changes
+  const handleAssignUser = async (userName: string | null) => {
+    setAssignedUserName(userName);
+
+    // TODO: In a real implementation, you would make an API call here to update the assignment
+    // For now, we just update the local state for demo purposes
+    console.log(`Invoice ${invoiceId} assigned to: ${userName || 'Unassigned'}`);
+  };
+
+  // Handle invoice number updates (from teaching or manual edits)
+  const handleInvoiceNumberUpdate = (newInvoiceNumber: string) => {
+    setReactiveInvoiceNumber(newInvoiceNumber);
+  };
+
   // ViewModeSwitcher hidden for unified layout - will be removed in future phase
   const viewModeSwitcher = undefined;
 
   return (
     <InvoiceDetailLayout
-      invoiceNumber={invoiceNumber}
+      invoiceNumber={reactiveInvoiceNumber}
       vendorName={initialInvoice.vendor_name_snapshot}
       viewModeSwitcher={viewModeSwitcher}
       workflowStatus={initialInvoice.status || 'draft'}
       isNeedsInfo={isNeedsInfoMode}
+      assignedUserName={assignedUserName}
+      onAssignUser={handleAssignUser}
     >
       <InvoiceDetailClientWithViewMode
         invoiceId={invoiceId}
         initialInvoice={initialInvoice}
         viewMode={viewMode}
+        onInvoiceNumberUpdate={handleInvoiceNumberUpdate}
       />
     </InvoiceDetailLayout>
   );
 }
 
 // Export a modified version that accepts viewMode as prop
-export function InvoiceDetailClientWithViewMode({ 
-  invoiceId, 
-  initialInvoice, 
-  viewMode 
-}: { 
-  invoiceId: string; 
-  initialInvoice: any; 
+export function InvoiceDetailClientWithViewMode({
+  invoiceId,
+  initialInvoice,
+  viewMode,
+  onInvoiceNumberUpdate
+}: {
+  invoiceId: string;
+  initialInvoice: any;
   viewMode: ViewMode;
+  onInvoiceNumberUpdate?: (invoiceNumber: string) => void;
 }) {
   return (
     <InvoiceDetailClient
       invoiceId={invoiceId}
       initialInvoice={initialInvoice}
       viewMode={viewMode}
+      onInvoiceNumberUpdate={onInvoiceNumberUpdate}
     />
   );
 }

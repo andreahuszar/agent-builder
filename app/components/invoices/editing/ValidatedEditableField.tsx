@@ -19,6 +19,8 @@ interface ValidatedEditableFieldProps {
   currency?: string;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   autoFocus?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 export function ValidatedEditableField({
@@ -36,6 +38,8 @@ export function ValidatedEditableField({
   currency = 'USD',
   onKeyDown,
   autoFocus = false,
+  onFocus,
+  onBlur,
 }: ValidatedEditableFieldProps) {
   const [localValue, setLocalValue] = useState(value);
   const [isValid, setIsValid] = useState(false);
@@ -126,9 +130,6 @@ export function ValidatedEditableField({
   if (type === 'currency') {
     return (
       <div className="relative">
-        {shouldShowIndicator && (
-          <Icon className={`absolute -left-5 top-[-1.75rem] h-4 w-4 ${iconColor}`} />
-        )}
         <input
           type="text"
           value={localValue !== null && localValue !== undefined ? formatCurrency(localValue) : ''}
@@ -137,11 +138,13 @@ export function ValidatedEditableField({
             handleChange(numericValue);
           }}
           onKeyDown={onKeyDown}
+          onFocus={onFocus}
+          onBlur={onBlur}
           autoFocus={autoFocus}
           placeholder={placeholder}
           disabled={disabled}
           className={`
-            w-full px-3 py-1.5 text-sm text-gray-950 bg-white border ${borderColor} rounded-md
+            w-full px-3 py-1 text-sm text-gray-950 bg-white border ${borderColor} rounded-md
             focus:outline-none focus:ring-2 focus:border-transparent
             disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed
           `}
@@ -154,17 +157,16 @@ export function ValidatedEditableField({
   if (type === 'select') {
     return (
       <div className="relative">
-        {shouldShowIndicator && (
-          <Icon className={`absolute -left-5 top-[-1.75rem] h-4 w-4 ${iconColor}`} />
-        )}
         <select
           value={localValue || ''}
           onChange={(e) => handleChange(e.target.value)}
           onKeyDown={onKeyDown}
+          onFocus={onFocus}
+          onBlur={onBlur}
           autoFocus={autoFocus}
           disabled={disabled}
           className={`
-            w-full px-3 py-1.5 text-sm text-gray-950 bg-white border ${borderColor} rounded-md
+            w-full px-3 py-1 text-sm text-gray-950 bg-white border ${borderColor} rounded-md
             focus:outline-none focus:ring-2 focus:border-transparent
             disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed
           `}
@@ -182,9 +184,6 @@ export function ValidatedEditableField({
   // For all other types, use EditableField with validation indicator
   return (
     <div className="relative">
-      {shouldShowIndicator && (
-        <Icon className={`absolute -left-5 top-[-1.75rem] h-4 w-4 ${iconColor} z-10`} />
-      )}
       <EditableField
         value={localValue}
         onChange={handleChange}
@@ -197,6 +196,8 @@ export function ValidatedEditableField({
         max={max}
         step={step}
         onKeyDown={onKeyDown}
+        onFocus={onFocus}
+        onBlur={onBlur}
         autoFocus={autoFocus}
       />
     </div>

@@ -260,6 +260,114 @@ export const generateMockPOs = (): Record<string, POHeader> => {
       ],
       subtotal: 0,
       total: 0
+    },
+    'PO-2025-9010': {
+      id: 'mock-po-9010',
+      po_number: 'PO-2025-9010',
+      vendor_name: 'TechSupply Solutions Ltd',
+      order_date: '2025-01-18',
+      currency: 'GBP',
+      status: 'open',
+      lines: [
+        {
+          id: 'po-line-9010-1',
+          line_no: 1,
+          description: 'Hardware Equipment - Server Components',
+          item_description: 'Hardware Equipment - Server Components',
+          qty_ordered: 25,
+          uom: 'Units',
+          unit_price: 80.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 25,
+          qty_remaining_to_invoice: 25,
+          status: 'open'
+        },
+        {
+          id: 'po-line-9010-2',
+          line_no: 2,
+          description: 'Installation Services - On-site Setup',
+          item_description: 'Installation Services - On-site Setup',
+          qty_ordered: 20,
+          uom: 'Hours',
+          unit_price: 95.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 20,
+          qty_remaining_to_invoice: 20,
+          status: 'open'
+        },
+        {
+          id: 'po-line-9010-3',
+          line_no: 3,
+          description: 'Training Materials - User Guides',
+          item_description: 'Training Materials - User Guides',
+          qty_ordered: 15,
+          uom: 'Units',
+          unit_price: 45.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 15,
+          qty_remaining_to_invoice: 15,
+          status: 'open'
+        },
+        {
+          id: 'po-line-9010-4',
+          line_no: 4,
+          description: 'Support Contract - Extended Warranty',
+          item_description: '12-Month Premium Support',
+          qty_ordered: 12,
+          uom: 'Months',
+          unit_price: 200.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 12,
+          qty_remaining_to_invoice: 12,
+          status: 'open'
+        }
+      ],
+      subtotal: 0,
+      total: 0
+    },
+    'PO-2025-7755': {
+      id: 'mock-po-7755',
+      po_number: 'PO-2025-7755',
+      vendor_name: 'Industrial Equipment Corp',
+      order_date: '2025-01-18',
+      currency: 'USD',
+      status: 'open',
+      lines: [
+        {
+          id: 'po-line-7755-1',
+          line_no: 1,
+          description: 'Industrial Pump Model XL-500',
+          item_description: 'Heavy-duty industrial pump with 500HP motor',
+          qty_ordered: 5,
+          uom: 'EA',
+          unit_price: 2400.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 5,
+          qty_remaining_to_invoice: 5,
+          status: 'open'
+        },
+        {
+          id: 'po-line-7755-2',
+          line_no: 2,
+          description: 'Hydraulic Valve Set - Premium',
+          item_description: 'Premium hydraulic valve set with connectors',
+          qty_ordered: 10,
+          uom: 'EA',
+          unit_price: 350.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 10,
+          qty_remaining_to_invoice: 10,
+          status: 'open'
+        }
+      ],
+      subtotal: 0,
+      total: 0
     }
   };
 

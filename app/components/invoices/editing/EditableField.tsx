@@ -15,6 +15,8 @@ interface EditableFieldProps {
   step?: number;
   onKeyDown?: (e: React.KeyboardEvent) => void;
   autoFocus?: boolean;
+  onFocus?: () => void;
+  onBlur?: () => void;
 }
 
 export function EditableField({
@@ -30,6 +32,8 @@ export function EditableField({
   step,
   onKeyDown,
   autoFocus = false,
+  onFocus,
+  onBlur,
 }: EditableFieldProps) {
   const [localValue, setLocalValue] = useState(value);
 
@@ -44,7 +48,7 @@ export function EditableField({
   };
 
   const baseClassName = `
-    w-full px-3 py-1.5 text-sm text-gray-950 bg-white border border-gray-300 rounded-md
+    w-full px-3 py-1 text-sm text-gray-950 bg-white border border-gray-300 rounded-md
     focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent
     disabled:bg-gray-50 disabled:text-gray-500 disabled:cursor-not-allowed
     ${className}
@@ -56,6 +60,8 @@ export function EditableField({
         value={localValue}
         onChange={handleChange}
         onKeyDown={onKeyDown}
+        onFocus={onFocus}
+        onBlur={onBlur}
         autoFocus={autoFocus}
         disabled={disabled}
         className={baseClassName}
@@ -75,6 +81,8 @@ export function EditableField({
         value={localValue || ''}
         onChange={handleChange}
         onKeyDown={onKeyDown}
+        onFocus={onFocus}
+        onBlur={onBlur}
         autoFocus={autoFocus}
         placeholder={placeholder}
         disabled={disabled}
@@ -105,6 +113,8 @@ export function EditableField({
         value={formatDateForInput(localValue)}
         onChange={handleChange}
         onKeyDown={onKeyDown}
+        onFocus={onFocus}
+        onBlur={onBlur}
         autoFocus={autoFocus}
         disabled={disabled}
         className={baseClassName}
@@ -118,6 +128,8 @@ export function EditableField({
       value={localValue || ''}
       onChange={handleChange}
       onKeyDown={onKeyDown}
+      onFocus={onFocus}
+      onBlur={onBlur}
       autoFocus={autoFocus}
       placeholder={placeholder}
       disabled={disabled}

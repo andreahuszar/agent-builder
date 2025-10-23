@@ -105,15 +105,20 @@ export const generateBaselineInvoices = (): Invoice[] => {
             value: 'INV-2025-0123',
             confidence: 0.78,
             source: 'Claude Vision',
-            reason: 'Found in document header area above company logo'
+            reason: 'Found a close match in document header area above company logo'
           }
         ]
+      },
+      job_number: {
+        value: null, // Custom field - not detected automatically
+        confidence: 0.0,
+        candidates: [] // Empty - AI doesn't know where to look yet
       }
     },
     // Display configuration for compact layout
     display_config: {
       template: 'compact',
-      interactiveFields: ['invoice_number'], // Enable AI suggestions for this field
+      interactiveFields: ['invoice_number', 'job_number'], // Enable AI suggestions for these fields
       layout: {
         invoiceNumberPlacement: 'above-logo',
         showInvoiceNumberLabel: false
@@ -244,6 +249,184 @@ export const generateBaselineInvoices = (): Invoice[] => {
     data_ingestion_date: baselineMatchedDate.toISOString().split('T')[0],
     lines: baselineMatchedLines,
     invoice_lines: baselineMatchedLines
+  } as Invoice);
+
+  // ========================================================================
+  // BASELINE PO INVOICE #2 - WITH ONE LINE ITEM MISMATCH
+  // ========================================================================
+  const baselinePO2Date = new Date(now);
+  baselinePO2Date.setDate(baselinePO2Date.getDate() - 7); // Created 7 days ago
+  const baselinePO2DueDate = new Date(baselinePO2Date);
+  baselinePO2DueDate.setDate(baselinePO2DueDate.getDate() + 30); // Due in 23 days
+
+  const baselinePO2Lines = [
+    {
+      id: 'line-baseline-po2-1',
+      line_no: 1,
+      description: 'Hardware Equipment - Server Components',
+      qty: 25,
+      uom: 'Units',
+      unit_price: 80.00,
+      net_amount: 2000.00,
+      line_total: 2000.00,
+      po_line_id: 'po-line-9010-1',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-baseline-po2-2',
+      line_no: 2,
+      description: 'Installation Services - On-site Setup',
+      qty: 20,
+      uom: 'Hours',
+      unit_price: 95.00,
+      net_amount: 1900.00,
+      line_total: 1900.00,
+      po_line_id: 'po-line-9010-2',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-baseline-po2-3',
+      line_no: 3,
+      description: 'Training Materials - User Guides',
+      qty: 20, // MISMATCH: PO has 15, invoice has 20 (variance = 5)
+      uom: 'Units',
+      unit_price: 45.00,
+      net_amount: 900.00,
+      line_total: 900.00,
+      po_line_id: 'po-line-9010-3',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-baseline-po2-4',
+      line_no: 4,
+      description: 'Annual Maintenance - 12 months cover',
+      qty: 12,
+      uom: 'Months',
+      unit_price: 200.00,
+      net_amount: 2400.00,
+      line_total: 2400.00,
+      po_line_id: 'po-line-9010-4',
+      gr_line_id: null,
+      ses_line_id: null
+    }
+  ];
+
+  const baselinePO2Subtotal = 7200.00; // Sum of all line totals
+  const baselinePO2Tax = 1440.00; // 20% VAT
+  const baselinePO2Total = 8640.00;
+
+  mockInvoices.push({
+    id: 'baseline-po-2',
+    invoice_number: 'INV-2025-0124',
+    vendor_name_snapshot: 'TechSupply Solutions Ltd',
+    vendor_id: 'VND-1001',
+    vendor_tax_id_snapshot: 'TAX-VND-1001',
+    invoice_date: baselinePO2Date.toISOString().split('T')[0],
+    due_date: baselinePO2DueDate.toISOString().split('T')[0],
+    currency: 'GBP',
+    subtotal: baselinePO2Subtotal,
+    tax_total: baselinePO2Tax,
+    tax_rate_percent: 20,
+    total: baselinePO2Total,
+    status: 'needs_info', // Exception status (quantity mismatch)
+    match_status: 'variance', // Has variance on line 3
+    type: 'PO',
+    vendor_requires_po: true,
+    vendor_is_verified: true,
+    approval_status: 'pending',
+    po_numbers_cached: ['PO-2025-9010'],
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: ['Line Item Variance'],
+    created_at: baselinePO2Date.toISOString(),
+    updated_at: baselinePO2Date.toISOString(),
+    data_ingestion_date: baselinePO2Date.toISOString().split('T')[0],
+    lines: baselinePO2Lines,
+    invoice_lines: baselinePO2Lines
+  } as Invoice);
+
+  // ========================================================================
+  // BASELINE PO INVOICE #3 - PERFECT MATCH BUT BANK DETAILS EXCEPTION
+  // ========================================================================
+  const baselinePOBankDate = new Date(now);
+  baselinePOBankDate.setDate(baselinePOBankDate.getDate() - 4); // Created 4 days ago
+  const baselinePOBankDueDate = new Date(baselinePOBankDate);
+  baselinePOBankDueDate.setDate(baselinePOBankDueDate.getDate() + 30); // Due in 26 days
+
+  const baselinePOBankLines = [
+    {
+      id: 'line-baseline-po-bank-1',
+      line_no: 1,
+      description: 'Industrial Pump Model XL-500',
+      qty: 5,
+      uom: 'EA',
+      unit_price: 2400.00,
+      net_amount: 12000.00,
+      line_total: 12000.00,
+      po_line_id: 'po-line-7755-1',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-baseline-po-bank-2',
+      line_no: 2,
+      description: 'Hydraulic Valve Set - Premium',
+      qty: 10,
+      uom: 'EA',
+      unit_price: 350.00,
+      net_amount: 3500.00,
+      line_total: 3500.00,
+      po_line_id: 'po-line-7755-2',
+      gr_line_id: null,
+      ses_line_id: null
+    }
+  ];
+
+  const baselinePOBankSubtotal = 15500.00;
+  const baselinePOBankTax = 3100.00; // 20% VAT
+  const baselinePOBankTotal = 18600.00;
+
+  mockInvoices.push({
+    id: 'baseline-po-bank-1',
+    invoice_number: 'IEC-2025-5678',
+    job_number: 'JOB-2025-445',
+    vendor_name_snapshot: 'Industrial Equipment Corp',
+    vendor_id: 'VND-4001',
+    vendor_tax_id_snapshot: 'TAX-VND-4001',
+    invoice_date: baselinePOBankDate.toISOString().split('T')[0],
+    due_date: baselinePOBankDueDate.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: baselinePOBankSubtotal,
+    tax_total: baselinePOBankTax,
+    tax_rate_percent: 20,
+    total: baselinePOBankTotal,
+    status: 'needs_info', // Exception status (bank details change)
+    match_status: 'exception', // Exception due to bank details only
+    type: 'PO',
+    vendor_requires_po: true,
+    vendor_is_verified: true,
+    approval_status: 'pending',
+    po_numbers_cached: ['PO-2025-7755'],
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: ['Bank Details Change'],
+    created_at: baselinePOBankDate.toISOString(),
+    updated_at: baselinePOBankDate.toISOString(),
+    data_ingestion_date: baselinePOBankDate.toISOString().split('T')[0],
+    lines: baselinePOBankLines,
+    invoice_lines: baselinePOBankLines,
+    // Bank details exception - account changed
+    validation_warnings: [{
+      type: 'bank_details_change',
+      field: 'payment_bank_details',
+      message: 'Bank account changed since last invoice',
+      severity: 'error',
+      old_account: '****5678',
+      new_account: '****9999'
+    }]
   } as Invoice);
 
   // Enrich all invoices with demo data using centralized service
@@ -552,12 +735,31 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
     ai_classification_confidence: hasTotal ? 0.95 : undefined,
     ai_classification_reasoning: hasTotal ? 'Classification based on vendor and amount patterns' : undefined,
     extraction_field_confidences: hasTotal ? {
-      vendor_name: invoice.vendor_name_snapshot ? 0.98 : 0,
-      invoice_number: 0.99,
+      // Invoice Information
+      invoice_number: invoice.invoice_number && invoice.invoice_number.trim() !== '' ? 0.99 : 0,
       invoice_date: invoice.invoice_date ? 0.97 : 0,
-      due_date: 0.96,
-      total: 0.99,
-      currency: invoice.currency ? 0.95 : 0
+      due_date: invoice.due_date ? 0.96 : 0,
+      vendor_name_snapshot: invoice.vendor_name_snapshot ? 0.92 : 0,
+      vendor_tax_id_snapshot: invoice.vendor_tax_id_snapshot && invoice.vendor_tax_id_snapshot.trim() !== '' ? 0.94 : 0,
+      po_numbers_cached: invoice.po_numbers_cached?.length > 0 ? 0.92 : 0,
+      job_number: 0, // Custom field - not found initially
+
+      // Financial Details
+      subtotal: invoice.subtotal > 0 ? 0.92 : 0,
+      currency: invoice.currency ? 0.95 : 0,
+      tax_rate_percent: (invoice.tax_rate_percent !== undefined && invoice.tax_rate_percent !== null) ? 0.91 : 0,
+      tax_total: invoice.tax_total > 0 ? 0.93 : 0,
+      total: invoice.total > 0 ? 0.99 : 0,
+
+      // Payment Information
+      payment_method: invoice.payment_method && invoice.payment_method.trim() !== '' ? 0.88 : 0,
+      terms_text: invoice.terms_text && invoice.terms_text.trim() !== '' ? 0.90 : 0,
+
+      // Accounting Classification
+      ledger: invoice.ledger && invoice.ledger.trim() !== '' ? 0.85 : 0,
+      cost_center: invoice.cost_center && invoice.cost_center.trim() !== '' ? 0.87 : 0,
+      gl_code: invoice.gl_code && invoice.gl_code.trim() !== '' ? 0.86 : 0,
+      department: invoice.department && invoice.department.trim() !== '' ? 0.84 : 0
     } : {},
     is_manually_edited: {},
     payment_method: 'bank_transfer',

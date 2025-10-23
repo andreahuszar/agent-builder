@@ -32,6 +32,7 @@ export interface InvoiceValidationData {
   po_numbers_cached?: string[];
   status?: string;
   match_status?: string;
+  job_number?: string;
 }
 
 // Validation rules
@@ -121,13 +122,19 @@ export class InvoiceValidator {
       'vendor_name_snapshot',
       'total',
       'due_date',
+      'job_number',
     ];
 
     requiredFields.forEach(field => {
       if (!this.invoice[field as keyof InvoiceValidationData]) {
+        // Custom message for job_number to indicate it's a custom field
+        const message = field === 'job_number'
+          ? 'job number is required (custom field)'
+          : `${field.replace('_', ' ')} is required`;
+
         this.errors.push({
           field,
-          message: `${field.replace('_', ' ')} is required`,
+          message,
           severity: 'error',
           category: 'data_quality',
         });

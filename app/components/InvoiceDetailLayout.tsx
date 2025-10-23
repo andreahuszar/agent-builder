@@ -12,9 +12,11 @@ interface InvoiceDetailLayoutProps {
   viewModeSwitcher?: React.ReactNode;
   workflowStatus?: string;
   isNeedsInfo?: boolean;
+  assignedUserName?: string | null;
+  onAssignUser?: (userName: string | null) => void;
 }
 
-export default function InvoiceDetailLayout({ invoiceNumber, vendorName, children, documentType = 'invoice', viewModeSwitcher, workflowStatus, isNeedsInfo = false }: InvoiceDetailLayoutProps) {
+export default function InvoiceDetailLayout({ invoiceNumber, vendorName, children, documentType = 'invoice', viewModeSwitcher, workflowStatus, isNeedsInfo = false, assignedUserName, onAssignUser }: InvoiceDetailLayoutProps) {
   const handleBackClick = () => {
     // Navigate to appropriate view based on document type
     const hash = documentType === 'purchase-order' ? 'purchase-orders' : 'invoices';
@@ -30,6 +32,8 @@ export default function InvoiceDetailLayout({ invoiceNumber, vendorName, childre
       viewModeSwitcher={viewModeSwitcher}
       workflowStatus={workflowStatus}
       isNeedsInfo={isNeedsInfo}
+      assignedUserName={assignedUserName}
+      onAssignUser={onAssignUser}
     />
   );
 

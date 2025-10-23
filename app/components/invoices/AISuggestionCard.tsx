@@ -16,6 +16,7 @@ interface AISuggestionCardProps {
   onReject: () => void;
   onViewInPDF?: () => void;
   onClose?: () => void;
+  fieldLabel?: string;
 }
 
 export function AISuggestionCard({
@@ -24,20 +25,17 @@ export function AISuggestionCard({
   onReject,
   onViewInPDF,
   onClose,
+  fieldLabel,
 }: AISuggestionCardProps) {
   const confidencePercent = Math.round(candidate.confidence * 100);
-  const confidenceColor =
-    confidencePercent >= 80 ? 'bg-green-100 text-green-700' :
-    confidencePercent >= 60 ? 'bg-yellow-100 text-yellow-700' :
-    'bg-orange-100 text-orange-700';
 
   return (
     <div className="border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-purple-600 animate-pulse" />
-        <span className="text-sm font-semibold text-purple-900">AI Suggestion</span>
-        <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded ${confidenceColor}`}>
+        <span className="text-sm font-semibold text-purple-900">Agent Suggestion</span>
+        <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-orange-200 text-orange-800">
           {confidencePercent}% confidence
         </span>
         {onClose && (
@@ -53,12 +51,17 @@ export function AISuggestionCard({
 
       {/* Suggested Value */}
       <div className="mb-3">
+        {fieldLabel && (
+          <div className="text-xs font-medium text-gray-800">
+            {fieldLabel}
+          </div>
+        )}
         <div className="text-base font-semibold text-gray-950">
           {candidate.value}
         </div>
         {candidate.reason && (
-          <div className="text-xs text-gray-600 mt-1">
-            {candidate.reason}
+          <div className="text-xs text-gray-700 mt-2">
+            <span className="font-medium text-gray-900">Note:</span> {candidate.reason}
           </div>
         )}
       </div>
@@ -66,18 +69,18 @@ export function AISuggestionCard({
       {/* Actions */}
       <div className="flex gap-2">
         <button
-          onClick={onAccept}
-          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-        >
-          <Check className="h-4 w-4" />
-          Accept
-        </button>
-        <button
           onClick={onReject}
           className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
         >
           <X className="h-4 w-4" />
           Reject
+        </button>
+        <button
+          onClick={onAccept}
+          className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+        >
+          <Check className="h-4 w-4" />
+          Accept & Teach
         </button>
         {onViewInPDF && (
           <button

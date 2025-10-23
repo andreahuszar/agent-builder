@@ -65,16 +65,16 @@ export function EditableField({
       <button
         onClick={handleTogglePopover}
         className={`
-          group inline-flex items-center gap-1 cursor-pointer hover:bg-purple-50 rounded px-1 -mx-1 transition-all
-          ${isFocused ? 'ring-2 ring-yellow-400 ring-offset-2 bg-yellow-50 animate-pulse' : ''}
+          group inline-flex items-center gap-1 cursor-pointer hover:bg-orange-50 rounded px-1 -mx-1 transition-all
+          ${(isFocused || showPopover) ? 'ring-4 ring-orange-500 ring-offset-2 bg-orange-50' : ''}
           ${className}
         `.trim()}
         type="button"
       >
         <span
           className={`
-            ${showPopover ? 'text-purple-700' : ''}
-            ${showAsUnconfirmed ? 'border-b-2 border-dashed border-purple-400 bg-purple-50 px-1 rounded' : ''}
+            ${showPopover ? 'text-orange-700' : ''}
+            ${showAsUnconfirmed ? 'border-b-2 border-dashed border-orange-400 bg-orange-50 px-1 rounded' : ''}
           `.trim()}
         >
           {value}
@@ -82,8 +82,8 @@ export function EditableField({
         <Sparkles
           className={`h-3 w-3 transition-all ${
             showPopover
-              ? 'text-purple-600 scale-110'
-              : 'text-purple-500 group-hover:scale-110 group-hover:text-purple-600 animate-pulse'
+              ? 'text-orange-600 scale-110'
+              : 'text-orange-500 group-hover:scale-110 group-hover:text-orange-600 animate-pulse'
           }`}
         />
       </button>

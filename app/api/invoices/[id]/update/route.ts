@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 
+// Helper to detect mock invoice IDs
+function isMockInvoice(id: string): boolean {
+  const mockPatterns = ['baseline-', 'needs-info-', 'blocked-', 'mock-', 'due-', 'cn-', 'pf-', 'approval-'];
+  return mockPatterns.some(pattern => id.startsWith(pattern));
+}
+
 export async function PATCH(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -9,9 +15,23 @@ export async function PATCH(
     const { id } = await context.params;
     const body = await request.json();
 
+    // Handle mock invoices - return success without database updates
+    if (isMockInvoice(id)) {
+      console.log(`[Mock Invoice Update] Skipping database update for mock invoice: ${id}`);
+      // Return the updated data as if it was saved
+      return NextResponse.json({
+        id,
+        ...body,
+        is_manually_edited: body.is_manually_edited || {},
+        extraction_field_confidences: body.extraction_field_confidences || {},
+        updated_at: new Date().toISOString()
+      });
+    }
+
     // Get current invoice to detect which fields are being changed
     const currentInvoice = await prisma.$queryRaw`
-      SELECT 
+      SELECT
+        invoice_number,
         invoice_date::text,
         due_date::text,
         currency,
@@ -36,6 +56,10 @@ export async function PATCH(
 
     // Track which fields are being modified
     const fieldsToUpdate: string[] = [];
+    if (body.invoice_number && body.invoice_number !== current.invoice_number) {
+      fieldsToUpdate.push('invoice_number');
+      manuallyEdited.invoice_number = true;
+    }
     if (body.invoice_date && body.invoice_date !== current.invoice_date) {
       fieldsToUpdate.push('invoice_date');
       manuallyEdited.invoice_date = true;
@@ -69,6 +93,7 @@ export async function PATCH(
     await prisma.$executeRaw`
       UPDATE invoice_headers
       SET
+        invoice_number = COALESCE(${body.invoice_number}, invoice_number),
         invoice_date = COALESCE(${body.invoice_date}::date, invoice_date),
         due_date = COALESCE(${body.due_date}::date, due_date),
         currency = COALESCE(${body.currency}, currency),

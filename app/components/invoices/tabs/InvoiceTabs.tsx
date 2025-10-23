@@ -48,6 +48,9 @@ interface InvoiceTabsProps {
   onFieldAccept?: (fieldName: string, value: string) => void;
   onFieldReject?: (fieldName: string) => void;
   onFieldFocus?: (fieldName: string | null) => void;
+  onStartTeaching?: (fieldName: string) => void;
+  // Agent-pending fields (accepted but not yet saved)
+  agentPendingFields?: {[key: string]: any};
 }
 
 export function InvoiceTabs({
@@ -76,6 +79,8 @@ export function InvoiceTabs({
   onFieldAccept,
   onFieldReject,
   onFieldFocus,
+  onStartTeaching,
+  agentPendingFields = {},
 }: InvoiceTabsProps) {
   // Determine initial tab based on invoice status
   const getInitialTab = (): TabId => {
@@ -171,7 +176,8 @@ export function InvoiceTabs({
       'invoice_date',
       'vendor_name_snapshot',
       'vendor_tax_id_snapshot',
-      'currency'
+      'currency',
+      'job_number'
     ];
 
     requiredFields.forEach(field => {
@@ -390,6 +396,8 @@ export function InvoiceTabs({
             onFieldAccept={onFieldAccept}
             onFieldReject={onFieldReject}
             onFieldFocus={onFieldFocus}
+            onStartTeaching={onStartTeaching}
+            agentPendingFields={agentPendingFields}
           />
         )}
         {activeTab === 'line-items' && (

@@ -99,6 +99,16 @@ export function calculateInvoiceExceptions(
     });
   }
 
+  // 2b. Check for missing job number (custom field)
+  if (!invoiceData?.job_number || invoiceData.job_number.trim() === '') {
+    exceptions.push({
+      severity: 'error',
+      message: 'Missing job number',
+      type: 'missing_job_number',
+      field: 'job_number',
+    });
+  }
+
   // 3. Check vendor verification status
   if (invoiceData?.vendor_is_verified === false) {
     exceptions.push({

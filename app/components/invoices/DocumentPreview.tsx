@@ -22,6 +22,9 @@ interface DocumentPreviewProps {
   onFieldAccept?: (fieldName: string, value: string) => void; // Accept AI candidate suggestion
   onFieldReject?: (fieldName: string) => void; // Reject AI candidate suggestion
   focusedFieldName?: string | null; // Field to highlight (when Details tab card is open)
+  isSelectionMode?: boolean; // Teaching mode - document is in selection mode
+  onValueSelected?: (value: string, context: string) => void; // Value selected for teaching
+  onCancelSelection?: () => void; // Cancel teaching selection mode
 }
 
 // Collapsible Document Preview for needs info mode
@@ -152,7 +155,10 @@ export function DocumentPreview({
   isEditing = false,
   onFieldAccept,
   onFieldReject,
-  focusedFieldName = null
+  focusedFieldName = null,
+  isSelectionMode = false,
+  onValueSelected,
+  onCancelSelection
 }: DocumentPreviewProps) {
   // Start with customizable zoom level (default 75%)
   const [zoom, setZoom] = useState(initialZoom);
@@ -434,6 +440,9 @@ export function DocumentPreview({
                     onFieldAccept={onFieldAccept}
                     onFieldReject={onFieldReject}
                     focusedFieldName={focusedFieldName}
+                    isSelectionMode={isSelectionMode}
+                    onValueSelected={onValueSelected}
+                    onCancelSelection={onCancelSelection}
                   />
                 ) : (
                   <div className="bg-white shadow-lg p-12 rounded-lg">

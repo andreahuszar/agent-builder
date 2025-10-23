@@ -2,6 +2,7 @@
 
 import React, { memo } from 'react';
 import { ArrowLeft, X } from 'lucide-react';
+import { UserAssignmentDropdown } from './invoices/UserAssignmentDropdown';
 
 interface InvoiceDetailTopBarProps {
   invoiceNumber: string;
@@ -11,6 +12,8 @@ interface InvoiceDetailTopBarProps {
   viewModeSwitcher?: React.ReactNode;
   workflowStatus?: string;
   isNeedsInfo?: boolean;
+  assignedUserName?: string | null;
+  onAssignUser?: (userName: string | null) => void;
 }
 
 const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
@@ -21,6 +24,8 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
   viewModeSwitcher,
   workflowStatus,
   isNeedsInfo = false,
+  assignedUserName,
+  onAssignUser,
 }) => {
   const getTitle = () => {
     switch (documentType) {
@@ -63,8 +68,12 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
             </div>
           )}
 
-          {/* Exit button for all modes */}
-          <div className="flex items-center ml-auto">
+          {/* User Assignment and Exit button */}
+          <div className="flex items-center gap-3 ml-auto">
+            <UserAssignmentDropdown
+              assignedUserName={assignedUserName}
+              onAssignUser={onAssignUser}
+            />
             <button
               onClick={onBackClick}
               className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-800 hover:text-gray-900 rounded-md hover:bg-gray-100 transition-colors"

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { AlertTriangle, ChevronLeft, ChevronRight, X } from 'lucide-react';
+import { AlertTriangle, ChevronLeft, ChevronRight, X, Info } from 'lucide-react';
 
 export interface FieldError {
   field: string;
@@ -13,9 +13,11 @@ interface FieldErrorIndicatorProps {
   errors: FieldError[];
   onDismiss?: () => void;
   readOnly?: boolean;
+  hasPendingAgentChanges?: boolean;
+  isEditing?: boolean;
 }
 
-export function FieldErrorIndicator({ errors, onDismiss, readOnly = false }: FieldErrorIndicatorProps) {
+export function FieldErrorIndicator({ errors, onDismiss, readOnly = false, hasPendingAgentChanges = false, isEditing = false }: FieldErrorIndicatorProps) {
   const [currentErrorIndex, setCurrentErrorIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
 
@@ -75,13 +77,25 @@ export function FieldErrorIndicator({ errors, onDismiss, readOnly = false }: Fie
     onDismiss?.();
   };
 
+  // Show purple banner if no errors but agent changes are pending (only when NOT editing)
+  if (errors.length === 0 && hasPendingAgentChanges && readOnly && !isEditing) {
+    return (
+      <div className="bg-purple-50 border-b border-purple-200 px-4 py-2 flex items-center gap-2 sticky top-0 z-20">
+        <Info className="h-4 w-4 text-purple-600 flex-shrink-0" />
+        <span className="text-sm font-medium text-purple-900">
+          Pending changes - Reprocess invoice to apply agent-suggested values
+        </span>
+      </div>
+    );
+  }
+
   if (!isVisible || errors.length === 0) {
     return null;
   }
 
   const currentError = errors[currentErrorIndex];
 
-  // Simplified banner for read-only mode
+  // Simplified red banner for read-only mode with errors
   if (readOnly) {
     return (
       <div className="bg-red-50 border-b border-red-200 px-4 py-2 flex items-center gap-2 sticky top-0 z-20">

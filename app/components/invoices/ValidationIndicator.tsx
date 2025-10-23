@@ -9,12 +9,14 @@ interface ValidationIndicatorProps {
   validations: ValidationResult[];
   field: string;
   className?: string;
+  isEditing?: boolean;
 }
 
-export function ValidationIndicator({ validations, field, className = '' }: ValidationIndicatorProps) {
+export function ValidationIndicator({ validations, field, className = '', isEditing = false }: ValidationIndicatorProps) {
   const fieldValidations = validations.filter(v => v.field === field);
-  
-  if (fieldValidations.length === 0) {
+
+  // Hide validation indicators in edit mode
+  if (isEditing || fieldValidations.length === 0) {
     return null;
   }
 

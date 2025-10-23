@@ -200,7 +200,7 @@ export function DiagnosticBanner({
           </div>
         )}
 
-        {/* Exceptions Count - Show contextual message based on error types */}
+        {/* Red Error Banner - Missing fields or line item discrepancies */}
         {(missingFieldsCount > 0 || lineItemsErrorCount > 0) && (
           <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
             <AlertTriangle className="h-3 w-3" />

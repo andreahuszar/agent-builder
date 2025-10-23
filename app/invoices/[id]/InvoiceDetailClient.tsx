@@ -10,20 +10,25 @@ import { InvoiceTabs, TabId } from '@/app/components/invoices/tabs/InvoiceTabs';
 import { PODocumentTable } from '@/app/components/invoices/comparison/PODocumentTable';
 import { GRDocumentTable } from '@/app/components/invoices/comparison/GRDocumentTable';
 import { GRDocumentPreview } from '@/app/components/invoices/comparison/GRDocumentPreview';
+import { TeachingConfirmationModal } from '@/app/components/invoices/TeachingConfirmationModal';
 import { useSelection } from '@/app/context/SelectionContext';
+import { ToastProvider } from '@/app/components/ui/Toast';
 
 interface InvoiceDetailClientProps {
   invoiceId: string;
   initialInvoice: any;
   viewMode?: ViewMode;
+  onInvoiceNumberUpdate?: (invoiceNumber: string) => void;
 }
 
-export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'review' }: InvoiceDetailClientProps) {
+export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'review', onInvoiceNumberUpdate }: InvoiceDetailClientProps) {
   const [invoice, setInvoice] = useState(initialInvoice);
   const [matchResults, setMatchResults] = useState<any[]>([]);
   const [poComparisonData, setPoComparisonData] = useState<any>(null);
   const [grData, setGrData] = useState<any>(null);
   const { selectedLineId, selectInvoiceLine } = useSelection();
+  // Track agent-accepted fields that are pending confirmation (not yet saved)
+  const [agentPendingFields, setAgentPendingFields] = useState<{[key: string]: any}>({});
 
   // Check if this is a needs info status invoice
   const isNeedsInfoMode = invoice?.status === 'needs_info' || invoice?.status === 'needs-info';
@@ -90,24 +95,36 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
   const handleInvoiceUpdate = (updatedData: any) => {
     setInvoice(updatedData);
+    // Keep agent-pending fields to show purple dot indicator in read-only mode
+    // They indicate values that came from agent suggestions
   };
 
   // Field candidate accept handler
   const handleFieldAccept = (fieldName: string, value: string) => {
+    // Always mark as agent-pending (works for both edit and read-only mode)
+    setAgentPendingFields(prev => ({
+      ...prev,
+      [fieldName]: value
+    }));
+
+    // Update invoice state immediately so error calculations see the new value
     setInvoice((prev: any) => {
       const updated = { ...prev };
-      // Update the field value
+      // Set the field value
       updated[fieldName] = value;
-
       // Remove the candidate from ocr_extractions
       if (updated.ocr_extractions?.[fieldName]) {
         const newExtractions = { ...updated.ocr_extractions };
         delete newExtractions[fieldName];
         updated.ocr_extractions = newExtractions;
       }
-
       return updated;
     });
+
+    // Update top title if invoice_number was accepted (Close Match)
+    if (fieldName === 'invoice_number' && onInvoiceNumberUpdate) {
+      onInvoiceNumberUpdate(value);
+    }
   };
 
   // Field candidate reject handler
@@ -131,6 +148,13 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const [activeTab, setActiveTab] = useState<TabId>('details');
   const [isEditing, setIsEditing] = useState(false);
   const [focusedFieldName, setFocusedFieldName] = useState<string | null>(null);
+
+  // Teaching mode state
+  const [isSelectionMode, setIsSelectionMode] = useState(false);
+  const [teachingFieldName, setTeachingFieldName] = useState<string | null>(null);
+  const [selectedValue, setSelectedValue] = useState<string>('');
+  const [selectedContext, setSelectedContext] = useState<string>('');
+  const [showTeachingModal, setShowTeachingModal] = useState(false);
 
   // Load/save PDF collapsed state from localStorage
   useEffect(() => {
@@ -168,6 +192,55 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     } finally {
       setIsSaving(false);
     }
+  };
+
+  // Teaching mode handlers
+  const handleStartTeaching = (fieldName: string) => {
+    setTeachingFieldName(fieldName);
+    setIsSelectionMode(true);
+  };
+
+  const handleValueSelected = (value: string, context: string) => {
+    setSelectedValue(value);
+    setSelectedContext(context);
+    setIsSelectionMode(false);
+    setShowTeachingModal(true);
+  };
+
+  const handleTeachingAccept = (value: string) => {
+    // Mark as agent-pending (same as Close Match flow)
+    setAgentPendingFields(prev => ({
+      ...prev,
+      [teachingFieldName!]: value
+    }));
+
+    // Update the invoice data with the learned value
+    setInvoice((prev: any) => ({
+      ...prev,
+      [teachingFieldName!]: value,
+    }));
+
+    // Update top title if invoice_number was taught
+    if (teachingFieldName === 'invoice_number' && onInvoiceNumberUpdate) {
+      onInvoiceNumberUpdate(value);
+    }
+
+    // Close modal and reset teaching state
+    setShowTeachingModal(false);
+    setTeachingFieldName(null);
+    setSelectedValue('');
+    setSelectedContext('');
+
+    // TODO: Show success toast notification
+    console.log(`Learned custom field: ${teachingFieldName} = ${value}`);
+  };
+
+  const handleTeachingCancel = () => {
+    setShowTeachingModal(false);
+    setIsSelectionMode(false);
+    setTeachingFieldName(null);
+    setSelectedValue('');
+    setSelectedContext('');
   };
 
   const hasPO = invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0;
@@ -229,6 +302,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               onFieldAccept={handleFieldAccept}
               onFieldReject={handleFieldReject}
               onFieldFocus={setFocusedFieldName}
+              agentPendingFields={agentPendingFields}
             />
           </div>
         </div>
@@ -259,6 +333,9 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           onFieldAccept={handleFieldAccept}
           onFieldReject={handleFieldReject}
           focusedFieldName={focusedFieldName}
+          isSelectionMode={isSelectionMode}
+          onValueSelected={handleValueSelected}
+          onCancelSelection={handleTeachingCancel}
         />
 
         {/* Invoice Tabs (Read-only) - RIGHT PANEL */}
@@ -283,6 +360,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           onFieldAccept={handleFieldAccept}
           onFieldReject={handleFieldReject}
           onFieldFocus={setFocusedFieldName}
+          onStartTeaching={handleStartTeaching}
+          agentPendingFields={agentPendingFields}
         />
       </ResizablePanel>
     );
@@ -347,7 +426,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       'invoice_date',
       'vendor_name_snapshot',
       'vendor_tax_id_snapshot',
-      'currency'
+      'currency',
+      'job_number'
     ];
 
     requiredFields.forEach(field => {
@@ -385,7 +465,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const lineItemsErrorCount = calculateLineItemsErrorCount();
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <ToastProvider>
+      <div className="h-[calc(100vh-4rem)] flex flex-col">
       {/* Diagnostic Banner */}
       <DiagnosticBanner
         total={invoiceTotal}
@@ -414,6 +495,18 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       <div className="flex-1 overflow-hidden">
         {renderContent()}
       </div>
-    </div>
+
+      {/* Teaching Confirmation Modal */}
+      {showTeachingModal && (
+        <TeachingConfirmationModal
+          fieldLabel={teachingFieldName === 'job_number' ? 'Job Number' : teachingFieldName || ''}
+          value={selectedValue}
+          context={selectedContext}
+          onAccept={handleTeachingAccept}
+          onCancel={handleTeachingCancel}
+        />
+      )}
+      </div>
+    </ToastProvider>
   );
 }

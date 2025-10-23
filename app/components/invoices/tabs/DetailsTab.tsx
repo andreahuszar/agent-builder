@@ -25,7 +25,8 @@ import {
   ChevronUp,
   FileText,
   Package,
-  Sparkles
+  Sparkles,
+  AlertCircle
 } from 'lucide-react';
 import { EditableField } from '../editing/EditableField';
 import { ValidatedEditableField } from '../editing/ValidatedEditableField';
@@ -40,6 +41,9 @@ import { LinkedDocumentPill } from '../LinkedDocumentPill';
 import { PODetailsDrawer } from '../PODetailsDrawer';
 import { POSearchModal } from '../POSearchModal';
 import { AISuggestionCard } from '../AISuggestionCard';
+import { TeachingCard } from '../TeachingCard';
+import { PendingConfirmationIndicator } from '../PendingConfirmationIndicator';
+import { FieldConfidencePill } from '../FieldConfidencePill';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -56,6 +60,8 @@ interface DetailsTabProps {
   onFieldAccept?: (fieldName: string, value: string) => void;
   onFieldReject?: (fieldName: string) => void;
   onFieldFocus?: (fieldName: string | null) => void; // Highlight field in PDF when focused
+  onStartTeaching?: (fieldName: string) => void; // Trigger teaching mode for custom fields
+  agentPendingFields?: {[key: string]: any}; // Agent-accepted fields pending confirmation
 }
 
 export function DetailsTab({
@@ -72,12 +78,16 @@ export function DetailsTab({
   onEditModeChange,
   onFieldAccept,
   onFieldReject,
-  onFieldFocus
+  onFieldFocus,
+  onStartTeaching,
+  agentPendingFields = {}
 }: DetailsTabProps) {
-  // Individual field edit states for click-to-edit functionality
-  const [editingField, setEditingField] = useState<string | null>(null);
   // Track which field's AI suggestion is expanded
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
+  // Track which field should be focused when entering edit mode
+  const [fieldToFocus, setFieldToFocus] = useState<string | null>(null);
+  // Track bottom bar visibility for staggered animation
+  const [showBottomBar, setShowBottomBar] = useState(false);
   // Calculate totals from line items for accuracy
   const calculatedSubtotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + (line.net_amount || 0), 0) || 0;
   const calculatedTaxTotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + ((line.line_total || 0) - (line.net_amount || 0)), 0) || 0;
@@ -122,11 +132,50 @@ export function DetailsTab({
   const [showFab, setShowFab] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
   const [showAIReasoning, setShowAIReasoning] = useState(false);
+  const [localFocusedField, setLocalFocusedField] = useState<string | null>(null);
 
   // Notify parent when edit mode changes
   useEffect(() => {
     onEditModeChange?.(isEditing);
   }, [isEditing, onEditModeChange]);
+
+  // Merge agent-pending fields into editedData when entering edit mode
+  useEffect(() => {
+    if (isEditing && Object.keys(agentPendingFields).length > 0) {
+      setEditedData((prev: any) => ({
+        ...prev,
+        ...agentPendingFields
+      }));
+    }
+  }, [isEditing, agentPendingFields]);
+
+  // Clear fieldToFocus after entering edit mode (allow time for autofocus)
+  useEffect(() => {
+    if (isEditing && fieldToFocus) {
+      const timer = setTimeout(() => {
+        setFieldToFocus(null);
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isEditing, fieldToFocus]);
+
+  // Control bottom bar visibility with delay for staggered animation
+  useEffect(() => {
+    if (isEditing && !hideFloatingSaveButton) {
+      // Delay showing the bar by 300ms to let layout settle
+      const timer = setTimeout(() => {
+        setShowBottomBar(true);
+      }, 300);
+      return () => clearTimeout(timer);
+    } else if (showBottomBar) {
+      // Delay hiding to allow exit animation to play (300ms)
+      const timer = setTimeout(() => {
+        setShowBottomBar(false);
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [isEditing, hideFloatingSaveButton, showBottomBar]);
+
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Document links state
@@ -139,6 +188,34 @@ export function DetailsTab({
 
   // Field refs for error navigation
   const fieldRefs = useRef<{ [key: string]: HTMLElement | null }>({});
+
+  // Ref for Agent Suggestion card to detect clicks outside
+  const suggestionCardRef = useRef<HTMLDivElement>(null);
+
+  // Close Agent Suggestion card when clicking outside
+  useEffect(() => {
+    if (!expandedSuggestion) return;
+
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as HTMLElement;
+      // Don't close if clicking the Agent Match button (let its onClick handle the toggle)
+      if (target.closest('button')?.textContent?.includes('Match')) {
+        return;
+      }
+
+      if (suggestionCardRef.current && !suggestionCardRef.current.contains(target)) {
+        setExpandedSuggestion(null);
+        if (onFieldFocus) {
+          onFieldFocus(null);
+        }
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [expandedSuggestion, onFieldFocus]);
 
   // Update edit state when props change
   useEffect(() => {
@@ -162,13 +239,20 @@ export function DetailsTab({
           { field: 'vendor_name_snapshot', label: 'Vendor Name', type: 'text' },
           { field: 'vendor_tax_id_snapshot', label: 'Vendor Tax ID', type: 'text' },
           { field: 'po_numbers_cached', label: 'PO Number', type: 'array' },
+          { field: 'job_number', label: 'Job Number', type: 'text' },
           { field: 'subtotal', label: 'Subtotal', type: 'currency' },
           { field: 'currency', label: 'Currency', type: 'text' },
           { field: 'total', label: 'Total', type: 'currency' },
         ];
 
         fieldsToCheck.forEach(({ field, label, type }) => {
-          const value = editedData[field];
+          // Check both editedData and agentPendingFields for value
+          const value = agentPendingFields[field] || editedData[field];
+
+          // Skip validation if field has an agent-pending value
+          if (agentPendingFields[field]) {
+            return; // Agent has provided a value, don't add error
+          }
 
           // Special handling for vendor field - "Unknown Vendor" is considered invalid
           if (field === 'vendor_name_snapshot' && value === 'Unknown Vendor') {
@@ -208,7 +292,7 @@ export function DetailsTab({
 
       return () => clearTimeout(timer);
     }
-  }, [forceEditMode, isEditing, showFieldErrors, invoiceData.id]); // Only re-run when invoice changes or edit/show mode changes
+  }, [forceEditMode, isEditing, showFieldErrors, invoiceData.id, agentPendingFields, editedData]); // Re-run when field values change
 
   // Run validations
   const validationResults = useMemo(() => {
@@ -273,111 +357,52 @@ export function DetailsTab({
   };
 
   // Helper function to check if a field has errors
+  // Excludes fields that are agent-pending (accepted but not yet saved)
   const hasFieldError = (fieldName: string) => {
+    // If field has agent-pending value, don't treat it as an error
+    if (agentPendingFields[fieldName]) {
+      return false;
+    }
     return fieldErrors.some(e => e.field === fieldName);
+  };
+
+  // Helper function to check if a field has AI candidates
+  const hasFieldCandidate = (fieldName: string) => {
+    const candidates = invoiceData?.ocr_extractions?.[fieldName]?.candidates || [];
+    return candidates.length > 0 && onFieldAccept && onFieldReject;
   };
 
   // Helper to get read-only field styling with error highlighting
   const getReadOnlyFieldClass = (fieldName: string, defaultValue?: string) => {
     const baseClass = 'text-sm font-medium';
     if (showFieldErrors && hasFieldError(fieldName)) {
-      return `${baseClass} text-red-700 border-l-2 border-red-500 pl-2 bg-red-50 py-1 rounded cursor-pointer hover:bg-red-100 transition-colors`;
+      return `${baseClass} text-red-700 border border-red-500 px-2 bg-red-50 py-1 rounded cursor-pointer hover:bg-red-100 transition-colors`;
     }
     return `${baseClass} text-gray-950`;
   };
 
   // Render a field - either as editable or read-only with click-to-edit
   const renderField = (fieldName: string, fieldValue: any, fieldType: 'text' | 'date' | 'currency' | 'select', label: string, options?: any[]) => {
-    const isFieldEditing = editingField === fieldName;
     const shouldAllowEdit = showFieldErrors && hasFieldError(fieldName) && !forceReadOnly;
 
-    // Check for AI candidate suggestions
-    const candidates = invoiceData?.ocr_extractions?.[fieldName]?.candidates || [];
-    const hasCandidate = candidates.length > 0 && onFieldAccept && onFieldReject;
-
-    if (isFieldEditing && shouldAllowEdit) {
-      return (
-        <ValidatedEditableField
-          value={editedData[fieldName]}
-          onChange={(value) => {
-            handleFieldChange(fieldName, value);
-          }}
-          type={fieldType}
-          required={true}
-          fieldName={fieldName}
-          options={options}
-          onKeyDown={(e: any) => handleKeyDown(e, fieldName, editedData[fieldName])}
-          autoFocus
-        />
-      );
-    }
-
     if (shouldAllowEdit) {
-      // If field is missing/invalid AND we have an AI candidate, show fix suggestion button
-      if (!fieldValue && hasCandidate) {
-        return (
-          <div>
-            <p
-              className={getReadOnlyFieldClass(fieldName)}
-              onClick={() => setEditingField(fieldName)}
-              title="Click to edit"
-            >
-              Not found
-            </p>
-            <button
-              onClick={() => {
-                const newExpanded = expandedSuggestion === fieldName ? null : fieldName;
-                setExpandedSuggestion(newExpanded);
-                // Highlight field in PDF when suggestion card opens
-                if (onFieldFocus) {
-                  onFieldFocus(newExpanded);
-                }
-              }}
-              className="mt-1 flex items-center gap-1 text-sm text-purple-600 hover:text-purple-700 transition-colors"
-            >
-              <Sparkles className="h-3 w-3" />
-              {expandedSuggestion === fieldName ? 'Hide Suggestion' : 'Fix Suggestion'}
-            </button>
-            {expandedSuggestion === fieldName && (
-              <div className="mt-2">
-                <AISuggestionCard
-                  candidate={candidates[0]}
-                  onAccept={() => {
-                    onFieldAccept!(fieldName, candidates[0].value);
-                    setExpandedSuggestion(null);
-                    setEditingField(null);
-                  }}
-                  onReject={() => {
-                    onFieldReject!(fieldName);
-                    setExpandedSuggestion(null);
-                  }}
-                  onClose={() => {
-                    setExpandedSuggestion(null);
-                    if (onFieldFocus) {
-                      onFieldFocus(null);
-                    }
-                  }}
-                />
-              </div>
-            )}
-          </div>
-        );
-      }
-
       return (
         <p
           className={getReadOnlyFieldClass(fieldName)}
-          onClick={() => setEditingField(fieldName)}
-          title="Click to edit"
+          onClick={() => {
+            setFieldToFocus(fieldName);
+            setIsEditing(true);
+          }}
+          title="Click to edit all fields"
         >
-          {fieldValue || 'Not found'}
+          {fieldValue || '--'}
         </p>
       );
     }
 
     return (
       <p className={getReadOnlyFieldClass(fieldName)}>
-        {fieldValue || 'Not found'}
+        {fieldValue || '--'}
       </p>
     );
   };
@@ -438,7 +463,6 @@ export function DetailsTab({
         const result = await response.json();
         setEditedData(updatedData);
         onUpdate?.(updatedData);
-        setEditingField(null);
         removeError(field);
       }
     } catch (error) {
@@ -452,12 +476,23 @@ export function DetailsTab({
       e.preventDefault();
       handleFieldSave(field, value);
     } else if (e.key === 'Escape') {
-      setEditingField(null);
       setEditedData((prev: any) => ({
         ...prev,
         [field]: invoiceData[field],
       }));
     }
+  };
+
+  // Handle field focus for document highlighting
+  const handleFieldFocus = (fieldName: string) => {
+    setLocalFocusedField(fieldName);
+    onFieldFocus?.(fieldName);
+  };
+
+  // Handle field blur to clear document highlighting
+  const handleFieldBlur = () => {
+    setLocalFocusedField(null);
+    onFieldFocus?.(null);
   };
 
   const handleSave = async () => {
@@ -480,10 +515,13 @@ export function DetailsTab({
         onUpdate?.(updatedData);
         setIsEditing(false);
       } else {
-        console.error('Failed to save changes');
+        const errorText = await response.text();
+        console.error('Failed to save changes:', response.status, errorText);
+        alert(`Failed to save: ${response.status} - ${errorText}`);
       }
     } catch (error) {
       console.error('Error saving changes:', error);
+      alert(`Error saving changes: ${error}`);
     } finally {
       setIsSaving(false);
     }
@@ -623,11 +661,14 @@ export function DetailsTab({
         {/* Scrollable Content Area - Now takes full height */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative">
           {/* Field Error Indicator - Show when editing OR when showFieldErrors is true */}
-          {((forceEditMode && isEditing) || showFieldErrors) && fieldErrors.length > 0 && (
+          {/* Show purple variant when agent changes pending, red variant when errors exist */}
+          {((forceEditMode && isEditing) || showFieldErrors) && (fieldErrors.length > 0 || Object.keys(agentPendingFields).length > 0) && (
             <FieldErrorIndicator
               errors={fieldErrors}
               onDismiss={clearErrors}
               readOnly={forceReadOnly || showFieldErrors}
+              hasPendingAgentChanges={Object.keys(agentPendingFields).length > 0}
+              isEditing={isEditing}
             />
           )}
 
@@ -649,26 +690,116 @@ export function DetailsTab({
           </div>
           <div className="px-10 py-4 bg-white">
             <div className={`grid ${getGridCols()} gap-4`}>
-              <div ref={(el) => fieldRefs.current['invoice_number'] = el}>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Invoice Number
+              <div ref={(el) => fieldRefs.current['invoice_number'] = el} className="relative">
+                <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Invoice Number
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.invoice_number} isEditMode={isEditing} hasValue={!!invoiceData.invoice_number} />
+                  </span>
+                  {hasFieldCandidate('invoice_number') && !invoiceData.invoice_number && !agentPendingFields['invoice_number'] && (
+                    <button
+                      onClick={() => {
+                        const newExpanded = expandedSuggestion === 'invoice_number' ? null : 'invoice_number';
+                        setExpandedSuggestion(newExpanded);
+                        if (onFieldFocus) {
+                          onFieldFocus(newExpanded);
+                        }
+                      }}
+                      className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Close Match
+                    </button>
+                  )}
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
-                    value={editedData.invoice_number}
+                    value={agentPendingFields['invoice_number'] || editedData.invoice_number}
                     onChange={(value) => handleFieldChange('invoice_number', value)}
                     type="text"
                     required={true}
                     fieldName="invoice_number"
+                    autoFocus={fieldToFocus === 'invoice_number'}
+                    onFocus={() => handleFieldFocus('invoice_number')}
+                    onBlur={handleFieldBlur}
                   />
+                ) : agentPendingFields['invoice_number'] ? (
+                  <div className="flex items-center">
+                    <p className="text-sm font-medium text-gray-950">
+                      {agentPendingFields['invoice_number']}
+                    </p>
+                    <PendingConfirmationIndicator />
+                  </div>
                 ) : (
-                  renderField('invoice_number', invoiceData.invoice_number, 'text', 'Invoice Number')
+                  (() => {
+                    const hasValue = invoiceData.invoice_number;
+                    const shouldAllowEdit = showFieldErrors && hasFieldError('invoice_number') && !forceReadOnly && !hasValue;
+
+                    if (shouldAllowEdit) {
+                      // Show red clickable field for errors
+                      return (
+                        <p
+                          className={getReadOnlyFieldClass('invoice_number')}
+                          onClick={() => {
+                            setFieldToFocus('invoice_number');
+                            setIsEditing(true);
+                          }}
+                          title="Click to edit all fields"
+                        >
+                          {invoiceData.invoice_number || '--'}
+                        </p>
+                      );
+                    }
+
+                    // Show value without purple dot (purple dot only shown when in agentPendingFields)
+                    if (hasValue) {
+                      return (
+                        <p className="text-sm font-medium text-gray-950">
+                          {invoiceData.invoice_number}
+                        </p>
+                      );
+                    }
+
+                    // Show placeholder
+                    return <p className="text-sm font-medium text-gray-950">--</p>;
+                  })()
+                )}
+                {!invoiceData.invoice_number && !agentPendingFields['invoice_number'] && (
+                  <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
+                    <AlertTriangle className="h-3 w-3" />
+                    <span>Value not found</span>
+                  </div>
+                )}
+                {expandedSuggestion === 'invoice_number' && hasFieldCandidate('invoice_number') && (
+                  <div ref={suggestionCardRef} className="absolute top-full left-0 mt-2 z-50 w-full min-w-[320px] max-w-md">
+                    <AISuggestionCard
+                      candidate={invoiceData.ocr_extractions?.invoice_number?.candidates[0]}
+                      fieldLabel="Invoice Number"
+                      onAccept={() => {
+                        onFieldAccept!('invoice_number', invoiceData.ocr_extractions?.invoice_number?.candidates[0].value);
+                        setExpandedSuggestion(null);
+                      }}
+                      onReject={() => {
+                        onFieldReject!('invoice_number');
+                        setExpandedSuggestion(null);
+                      }}
+                      onClose={() => {
+                        setExpandedSuggestion(null);
+                        if (onFieldFocus) {
+                          onFieldFocus(null);
+                        }
+                      }}
+                    />
+                  </div>
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['invoice_date'] = el}>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Invoice Date
-                  <ValidationIndicator validations={[...errors, ...warnings]} field="invoice_date" />
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Invoice Date
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.invoice_date} isEditMode={isEditing} />
+                  </span>
+                  <ValidationIndicator validations={[...errors, ...warnings]} field="invoice_date" isEditing={isEditing} />
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -677,15 +808,20 @@ export function DetailsTab({
                     type="date"
                     required={true}
                     fieldName="invoice_date"
+                    onFocus={() => handleFieldFocus('invoice_date')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   renderField('invoice_date', formatDate(invoiceData.invoice_date), 'date', 'Invoice Date')
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Due Date
-                  <ValidationIndicator validations={[...errors, ...warnings]} field="due_date" />
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Due Date
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.due_date} isEditMode={isEditing} />
+                  </span>
+                  <ValidationIndicator validations={[...errors, ...warnings]} field="due_date" isEditing={isEditing} />
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -694,6 +830,8 @@ export function DetailsTab({
                     type="date"
                     required={true}
                     fieldName="due_date"
+                    onFocus={() => handleFieldFocus('due_date')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   <div className="flex items-center gap-2">
@@ -710,8 +848,11 @@ export function DetailsTab({
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['vendor_name_snapshot'] = el}>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Vendor
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Vendor
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.vendor_name_snapshot} isEditMode={isEditing} />
+                  </span>
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -720,6 +861,8 @@ export function DetailsTab({
                     type="text"
                     required={true}
                     fieldName="vendor_name_snapshot"
+                    onFocus={() => handleFieldFocus('vendor_name_snapshot')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   <div className="flex items-start gap-2">
@@ -749,8 +892,11 @@ export function DetailsTab({
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['vendor_tax_id_snapshot'] = el}>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Vendor ID
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Vendor ID
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.vendor_tax_id_snapshot} isEditMode={isEditing} />
+                  </span>
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -760,14 +906,19 @@ export function DetailsTab({
                     required={true}
                     fieldName="vendor_tax_id_snapshot"
                     placeholder="e.g., TAX-12345"
+                    onFocus={() => handleFieldFocus('vendor_tax_id_snapshot')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   renderField('vendor_tax_id_snapshot', invoiceData.vendor_tax_id_snapshot, 'text', 'Vendor ID')
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['po_numbers_cached'] = el}>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  PO Number
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    PO Number
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.po_numbers_cached} isEditMode={isEditing} />
+                  </span>
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -777,6 +928,8 @@ export function DetailsTab({
                     required={true}
                     fieldName="po_numbers_cached"
                     placeholder="Enter PO Number"
+                    onFocus={() => handleFieldFocus('po_numbers_cached')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   renderField(
@@ -787,16 +940,121 @@ export function DetailsTab({
                   )
                 )}
               </div>
-              <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">Assigned To</label>
-                <div className="inline-flex items-center gap-2">
-                  <div className="h-6 w-6 rounded-full bg-purple-100 flex items-center justify-center">
-                    <User className="h-3.5 w-3.5 text-purple-600" />
-                  </div>
-                  <span className="text-sm font-medium text-gray-950">
-                    {invoiceData.assigned_to_name || 'Unassigned'}
+              <div ref={(el) => fieldRefs.current['job_number'] = el} className="relative">
+                <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Job Number
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.job_number} isEditMode={isEditing} hasValue={!!invoiceData.job_number} />
                   </span>
-                </div>
+                  {!invoiceData.job_number && !agentPendingFields['job_number'] && (
+                    <button
+                      onClick={() => {
+                        const newExpanded = expandedSuggestion === 'job_number' ? null : 'job_number';
+                        setExpandedSuggestion(newExpanded);
+                        if (onFieldFocus) {
+                          onFieldFocus(newExpanded);
+                        }
+                      }}
+                      className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
+                    >
+                      <Sparkles className="h-3 w-3" />
+                      Find Match
+                    </button>
+                  )}
+                </label>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={agentPendingFields['job_number'] || editedData.job_number || ''}
+                    onChange={(value) => handleFieldChange('job_number', value)}
+                    type="text"
+                    required={false}
+                    fieldName="job_number"
+                    placeholder="Enter Job Number"
+                    onFocus={() => handleFieldFocus('job_number')}
+                    onBlur={handleFieldBlur}
+                  />
+                ) : agentPendingFields['job_number'] ? (
+                  <div className="flex items-center">
+                    <p className="text-sm font-medium text-gray-950">
+                      {agentPendingFields['job_number']}
+                    </p>
+                    <PendingConfirmationIndicator />
+                  </div>
+                ) : (
+                  (() => {
+                    const hasValue = invoiceData.job_number;
+                    const shouldAllowEdit = showFieldErrors && hasFieldError('job_number') && !forceReadOnly && !hasValue;
+
+                    if (shouldAllowEdit) {
+                      // Show red clickable field for errors
+                      return (
+                        <p
+                          className={getReadOnlyFieldClass('job_number')}
+                          onClick={() => {
+                            setFieldToFocus('job_number');
+                            setIsEditing(true);
+                          }}
+                          title="Click to edit all fields"
+                        >
+                          {invoiceData.job_number || '--'}
+                        </p>
+                      );
+                    }
+
+                    // Show value without purple dot (purple dot only shown when in agentPendingFields)
+                    if (hasValue) {
+                      return (
+                        <p className="text-sm font-medium text-gray-950">
+                          {invoiceData.job_number}
+                        </p>
+                      );
+                    }
+
+                    // Show placeholder - treat as error when empty
+                    return (
+                      <p
+                        className="text-sm font-medium text-red-700 border border-red-500 px-2 bg-red-50 py-1 rounded cursor-pointer hover:bg-red-100 transition-colors"
+                        onClick={() => {
+                          setFieldToFocus('job_number');
+                          setIsEditing(true);
+                        }}
+                        title="Click to edit all fields"
+                      >
+                        —
+                      </p>
+                    );
+                  })()
+                )}
+                {!invoiceData.job_number && !agentPendingFields['job_number'] && (
+                  <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
+                    <AlertTriangle className="h-3 w-3" />
+                    <span>Custom field - value not found</span>
+                  </div>
+                )}
+                {expandedSuggestion === 'job_number' && (
+                  <div ref={suggestionCardRef} className="absolute top-full left-0 mt-2 z-50 w-full min-w-[320px] max-w-md">
+                    <TeachingCard
+                      fieldLabel="Job Number"
+                      onPointToValue={() => {
+                        // Close the popover
+                        setExpandedSuggestion(null);
+                        if (onFieldFocus) {
+                          onFieldFocus(null);
+                        }
+                        // Start teaching mode
+                        if (onStartTeaching) {
+                          onStartTeaching('job_number');
+                        }
+                      }}
+                      onClose={() => {
+                        setExpandedSuggestion(null);
+                        if (onFieldFocus) {
+                          onFieldFocus(null);
+                        }
+                      }}
+                    />
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -822,8 +1080,11 @@ export function DetailsTab({
             {/* First Row: Subtotal, Currency, Tax Rate */}
             <div className={`grid ${getGridCols()} gap-4`}>
               <div ref={(el) => fieldRefs.current['subtotal'] = el}>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Subtotal
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Subtotal
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.subtotal} isEditMode={isEditing} />
+                  </span>
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -833,6 +1094,8 @@ export function DetailsTab({
                     required={true}
                     fieldName="subtotal"
                     currency={editedData.currency}
+                    onFocus={() => handleFieldFocus('subtotal')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   <p className={getReadOnlyFieldClass('subtotal')}>
@@ -841,8 +1104,11 @@ export function DetailsTab({
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['currency'] = el}>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Currency
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Currency
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.currency} isEditMode={isEditing} />
+                  </span>
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -857,6 +1123,8 @@ export function DetailsTab({
                       { value: 'GBP', label: 'GBP' },
                       { value: 'JPY', label: 'JPY' },
                     ]}
+                    onFocus={() => handleFieldFocus('currency')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   renderField('currency', invoiceData.currency, 'select', 'Currency', [
@@ -868,8 +1136,11 @@ export function DetailsTab({
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Tax Rate (%)
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Tax Rate (%)
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.tax_rate_percent} isEditMode={isEditing} />
+                  </span>
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -881,6 +1152,8 @@ export function DetailsTab({
                     min={0}
                     max={100}
                     step={0.1}
+                    onFocus={() => handleFieldFocus('tax_rate_percent')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   <p className="text-sm font-medium text-gray-950">
@@ -893,8 +1166,11 @@ export function DetailsTab({
             {/* Second Row: Tax Amount, Shipping/Freight, Discount */}
             <div className={`grid ${getGridCols()} gap-4 mt-4`}>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Tax Amount
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Tax Amount
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.tax_total} isEditMode={isEditing} />
+                  </span>
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -904,6 +1180,8 @@ export function DetailsTab({
                     required={false}
                     fieldName="tax_total"
                     currency={editedData.currency}
+                    onFocus={() => handleFieldFocus('tax_total')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   <p className="text-sm font-medium text-gray-950">
@@ -912,7 +1190,7 @@ export function DetailsTab({
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
                   Shipping/Freight
                 </label>
                 <p className="text-sm font-medium text-gray-950">
@@ -923,7 +1201,7 @@ export function DetailsTab({
                 </p>
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
                   Discount
                 </label>
                 <p className={`text-sm font-medium ${invoiceData.discount_total > 0 ? 'text-green-600' : 'text-gray-950'}`}>
@@ -939,7 +1217,7 @@ export function DetailsTab({
             {invoiceData.other_charges_total > 0 && (
               <div className={`grid ${getGridCols()} gap-4 mt-4`}>
                 <div>
-                  <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
+                  <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
                     Other Charges
                   </label>
                   <p className="text-sm font-medium text-gray-950">
@@ -954,8 +1232,11 @@ export function DetailsTab({
             <div className="mt-4 pt-4 border-t border-gray-100">
               <div className={`grid ${getGridCols()} gap-4`}>
                 <div ref={(el) => fieldRefs.current['total'] = el}>
-                  <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                    Invoice Total
+                  <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                    <span className="flex items-center">
+                      Invoice Total
+                      <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.total} isEditMode={isEditing} />
+                    </span>
                   </label>
                   {isEditing ? (
                     <ValidatedEditableField
@@ -965,6 +1246,8 @@ export function DetailsTab({
                       required={true}
                       fieldName="total"
                       currency={editedData.currency}
+                      onFocus={() => handleFieldFocus('total')}
+                      onBlur={handleFieldBlur}
                     />
                   ) : (
                     <p className={`${getReadOnlyFieldClass('total')} font-bold`}>
@@ -1023,8 +1306,11 @@ export function DetailsTab({
           <div className="px-10 py-4 bg-white">
             <div className={`grid ${getGridCols()} gap-4`}>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Payment Method
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Payment Method
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.payment_method} isEditMode={isEditing} />
+                  </span>
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -1041,6 +1327,8 @@ export function DetailsTab({
                       { value: 'wire', label: 'Wire Transfer' },
                       { value: 'cash', label: 'Cash' }
                     ]}
+                    onFocus={() => handleFieldFocus('payment_method')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   <p className="text-sm font-medium text-gray-950">
@@ -1052,24 +1340,32 @@ export function DetailsTab({
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Payment Terms
-                  <ValidationIndicator validations={[...errors, ...warnings]} field="payment_terms" />
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Payment Terms
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.terms_text} isEditMode={isEditing} />
+                  </span>
+                  <ValidationIndicator validations={[...errors, ...warnings]} field="payment_terms" isEditing={isEditing} />
                 </label>
                 {isEditing ? (
                   <EditableField
                     value={editedData.terms_text}
                     onChange={(value) => handleFieldChange('terms_text', value)}
                     type="text"
+                    onFocus={() => handleFieldFocus('terms_text')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   <p className="text-sm font-medium text-gray-950">{invoiceData.terms_text || 'Net 30'}</p>
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Due Date
-                  <ValidationIndicator validations={[...errors, ...warnings]} field="due_date" />
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Due Date
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.due_date} isEditMode={isEditing} />
+                  </span>
+                  <ValidationIndicator validations={[...errors, ...warnings]} field="due_date" isEditing={isEditing} />
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -1078,6 +1374,8 @@ export function DetailsTab({
                     type="date"
                     required={true}
                     fieldName="due_date"
+                    onFocus={() => handleFieldFocus('due_date')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   <div className="flex items-center gap-2">
@@ -1095,7 +1393,7 @@ export function DetailsTab({
               </div>
               {invoiceData.vendor_address_snapshot && (
                 <div className={getFullSpan()}>
-                  <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">Billing Address</label>
+                  <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">Billing Address</label>
                   <p className="text-sm font-medium text-gray-950 whitespace-pre-line">
                     {formatVendorAddress(invoiceData.vendor_address_snapshot)}
                   </p>
@@ -1212,9 +1510,12 @@ export function DetailsTab({
           <div className="px-10 py-4 bg-white">
             <div className={`grid ${getGridCols()} gap-4`}>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Ledger Account
-                  <ValidationIndicator validations={[...errors, ...warnings]} field="ledger" />
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Ledger Account
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.ledger} isEditMode={isEditing} />
+                  </span>
+                  <ValidationIndicator validations={[...errors, ...warnings]} field="ledger" isEditing={isEditing} />
                 </label>
                 {isEditing ? (
                   <EditableField
@@ -1222,6 +1523,8 @@ export function DetailsTab({
                     onChange={(value) => handleFieldChange('ledger', value)}
                     type="select"
                     options={LEDGER_OPTIONS.map(opt => ({ value: opt.value, label: opt.label }))}
+                    onFocus={() => handleFieldFocus('ledger')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   <p className="text-sm font-medium text-gray-950">
@@ -1230,8 +1533,11 @@ export function DetailsTab({
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  Cost Center
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Cost Center
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.cost_center} isEditMode={isEditing} />
+                  </span>
                 </label>
                 {isEditing ? (
                   <EditableField
@@ -1242,6 +1548,8 @@ export function DetailsTab({
                       { value: '', label: 'None' },
                       ...COST_CENTER_OPTIONS.map(opt => ({ value: opt.value, label: opt.label }))
                     ]}
+                    onFocus={() => handleFieldFocus('cost_center')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   <p className="text-sm font-medium text-gray-950">
@@ -1252,8 +1560,11 @@ export function DetailsTab({
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">
-                  GL Code
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    GL Code
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.gl_code} isEditMode={isEditing} />
+                  </span>
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -1263,6 +1574,8 @@ export function DetailsTab({
                     required={false}
                     fieldName="gl_code"
                     placeholder="e.g., 6210"
+                    onFocus={() => handleFieldFocus('gl_code')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   <p className="text-sm font-medium text-gray-950">
@@ -1271,7 +1584,12 @@ export function DetailsTab({
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">Department</label>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <span className="flex items-center">
+                    Department
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.department} isEditMode={isEditing} />
+                  </span>
+                </label>
                 {isEditing ? (
                   <ValidatedEditableField
                     value={editedData.department || ''}
@@ -1280,6 +1598,8 @@ export function DetailsTab({
                     required={false}
                     fieldName="department"
                     placeholder="e.g., Finance, Engineering"
+                    onFocus={() => handleFieldFocus('department')}
+                    onBlur={handleFieldBlur}
                   />
                 ) : (
                   invoiceData.department ? (
@@ -1291,7 +1611,7 @@ export function DetailsTab({
               </div>
               {invoiceData.accounting_notes && (
                 <div className={getFullSpan()}>
-                  <label className="flex items-center text-xs font-medium text-gray-700 mb-1 min-h-[20px]">Accounting Notes</label>
+                  <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">Accounting Notes</label>
                   {isEditing ? (
                     <EditableField
                       value={editedData.accounting_notes || ''}
@@ -1410,8 +1730,10 @@ export function DetailsTab({
       </div>
 
       {/* Bottom Action Bar - Only shown in edit mode */}
-      {isEditing && !hideFloatingSaveButton && (
-        <div className="sticky bottom-0 w-full bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-end gap-3 z-40">
+      {showBottomBar && (
+        <div className={`sticky bottom-0 w-full bg-white border-t border-gray-200 px-4 py-3 flex items-center justify-end gap-3 z-40 shadow-[0_-2px_8px_rgba(0,0,0,0.08)] ${
+          isEditing ? 'animate-in slide-in-from-bottom duration-300' : 'animate-out slide-out-to-bottom duration-300'
+        }`}>
           {!forceEditMode && (
             <button
               onClick={handleCancel}
@@ -1422,11 +1744,12 @@ export function DetailsTab({
             </button>
           )}
           <button
-            onClick={() => setIsEditing(false)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-all"
+            onClick={handleSave}
+            disabled={isSaving}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Check className="h-4 w-4" />
-            <span className="font-medium">Save</span>
+            <span className="font-medium">{isSaving ? 'Saving...' : 'Save'}</span>
           </button>
         </div>
       )}
