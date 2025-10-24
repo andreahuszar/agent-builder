@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { X, Search, FileText, Calendar, DollarSign, Link2 } from 'lucide-react';
+import { X, Search, FileText, Calendar, DollarSign, Link2, Plus } from 'lucide-react';
 
 interface POSearchResult {
   id: string;
@@ -318,8 +318,17 @@ export function POSearchModal({
                             onClick={() => handleLinkClick(po.po_number)}
                             className="inline-flex items-center gap-1 px-3 py-1 text-xs bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors"
                           >
-                            <Link2 className="h-3 w-3" />
-                            Link
+                            {po.vendor_name === 'Premier Office Supplies' ? (
+                              <>
+                                <Plus className="h-3 w-3" />
+                                Add
+                              </>
+                            ) : (
+                              <>
+                                <Link2 className="h-3 w-3" />
+                                Link
+                              </>
+                            )}
                           </button>
                         </td>
                       </tr>

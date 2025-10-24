@@ -88,7 +88,8 @@ export function SubstitutionSuggestionPopover({
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Content
-          className="z-50 w-[380px] rounded-lg border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white shadow-lg p-4"
+          className="z-50 w-[450px] rounded-lg border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white shadow-lg p-4"
+          side="top"
           sideOffset={5}
           align="start"
         >
@@ -189,7 +190,7 @@ export function SubstitutionSuggestionPopover({
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
             >
               <Check className="h-4 w-4" />
-              Accept & Teach
+              Accept & Remember
             </button>
           </div>
 

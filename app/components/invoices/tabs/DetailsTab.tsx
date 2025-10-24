@@ -45,6 +45,7 @@ import { TeachingCard } from '../TeachingCard';
 import { PendingConfirmationIndicator } from '../PendingConfirmationIndicator';
 import { FieldConfidencePill } from '../FieldConfidencePill';
 import { AutoCorrectionIndicator } from '../AutoCorrectionIndicator';
+import { CloseMatchPopover } from '../CloseMatchPopover';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -977,11 +978,44 @@ export function DetailsTab({
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['po_numbers_cached'] = el}>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
                   <span className="flex items-center">
                     PO Number
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.po_numbers_cached} isEditMode={isEditing} />
                   </span>
+                  {/* Close Match link on opposite side */}
+                  {!isEditing && (!invoiceData.po_numbers_cached || invoiceData.po_numbers_cached.length === 0) && invoiceData.close_match_po && (
+                    <CloseMatchPopover
+                      suggestedPO={invoiceData.close_match_po.po_number}
+                      confidence={invoiceData.close_match_po.confidence}
+                      matchingFactors={invoiceData.close_match_po.matching_factors}
+                      poSummary={invoiceData.close_match_po.po_summary}
+                      invoiceTotal={invoiceData.total}
+                      onAccept={() => {
+                        handleLinkPO(invoiceData.close_match_po.po_number);
+                      }}
+                      onSearchDifferent={() => {
+                        setIsPOSearchModalOpen(true);
+                      }}
+                      onReject={() => {
+                        // Remove close_match_po from invoice data
+                        const updatedData = { ...invoiceData };
+                        delete updatedData.close_match_po;
+                        onUpdate?.(updatedData);
+                      }}
+                      onShowDetails={() => {
+                        // Open PO details drawer with the suggested PO
+                        setSelectedPONumber(invoiceData.close_match_po.po_number);
+                        setIsPODrawerOpen(true);
+                      }}
+                      onClose={() => {/* Popover closes automatically */}}
+                    >
+                      <button className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors">
+                        <Sparkles className="h-3.5 w-3.5" />
+                        Close Match
+                      </button>
+                    </CloseMatchPopover>
+                  )}
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -995,12 +1029,33 @@ export function DetailsTab({
                     onBlur={handleFieldBlur}
                   />
                 ) : (
-                  renderField(
-                    'po_numbers_cached',
-                    invoiceData.po_numbers_cached?.length > 0 ? invoiceData.po_numbers_cached[0] : '',
-                    'text',
-                    'PO Number'
-                  )
+                  <>
+                    {/* Check if PO is missing AND there's a close match suggestion */}
+                    {(!invoiceData.po_numbers_cached || invoiceData.po_numbers_cached.length === 0) && invoiceData.close_match_po ? (
+                      <div className="relative">
+                        {/* Red-bordered empty input field */}
+                        <input
+                          type="text"
+                          value=""
+                          readOnly
+                          className="w-full px-3 py-1.5 text-sm border-2 border-red-300 bg-red-50 rounded-md cursor-not-allowed"
+                        />
+
+                        {/* Validation message */}
+                        <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
+                          <AlertTriangle className="h-3 w-3" />
+                          <span>Missing PO</span>
+                        </div>
+                      </div>
+                    ) : (
+                      renderField(
+                        'po_numbers_cached',
+                        invoiceData.po_numbers_cached?.length > 0 ? invoiceData.po_numbers_cached[0] : '',
+                        'text',
+                        'PO Number'
+                      )
+                    )}
+                  </>
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['job_number'] = el} className="relative">
