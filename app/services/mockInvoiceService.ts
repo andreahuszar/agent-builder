@@ -364,12 +364,25 @@ export const generateBaselineInvoices = (): Invoice[] => {
         conversion_factor: 8,
         explanation: '8 hours per day'
       }
+    },
+    {
+      id: 'line-baseline-po2-7',
+      line_no: 7,
+      description: 'Steel piping - 3 metre sections',
+      qty: 30,
+      uom: 'Units',
+      unit_price: 90.00,
+      net_amount: 2700.00,
+      line_total: 2700.00,
+      po_line_id: 'po-line-9010-7',
+      gr_line_id: null,
+      ses_line_id: null
     }
   ];
 
-  const baselinePO2Subtotal = 17450.00; // Updated: 2000 + 1900 + 900 + 2400 + 2250 + 8000
-  const baselinePO2Tax = 3490.00; // 20% VAT
-  const baselinePO2Total = 20940.00; // Updated: 17450 + 3490
+  const baselinePO2Subtotal = 20150.00; // Updated: 2000 + 1900 + 900 + 2400 + 2250 + 8000 + 2700
+  const baselinePO2Tax = 4030.00; // 20% VAT
+  const baselinePO2Total = 24180.00; // Updated: 20150 + 4030
 
   mockInvoices.push({
     id: 'baseline-po-2',
@@ -649,6 +662,124 @@ export const generateBaselineInvoices = (): Invoice[] => {
     }
   } as Invoice);
 
+  // ========================================================================
+  // FRAUD RISK INVOICE - HIGH-RISK JURISDICTION & THRESHOLD EXCEEDED
+  // ========================================================================
+  const fraudRiskDate = new Date(now);
+  fraudRiskDate.setDate(fraudRiskDate.getDate() - 2); // Created 2 days ago
+  const fraudRiskDueDate = new Date(fraudRiskDate);
+  fraudRiskDueDate.setDate(fraudRiskDueDate.getDate() + 30); // Due in 28 days
+
+  const fraudRiskLines = [
+    {
+      id: 'line-fraud-risk-1',
+      line_no: 1,
+      description: 'Industrial Manufacturing Equipment - Heavy Machinery',
+      qty: 2,
+      uom: 'Units',
+      unit_price: 85000.00,
+      net_amount: 170000.00,
+      line_total: 170000.00,
+      po_line_id: 'po-line-7001-1',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-fraud-risk-2',
+      line_no: 2,
+      description: 'Installation & Commissioning Services',
+      qty: 160,
+      uom: 'Hours',
+      unit_price: 250.00,
+      net_amount: 40000.00,
+      line_total: 40000.00,
+      po_line_id: 'po-line-7001-2',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-fraud-risk-3',
+      line_no: 3,
+      description: 'Technical Documentation & Training',
+      qty: 1,
+      uom: 'Package',
+      unit_price: 10000.00,
+      net_amount: 10000.00,
+      line_total: 10000.00,
+      po_line_id: 'po-line-7001-3',
+      gr_line_id: null,
+      ses_line_id: null
+    }
+  ];
+
+  const fraudRiskSubtotal = 220000.00;
+  const fraudRiskTax = 20000.00; // ~9% tax
+  const fraudRiskTotal = 240000.00;
+
+  mockInvoices.push({
+    id: 'fraud-risk-1',
+    invoice_number: 'INV-RU-2025-0001',
+    vendor_name_snapshot: 'Volga Industrial Supplies LLC',
+    vendor_id: 'VND-RU-7001',
+    vendor_tax_id_snapshot: 'RU7707083893',
+    vendor_address_snapshot: 'Ulitsa Krasnaya 125, Moscow, 101000, Russian Federation',
+    vendor_city_snapshot: 'Moscow',
+    vendor_country_snapshot: 'Russia',
+    vendor_postal_code_snapshot: '101000',
+    invoice_date: fraudRiskDate.toISOString().split('T')[0],
+    due_date: fraudRiskDueDate.toISOString().split('T')[0],
+    currency: 'GBP',
+    subtotal: fraudRiskSubtotal,
+    tax_total: fraudRiskTax,
+    tax_rate_percent: 9.09,
+    total: fraudRiskTotal,
+    status: 'blocked', // Blocked due to fraud risk compliance hold
+    match_status: 'matched',
+    type: 'PO',
+    vendor_requires_po: true,
+    vendor_is_verified: false, // Not verified due to high-risk jurisdiction
+    approval_status: 'pending',
+    approver: undefined, // No approver - blocked for fraud risk review
+    po_numbers_cached: ['PO-2025-7001'],
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: ['Fraud Risk - High-Risk Jurisdiction', 'Fraud Risk - Threshold Exceeded'],
+    created_at: fraudRiskDate.toISOString(),
+    updated_at: fraudRiskDate.toISOString(),
+    data_ingestion_date: fraudRiskDate.toISOString().split('T')[0],
+    lines: fraudRiskLines,
+    invoice_lines: fraudRiskLines,
+    // Fraud Risk Detection
+    fraud_risk: {
+      triggered: true,
+      risk_factors: [
+        {
+          type: 'high_risk_jurisdiction',
+          details: 'Vendor operates in Russia, classified as high-risk jurisdiction due to current geopolitical sanctions and enhanced compliance requirements',
+          jurisdiction: 'Russia',
+          jurisdiction_code: 'RU',
+          severity: 'critical' as const
+        },
+        {
+          type: 'threshold_exceeded',
+          details: 'Invoice value exceeds compliance threshold for high-risk jurisdictions',
+          threshold: 100000,
+          actual_value: 240000,
+          currency: 'GBP',
+          severity: 'high' as const
+        }
+      ],
+      required_approvals: [
+        'Finance Director',
+        'Compliance Officer'
+      ],
+      policy_reference: 'Global Procurement & Vendor Payment Policy',
+      policy_link: '/policies/global-procurement',
+      short_message: 'Invoice paused - High-risk jurisdiction & threshold exceeded',
+      full_message: 'This invoice has been automatically paused because the vendor Volga Industrial Supplies LLC operates in a high-risk jurisdiction (Russia) and the invoice value (£240,000) exceeds the threshold defined in your company\'s Global Procurement & Vendor Payment Policy. Per compliance guidelines, additional due diligence and approval from the Finance Director and Compliance Officer are required before payment can be processed.'
+    }
+  } as Invoice);
+
   // Enrich all invoices with demo data using centralized service
   return mockInvoices.map(enrichInvoiceWithDemoData);
 };
@@ -675,7 +806,7 @@ export const isMockInvoice = (id: string): boolean => {
   }
 
   // Updated prefixes for baseline approach and other mock scenarios
-  const mockPrefixes = ['baseline-', 'missing-po-'];
+  const mockPrefixes = ['baseline-', 'missing-po-', 'fraud-risk-'];
   const isMock = mockPrefixes.some(prefix => id.startsWith(prefix));
 
   if (DEBUG_MOCK) {

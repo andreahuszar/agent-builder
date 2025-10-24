@@ -528,16 +528,20 @@ export function LineItemsPreviewPanel({
 
   const hasUomDifference = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): boolean => {
     if (!poLine) return false;
-    if (!invoiceLine.uom_conversion) return false;
 
-    // Check if line has UOM conversion metadata (indicates smart match on UOM difference)
+    // Check if UOMs differ between invoice and PO
     return invoiceLine.uom.toLowerCase() !== poLine.uom.toLowerCase();
+  };
+
+  // Check if line has UOM conversion metadata (auto-matched UOM difference)
+  const hasUomConversion = (invoiceLine: InvoiceLineItem): boolean => {
+    return !!invoiceLine.uom_conversion;
   };
 
   // Check if line has UOM difference that is STILL auto-matched (not manually unmatched)
   const hasMatchedUomDifference = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): boolean => {
     const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
-    return hasUomDifference(invoiceLine, poLine) && !unmatchedLines.has(lineId);
+    return hasUomConversion(invoiceLine) && hasUomDifference(invoiceLine, poLine) && !unmatchedLines.has(lineId);
   };
 
   // Check if line has description difference that is STILL auto-matched (not manually unmatched)
@@ -988,7 +992,7 @@ export function LineItemsPreviewPanel({
                                             </span>
                                           </Tooltip.Trigger>
                                         </CustomRulePopover>
-                                      ) : hasUomDifference(line, matchedPO) ? (
+                                      ) : hasUomConversion(line) && hasUomDifference(line, matchedPO) ? (
                                         <UomMatchPopover
                                           invoiceQty={line.uom_conversion!.invoice_qty}
                                           invoiceUom={line.uom_conversion!.invoice_uom}
@@ -1184,7 +1188,7 @@ export function LineItemsPreviewPanel({
                           {isEditMode && (
                             <td className="px-1.5 py-2 text-sm">
                               <div className="flex items-center justify-center gap-1">
-                                {matchedPO && status === 'variance' && hasUomDifference(line, matchedPO) && !hasCustomRule(line) && (
+                                {matchedPO && status === 'variance' && hasUomDifference(line, matchedPO) && !hasUomConversion(line) && !hasCustomRule(line) && (
                                   <SparkleButton
                                     onClick={() => handleOpenTeachRuleDrawer(line)}
                                     hasRule={false}
@@ -1375,7 +1379,7 @@ export function LineItemsPreviewPanel({
                                           </span>
                                         </Tooltip.Trigger>
                                       </CustomRulePopover>
-                                    ) : hasUomDifference(invLine, matchedPO) ? (
+                                    ) : hasUomConversion(invLine) && hasUomDifference(invLine, matchedPO) ? (
                                       <UomMatchPopover
                                         invoiceQty={invLine.uom_conversion!.invoice_qty}
                                         invoiceUom={invLine.uom_conversion!.invoice_uom}
@@ -1779,7 +1783,7 @@ export function LineItemsPreviewPanel({
                                           </span>
                                         </Tooltip.Trigger>
                                       </CustomRulePopover>
-                                    ) : hasUomDifference(line, matchedPO) ? (
+                                    ) : hasUomConversion(line) && hasUomDifference(line, matchedPO) ? (
                                       <UomMatchPopover
                                         invoiceQty={line.uom_conversion!.invoice_qty}
                                         invoiceUom={line.uom_conversion!.invoice_uom}
@@ -1932,7 +1936,7 @@ export function LineItemsPreviewPanel({
                         <td className="px-1.5 py-2 text-xs text-center">
                           {isEditMode && (
                             <div className="flex items-center justify-center gap-1">
-                              {matchedPO && status === 'variance' && hasUomDifference(line, matchedPO) && !hasCustomRule(line) && (
+                              {matchedPO && status === 'variance' && hasUomDifference(line, matchedPO) && !hasUomConversion(line) && !hasCustomRule(line) && (
                                 <SparkleButton
                                   onClick={() => handleOpenTeachRuleDrawer(line)}
                                   hasRule={false}

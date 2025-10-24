@@ -352,6 +352,20 @@ export const generateMockPOs = (): Record<string, POHeader> => {
           qty_remaining_to_receive: 80,
           qty_remaining_to_invoice: 80,
           status: 'open'
+        },
+        {
+          id: 'po-line-9010-7',
+          line_no: 7,
+          description: 'Steel piping - 3 metre sections',
+          item_description: 'Steel piping - 3 metre sections',
+          qty_ordered: 90,
+          uom: 'Metres',
+          unit_price: 30.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 90,
+          qty_remaining_to_invoice: 90,
+          status: 'open'
         }
       ],
       subtotal: 0,

@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { getAllMockInvoices } from '@/app/services/mockInvoiceService';
+
+const USE_MOCK_DATA = process.env.USE_MOCK_DATA !== 'false'; // Default to true
 
 export async function GET(request: NextRequest) {
   try {
+    // Use mock data if enabled
+    if (USE_MOCK_DATA) {
+      const mockInvoices = getAllMockInvoices();
+      console.log(`[API] Returning ${mockInvoices.length} mock invoices`);
+      return NextResponse.json({ invoices: mockInvoices }, { status: 200 });
+    }
+
     const invoiceHeaders = await prisma.invoice_headers.findMany({
       select: {
         id: true,

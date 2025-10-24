@@ -46,6 +46,7 @@ import { PendingConfirmationIndicator } from '../PendingConfirmationIndicator';
 import { FieldConfidencePill } from '../FieldConfidencePill';
 import { AutoCorrectionIndicator } from '../AutoCorrectionIndicator';
 import { CloseMatchPopover } from '../CloseMatchPopover';
+import { FraudRiskBanner } from '../FraudRiskBanner';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -624,7 +625,12 @@ export function DetailsTab({
       // Remove validation warnings for this field
       validation_warnings: invoiceData.validation_warnings?.filter(
         w => w.field !== 'po_numbers_cached'
-      ) || []
+      ) || [],
+      // Remove confidence indicator after acceptance
+      extraction_field_confidences: {
+        ...invoiceData.extraction_field_confidences,
+        po_numbers_cached: undefined
+      }
     };
 
     // Update edited data state
@@ -633,8 +639,8 @@ export function DetailsTab({
     // Notify parent component with the update
     onUpdate?.(updatedData);
 
-    // Notify field acceptance for purple dot and reprocessing banner
-    onFieldAccept?.('po_numbers_cached', poNumber);
+    // Notify field acceptance for purple dot and reprocessing banner (pass array value)
+    onFieldAccept?.('po_numbers_cached', [poNumber]);
 
     console.log(`Accepted PO: ${poNumber}`);
   };
@@ -710,6 +716,14 @@ export function DetailsTab({
       <div className="h-full flex flex-col relative">
         {/* Scrollable Content Area - Now takes full height */}
         <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative">
+          {/* Fraud Risk Banner - Show when fraud risk is triggered */}
+          {invoiceData.fraud_risk?.triggered && (
+            <FraudRiskBanner
+              fraudRisk={invoiceData.fraud_risk}
+              vendorName={invoiceData.vendor_name_snapshot}
+            />
+          )}
+
           {/* Field Error Indicator - Show when editing OR when showFieldErrors is true */}
           {/* Show purple variant when agent changes pending, red variant when errors exist */}
           {((forceEditMode && isEditing) || showFieldErrors) && (fieldErrors.length > 0 || Object.keys(agentPendingFields).length > 0) && (
@@ -1029,6 +1043,13 @@ export function DetailsTab({
                     onFocus={() => handleFieldFocus('po_numbers_cached')}
                     onBlur={handleFieldBlur}
                   />
+                ) : agentPendingFields['po_numbers_cached'] ? (
+                  <div className="flex items-center">
+                    <p className="text-sm font-medium text-gray-950">
+                      {agentPendingFields['po_numbers_cached'][0]}
+                    </p>
+                    <PendingConfirmationIndicator />
+                  </div>
                 ) : (
                   <>
                     {/* Check if PO is missing AND there's a close match suggestion */}

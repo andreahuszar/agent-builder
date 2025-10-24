@@ -596,9 +596,10 @@ export function enrichInvoiceWithDemoData<T extends Partial<UnifiedInvoice>>(
     department: invoice.department || division,
 
     // Workflow fields (preserve existing or generate new)
-    approver: invoice.approver || approver,
-    requisitioner: invoice.requisitioner || requisitioner,
-    accountCode: invoice.accountCode || accountCode,
+    // Use 'in' operator to differentiate between undefined (not set) and explicitly set to undefined/null
+    approver: 'approver' in invoice ? invoice.approver : approver,
+    requisitioner: 'requisitioner' in invoice ? invoice.requisitioner : requisitioner,
+    accountCode: 'accountCode' in invoice ? invoice.accountCode : accountCode,
 
     // Calculated fields (always recalculate for accuracy)
     priority: calculatePriority(invoice),
