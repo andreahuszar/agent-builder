@@ -338,6 +338,20 @@ export const generateMockPOs = (): Record<string, POHeader> => {
           qty_remaining_to_receive: 50,
           qty_remaining_to_invoice: 50,
           status: 'open'
+        },
+        {
+          id: 'po-line-9010-6',
+          line_no: 6,
+          description: 'Project Coordination Services',
+          item_description: 'Project Coordination Services',
+          qty_ordered: 80,
+          uom: 'Hours',
+          unit_price: 100.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 80,
+          qty_remaining_to_invoice: 80,
+          status: 'open'
         }
       ],
       subtotal: 0,
@@ -382,6 +396,358 @@ export const generateMockPOs = (): Record<string, POHeader> => {
       ],
       subtotal: 0,
       total: 0
+    },
+    'PO-2025-8901': {
+      id: 'mock-po-8901',
+      po_number: 'PO-2025-8901',
+      vendor_name: 'Premier Office Supplies',
+      order_date: '2025-10-18',
+      currency: 'USD',
+      status: 'approved',
+      lines: [
+        {
+          id: 'po-line-8901-1',
+          line_no: 1,
+          description: 'Premium Copy Paper, 8.5×11, 20lb, White',
+          item_description: 'Copy Paper - Premium White',
+          qty_ordered: 10,
+          uom: 'RM',
+          unit_price: 45.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 10,
+          qty_remaining_to_invoice: 10,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8901-2',
+          line_no: 2,
+          description: 'Laser Printer Toner Cartridge, Black, High Yield',
+          item_description: 'Toner Cartridge - Black High Yield',
+          qty_ordered: 5,
+          uom: 'EA',
+          unit_price: 89.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 5,
+          qty_remaining_to_invoice: 5,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8901-3',
+          line_no: 3,
+          description: 'Manila File Folders, Letter Size, Box of 100',
+          item_description: 'File Folders - Manila Letter',
+          qty_ordered: 3,
+          uom: 'BX',
+          unit_price: 18.50,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 3,
+          qty_remaining_to_invoice: 3,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8901-4',
+          line_no: 4,
+          description: 'Ballpoint Pens, Black, Medium Point, Box of 12',
+          item_description: 'Pens - Ballpoint Black Medium',
+          qty_ordered: 8,
+          uom: 'BX',
+          unit_price: 6.25,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 8,
+          qty_remaining_to_invoice: 8,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8901-5',
+          line_no: 5,
+          description: 'Sticky Notes, 3×3, Yellow, Pack of 12',
+          item_description: 'Sticky Notes - Yellow 3x3',
+          qty_ordered: 2,
+          uom: 'PK',
+          unit_price: 12.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 2,
+          qty_remaining_to_invoice: 2,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8901-6',
+          line_no: 6,
+          description: 'Desktop Stapler, Standard Size',
+          item_description: 'Stapler - Desktop Standard',
+          qty_ordered: 1,
+          uom: 'EA',
+          unit_price: 15.50,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 1,
+          qty_remaining_to_invoice: 1,
+          status: 'open'
+        }
+      ],
+      subtotal: 0,
+      total: 0
+    },
+    'PO-2025-8902': {
+      id: 'mock-po-8902',
+      po_number: 'PO-2025-8902',
+      vendor_name: 'Premier Office Supplies',
+      order_date: '2025-10-05',
+      currency: 'USD',
+      status: 'open',
+      lines: [
+        {
+          id: 'po-line-8902-1',
+          line_no: 1,
+          description: 'Recycled Copy Paper, 8.5×11, 20lb, White',
+          item_description: 'Copy Paper - Recycled White',
+          qty_ordered: 20,
+          uom: 'RM',
+          unit_price: 42.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 20,
+          qty_remaining_to_invoice: 20,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8902-2',
+          line_no: 2,
+          description: 'Desk Organizer Set, Black Mesh',
+          item_description: 'Desk Organizer - Black Mesh',
+          qty_ordered: 12,
+          uom: 'EA',
+          unit_price: 24.99,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 12,
+          qty_remaining_to_invoice: 12,
+          status: 'open'
+        }
+      ],
+      subtotal: 0,
+      total: 0
+    },
+    'PO-2025-8903': {
+      id: 'mock-po-8903',
+      po_number: 'PO-2025-8903',
+      vendor_name: 'Premier Office Supplies',
+      order_date: '2025-09-28',
+      currency: 'USD',
+      status: 'open',
+      lines: [
+        {
+          id: 'po-line-8903-1',
+          line_no: 1,
+          description: 'Whiteboard Markers, Assorted Colors, Pack of 12',
+          item_description: 'Whiteboard Markers - Assorted',
+          qty_ordered: 6,
+          uom: 'PK',
+          unit_price: 16.50,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 6,
+          qty_remaining_to_invoice: 6,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8903-2',
+          line_no: 2,
+          description: 'Hanging File Folders, Legal Size, Box of 25',
+          item_description: 'File Folders - Hanging Legal',
+          qty_ordered: 4,
+          uom: 'BX',
+          unit_price: 28.75,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 4,
+          qty_remaining_to_invoice: 4,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8903-3',
+          line_no: 3,
+          description: 'Label Maker Tape Cartridges, 1/2", Black on White',
+          item_description: 'Label Tape - 1/2" Black/White',
+          qty_ordered: 10,
+          uom: 'EA',
+          unit_price: 9.99,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 10,
+          qty_remaining_to_invoice: 10,
+          status: 'open'
+        }
+      ],
+      subtotal: 0,
+      total: 0
+    },
+    'PO-2025-8904': {
+      id: 'mock-po-8904',
+      po_number: 'PO-2025-8904',
+      vendor_name: 'Premier Office Supplies',
+      order_date: '2025-10-12',
+      currency: 'USD',
+      status: 'open',
+      lines: [
+        {
+          id: 'po-line-8904-1',
+          line_no: 1,
+          description: 'Executive Leather Desk Pad, Black',
+          item_description: 'Desk Pad - Executive Leather Black',
+          qty_ordered: 5,
+          uom: 'EA',
+          unit_price: 45.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 5,
+          qty_remaining_to_invoice: 5,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8904-2',
+          line_no: 2,
+          description: 'Staple Remover, Heavy Duty',
+          item_description: 'Staple Remover - Heavy Duty',
+          qty_ordered: 15,
+          uom: 'EA',
+          unit_price: 3.25,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 15,
+          qty_remaining_to_invoice: 15,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8904-3',
+          line_no: 3,
+          description: 'Correction Tape, Side Applicator, Pack of 10',
+          item_description: 'Correction Tape - Side Applicator',
+          qty_ordered: 8,
+          uom: 'PK',
+          unit_price: 14.50,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 8,
+          qty_remaining_to_invoice: 8,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8904-4',
+          line_no: 4,
+          description: 'Rubber Bands, Assorted Sizes, 1lb Box',
+          item_description: 'Rubber Bands - Assorted',
+          qty_ordered: 3,
+          uom: 'BX',
+          unit_price: 8.99,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 3,
+          qty_remaining_to_invoice: 3,
+          status: 'open'
+        }
+      ],
+      subtotal: 0,
+      total: 0
+    },
+    'PO-2025-8905': {
+      id: 'mock-po-8905',
+      po_number: 'PO-2025-8905',
+      vendor_name: 'Premier Office Supplies',
+      order_date: '2025-10-20',
+      currency: 'USD',
+      status: 'open',
+      lines: [
+        {
+          id: 'po-line-8905-1',
+          line_no: 1,
+          description: 'Paper Clips, Jumbo, Silver, Box of 100',
+          item_description: 'Paper Clips - Jumbo Silver',
+          qty_ordered: 20,
+          uom: 'BX',
+          unit_price: 4.25,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 20,
+          qty_remaining_to_invoice: 20,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8905-2',
+          line_no: 2,
+          description: 'Binder Clips, Large, Black, Box of 12',
+          item_description: 'Binder Clips - Large Black',
+          qty_ordered: 15,
+          uom: 'BX',
+          unit_price: 7.50,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 15,
+          qty_remaining_to_invoice: 15,
+          status: 'open'
+        }
+      ],
+      subtotal: 0,
+      total: 0
+    },
+    'PO-2025-8906': {
+      id: 'mock-po-8906',
+      po_number: 'PO-2025-8906',
+      vendor_name: 'Premier Office Supplies',
+      order_date: '2025-09-15',
+      currency: 'USD',
+      status: 'open',
+      lines: [
+        {
+          id: 'po-line-8906-1',
+          line_no: 1,
+          description: 'Scissors, 8", Stainless Steel',
+          item_description: 'Scissors - 8" Stainless',
+          qty_ordered: 25,
+          uom: 'EA',
+          unit_price: 6.75,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 25,
+          qty_remaining_to_invoice: 25,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8906-2',
+          line_no: 2,
+          description: 'Tape Dispenser, Desktop, Weighted Base',
+          item_description: 'Tape Dispenser - Desktop Weighted',
+          qty_ordered: 10,
+          uom: 'EA',
+          unit_price: 12.99,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 10,
+          qty_remaining_to_invoice: 10,
+          status: 'open'
+        },
+        {
+          id: 'po-line-8906-3',
+          line_no: 3,
+          description: 'Push Pins, Assorted Colors, Box of 100',
+          item_description: 'Push Pins - Assorted Colors',
+          qty_ordered: 12,
+          uom: 'BX',
+          unit_price: 3.99,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 12,
+          qty_remaining_to_invoice: 12,
+          status: 'open'
+        }
+      ],
+      subtotal: 0,
+      total: 0
     }
   };
 
@@ -419,6 +785,6 @@ export const isMockPO = (poNumber: string): boolean => {
   const useMockData = process.env.USE_MOCK_DATA === 'true' || process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
   if (!useMockData) return false;
 
-  // Check if PO number matches mock pattern
-  return poNumber.startsWith('PO-2025-9');
+  // Check if PO number matches mock pattern (PO-2025-9xxx or PO-2025-8xxx)
+  return poNumber.startsWith('PO-2025-9') || poNumber.startsWith('PO-2025-8');
 };

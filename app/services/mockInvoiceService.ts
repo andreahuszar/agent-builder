@@ -328,7 +328,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
       suggested_po_match: {
         po_line_id: 'po-line-9010-5',
         po_line_no: 5,
-        po_description: 'Pleated air filters, 20×20×2, MERV 9',
+        po_description: 'Premium pleated air filters with MERV 9 rating',
         po_qty: 50,
         po_unit_price: 45.00,
         po_uom: 'EA',
@@ -342,12 +342,34 @@ export const generateBaselineInvoices = (): Invoice[] => {
           }
         ]
       }
+    },
+    {
+      id: 'line-baseline-po2-6',
+      line_no: 6,
+      description: 'Project Coordination Services',
+      qty: 10,
+      uom: 'Days',
+      unit_price: 800.00,
+      net_amount: 8000.00,
+      line_total: 8000.00,
+      po_line_id: 'po-line-9010-6', // Matched by system despite UOM difference
+      gr_line_id: null,
+      ses_line_id: null,
+      // UOM conversion metadata for smart match
+      uom_conversion: {
+        invoice_qty: 10,
+        invoice_uom: 'Days',
+        po_qty: 80,
+        po_uom: 'Hours',
+        conversion_factor: 8,
+        explanation: '8 hours per day'
+      }
     }
   ];
 
-  const baselinePO2Subtotal = 9450.00; // Updated: 2000 + 1900 + 900 + 2400 + 2250
-  const baselinePO2Tax = 1890.00; // 20% VAT
-  const baselinePO2Total = 11340.00; // Updated: 9450 + 1890
+  const baselinePO2Subtotal = 17450.00; // Updated: 2000 + 1900 + 900 + 2400 + 2250 + 8000
+  const baselinePO2Tax = 3490.00; // 20% VAT
+  const baselinePO2Total = 20940.00; // Updated: 17450 + 3490
 
   mockInvoices.push({
     id: 'baseline-po-2',
@@ -608,7 +630,23 @@ export const generateBaselineInvoices = (): Invoice[] => {
       field: 'po_numbers_cached',
       message: 'PO number required - vendor requires PO for all invoices',
       severity: 'error'
-    }]
+    }],
+    // Close match AI suggestion for PO
+    close_match_po: {
+      po_number: 'PO-2025-8901',
+      confidence: 0.89,
+      matching_factors: {
+        vendor_match: true,
+        date_proximity_days: 3,      // PO created Oct 18, invoice Oct 21
+        line_items_overlap: 4,        // All 4 invoice items match PO
+      },
+      po_summary: {
+        total: 1055.00,               // Slightly different from invoice $1080.54
+        created_date: '2025-10-18',
+        vendor_name: 'Premier Office Supplies',
+        line_count: 6                 // PO has 2 extra items
+      }
+    }
   } as Invoice);
 
   // Enrich all invoices with demo data using centralized service
