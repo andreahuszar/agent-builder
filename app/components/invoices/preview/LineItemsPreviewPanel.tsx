@@ -9,6 +9,9 @@ import { SmartMatchPopover } from '../SmartMatchPopover';
 import { SubstitutionSuggestionPopover } from '../SubstitutionSuggestionPopover';
 import { UomMatchPopover } from '../UomMatchPopover';
 import { useToast } from '@/app/components/ui/Toast';
+import { SparkleButton } from '../SparkleButton';
+import { CustomRulePopover, UnitConversionRule } from '../CustomRulePopover';
+import { TeachRuleDrawer } from '../TeachRuleDrawer';
 
 interface InvoiceLineItem {
   id?: string;
@@ -233,6 +236,9 @@ export function LineItemsPreviewPanel({
   const [acceptedSuggestions, setAcceptedSuggestions] = useState<Set<string>>(new Set());
   const [rejectedSuggestions, setRejectedSuggestions] = useState<Set<string>>(new Set());
   const [openSuggestionId, setOpenSuggestionId] = useState<string | null>(null);
+  const [customRules, setCustomRules] = useState<Map<string, UnitConversionRule>>(new Map());
+  const [teachRuleDrawerOpen, setTeachRuleDrawerOpen] = useState(false);
+  const [selectedLineForRule, setSelectedLineForRule] = useState<InvoiceLineItem | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
@@ -314,6 +320,71 @@ export function LineItemsPreviewPanel({
     setRejectedSuggestions(prev => new Set(prev).add(lineId));
     showToast('Suggestion rejected. Line marked as unmatched.');
     setOpenSuggestionId(null);
+  };
+
+  // Handle opening teach rule drawer
+  const handleOpenTeachRuleDrawer = (line: InvoiceLineItem) => {
+    setSelectedLineForRule(line);
+    setTeachRuleDrawerOpen(true);
+  };
+
+  // Handle confirming custom rule
+  const handleConfirmRule = (rule: any) => {
+    if (!selectedLineForRule) return;
+
+    const lineId = selectedLineForRule.id || `line-${selectedLineForRule.line_no}`;
+
+    // Create custom rule object
+    const newRule: UnitConversionRule = {
+      id: `rule-${Date.now()}`,
+      lineId: lineId,
+      description: rule.naturalLanguage,
+      fromUnit: rule.fromUnit,
+      fromQuantity: rule.fromQuantity,
+      toUnit: rule.toUnit,
+      toQuantity: rule.toQuantity,
+      vendorName: "Vendor Name", // TODO: Get actual vendor name
+      createdBy: "User", // TODO: Get actual user name
+      createdAt: new Date()
+    };
+
+    // Add rule to custom rules map
+    setCustomRules(prev => {
+      const updated = new Map(prev);
+      updated.set(lineId, newRule);
+      return updated;
+    });
+
+    // Remove from unmatched lines if it was there
+    setUnmatchedLines(prev => {
+      const updated = new Set(prev);
+      updated.delete(lineId);
+      return updated;
+    });
+
+    // Close drawer
+    setTeachRuleDrawerOpen(false);
+    setSelectedLineForRule(null);
+
+    showToast('Conversion rule applied! This line is now matched.', 'success');
+  };
+
+  // Handle editing custom rule
+  const handleEditRule = (line: InvoiceLineItem) => {
+    setSelectedLineForRule(line);
+    setTeachRuleDrawerOpen(true);
+  };
+
+  // Handle removing custom rule
+  const handleRemoveRule = (lineId: string) => {
+    setCustomRules(prev => {
+      const updated = new Map(prev);
+      updated.delete(lineId);
+      return updated;
+    });
+
+    setOpenPopoverId(null);
+    showToast('Custom conversion rule removed.', 'info');
   };
 
   // Check if line has suggestion and it's not yet accepted/rejected
@@ -428,6 +499,11 @@ export function LineItemsPreviewPanel({
       return 'matched';
     }
 
+    // Check if line has custom conversion rule applied - treat as matched
+    if (poLine && hasCustomRuleMatch(invoiceLine, poLine)) {
+      return 'matched';
+    }
+
     if (!poLine) return 'missing';
     if (hasMismatch(invoiceLine, poLine)) return 'variance';
     return 'matched';
@@ -468,6 +544,32 @@ export function LineItemsPreviewPanel({
   const hasMatchedDescriptionDifference = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): boolean => {
     const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
     return hasDescriptionDifference(invoiceLine, poLine) && !unmatchedLines.has(lineId);
+  };
+
+  // Check if line has a custom conversion rule
+  const hasCustomRule = (invoiceLine: InvoiceLineItem): boolean => {
+    const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
+    return customRules.has(lineId);
+  };
+
+  // Get custom rule for a line
+  const getCustomRule = (invoiceLine: InvoiceLineItem): UnitConversionRule | null => {
+    const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
+    return customRules.get(lineId) || null;
+  };
+
+  // Check if line has custom rule that matches current UOM difference
+  const hasCustomRuleMatch = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): boolean => {
+    if (!poLine || !hasUomDifference(invoiceLine, poLine)) return false;
+
+    const rule = getCustomRule(invoiceLine);
+    if (!rule) return false;
+
+    // Validate that the rule applies to this line
+    const expectedPOQty = invoiceLine.qty * (rule.toQuantity / rule.fromQuantity);
+    const matches = Math.abs(expectedPOQty - poLine.qty_ordered) < 0.01;
+
+    return matches;
   };
 
   // Generate random SKU for display purposes
@@ -849,7 +951,7 @@ export function LineItemsPreviewPanel({
                             )}
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-gray-950 ${
-                            matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasMatchedDescriptionDifference(line, matchedPO))
+                            matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasMatchedDescriptionDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
                               ? 'bg-purple-50 border border-purple-300'
                               : (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
                               ? 'bg-red-50 border border-red-300'
@@ -864,10 +966,29 @@ export function LineItemsPreviewPanel({
                               />
                             ) : (
                               <div className="flex items-center gap-1.5">
-                                {matchedPO && (hasUomDifference(line, matchedPO) || hasDescriptionDifference(line, matchedPO)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
+                                {matchedPO && (hasUomDifference(line, matchedPO) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
                                   <Tooltip.Provider>
                                     <Tooltip.Root delayDuration={200} open={openPopoverId === `invoice-${line.id || `line-${line.line_no}`}` ? false : undefined}>
-                                      {hasUomDifference(line, matchedPO) ? (
+                                      {hasCustomRule(line) ? (
+                                        <CustomRulePopover
+                                          rule={getCustomRule(line)!}
+                                          invoiceQty={line.qty}
+                                          invoiceUom={line.uom}
+                                          poQty={matchedPO.qty_ordered}
+                                          poUom={matchedPO.uom}
+                                          lineTotal={line.line_total}
+                                          onEdit={() => handleEditRule(line)}
+                                          onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)}
+                                          open={openPopoverId === `invoice-${line.id || `line-${line.line_no}`}`}
+                                          onOpenChange={(open) => setOpenPopoverId(open ? `invoice-${line.id || `line-${line.line_no}`}` : null)}
+                                        >
+                                          <Tooltip.Trigger asChild>
+                                            <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                              <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                            </span>
+                                          </Tooltip.Trigger>
+                                        </CustomRulePopover>
+                                      ) : hasUomDifference(line, matchedPO) ? (
                                         <UomMatchPopover
                                           invoiceQty={line.uom_conversion!.invoice_qty}
                                           invoiceUom={line.uom_conversion!.invoice_uom}
@@ -1063,6 +1184,12 @@ export function LineItemsPreviewPanel({
                           {isEditMode && (
                             <td className="px-1.5 py-2 text-sm">
                               <div className="flex items-center justify-center gap-1">
+                                {matchedPO && status === 'variance' && hasUomDifference(line, matchedPO) && !hasCustomRule(line) && (
+                                  <SparkleButton
+                                    onClick={() => handleOpenTeachRuleDrawer(line)}
+                                    hasRule={false}
+                                  />
+                                )}
                                 <button
                                   onClick={() => handleRemoveLine(lineIndex)}
                                   className="p-1 text-gray-900 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
@@ -1219,17 +1346,36 @@ export function LineItemsPreviewPanel({
                         >
                           <td className="px-1.5 py-2 text-xs text-gray-950">{matchedPO.line_no}</td>
                           <td className={`px-1.5 py-2 text-xs text-gray-950 ${
-                            invLine && (hasMatchedUomDifference(invLine, matchedPO) || hasMatchedDescriptionDifference(invLine, matchedPO))
+                            invLine && (hasMatchedUomDifference(invLine, matchedPO) || hasMatchedDescriptionDifference(invLine, matchedPO) || hasCustomRuleMatch(invLine, matchedPO))
                               ? 'bg-purple-50 border border-purple-300'
                               : invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && hasDescriptionDifference(invLine, matchedPO)) || hasSuggestion(invLine))
                               ? 'bg-red-50 border border-red-300'
                               : ''
                           }`}>
                             <div className="flex items-center gap-1.5">
-                              {invLine && (hasUomDifference(invLine, matchedPO) || hasDescriptionDifference(invLine, matchedPO)) && !unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && (
+                              {invLine && (hasUomDifference(invLine, matchedPO) || hasDescriptionDifference(invLine, matchedPO) || hasCustomRule(invLine)) && !unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && (
                                 <Tooltip.Provider>
                                   <Tooltip.Root delayDuration={200} open={openPopoverId === `po-${invLine.id || `line-${invLine.line_no}`}` ? false : undefined}>
-                                    {hasUomDifference(invLine, matchedPO) ? (
+                                    {hasCustomRule(invLine) ? (
+                                      <CustomRulePopover
+                                        rule={getCustomRule(invLine)!}
+                                        invoiceQty={invLine.qty}
+                                        invoiceUom={invLine.uom}
+                                        poQty={matchedPO.qty_ordered}
+                                        poUom={matchedPO.uom}
+                                        lineTotal={invLine.line_total}
+                                        onEdit={() => handleEditRule(invLine)}
+                                        onRemove={() => handleRemoveRule(invLine.id || `line-${invLine.line_no}`)}
+                                        open={openPopoverId === `po-${invLine.id || `line-${invLine.line_no}`}`}
+                                        onOpenChange={(open) => setOpenPopoverId(open ? `po-${invLine.id || `line-${invLine.line_no}`}` : null)}
+                                      >
+                                        <Tooltip.Trigger asChild>
+                                          <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                          </span>
+                                        </Tooltip.Trigger>
+                                      </CustomRulePopover>
+                                    ) : hasUomDifference(invLine, matchedPO) ? (
                                       <UomMatchPopover
                                         invoiceQty={invLine.uom_conversion!.invoice_qty}
                                         invoiceUom={invLine.uom_conversion!.invoice_uom}
@@ -1596,7 +1742,7 @@ export function LineItemsPreviewPanel({
                           )}
                         </td>
                         <td className={`px-1.5 py-2 text-xs text-gray-950 ${
-                          matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasMatchedDescriptionDifference(line, matchedPO))
+                          matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasMatchedDescriptionDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
                             ? 'bg-purple-50 border border-purple-300'
                             : (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
                             ? 'bg-red-50 border border-red-300'
@@ -1611,10 +1757,29 @@ export function LineItemsPreviewPanel({
                             />
                           ) : (
                             <div className="flex items-center gap-1.5">
-                              {matchedPO && (hasUomDifference(line, matchedPO) || hasDescriptionDifference(line, matchedPO)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
+                              {matchedPO && (hasUomDifference(line, matchedPO) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
                                 <Tooltip.Provider>
                                   <Tooltip.Root delayDuration={200} open={openPopoverId === `invoice-detailed-${line.id || `line-${line.line_no}`}` ? false : undefined}>
-                                    {hasUomDifference(line, matchedPO) ? (
+                                    {hasCustomRule(line) ? (
+                                      <CustomRulePopover
+                                        rule={getCustomRule(line)!}
+                                        invoiceQty={line.qty}
+                                        invoiceUom={line.uom}
+                                        poQty={matchedPO.qty_ordered}
+                                        poUom={matchedPO.uom}
+                                        lineTotal={line.line_total}
+                                        onEdit={() => handleEditRule(line)}
+                                        onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)}
+                                        open={openPopoverId === `invoice-detailed-${line.id || `line-${line.line_no}`}`}
+                                        onOpenChange={(open) => setOpenPopoverId(open ? `invoice-detailed-${line.id || `line-${line.line_no}`}` : null)}
+                                      >
+                                        <Tooltip.Trigger asChild>
+                                          <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                          </span>
+                                        </Tooltip.Trigger>
+                                      </CustomRulePopover>
+                                    ) : hasUomDifference(line, matchedPO) ? (
                                       <UomMatchPopover
                                         invoiceQty={line.uom_conversion!.invoice_qty}
                                         invoiceUom={line.uom_conversion!.invoice_uom}
@@ -1767,6 +1932,12 @@ export function LineItemsPreviewPanel({
                         <td className="px-1.5 py-2 text-xs text-center">
                           {isEditMode && (
                             <div className="flex items-center justify-center gap-1">
+                              {matchedPO && status === 'variance' && hasUomDifference(line, matchedPO) && !hasCustomRule(line) && (
+                                <SparkleButton
+                                  onClick={() => handleOpenTeachRuleDrawer(line)}
+                                  hasRule={false}
+                                />
+                              )}
                               <button
                                 onClick={() => handleRemoveLine(lineIndex)}
                                 className="p-1 text-gray-900 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
@@ -1891,6 +2062,33 @@ export function LineItemsPreviewPanel({
             ) : null}
           </DragOverlay>
         </DndContext>
+
+        {/* Teach Rule Drawer */}
+        <TeachRuleDrawer
+          open={teachRuleDrawerOpen}
+          onClose={() => {
+            setTeachRuleDrawerOpen(false);
+            setSelectedLineForRule(null);
+          }}
+          invoiceLine={selectedLineForRule ? {
+            qty: selectedLineForRule.qty,
+            uom: selectedLineForRule.uom,
+            description: selectedLineForRule.description,
+            unit_price: selectedLineForRule.unit_price,
+            line_total: selectedLineForRule.line_total
+          } : null}
+          poLine={selectedLineForRule ? (() => {
+            const matchedPO = poLines.find(po => po.id === selectedLineForRule.po_line_id);
+            return matchedPO ? {
+              qty_ordered: matchedPO.qty_ordered,
+              uom: matchedPO.uom,
+              description: matchedPO.description,
+              unit_price: matchedPO.unit_price
+            } : null;
+          })() : null}
+          vendorName="Vendor Name" // TODO: Get actual vendor name from invoice
+          onConfirm={handleConfirmRule}
+        />
       </div>
     </div>
   );
