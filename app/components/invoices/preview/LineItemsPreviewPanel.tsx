@@ -423,8 +423,8 @@ export function LineItemsPreviewPanel({
       return 'variance';
     }
 
-    // Check if line has UOM conversion (auto-matched despite UOM difference) - treat as matched
-    if (poLine && hasMatchedUomDifference(invoiceLine, poLine)) {
+    // Check if line has smart match applied (UOM or description difference auto-matched) - treat as matched
+    if (poLine && (hasMatchedUomDifference(invoiceLine, poLine) || hasMatchedDescriptionDifference(invoiceLine, poLine))) {
       return 'matched';
     }
 
@@ -462,6 +462,12 @@ export function LineItemsPreviewPanel({
   const hasMatchedUomDifference = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): boolean => {
     const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
     return hasUomDifference(invoiceLine, poLine) && !unmatchedLines.has(lineId);
+  };
+
+  // Check if line has description difference that is STILL auto-matched (not manually unmatched)
+  const hasMatchedDescriptionDifference = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): boolean => {
+    const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
+    return hasDescriptionDifference(invoiceLine, poLine) && !unmatchedLines.has(lineId);
   };
 
   // Generate random SKU for display purposes
@@ -843,9 +849,9 @@ export function LineItemsPreviewPanel({
                             )}
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-gray-950 ${
-                            matchedPO && hasMatchedUomDifference(line, matchedPO)
+                            matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasMatchedDescriptionDifference(line, matchedPO))
                               ? 'bg-purple-50 border border-purple-300'
-                              : (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`)) || hasSuggestion(line)
+                              : (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
                               ? 'bg-red-50 border border-red-300'
                               : ''
                           }`}>
@@ -1213,9 +1219,9 @@ export function LineItemsPreviewPanel({
                         >
                           <td className="px-1.5 py-2 text-xs text-gray-950">{matchedPO.line_no}</td>
                           <td className={`px-1.5 py-2 text-xs text-gray-950 ${
-                            invLine && hasMatchedUomDifference(invLine, matchedPO)
+                            invLine && (hasMatchedUomDifference(invLine, matchedPO) || hasMatchedDescriptionDifference(invLine, matchedPO))
                               ? 'bg-purple-50 border border-purple-300'
-                              : invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`)) || hasSuggestion(invLine))
+                              : invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && hasDescriptionDifference(invLine, matchedPO)) || hasSuggestion(invLine))
                               ? 'bg-red-50 border border-red-300'
                               : ''
                           }`}>
@@ -1590,9 +1596,9 @@ export function LineItemsPreviewPanel({
                           )}
                         </td>
                         <td className={`px-1.5 py-2 text-xs text-gray-950 ${
-                          matchedPO && hasMatchedUomDifference(line, matchedPO)
+                          matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasMatchedDescriptionDifference(line, matchedPO))
                             ? 'bg-purple-50 border border-purple-300'
-                            : (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`)) || hasSuggestion(line)
+                            : (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
                             ? 'bg-red-50 border border-red-300'
                             : ''
                         }`}>

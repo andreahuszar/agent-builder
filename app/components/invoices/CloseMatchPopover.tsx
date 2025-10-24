@@ -210,26 +210,26 @@ export function CloseMatchPopover({
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={handleReject}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-gray-300 bg-white text-gray-700 rounded-md hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+              className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium border border-gray-300 bg-white text-gray-700 rounded-md hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1 whitespace-nowrap"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="h-3 w-3" />
               Reject
             </button>
             <button
               onClick={handleSearchDifferent}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium border border-purple-900 bg-white text-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium border border-purple-900 bg-white text-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 whitespace-nowrap"
             >
               Select Different PO
             </button>
             <button
               onClick={handleAccept}
-              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 whitespace-nowrap"
             >
-              <Check className="h-3.5 w-3.5" />
-              Accept Match
+              <Check className="h-3 w-3" />
+              Accept
             </button>
           </div>
 

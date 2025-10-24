@@ -613,39 +613,35 @@ export function DetailsTab({
     setIsPODrawerOpen(true);
   };
 
-  const handleLinkPO = async (poNumber: string) => {
-    try {
-      const response = await fetch(`/api/invoices/${invoiceData.id}/link-po`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ poNumber }),
-      });
+  // Helper function to accept a PO number and update state
+  const acceptPONumber = (poNumber: string) => {
+    // Update invoice data with the accepted PO
+    const updatedData = {
+      ...invoiceData,
+      po_numbers_cached: [poNumber],
+      // Remove the close_match_po suggestion since it's been accepted
+      close_match_po: undefined,
+      // Remove validation warnings for this field
+      validation_warnings: invoiceData.validation_warnings?.filter(
+        w => w.field !== 'po_numbers_cached'
+      ) || []
+    };
 
-      if (response.ok) {
-        const data = await response.json();
-        // Update local state with new PO
-        const updatedPONumbers = [...(editedData.po_numbers_cached || []), poNumber];
-        const updatedData = {
-          ...editedData,
-          po_numbers_cached: updatedPONumbers
-        };
-        setEditedData(updatedData);
+    // Update edited data state
+    setEditedData(updatedData);
 
-        // Notify parent if callback exists
-        if (onUpdate) {
-          onUpdate(updatedData);
-        }
+    // Notify parent component with the update
+    onUpdate?.(updatedData);
 
-        console.log(`Successfully linked PO ${poNumber}`);
-      } else {
-        const error = await response.json();
-        console.error('Failed to link PO:', error);
-        alert(`Failed to link PO: ${error.error || 'Unknown error'}`);
-      }
-    } catch (error) {
-      console.error('Error linking PO:', error);
-      alert('Failed to link PO. Please try again.');
-    }
+    // Notify field acceptance for purple dot and reprocessing banner
+    onFieldAccept?.('po_numbers_cached', poNumber);
+
+    console.log(`Accepted PO: ${poNumber}`);
+  };
+
+  const handleLinkPO = (poNumber: string) => {
+    // Use the same logic as accepting from the close match popover
+    acceptPONumber(poNumber);
   };
 
   const handleUnlinkPO = async (poNumber: string) => {
@@ -704,6 +700,10 @@ export function DetailsTab({
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true });
     return () => scrollContainer.removeEventListener('scroll', handleScroll);
   }, [lastScrollY]);
+
+  // Computed values for field display - prioritize editedData over invoiceData
+  const displayPONumber = editedData.po_numbers_cached?.[0] || invoiceData.po_numbers_cached?.[0] || '';
+  const hasPONumber = displayPONumber.length > 0;
 
   return (
     <Tooltip.Provider>
@@ -992,7 +992,8 @@ export function DetailsTab({
                       poSummary={invoiceData.close_match_po.po_summary}
                       invoiceTotal={invoiceData.total}
                       onAccept={() => {
-                        handleLinkPO(invoiceData.close_match_po.po_number);
+                        const poNumber = invoiceData.close_match_po.po_number;
+                        acceptPONumber(poNumber);
                       }}
                       onSearchDifferent={() => {
                         setIsPOSearchModalOpen(true);
@@ -1031,7 +1032,7 @@ export function DetailsTab({
                 ) : (
                   <>
                     {/* Check if PO is missing AND there's a close match suggestion */}
-                    {(!invoiceData.po_numbers_cached || invoiceData.po_numbers_cached.length === 0) && invoiceData.close_match_po ? (
+                    {!hasPONumber && invoiceData.close_match_po ? (
                       <div className="relative">
                         {/* Red-bordered empty input field */}
                         <input
@@ -1050,7 +1051,7 @@ export function DetailsTab({
                     ) : (
                       renderField(
                         'po_numbers_cached',
-                        invoiceData.po_numbers_cached?.length > 0 ? invoiceData.po_numbers_cached[0] : '',
+                        displayPONumber,
                         'text',
                         'PO Number'
                       )
@@ -1888,7 +1889,7 @@ export function DetailsTab({
         isOpen={isPOSearchModalOpen}
         onClose={() => setIsPOSearchModalOpen(false)}
         onLinkPO={handleLinkPO}
-        vendorId={editedData.vendor_id}
+        vendorId={null}
         vendorName={editedData.vendor_name_snapshot}
       />
       </div>
