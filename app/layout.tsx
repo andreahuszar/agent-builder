@@ -3,6 +3,7 @@ import { Barlow } from "next/font/google";
 import "./globals.css";
 import SkipLinks from "@/app/components/SkipLinks";
 import { WebVitals } from "@/app/components/WebVitals";
+import { ToastProvider } from "@/app/components/ui/Toast";
 
 const barlow = Barlow({
   weight: ['400', '500', '600', '700'],
@@ -25,7 +26,9 @@ export default function RootLayout({
       <body className={`${barlow.className} antialiased`}>
         <WebVitals />
         <SkipLinks />
-        {children}
+        <ToastProvider>
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );

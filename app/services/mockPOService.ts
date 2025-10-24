@@ -324,6 +324,20 @@ export const generateMockPOs = (): Record<string, POHeader> => {
           qty_remaining_to_receive: 12,
           qty_remaining_to_invoice: 12,
           status: 'open'
+        },
+        {
+          id: 'po-line-9010-5',
+          line_no: 5,
+          description: 'Pleated air filters, 20×20×2, MERV 9',
+          item_description: 'Premium pleated air filters with MERV 9 rating',
+          qty_ordered: 50,
+          uom: 'EA',
+          unit_price: 45.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 50,
+          qty_remaining_to_invoice: 50,
+          status: 'open'
         }
       ],
       subtotal: 0,

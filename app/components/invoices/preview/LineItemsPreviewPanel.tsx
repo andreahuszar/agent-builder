@@ -1,11 +1,12 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Maximize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical, Zap } from 'lucide-react';
+import { Maximize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical, Zap, Sparkles } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, useDroppable, DragOverlay, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { SmartMatchPopover } from '../SmartMatchPopover';
+import { SubstitutionSuggestionPopover } from '../SubstitutionSuggestionPopover';
 import { useToast } from '@/app/components/ui/Toast';
 
 interface InvoiceLineItem {
@@ -19,6 +20,21 @@ interface InvoiceLineItem {
   line_total: number;
   po_line_id?: string;
   display_position?: number; // Position for drag-and-drop (independent of line_no)
+  suggested_po_match?: {
+    po_line_id: string;
+    po_line_no: number;
+    po_description: string;
+    po_qty: number;
+    po_unit_price: number;
+    po_uom: string;
+    confidence: number;
+    reason: string;
+    differences: Array<{
+      field: string;
+      invoice_value: string;
+      po_value: string;
+    }>;
+  };
 }
 
 interface POLineItem {
@@ -205,6 +221,9 @@ export function LineItemsPreviewPanel({
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
   const [unmatchedLines, setUnmatchedLines] = useState<Set<string>>(new Set());
+  const [acceptedSuggestions, setAcceptedSuggestions] = useState<Set<string>>(new Set());
+  const [rejectedSuggestions, setRejectedSuggestions] = useState<Set<string>>(new Set());
+  const [openSuggestionId, setOpenSuggestionId] = useState<string | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
@@ -259,6 +278,41 @@ export function LineItemsPreviewPanel({
     setUnmatchedLines(prev => new Set(prev).add(lineId));
     setOpenPopoverId(null);
     showToast("Match removed. These descriptions won't auto-match in future invoices.", 'info');
+  };
+
+  // Handle accepting substitution suggestion
+  const handleAcceptSuggestion = (lineId: string, suggestion: any) => {
+    setAcceptedSuggestions(prev => new Set(prev).add(lineId));
+
+    // Update editable lines to match with suggested PO line
+    const updatedLines = editableLines.map(line => {
+      const id = line.id || `line-${line.line_no}`;
+      if (id === lineId) {
+        return { ...line, po_line_id: suggestion.po_line_id };
+      }
+      return line;
+    });
+
+    setEditableLines(updatedLines);
+    onLinesUpdate?.(updatedLines);
+
+    showToast('Substitution accepted and learned. Similar matches will be applied automatically in the future.');
+    setOpenSuggestionId(null);
+  };
+
+  // Handle rejecting substitution suggestion
+  const handleRejectSuggestion = (lineId: string) => {
+    setRejectedSuggestions(prev => new Set(prev).add(lineId));
+    showToast('Suggestion rejected. Line marked as unmatched.');
+    setOpenSuggestionId(null);
+  };
+
+  // Check if line has suggestion and it's not yet accepted/rejected
+  const hasSuggestion = (line: InvoiceLineItem): boolean => {
+    const lineId = line.id || `line-${line.line_no}`;
+    return !!line.suggested_po_match &&
+           !acceptedSuggestions.has(lineId) &&
+           !rejectedSuggestions.has(lineId);
   };
 
   // Handle fullscreen change events
@@ -340,7 +394,17 @@ export function LineItemsPreviewPanel({
   const getLineStatus = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): 'variance' | 'matched' | 'missing' => {
     const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
 
-    // Check if manually unmatched first - this overrides other status
+    // Check accepted suggestions FIRST (treat as matched)
+    if (acceptedSuggestions.has(lineId)) {
+      return 'matched';
+    }
+
+    // Check rejected suggestions (treat as variance)
+    if (rejectedSuggestions.has(lineId)) {
+      return 'variance';
+    }
+
+    // Check if manually unmatched - this overrides other status
     if (unmatchedLines.has(lineId)) {
       return 'variance';
     }
@@ -353,6 +417,12 @@ export function LineItemsPreviewPanel({
   // Check if descriptions differ between invoice and PO line (for smart match indicator)
   const hasDescriptionDifference = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): boolean => {
     if (!poLine) return false;
+
+    // Don't show thunderbolts for pending substitution suggestions
+    // Only show after user accepts the suggestion
+    if (hasSuggestion(invoiceLine)) {
+      return false;
+    }
 
     const invDesc = invoiceLine.description.trim().toLowerCase();
     const poDesc = (poLine.description || '').trim().toLowerCase();
@@ -625,7 +695,7 @@ export function LineItemsPreviewPanel({
                 <table className="min-w-max">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                      <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 10 : 8) : (isEditMode ? 11 : 9)} className="px-4 bg-white border-b h-[42px]">
+                      <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 11 : 9) : (isEditMode ? 12 : 10)} className="px-4 bg-white border-b h-[42px]">
                         <div className="flex items-center justify-between h-full">
                           <span className="text-sm font-semibold text-gray-950">Invoice</span>
                           <button
@@ -656,6 +726,7 @@ export function LineItemsPreviewPanel({
                       {!useDetailedVarianceColumns && (
                         <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Variance</th>
                       )}
+                      <th className="w-24"></th>
                       {isEditMode && (
                         <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase w-32">Actions</th>
                       )}
@@ -677,7 +748,7 @@ export function LineItemsPreviewPanel({
                             <EmptySlot
                               key={`dragged-placeholder-${slot.position}`}
                               position={slot.position}
-                              colSpan={useDetailedVarianceColumns ? (isEditMode ? 10 : 8) : (isEditMode ? 11 : 9)}
+                              colSpan={useDetailedVarianceColumns ? (isEditMode ? 11 : 9) : (isEditMode ? 12 : 10)}
                               isEditMode={isEditMode}
                               isDragPlaceholder={true}
                             />
@@ -690,7 +761,7 @@ export function LineItemsPreviewPanel({
                             <EmptySlot
                               key={`empty-slot-${slot.position}`}
                               position={slot.position}
-                              colSpan={useDetailedVarianceColumns ? (isEditMode ? 10 : 8) : (isEditMode ? 11 : 9)}
+                              colSpan={useDetailedVarianceColumns ? (isEditMode ? 11 : 9) : (isEditMode ? 12 : 10)}
                               isEditMode={isEditMode}
                             />
                           );
@@ -723,7 +794,7 @@ export function LineItemsPreviewPanel({
                             )}
                             {status === 'missing' && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                                Missing
+                                Not Matched
                               </span>
                             )}
                           </td>
@@ -862,6 +933,48 @@ export function LineItemsPreviewPanel({
                               )}
                             </td>
                           )}
+                          {/* Sparkles column for substitution suggestions */}
+                          <td className="w-24 px-2 py-2 text-center">
+                            {hasSuggestion(line) && (
+                              <Tooltip.Provider>
+                                <Tooltip.Root delayDuration={200} open={openSuggestionId === (line.id || `line-${line.line_no}`) ? false : undefined}>
+                                  <SubstitutionSuggestionPopover
+                                    invoiceDescription={line.description}
+                                    poDescription={line.suggested_po_match!.po_description}
+                                    invoiceLine={{
+                                      qty: line.qty,
+                                      unit_price: line.unit_price,
+                                      line_total: line.line_total
+                                    }}
+                                    poLine={{
+                                      qty_ordered: line.suggested_po_match!.po_qty,
+                                      unit_price: line.suggested_po_match!.po_unit_price
+                                    }}
+                                    confidence={line.suggested_po_match!.confidence}
+                                    reason={line.suggested_po_match!.reason}
+                                    differences={line.suggested_po_match!.differences}
+                                    onAccept={() => handleAcceptSuggestion(line.id || `line-${line.line_no}`, line.suggested_po_match)}
+                                    onReject={() => handleRejectSuggestion(line.id || `line-${line.line_no}`)}
+                                    open={openSuggestionId === (line.id || `line-${line.line_no}`)}
+                                    onOpenChange={(open) => setOpenSuggestionId(open ? (line.id || `line-${line.line_no}`) : null)}
+                                  >
+                                    <Tooltip.Trigger asChild>
+                                      <button className="bg-purple-900 text-white rounded-md px-2 py-1 hover:bg-purple-800 transition-colors inline-flex items-center gap-1.5">
+                                        <Sparkles className="h-4 w-4 text-white" />
+                                        <span className="text-xs font-medium">Review</span>
+                                      </button>
+                                    </Tooltip.Trigger>
+                                  </SubstitutionSuggestionPopover>
+                                  <Tooltip.Portal>
+                                    <Tooltip.Content className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg">
+                                      AI suggests possible substitution - Click to review
+                                      <Tooltip.Arrow className="fill-gray-900" />
+                                    </Tooltip.Content>
+                                  </Tooltip.Portal>
+                                </Tooltip.Root>
+                              </Tooltip.Provider>
+                            )}
+                          </td>
                           {isEditMode && (
                             <td className="px-1.5 py-2 text-sm">
                               <div className="flex items-center justify-center gap-1">
@@ -921,7 +1034,7 @@ export function LineItemsPreviewPanel({
                       })}
                     {isEditMode && (
                       <tr className="h-[40px]">
-                        <td colSpan={useDetailedVarianceColumns ? 10 : 11} className="px-1.5 py-2 align-middle">
+                        <td colSpan={useDetailedVarianceColumns ? 11 : 12} className="px-1.5 py-2 align-middle">
                           <button
                             onClick={handleAddLine}
                             className="flex items-center gap-1.5 text-sm text-purple-700 hover:text-purple-900 font-medium transition-colors"
@@ -958,6 +1071,8 @@ export function LineItemsPreviewPanel({
                           })()}
                         </td>
                       )}
+                      {/* Empty cell for Sparkles column */}
+                      <td className="px-1.5 py-2"></td>
                       {/* Empty cell for Actions column in edit mode */}
                       {isEditMode && (
                         <td className="px-1.5 py-2"></td>
@@ -1356,7 +1471,7 @@ export function LineItemsPreviewPanel({
                           )}
                           {status === 'missing' && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                              Missing
+                              Not Matched
                             </span>
                           )}
                         </td>

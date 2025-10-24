@@ -44,6 +44,7 @@ import { AISuggestionCard } from '../AISuggestionCard';
 import { TeachingCard } from '../TeachingCard';
 import { PendingConfirmationIndicator } from '../PendingConfirmationIndicator';
 import { FieldConfidencePill } from '../FieldConfidencePill';
+import { AutoCorrectionIndicator } from '../AutoCorrectionIndicator';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -288,6 +289,19 @@ export function DetailsTab({
             }
           }
         });
+
+        // Also add validation warnings with error severity to field errors
+        if (invoiceData.validation_warnings && Array.isArray(invoiceData.validation_warnings)) {
+          invoiceData.validation_warnings.forEach((warning: any) => {
+            if (warning.severity === 'error') {
+              addError(
+                warning.field,
+                warning.message,
+                fieldRefs.current[warning.field]
+              );
+            }
+          });
+        }
       }, 100);
 
       return () => clearTimeout(timer);
@@ -372,6 +386,14 @@ export function DetailsTab({
     return candidates.length > 0 && onFieldAccept && onFieldReject;
   };
 
+  // Helper function to get auto-correction info for a field
+  const getAutoCorrection = (fieldName: string) => {
+    if (!invoiceData?.auto_corrections || !Array.isArray(invoiceData.auto_corrections)) {
+      return null;
+    }
+    return invoiceData.auto_corrections.find((correction: any) => correction.field === fieldName);
+  };
+
   // Helper to get read-only field styling with error highlighting
   const getReadOnlyFieldClass = (fieldName: string, defaultValue?: string) => {
     const baseClass = 'text-sm font-medium';
@@ -384,26 +406,53 @@ export function DetailsTab({
   // Render a field - either as editable or read-only with click-to-edit
   const renderField = (fieldName: string, fieldValue: any, fieldType: 'text' | 'date' | 'currency' | 'select', label: string, options?: any[]) => {
     const shouldAllowEdit = showFieldErrors && hasFieldError(fieldName) && !forceReadOnly;
+    const autoCorrection = getAutoCorrection(fieldName);
 
     if (shouldAllowEdit) {
       return (
-        <p
-          className={getReadOnlyFieldClass(fieldName)}
-          onClick={() => {
-            setFieldToFocus(fieldName);
-            setIsEditing(true);
-          }}
-          title="Click to edit all fields"
-        >
-          {fieldValue || '--'}
-        </p>
+        <div className="flex items-center">
+          <p
+            className={getReadOnlyFieldClass(fieldName)}
+            onClick={() => {
+              setFieldToFocus(fieldName);
+              setIsEditing(true);
+            }}
+            title="Click to edit all fields"
+          >
+            {fieldValue || '--'}
+          </p>
+          {autoCorrection && (
+            <AutoCorrectionIndicator
+              fieldLabel={label}
+              originalValue={autoCorrection.original_value}
+              correctedValue={autoCorrection.corrected_value}
+              reason={autoCorrection.reason}
+              vendorName={autoCorrection.vendor_name}
+              recentDocuments={autoCorrection.recent_documents}
+              documentType={autoCorrection.document_type}
+            />
+          )}
+        </div>
       );
     }
 
     return (
-      <p className={getReadOnlyFieldClass(fieldName)}>
-        {fieldValue || '--'}
-      </p>
+      <div className="flex items-center">
+        <p className={getReadOnlyFieldClass(fieldName)}>
+          {fieldValue || '--'}
+        </p>
+        {autoCorrection && (
+          <AutoCorrectionIndicator
+            fieldLabel={label}
+            originalValue={autoCorrection.original_value}
+            correctedValue={autoCorrection.corrected_value}
+            reason={autoCorrection.reason}
+            vendorName={autoCorrection.vendor_name}
+            recentDocuments={autoCorrection.recent_documents}
+            documentType={autoCorrection.document_type}
+          />
+        )}
+      </div>
     );
   };
 
@@ -753,10 +802,24 @@ export function DetailsTab({
 
                     // Show value without purple dot (purple dot only shown when in agentPendingFields)
                     if (hasValue) {
+                      const autoCorrection = getAutoCorrection('invoice_number');
                       return (
-                        <p className="text-sm font-medium text-gray-950">
-                          {invoiceData.invoice_number}
-                        </p>
+                        <div className="flex items-center">
+                          <p className="text-sm font-medium text-gray-950">
+                            {invoiceData.invoice_number}
+                          </p>
+                          {autoCorrection && (
+                            <AutoCorrectionIndicator
+                              fieldLabel="Invoice Number"
+                              originalValue={autoCorrection.original_value}
+                              correctedValue={autoCorrection.corrected_value}
+                              reason={autoCorrection.reason}
+                              vendorName={autoCorrection.vendor_name}
+                              recentDocuments={autoCorrection.recent_documents}
+                              documentType={autoCorrection.document_type}
+                            />
+                          )}
+                        </div>
                       );
                     }
 
@@ -1402,10 +1465,14 @@ export function DetailsTab({
               {invoiceData.payment_bank_details && Object.keys(invoiceData.payment_bank_details).some(key => invoiceData.payment_bank_details[key]) && (
                 <div className={`${getFullSpan()} mt-3`}>
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-2 min-h-[20px]">Bank Details</label>
-                  <div className="bg-gray-50 rounded-md p-3 space-y-2">
+                  <div className={`rounded-md p-3 space-y-2 ${
+                    invoiceData.validation_warnings?.some((w: any) =>
+                      w.field === 'payment_bank_details' && (w.category === 'risk' || w.type === 'bank_details_change')
+                    ) ? 'bg-red-50 border-2 border-red-200' : 'bg-gray-50'
+                  }`}>
                     {/* Check if bank details are unverified */}
                     {invoiceData.validation_warnings?.some((w: any) =>
-                      w.field === 'payment_bank_details' && w.category === 'risk'
+                      w.field === 'payment_bank_details' && (w.category === 'risk' || w.type === 'bank_details_change')
                     ) && (
                       <div className="flex items-center gap-2 mb-2">
                         <Tooltip.Provider>

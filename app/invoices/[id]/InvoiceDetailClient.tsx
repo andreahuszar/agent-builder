@@ -12,7 +12,6 @@ import { GRDocumentTable } from '@/app/components/invoices/comparison/GRDocument
 import { GRDocumentPreview } from '@/app/components/invoices/comparison/GRDocumentPreview';
 import { TeachingConfirmationModal } from '@/app/components/invoices/TeachingConfirmationModal';
 import { useSelection } from '@/app/context/SelectionContext';
-import { ToastProvider } from '@/app/components/ui/Toast';
 
 interface InvoiceDetailClientProps {
   invoiceId: string;
@@ -443,6 +442,16 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       count++;
     }
 
+    // Check for bank details exceptions
+    if (invoice.validation_warnings && Array.isArray(invoice.validation_warnings)) {
+      const hasBankDetailsException = invoice.validation_warnings.some((w: any) =>
+        w.type === 'bank_details_change' && w.severity === 'error'
+      );
+      if (hasBankDetailsException) {
+        count++;
+      }
+    }
+
     return count;
   };
 
@@ -465,8 +474,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const lineItemsErrorCount = calculateLineItemsErrorCount();
 
   return (
-    <ToastProvider>
-      <div className="h-[calc(100vh-4rem)] flex flex-col">
+    <div className="h-[calc(100vh-4rem)] flex flex-col">
       {/* Diagnostic Banner */}
       <DiagnosticBanner
         total={invoiceTotal}
@@ -506,7 +514,6 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           onCancel={handleTeachingCancel}
         />
       )}
-      </div>
-    </ToastProvider>
+    </div>
   );
 }

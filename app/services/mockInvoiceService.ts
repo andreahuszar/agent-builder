@@ -311,12 +311,43 @@ export const generateBaselineInvoices = (): Invoice[] => {
       po_line_id: 'po-line-9010-4',
       gr_line_id: null,
       ses_line_id: null
+    },
+    {
+      id: 'line-baseline-po2-5',
+      line_no: 5,
+      description: 'Pleated air filters, 20×20×2, MERV 8',
+      qty: 50,
+      uom: 'EA',
+      unit_price: 45.00,
+      net_amount: 2250.00,
+      line_total: 2250.00,
+      po_line_id: null, // Not matched yet - has substitution suggestion
+      gr_line_id: null,
+      ses_line_id: null,
+      // AI Substitution Suggestion
+      suggested_po_match: {
+        po_line_id: 'po-line-9010-5',
+        po_line_no: 5,
+        po_description: 'Pleated air filters, 20×20×2, MERV 9',
+        po_qty: 50,
+        po_unit_price: 45.00,
+        po_uom: 'EA',
+        confidence: 0.78,
+        reason: 'System detected similar items with specification differences',
+        differences: [
+          {
+            field: 'specification',
+            invoice_value: 'MERV 8',
+            po_value: 'MERV 9'
+          }
+        ]
+      }
     }
   ];
 
-  const baselinePO2Subtotal = 7200.00; // Sum of all line totals
-  const baselinePO2Tax = 1440.00; // 20% VAT
-  const baselinePO2Total = 8640.00;
+  const baselinePO2Subtotal = 9450.00; // Updated: 2000 + 1900 + 900 + 2400 + 2250
+  const baselinePO2Tax = 1890.00; // 20% VAT
+  const baselinePO2Total = 11340.00; // Updated: 9450 + 1890
 
   mockInvoices.push({
     id: 'baseline-po-2',
@@ -418,14 +449,165 @@ export const generateBaselineInvoices = (): Invoice[] => {
     data_ingestion_date: baselinePOBankDate.toISOString().split('T')[0],
     lines: baselinePOBankLines,
     invoice_lines: baselinePOBankLines,
+    // Payment bank details (new account that differs from MVD)
+    payment_bank_details: {
+      bank_name: 'First National Bank',
+      account_name: 'Industrial Equipment Corp',
+      account_number: '****1234',
+      routing_number: '123456789',
+    },
     // Bank details exception - account changed
     validation_warnings: [{
       type: 'bank_details_change',
+      category: 'risk',
       field: 'payment_bank_details',
       message: 'Bank account changed since last invoice',
       severity: 'error',
       old_account: '****5678',
-      new_account: '****9999'
+      new_account: '****1234'
+    }],
+    // Auto-corrections for fields that were mixed up on scanned document
+    auto_corrections: [
+      {
+        field: 'invoice_number',
+        original_value: 'PO-2025-7755',
+        corrected_value: 'IEC-2025-5678',
+        reason: 'Invoice and PO numbers were swapped on the scanned document. Auto-corrected based on detected numbering patterns.',
+        vendor_name: 'Industrial Equipment Corp',
+        document_type: 'invoice',
+        recent_documents: [
+          { number: 'IEC-2025-5676', date: 'Oct 15, 2025', amount: '$2,450.00' },
+          { number: 'IEC-2025-5677', date: 'Oct 17, 2025', amount: '$1,890.00' },
+          { number: 'IEC-2025-5678', date: 'Oct 19, 2025', amount: '$2,400.00', is_current: true }
+        ]
+      },
+      {
+        field: 'po_numbers_cached',
+        original_value: 'IEC-2025-5678',
+        corrected_value: 'PO-2025-7755',
+        reason: 'Invoice and PO numbers were swapped on the scanned document. Auto-corrected based on detected numbering patterns.',
+        vendor_name: 'Industrial Equipment Corp',
+        document_type: 'po',
+        recent_documents: [
+          { number: 'PO-2025-7753', date: 'Oct 12, 2025', amount: '$3,200.00' },
+          { number: 'PO-2025-7754', date: 'Oct 16, 2025', amount: '$1,950.00' },
+          { number: 'PO-2025-7755', date: 'Oct 18, 2025', amount: '$2,520.00', is_current: true }
+        ]
+      }
+    ]
+  } as Invoice);
+
+  // ============================================================================
+  // MISSING PO INVOICE - Premier Office Supplies
+  // ============================================================================
+  // Complete invoice but missing PO field - needs PO assignment
+
+  const missingPODate = new Date('2025-10-21');
+  const missingPODueDate = new Date('2025-11-20');
+
+  const missingPOLines = [
+    {
+      id: 'line-missing-po-1',
+      line_no: 1,
+      description: 'Premium Copy Paper, 8.5×11, 20lb, White',
+      qty: 10,
+      uom: 'RM',
+      unit_price: 45.00,
+      net_amount: 450.00,
+      line_total: 450.00,
+      po_line_id: null, // No PO match
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-missing-po-2',
+      line_no: 2,
+      description: 'Laser Printer Toner Cartridge, Black, High Yield',
+      qty: 5,
+      uom: 'EA',
+      unit_price: 89.00,
+      net_amount: 445.00,
+      line_total: 445.00,
+      po_line_id: null, // No PO match
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-missing-po-3',
+      line_no: 3,
+      description: 'Manila File Folders, Letter Size, Box of 100',
+      qty: 3,
+      uom: 'BX',
+      unit_price: 18.50,
+      net_amount: 55.50,
+      line_total: 55.50,
+      po_line_id: null, // No PO match
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-missing-po-4',
+      line_no: 4,
+      description: 'Ballpoint Pens, Black, Medium Point, Box of 12',
+      qty: 8,
+      uom: 'BX',
+      unit_price: 6.25,
+      net_amount: 50.00,
+      line_total: 50.00,
+      po_line_id: null, // No PO match
+      gr_line_id: null,
+      ses_line_id: null
+    }
+  ];
+
+  const missingPOSubtotal = 1000.50;
+  const missingPOTax = 80.04; // 8% sales tax
+  const missingPOTotal = 1080.54;
+
+  mockInvoices.push({
+    id: 'missing-po-1',
+    invoice_number: 'POS-2025-8842',
+    job_number: 'JOB-2025-450',
+    vendor_name_snapshot: 'Premier Office Supplies',
+    vendor_id: 'VND-5002',
+    vendor_tax_id_snapshot: 'TAX-VND-5002',
+    invoice_date: missingPODate.toISOString().split('T')[0],
+    due_date: missingPODueDate.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: missingPOSubtotal,
+    tax_total: missingPOTax,
+    tax_rate_percent: 8,
+    total: missingPOTotal,
+    status: 'needs_info', // Missing required PO field
+    match_status: 'pending', // Awaiting PO assignment
+    type: 'PO',
+    vendor_requires_po: true, // This vendor requires PO
+    vendor_is_verified: true,
+    approval_status: 'pending',
+    po_numbers_cached: [], // MISSING - needs to be added
+    po_id: null, // MISSING
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: ['Missing PO'],
+    created_at: missingPODate.toISOString(),
+    updated_at: missingPODate.toISOString(),
+    data_ingestion_date: missingPODate.toISOString().split('T')[0],
+    lines: missingPOLines,
+    invoice_lines: missingPOLines,
+    payment_method: 'bank_transfer',
+    payment_bank_details: {
+      bank_name: 'Commerce Bank',
+      account_name: 'Premier Office Supplies',
+      account_number: '****9876',
+      routing_number: '987654321',
+    },
+    // Validation warning for missing PO
+    validation_warnings: [{
+      type: 'missing_po',
+      category: 'compliance',
+      field: 'po_numbers_cached',
+      message: 'PO number required - vendor requires PO for all invoices',
+      severity: 'error'
     }]
   } as Invoice);
 
@@ -454,8 +636,8 @@ export const isMockInvoice = (id: string): boolean => {
     return false;
   }
 
-  // Updated prefixes for baseline approach
-  const mockPrefixes = ['baseline-'];
+  // Updated prefixes for baseline approach and other mock scenarios
+  const mockPrefixes = ['baseline-', 'missing-po-'];
   const isMock = mockPrefixes.some(prefix => id.startsWith(prefix));
 
   if (DEBUG_MOCK) {
@@ -763,18 +945,18 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
     } : {},
     is_manually_edited: {},
     payment_method: 'bank_transfer',
-    payment_bank_details: invoice.vendor_name_snapshot ? {
+    payment_bank_details: invoice.payment_bank_details || (invoice.vendor_name_snapshot ? {
       bank_name: 'First National Bank',
       account_name: invoice.vendor_name_snapshot,
       account_number: '****1234',
       routing_number: '123456789'
-    } : null,
+    } : null),
     lines: lines,
     invoice_lines: lines, // Also set invoice_lines for compatibility
     poTotal: invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 && hasTotal
       ? subtotal * 1.05 // Slightly higher PO amount
       : null,
-    validation_warnings: generateValidationWarnings(invoice),
+    validation_warnings: invoice.validation_warnings || generateValidationWarnings(invoice),
     attachments: []
   };
 };

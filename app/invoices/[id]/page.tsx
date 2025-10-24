@@ -211,7 +211,7 @@ async function getInvoiceData(id: string) {
 
     // If forcing mock data and this doesn't look like a mock ID, check if it's a mock pattern anyway
     if (forceMockData) {
-      const mockPrefixes = ['needs-info-', 'blocked-', 'mock-', 'due-', 'cn-', 'pf-', 'approval-'];
+      const mockPrefixes = ['needs-info-', 'blocked-', 'mock-', 'due-', 'cn-', 'pf-', 'approval-', 'baseline-', 'missing-po-'];
       const looksLikeMock = mockPrefixes.some(prefix => id.startsWith(prefix));
 
       if (looksLikeMock) {
@@ -244,7 +244,7 @@ async function getInvoiceData(id: string) {
     // If database query failed with UUID error and this looks like a mock ID, try mock fallback
     const errorMessage = error instanceof Error ? error.message : String(error);
     if (errorMessage.includes('UUID') || errorMessage.includes('invalid character')) {
-      const mockPrefixes = ['needs-info-', 'blocked-', 'mock-', 'due-', 'cn-', 'pf-', 'approval-'];
+      const mockPrefixes = ['needs-info-', 'blocked-', 'mock-', 'due-', 'cn-', 'pf-', 'approval-', 'baseline-', 'missing-po-'];
       const looksLikeMock = mockPrefixes.some(prefix => id.startsWith(prefix));
 
       if (looksLikeMock) {
