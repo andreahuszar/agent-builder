@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Maximize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical, Zap, Sparkles } from 'lucide-react';
+import { Maximize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical, Zap, Sparkles, List, ArrowDownWideNarrow } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, useDroppable, DragOverlay, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -207,6 +207,32 @@ function EmptySlot({ position, colSpan, isEditMode, isDragPlaceholder = false }:
   );
 }
 
+// Collapsible "Matched Items" Row Component
+interface MatchedItemsRowProps {
+  isExpanded: boolean;
+  onToggle: () => void;
+  matchedCount: number;
+  colSpan: number;
+}
+
+function MatchedItemsRow({ isExpanded, onToggle, matchedCount, colSpan }: MatchedItemsRowProps) {
+  return (
+    <tr className="bg-gray-50 hover:bg-gray-100 transition-colors">
+      <td colSpan={colSpan} className="px-4 py-2">
+        <button
+          onClick={onToggle}
+          className="flex items-center gap-2 w-full text-left text-xs font-medium text-gray-700"
+        >
+          <ChevronDown
+            className={`h-4 w-4 transition-transform ${isExpanded ? 'rotate-0' : '-rotate-90'}`}
+          />
+          <span>Matched Items ({matchedCount})</span>
+        </button>
+      </td>
+    </tr>
+  );
+}
+
 export function LineItemsPreviewPanel({
   invoiceLines,
   poLines = [],
@@ -239,8 +265,10 @@ export function LineItemsPreviewPanel({
   const [customRules, setCustomRules] = useState<Map<string, UnitConversionRule>>(new Map());
   const [teachRuleDrawerOpen, setTeachRuleDrawerOpen] = useState(false);
   const [selectedLineForRule, setSelectedLineForRule] = useState<InvoiceLineItem | null>(null);
+  const [viewMode, setViewMode] = useState<'default' | 'grouped'>('default');
+  const [matchedItemsExpanded, setMatchedItemsExpanded] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
-  const { showToast } = useToast();
+  const { showToast} = useToast();
 
   // Update editable lines when invoice lines change
   // Always initialize display_position to ensure lines are visible in read-only mode
@@ -586,6 +614,33 @@ export function LineItemsPreviewPanel({
 
   const errorCount = countErrors();
 
+  // Categorize lines into variances and matched for grouped view
+  const categorizeLines = () => {
+    const varianceLines: InvoiceLineItem[] = [];
+    const matchedLines: InvoiceLineItem[] = [];
+
+    editableLines.forEach((line, index) => {
+      const matchedPO = getMatchedPOLine(line, index);
+      const lineId = line.id || `line-${line.line_no}`;
+
+      // Check if it's a variance
+      const isVariance = matchedPO &&
+                        hasMismatch(line, matchedPO) &&
+                        !manuallyMatchedLines.has(lineId) &&
+                        !acceptedSuggestions.has(lineId);
+
+      if (isVariance) {
+        varianceLines.push(line);
+      } else {
+        matchedLines.push(line);
+      }
+    });
+
+    return { varianceLines, matchedLines };
+  };
+
+  const { varianceLines, matchedLines } = categorizeLines();
+
   // Generate slots for position-based rendering
   // Each slot represents a row position and contains either an invoice line, PO line, or both
   const generateSlots = (): TableSlot[] => {
@@ -623,6 +678,28 @@ export function LineItemsPreviewPanel({
   };
 
   const slots = generateSlots();
+
+  // Process slots for grouped view if needed
+  const getDisplaySlots = () => {
+    if (viewMode === 'default') {
+      return slots;
+    }
+
+    // Grouped view: variance slots first, then matched slots
+    const varianceSlots = slots.filter(slot => {
+      if (!slot.invoiceLine) return false;
+      return varianceLines.some(v => v.line_no === slot.invoiceLine!.line_no);
+    });
+
+    const matchedSlots = slots.filter(slot => {
+      if (!slot.invoiceLine) return false;
+      return matchedLines.some(m => m.line_no === slot.invoiceLine!.line_no);
+    });
+
+    return { varianceSlots, matchedSlots };
+  };
+
+  const displaySlots = getDisplaySlots();
 
   // Check if any line has a pending suggestion
   const hasPendingSuggestions = editableLines.some(line => hasSuggestion(line));
@@ -814,6 +891,17 @@ export function LineItemsPreviewPanel({
         </div>
         <div className="flex items-center gap-2">
           <button
+            onClick={() => setViewMode(viewMode === 'default' ? 'grouped' : 'default')}
+            className="p-1.5 rounded hover:bg-gray-200 transition-colors text-gray-950"
+            title={viewMode === 'default' ? 'Group by Status' : 'Show All Items'}
+          >
+            {viewMode === 'default' ? (
+              <ArrowDownWideNarrow className="h-4 w-4" />
+            ) : (
+              <List className="h-4 w-4" />
+            )}
+          </button>
+          <button
             onClick={toggleFullscreen}
             className="p-1.5 rounded hover:bg-gray-200 transition-colors text-gray-950"
             title={isFullscreen ? 'Exit Fullscreen' : 'Maximize'}
@@ -829,13 +917,14 @@ export function LineItemsPreviewPanel({
 
       {/* Content */}
       <div className="flex-1 overflow-auto transition-all duration-200">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-        >
-          {showComparison && poLines.length > 0 ? (
+        {viewMode === 'default' ? (
+          <DndContext
+            sensors={sensors}
+            collisionDetection={closestCenter}
+            onDragStart={handleDragStart}
+            onDragEnd={handleDragEnd}
+          >
+            {showComparison && poLines.length > 0 ? (
             // Horizontal scrollable layout when PO lines exist - Invoice table first, then PO table
             <div className="flex min-h-full w-full">
               {/* Invoice Lines */}
@@ -2072,6 +2161,485 @@ export function LineItemsPreviewPanel({
             ) : null}
           </DragOverlay>
         </DndContext>
+        ) : (
+          // Grouped View (variances first, then matched items)
+          <>
+            {showComparison && poLines.length > 0 && !Array.isArray(displaySlots) && 'varianceSlots' in displaySlots ? (
+              // Horizontal scrollable layout - Invoice table first, then PO table
+              <div className="flex min-h-full w-full">
+                {/* Invoice Lines - Grouped */}
+                <div className="flex-shrink-0 border-r border-gray-200">
+                  <table className="min-w-max">
+                    {/* Same header as default view */}
+                    <thead className="bg-gray-50 sticky top-0 z-10">
+                      <tr>
+                        <th colSpan={useDetailedVarianceColumns ? 9 : (9 + (hasPendingSuggestions ? 1 : 0))} className="px-4 bg-white border-b h-[42px]">
+                          <div className="flex items-center justify-between h-full">
+                            <span className="text-sm font-semibold text-gray-950">Invoice</span>
+                            <button
+                              onClick={toggleEditMode}
+                              className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                                isEditMode
+                                  ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                                  : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
+                              }`}
+                            >
+                              {isEditMode ? 'Done' : 'Edit'}
+                            </button>
+                          </div>
+                        </th>
+                      </tr>
+                      <tr className="h-[40px]">
+                        <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
+                        <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Status</th>
+                        <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
+                        <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
+                        <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
+                        <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
+                        <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
+                        <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
+                        {!useDetailedVarianceColumns && (
+                          <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Variance</th>
+                        )}
+                        {hasPendingSuggestions && (
+                          <th className="w-24"></th>
+                        )}
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-100">
+                      {/* Render variance lines first */}
+                      {(displaySlots as {varianceSlots: typeof slots, matchedSlots: typeof slots}).varianceSlots.map((slot) => {
+                        const line = slot.invoiceLine;
+                        if (!line) return null;
+
+                        const lineIndex = editableLines.findIndex(l => l.line_no === line.line_no);
+                        const matchedPO = slot.poLine;
+                        const status = getLineStatus(line, matchedPO);
+
+                        return (
+                          <tr key={`variance-${line.id || line.line_no}`} className="h-[48px] bg-white hover:bg-purple-50 transition-colors">
+                            <td className="px-1.5 py-2 text-xs text-gray-950 font-medium">{line.line_no}</td>
+                            <td className="px-1.5 py-2 text-xs text-center">
+                              {status === 'matched' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                  Matched
+                                </span>
+                              )}
+                              {status === 'variance' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                  Variance
+                                </span>
+                              )}
+                              {status === 'missing' && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                  Not Matched
+                                </span>
+                              )}
+                            </td>
+                            <td className={`px-1.5 py-2 text-xs text-gray-950 ${
+                              matchedPO && (hasUomConversion(line) || hasMatchedDescriptionDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
+                                ? 'bg-purple-50'
+                                : (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
+                                ? 'bg-red-50 border border-red-300'
+                                : ''
+                            }`}>
+                              {isEditMode ? (
+                                <input
+                                  type="text"
+                                  value={line.description}
+                                  onChange={(e) => handleLineChange(lineIndex, 'description', e.target.value)}
+                                  className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
+                                />
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  {matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
+                                    <Tooltip.Provider>
+                                      <Tooltip.Root delayDuration={200}>
+                                        {hasCustomRule(line) ? (
+                                          <CustomRulePopover
+                                            rule={getCustomRule(line)!}
+                                            invoiceQty={line.qty}
+                                            invoiceUom={line.uom}
+                                            poQty={matchedPO.qty_ordered}
+                                            poUom={matchedPO.uom}
+                                            lineTotal={line.line_total}
+                                            onEdit={() => handleEditRule(line)}
+                                            onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)}
+                                            open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}`}
+                                            onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-${line.id || `line-${line.line_no}`}` : null)}
+                                          >
+                                            <Tooltip.Trigger asChild>
+                                              <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                                <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                              </span>
+                                            </Tooltip.Trigger>
+                                          </CustomRulePopover>
+                                        ) : hasUomConversion(line) && hasUomDifference(line, matchedPO) ? (
+                                          <UomMatchPopover
+                                            invoiceQty={line.uom_conversion!.invoice_qty}
+                                            invoiceUom={line.uom_conversion!.invoice_uom}
+                                            invoiceUnitPrice={line.unit_price}
+                                            poQty={line.uom_conversion!.po_qty}
+                                            poUom={line.uom_conversion!.po_uom}
+                                            poUnitPrice={matchedPO.unit_price}
+                                            conversionFactor={line.uom_conversion!.conversion_factor}
+                                            conversionExplanation={line.uom_conversion!.explanation}
+                                            lineTotal={line.line_total}
+                                            onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
+                                            open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}`}
+                                            onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-${line.id || `line-${line.line_no}`}` : null)}
+                                          >
+                                            <Tooltip.Trigger asChild>
+                                              <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                                <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                              </span>
+                                            </Tooltip.Trigger>
+                                          </UomMatchPopover>
+                                        ) : (
+                                          <SmartMatchPopover
+                                            invoiceDescription={line.description}
+                                            poDescription={matchedPO.item_description || matchedPO.description}
+                                            invoiceLine={line}
+                                            poLine={matchedPO}
+                                            onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
+                                            open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}`}
+                                            onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-${line.id || `line-${line.line_no}`}` : null)}
+                                          >
+                                            <Tooltip.Trigger asChild>
+                                              <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                                <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                              </span>
+                                            </Tooltip.Trigger>
+                                          </SmartMatchPopover>
+                                        )}
+                                        <Tooltip.Portal>
+                                          <Tooltip.Content
+                                            className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
+                                            sideOffset={5}
+                                          >
+                                            <div className="space-y-1">
+                                              <p className="font-semibold">Smart Match Applied</p>
+                                              <p className="text-gray-300">Click for details</p>
+                                            </div>
+                                            <Tooltip.Arrow className="fill-gray-900" />
+                                          </Tooltip.Content>
+                                        </Tooltip.Portal>
+                                      </Tooltip.Root>
+                                    </Tooltip.Provider>
+                                  )}
+                                  {matchedPO && hasUomDifference(line, matchedPO) && !hasUomConversion(line) && !hasCustomRule(line) && (
+                                    <SparkleButton
+                                      onClick={() => handleOpenTeachRuleDrawer(line)}
+                                      hasRule={hasCustomRule(line)}
+                                    />
+                                  )}
+                                  <span className="flex-1">{line.description}</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-1.5 py-2 text-xs text-gray-950">
+                              {generateSKU(line.line_no)}
+                            </td>
+                            <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
+                              matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
+                                ? 'bg-purple-50'
+                                : matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
+                                ? 'bg-red-50 border border-red-300'
+                                : ''
+                            }`}>
+                              {isEditMode ? (
+                                <input
+                                  type="number"
+                                  value={line.qty}
+                                  onChange={(e) => handleLineChange(lineIndex, 'qty', parseFloat(e.target.value) || 0)}
+                                  className={`w-14 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
+                                    matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01
+                                      ? 'border border-red-300'
+                                      : 'border border-gray-300'
+                                  }`}
+                                />
+                              ) : (
+                                line.qty
+                              )}
+                            </td>
+                            <td className="px-1.5 py-2 text-xs text-center text-gray-950">
+                              {isEditMode ? (
+                                <input
+                                  type="text"
+                                  value={line.uom}
+                                  onChange={(e) => handleLineChange(lineIndex, 'uom', e.target.value)}
+                                  className="w-16 px-1 py-0.5 text-xs text-center border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
+                                />
+                              ) : (
+                                line.uom
+                              )}
+                            </td>
+                            <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
+                              matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
+                                ? 'bg-purple-50'
+                                : matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
+                                ? 'bg-red-50 border border-red-300'
+                                : ''
+                            }`}>
+                              {isEditMode ? (
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={line.unit_price}
+                                  onChange={(e) => handleLineChange(lineIndex, 'unit_price', parseFloat(e.target.value) || 0)}
+                                  className={`w-20 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
+                                    matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01
+                                      ? 'border border-red-300'
+                                      : 'border border-gray-300'
+                                  }`}
+                                />
+                              ) : (
+                                formatCurrency(line.unit_price)
+                              )}
+                            </td>
+                            <td className="px-1.5 py-2 text-xs text-right font-medium text-gray-950">
+                              {formatCurrency(line.line_total)}
+                            </td>
+                            {!useDetailedVarianceColumns && (
+                              <td className="px-1.5 py-2 text-xs text-center">
+                                {matchedPO && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) ? (
+                                  <>
+                                    {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 ||
+                                     Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 ? (
+                                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                        {((line.line_total - (matchedPO.qty_ordered * matchedPO.unit_price)) >= 0 ? '+' : '') +
+                                          formatCurrency(Math.abs(line.line_total - (matchedPO.qty_ordered * matchedPO.unit_price)))}
+                                      </span>
+                                    ) : (
+                                      <span className="text-gray-400">—</span>
+                                    )}
+                                  </>
+                                ) : (
+                                  <span className="text-gray-400">—</span>
+                                )}
+                              </td>
+                            )}
+                            {hasSuggestion(line) && !rejectedSuggestions.has(line.id || `line-${line.line_no}`) && (
+                              <td className="px-1.5 py-2">
+                                <SubstitutionSuggestionPopover
+                                  invoiceDescription={line.description}
+                                  poDescription={line.suggested_po_match!.po_description}
+                                  confidence={line.suggested_po_match!.confidence}
+                                  reason={line.suggested_po_match!.reason}
+                                  differences={line.suggested_po_match!.differences}
+                                  onAccept={() => handleAcceptSuggestion(line.id || `line-${line.line_no}`, line.suggested_po_match)}
+                                  onReject={() => handleRejectSuggestion(line.id || `line-${line.line_no}`)}
+                                  open={openSuggestionId === (line.id || `line-${line.line_no}`)}
+                                  onOpenChange={(open) => setOpenSuggestionId(open ? (line.id || `line-${line.line_no}`) : null)}
+                                >
+                                  <Tooltip.Trigger asChild>
+                                    <button className="bg-purple-900 text-white rounded-md px-2 py-1 hover:bg-purple-800 transition-colors inline-flex items-center gap-1.5">
+                                      <Sparkles className="h-4 w-4 text-white" />
+                                      <span className="text-xs font-medium">Review</span>
+                                    </button>
+                                  </Tooltip.Trigger>
+                                </SubstitutionSuggestionPopover>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+
+                      {/* Collapsible Matched Items Row */}
+                      <MatchedItemsRow
+                        isExpanded={matchedItemsExpanded}
+                        onToggle={() => setMatchedItemsExpanded(!matchedItemsExpanded)}
+                        matchedCount={matchedLines.length}
+                        colSpan={useDetailedVarianceColumns ? 9 : (9 + (hasPendingSuggestions ? 1 : 0))}
+                      />
+
+                      {/* Render matched lines if expanded - Similar structure to variance lines but without drag handles */}
+                      {matchedItemsExpanded && (displaySlots as {varianceSlots: typeof slots, matchedSlots: typeof slots}).matchedSlots.map((slot) => {
+                        const line = slot.invoiceLine;
+                        if (!line) return null;
+
+                        const lineIndex = editableLines.findIndex(l => l.line_no === line.line_no);
+                        const matchedPO = slot.poLine;
+                        const status = getLineStatus(line, matchedPO);
+
+                        return (
+                          <tr key={`matched-${line.id || line.line_no}`} className="h-[48px] bg-white hover:bg-purple-50 transition-colors">
+                            {/* Same cell structure as variance lines */}
+                            <td className="px-1.5 py-2 text-xs text-gray-950 font-medium">{line.line_no}</td>
+                            <td className="px-1.5 py-2 text-xs text-center">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                Matched
+                              </span>
+                            </td>
+                            <td className={`px-1.5 py-2 text-xs text-gray-950 ${
+                              matchedPO && (hasUomConversion(line) || hasMatchedDescriptionDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
+                                ? 'bg-purple-50'
+                                : ''
+                            }`}>
+                              {isEditMode ? (
+                                <input
+                                  type="text"
+                                  value={line.description}
+                                  onChange={(e) => handleLineChange(lineIndex, 'description', e.target.value)}
+                                  className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
+                                />
+                              ) : (
+                                <div className="flex items-center gap-1.5">
+                                  {matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
+                                    <Tooltip.Provider>
+                                      <Tooltip.Root delayDuration={200}>
+                                        {hasCustomRule(line) ? (
+                                          <CustomRulePopover
+                                            rule={getCustomRule(line)!}
+                                            invoiceQty={line.qty}
+                                            invoiceUom={line.uom}
+                                            poQty={matchedPO.qty_ordered}
+                                            poUom={matchedPO.uom}
+                                            lineTotal={line.line_total}
+                                            onEdit={() => handleEditRule(line)}
+                                            onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)}
+                                            open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`}
+                                            onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}
+                                          >
+                                            <Tooltip.Trigger asChild>
+                                              <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                                <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                              </span>
+                                            </Tooltip.Trigger>
+                                          </CustomRulePopover>
+                                        ) : hasUomConversion(line) && hasUomDifference(line, matchedPO) ? (
+                                          <UomMatchPopover
+                                            invoiceQty={line.uom_conversion!.invoice_qty}
+                                            invoiceUom={line.uom_conversion!.invoice_uom}
+                                            invoiceUnitPrice={line.unit_price}
+                                            poQty={line.uom_conversion!.po_qty}
+                                            poUom={line.uom_conversion!.po_uom}
+                                            poUnitPrice={matchedPO.unit_price}
+                                            conversionFactor={line.uom_conversion!.conversion_factor}
+                                            conversionExplanation={line.uom_conversion!.explanation}
+                                            lineTotal={line.line_total}
+                                            onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
+                                            open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`}
+                                            onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}
+                                          >
+                                            <Tooltip.Trigger asChild>
+                                              <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                                <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                              </span>
+                                            </Tooltip.Trigger>
+                                          </UomMatchPopover>
+                                        ) : (
+                                          <SmartMatchPopover
+                                            invoiceDescription={line.description}
+                                            poDescription={matchedPO.item_description || matchedPO.description}
+                                            invoiceLine={line}
+                                            poLine={matchedPO}
+                                            onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
+                                            open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`}
+                                            onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}
+                                          >
+                                            <Tooltip.Trigger asChild>
+                                              <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                                <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                              </span>
+                                            </Tooltip.Trigger>
+                                          </SmartMatchPopover>
+                                        )}
+                                        <Tooltip.Portal>
+                                          <Tooltip.Content
+                                            className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
+                                            sideOffset={5}
+                                          >
+                                            <div className="space-y-1">
+                                              <p className="font-semibold">Smart Match Applied</p>
+                                              <p className="text-gray-300">Click for details</p>
+                                            </div>
+                                            <Tooltip.Arrow className="fill-gray-900" />
+                                          </Tooltip.Content>
+                                        </Tooltip.Portal>
+                                      </Tooltip.Root>
+                                    </Tooltip.Provider>
+                                  )}
+                                  <span className="flex-1">{line.description}</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-1.5 py-2 text-xs text-gray-950">{generateSKU(line.line_no)}</td>
+                            <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
+                              matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
+                                ? 'bg-purple-50'
+                                : ''
+                            }`}>
+                              {isEditMode ? (
+                                <input
+                                  type="number"
+                                  value={line.qty}
+                                  onChange={(e) => handleLineChange(lineIndex, 'qty', parseFloat(e.target.value) || 0)}
+                                  className="w-14 px-1 py-0.5 text-xs text-right border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
+                                />
+                              ) : (
+                                line.qty
+                              )}
+                            </td>
+                            <td className="px-1.5 py-2 text-xs text-center text-gray-950">
+                              {isEditMode ? (
+                                <input
+                                  type="text"
+                                  value={line.uom}
+                                  onChange={(e) => handleLineChange(lineIndex, 'uom', e.target.value)}
+                                  className="w-16 px-1 py-0.5 text-xs text-center border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
+                                />
+                              ) : (
+                                line.uom
+                              )}
+                            </td>
+                            <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
+                              matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
+                                ? 'bg-purple-50'
+                                : ''
+                            }`}>
+                              {isEditMode ? (
+                                <input
+                                  type="number"
+                                  step="0.01"
+                                  value={line.unit_price}
+                                  onChange={(e) => handleLineChange(lineIndex, 'unit_price', parseFloat(e.target.value) || 0)}
+                                  className="w-20 px-1 py-0.5 text-xs text-right border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
+                                />
+                              ) : (
+                                formatCurrency(line.unit_price)
+                              )}
+                            </td>
+                            <td className="px-1.5 py-2 text-xs text-right font-medium text-gray-950">
+                              {formatCurrency(line.line_total)}
+                            </td>
+                            {!useDetailedVarianceColumns && (
+                              <td className="px-1.5 py-2 text-xs text-center">
+                                <span className="text-gray-400">—</span>
+                              </td>
+                            )}
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* PO Lines table - TODO: Add similar grouped rendering */}
+                <div className="flex-shrink-0">
+                  <div className="text-center py-4 text-gray-500 text-sm">
+                    PO comparison not yet implemented in grouped view
+                  </div>
+                </div>
+              </div>
+            ) : (
+              // Full-width table for grouped view - TODO: Implement
+              <div className="text-center py-4 text-gray-500 text-sm">
+                Grouped view for single table not yet implemented
+              </div>
+            )}
+          </>
+        )}
 
         {/* Teach Rule Drawer */}
         <TeachRuleDrawer
