@@ -26,7 +26,8 @@ import {
   FileText,
   Package,
   Sparkles,
-  AlertCircle
+  AlertCircle,
+  Shield
 } from 'lucide-react';
 import { EditableField } from '../editing/EditableField';
 import { ValidatedEditableField } from '../editing/ValidatedEditableField';
@@ -46,6 +47,7 @@ import { PendingConfirmationIndicator } from '../PendingConfirmationIndicator';
 import { FieldConfidencePill } from '../FieldConfidencePill';
 import { AutoCorrectionIndicator } from '../AutoCorrectionIndicator';
 import { CloseMatchPopover } from '../CloseMatchPopover';
+import { BankDetailsVerificationPopover } from '../BankDetailsVerificationPopover';
 import { FraudRiskBanner } from '../FraudRiskBanner';
 
 interface DetailsTabProps {
@@ -185,6 +187,9 @@ export function DetailsTab({
   const [selectedPONumber, setSelectedPONumber] = useState<string | null>(null);
   const [isPODrawerOpen, setIsPODrawerOpen] = useState(false);
   const [isPOSearchModalOpen, setIsPOSearchModalOpen] = useState(false);
+
+  // Bank details verification state
+  const [isBankVerifyOpen, setIsBankVerifyOpen] = useState(false);
 
   // Field error tracking for needs info mode
   const { errors: fieldErrors, addError, removeError, clearErrors, validateRequired } = useFieldErrors();
@@ -1550,28 +1555,64 @@ export function DetailsTab({
                     {/* Check if bank details are unverified */}
                     {invoiceData.validation_warnings?.some((w: any) =>
                       w.field === 'payment_bank_details' && (w.category === 'risk' || w.type === 'bank_details_change')
-                    ) && (
-                      <div className="flex items-center gap-2 mb-2">
-                        <Tooltip.Provider>
-                          <Tooltip.Root>
-                            <Tooltip.Trigger asChild>
-                              <Badge variant="destructive" className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100 cursor-help">
-                                Unverified
-                              </Badge>
-                            </Tooltip.Trigger>
-                            <Tooltip.Portal>
-                              <Tooltip.Content
-                                className="bg-gray-900 text-white px-2 py-1 rounded text-xs max-w-xs z-50"
-                                sideOffset={5}
-                              >
-                                Bank details differ from vendor&apos;s registered account
-                                <Tooltip.Arrow className="fill-gray-900" />
-                              </Tooltip.Content>
-                            </Tooltip.Portal>
-                          </Tooltip.Root>
-                        </Tooltip.Provider>
-                      </div>
-                    )}
+                    ) && (() => {
+                      const bankWarning = invoiceData.validation_warnings?.find((w: any) =>
+                        w.field === 'payment_bank_details' && (w.category === 'risk' || w.type === 'bank_details_change')
+                      );
+                      return (
+                        <div className="flex items-center gap-2 mb-2">
+                          <Tooltip.Provider>
+                            <Tooltip.Root>
+                              <Tooltip.Trigger asChild>
+                                <Badge variant="destructive" className="bg-red-50 text-red-700 border-red-200 hover:bg-red-100 cursor-help">
+                                  Unverified
+                                </Badge>
+                              </Tooltip.Trigger>
+                              <Tooltip.Portal>
+                                <Tooltip.Content
+                                  className="bg-gray-900 text-white px-2 py-1 rounded text-xs max-w-xs z-50"
+                                  sideOffset={5}
+                                >
+                                  Bank details differ from vendor&apos;s registered account
+                                  <Tooltip.Arrow className="fill-gray-900" />
+                                </Tooltip.Content>
+                              </Tooltip.Portal>
+                            </Tooltip.Root>
+                          </Tooltip.Provider>
+                          <BankDetailsVerificationPopover
+                            invoiceNumber={invoiceData.invoice_number}
+                            vendorName={invoiceData.vendor_name_snapshot}
+                            invoiceAmount={invoiceData.total}
+                            currency={invoiceData.currency}
+                            dueDate={invoiceData.due_date}
+                            oldAccount={bankWarning?.old_account || '****0000'}
+                            newAccount={bankWarning?.new_account || invoiceData.payment_bank_details?.account_number}
+                            currentBankDetails={invoiceData.payment_bank_details}
+                            requisitionerName={invoiceData.requisitioner?.name}
+                            requisitionerEmail={invoiceData.requisitioner?.email}
+                            poNumber={invoiceData.po_numbers_cached?.[0]}
+                            onApprove={() => {
+                              console.log('Bank details approved');
+                              setIsBankVerifyOpen(false);
+                            }}
+                            onFlag={() => {
+                              console.log('Bank details flagged');
+                              setIsBankVerifyOpen(false);
+                            }}
+                            open={isBankVerifyOpen}
+                            onOpenChange={setIsBankVerifyOpen}
+                          >
+                            <button
+                              onClick={() => setIsBankVerifyOpen(true)}
+                              className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors font-medium"
+                            >
+                              <Shield className="h-3 w-3" />
+                              Verify Change
+                            </button>
+                          </BankDetailsVerificationPopover>
+                        </div>
+                      );
+                    })()}
                     {invoiceData.payment_bank_details.bank_name && (
                       <div className="flex gap-2">
                         <span className="text-xs font-medium text-gray-600 min-w-[100px]">Bank Name:</span>

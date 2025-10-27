@@ -501,6 +501,12 @@ export const generateBaselineInvoices = (): Invoice[] => {
       old_account: '****5678',
       new_account: '****1234'
     }],
+    // Requisitioner information for verification email
+    requisitioner: {
+      name: 'Sarah Johnson',
+      email: 'sarah.johnson@company.com',
+      department: 'Operations'
+    },
     // Auto-corrections for fields that were mixed up on scanned document
     auto_corrections: [
       {
