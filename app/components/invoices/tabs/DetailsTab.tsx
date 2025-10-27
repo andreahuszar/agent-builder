@@ -1625,31 +1625,19 @@ export function DetailsTab({
         {/* Accounting Classification Section */}
         {!hideAccountingSection && (
         <div>
-          <div className="px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <BookOpen className="h-4 w-4 text-purple-600" />
-                <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Accounting Classification</h3>
-              </div>
-              <div className="flex items-center gap-3">
-                {invoiceData.ai_classification_confidence && (
-                  <div className="flex items-center gap-1.5">
-                    <Brain className="h-3.5 w-3.5 text-purple-600" />
-                    <span className="text-xs font-medium text-purple-700">
-                      AI Confidence: {(invoiceData.ai_classification_confidence * 100).toFixed(0)}%
-                    </span>
-                  </div>
-                )}
-                {!forceReadOnly && !isEditing && (
-                  <button
-                    onClick={() => setIsEditing(true)}
-                    className="px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
-                  >
-                    Edit
-                  </button>
-                )}
-              </div>
+          <div className="relative px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
+            <div className="flex items-center gap-2">
+              <BookOpen className="h-4 w-4 text-purple-600" />
+              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Accounting Classification</h3>
             </div>
+            {!forceReadOnly && !isEditing && (
+              <button
+                onClick={() => setIsEditing(true)}
+                className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+              >
+                Edit
+              </button>
+            )}
           </div>
           <div className="px-10 py-4 bg-white">
             <div className={`grid ${getGridCols()} gap-4`}>

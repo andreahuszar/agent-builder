@@ -46,6 +46,13 @@ export function FakeInvoiceDocument({
     });
   };
 
+  // Helper function to get the value that should be displayed in the document preview
+  // For auto-corrected fields, show the original (incorrect) value from the scanned document
+  const getDocumentDisplayValue = (fieldName: string, currentValue: any) => {
+    const autoCorrection = invoice.auto_corrections?.find((ac: any) => ac.field === fieldName);
+    return autoCorrection ? autoCorrection.original_value : currentValue;
+  };
+
   // OCR highlight wrapper component
   const FieldWithOCR = ({ children, fieldName, className = '' }: { children: React.ReactNode; fieldName: string; className?: string }) => {
     if (!showOCRHighlights) {
@@ -203,7 +210,7 @@ export function FakeInvoiceDocument({
               {renderField(
                 'invoice_number',
                 <FieldWithOCR fieldName="invoice_number">
-                  {invoice.invoice_number || '[Invoice Number]'}
+                  {getDocumentDisplayValue('invoice_number', invoice.invoice_number) || '[Invoice Number]'}
                 </FieldWithOCR>,
                 `text-sm font-semibold ${invoice.invoice_number ? 'text-black' : 'text-gray-400 italic'}`
               )}
@@ -282,7 +289,7 @@ export function FakeInvoiceDocument({
                     <span className="text-gray-800">PO #:</span>
                     <span className="font-semibold">
                       <FieldWithOCR fieldName="po_numbers_cached">
-                        {invoice.po_numbers_cached[0]}
+                        {getDocumentDisplayValue('po_numbers_cached', invoice.po_numbers_cached[0])}
                       </FieldWithOCR>
                     </span>
                   </div>
@@ -355,7 +362,7 @@ export function FakeInvoiceDocument({
                 <span className="text-gray-800">Invoice #:</span>
                 <span className="font-semibold text-black">
                   <FieldWithOCR fieldName="invoice_number">
-                    {invoice.invoice_number}
+                    {getDocumentDisplayValue('invoice_number', invoice.invoice_number)}
                   </FieldWithOCR>
                 </span>
               </div>
@@ -380,7 +387,7 @@ export function FakeInvoiceDocument({
                   <span className="text-gray-800">PO #:</span>
                   <span className="font-semibold">
                     <FieldWithOCR fieldName="po_numbers_cached">
-                      {invoice.po_numbers_cached[0]}
+                      {getDocumentDisplayValue('po_numbers_cached', invoice.po_numbers_cached[0])}
                     </FieldWithOCR>
                   </span>
                 </div>
@@ -420,10 +427,10 @@ export function FakeInvoiceDocument({
               );
             })() : (
               <>
-                <p className="font-semibold text-gray-900">Genpact Demo Corporation</p>
+                <p className="font-semibold text-gray-900">Meridian Solutions Group</p>
                 <p className="text-gray-600">Accounts Payable Department</p>
-                <p className="text-gray-600">500 Enterprise Way</p>
-                <p className="text-gray-600">San Francisco, CA 94107</p>
+                <p className="text-gray-600">750 Market Street, Suite 400</p>
+                <p className="text-gray-600">San Francisco, CA 94102</p>
               </>
             )}
           </div>
@@ -548,7 +555,7 @@ export function FakeInvoiceDocument({
             {invoice.terms_text || 'Net 30 - Payment due within 30 days of invoice date'}
           </p>
           <p className="text-sm text-gray-700 mt-2">
-            Please reference invoice number <span className="font-semibold text-black">{invoice.invoice_number}</span> with your payment.
+            Please reference invoice number <span className="font-semibold text-black">{getDocumentDisplayValue('invoice_number', invoice.invoice_number)}</span> with your payment.
           </p>
         </div>
 

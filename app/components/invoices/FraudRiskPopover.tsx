@@ -90,7 +90,7 @@ export function FraudRiskPopover({
 
           {/* Action Buttons */}
           <div className="mb-4 flex gap-2">
-            <button className="flex-1 px-2 py-1 text-xs font-medium bg-white text-red-600 border border-red-300 rounded-md hover:bg-red-50 transition-colors">
+            <button className="flex-1 px-2 py-1 text-xs font-medium bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors">
               Reject
             </button>
             <button className="flex-1 px-2 py-1 text-xs font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors">
@@ -117,29 +117,29 @@ export function FraudRiskPopover({
                 {fraudRisk.risk_factors.map((factor, index) => {
                   return (
                     <div key={index} className="p-3 bg-white border border-purple-100 rounded">
-                      <div className="flex-1">
-                        <div className="text-xs font-medium text-gray-950">{factor.details}</div>
-                        {factor.jurisdiction && (
-                          <div className="text-xs text-gray-600 mt-0.5">
-                            Jurisdiction: {factor.jurisdiction} ({factor.jurisdiction_code})
-                          </div>
-                        )}
-                        {factor.threshold !== undefined && factor.actual_value !== undefined && (
-                          <div className="text-xs text-gray-600 mt-0.5">
-                            Threshold: {formatCurrency(factor.threshold, factor.currency || 'GBP')} |
-                            Invoice: {formatCurrency(factor.actual_value, factor.currency || 'GBP')}
-                          </div>
-                        )}
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className={`inline-block px-1.5 py-0.5 text-xs font-medium rounded ${
-                            factor.severity === 'critical' ? 'bg-red-100 text-red-800' :
-                            factor.severity === 'high' ? 'bg-orange-100 text-orange-800' :
-                            factor.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-blue-100 text-blue-800'
-                          }`}>
-                            {factor.severity.toUpperCase()}
-                          </span>
+                      <div className="text-xs font-medium text-gray-950 mb-2">{factor.details}</div>
+                      <div className="flex items-end justify-between gap-4">
+                        <div className="flex-1">
+                          {factor.jurisdiction && (
+                            <div className="text-xs text-gray-600">
+                              Jurisdiction: {factor.jurisdiction} ({factor.jurisdiction_code})
+                            </div>
+                          )}
+                          {factor.threshold !== undefined && factor.actual_value !== undefined && (
+                            <div className="text-xs text-gray-600">
+                              Threshold: {formatCurrency(factor.threshold, factor.currency || 'GBP')} |
+                              Invoice: {formatCurrency(factor.actual_value, factor.currency || 'GBP')}
+                            </div>
+                          )}
                         </div>
+                        <span className={`inline-block px-2 py-0.5 text-xs font-medium rounded-full whitespace-nowrap ${
+                          factor.severity === 'critical' ? 'bg-red-100 text-red-800' :
+                          factor.severity === 'high' ? 'bg-orange-100 text-orange-800' :
+                          factor.severity === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+                          'bg-blue-100 text-blue-800'
+                        }`}>
+                          {factor.severity.charAt(0).toUpperCase() + factor.severity.slice(1)}
+                        </span>
                       </div>
                     </div>
                   );

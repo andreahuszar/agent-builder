@@ -79,8 +79,8 @@ export function TeachRuleDrawer({
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
-            <h2 className="text-lg font-semibold text-gray-950">Teach Conversion Rule</h2>
-            <p className="text-sm text-gray-600 mt-0.5">Help the system understand this unit conversion</p>
+            <h2 className="text-lg font-semibold text-gray-950">Apply Rule</h2>
+            <p className="text-sm text-gray-600 mt-0.5">Let the agent help you resolve this unit mismatch</p>
           </div>
           <button
             onClick={onClose}

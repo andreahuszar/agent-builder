@@ -16,10 +16,12 @@ export function SparkleButton({ onClick, hasRule = false }: SparkleButtonProps) 
         <Tooltip.Trigger asChild>
           <button
             onClick={onClick}
-            className="sparkle-button p-1 text-gray-600 hover:bg-purple-50 rounded transition-all duration-200 group"
-            title={hasRule ? "View conversion rule" : "Teach conversion rule"}
+            className="sparkle-button p-1 text-gray-900 rounded transition-all duration-200 group"
+            title={hasRule ? "View conversion rule" : "Apply rule"}
           >
-            <Sparkles className="h-4 w-4 group-hover:sparkle-gradient" />
+            <span className="sparkle-icon-wrapper">
+              <Sparkles className="h-4 w-4" />
+            </span>
           </button>
         </Tooltip.Trigger>
         <Tooltip.Portal>
@@ -27,7 +29,7 @@ export function SparkleButton({ onClick, hasRule = false }: SparkleButtonProps) 
             className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md"
             sideOffset={5}
           >
-            {hasRule ? "View conversion rule" : "Teach conversion rule"}
+            {hasRule ? "View conversion rule" : "Apply rule"}
             <Tooltip.Arrow className="fill-gray-900" />
           </Tooltip.Content>
         </Tooltip.Portal>
@@ -38,12 +40,22 @@ export function SparkleButton({ onClick, hasRule = false }: SparkleButtonProps) 
           position: relative;
         }
 
-        .sparkle-button:hover .sparkle-gradient {
-          background: linear-gradient(135deg, #9333ea 0%, #ec4899 100%);
+        .sparkle-icon-wrapper {
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          color: currentColor;
+        }
+
+        .sparkle-button:hover .sparkle-icon-wrapper {
+          background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;
-          filter: drop-shadow(0 0 6px rgba(147, 51, 234, 0.3));
+        }
+
+        .sparkle-button:hover .sparkle-icon-wrapper svg {
+          filter: drop-shadow(0 0 6px rgba(124, 58, 237, 0.3));
         }
 
         .sparkle-button:hover {

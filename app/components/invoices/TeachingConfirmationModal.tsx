@@ -76,7 +76,7 @@ export function TeachingConfirmationModal({
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
             >
               <Check className="h-4 w-4" />
-              Accept & Teach
+              Accept & Remember
             </button>
           </div>
         </div>

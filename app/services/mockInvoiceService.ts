@@ -102,10 +102,10 @@ export const generateBaselineInvoices = (): Invoice[] => {
         confidence: 0.0,
         candidates: [
           {
-            value: 'INV-2025-0123',
+            value: '#0123-10',
             confidence: 0.78,
             source: 'Claude Vision',
-            reason: 'Found a close match in document header area above company logo'
+            reason: 'Found abbreviated reference "#0123-10" in document header - identified as invoice number based on sequential numbering pattern and document context'
           }
         ]
       },
@@ -1061,9 +1061,9 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
     // Ensure all required fields have values
     vendor_name_snapshot: invoice.vendor_name_snapshot || 'Unknown Vendor',
     vendor_tax_id_snapshot: invoice.vendor_id ? `TAX-${invoice.vendor_id}` : undefined,
-    vendor_address_snapshot: invoice.vendor_name_snapshot
+    vendor_address_snapshot: invoice.vendor_address_snapshot || (invoice.vendor_name_snapshot
       ? `123 Business Street, Suite 100, Business City, BC 12345`
-      : undefined,
+      : undefined),
     invoice_date: invoice.invoice_date || 'Date not provided',
     currency: invoice.currency || 'USD',
     subtotal: isNegative ? -subtotal : subtotal,

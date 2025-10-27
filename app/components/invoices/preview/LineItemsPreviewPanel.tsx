@@ -956,7 +956,7 @@ export function LineItemsPreviewPanel({
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-gray-950 ${
                             matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasMatchedDescriptionDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
-                              ? 'bg-purple-50 border border-purple-300'
+                              ? 'bg-purple-50'
                               : (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
                               ? 'bg-red-50 border border-red-300'
                               : ''
@@ -970,7 +970,7 @@ export function LineItemsPreviewPanel({
                               />
                             ) : (
                               <div className="flex items-center gap-1.5">
-                                {matchedPO && (hasUomDifference(line, matchedPO) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
+                                {matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
                                   <Tooltip.Provider>
                                     <Tooltip.Root delayDuration={200} open={openPopoverId === `invoice-${line.id || `line-${line.line_no}`}` ? false : undefined}>
                                       {hasCustomRule(line) ? (
@@ -1055,8 +1055,8 @@ export function LineItemsPreviewPanel({
                             {generateSKU(line.line_no)}
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                            matchedPO && hasMatchedUomDifference(line, matchedPO)
-                              ? 'bg-purple-50 border border-purple-300'
+                            matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
+                              ? 'bg-purple-50'
                               : matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
                               ? 'bg-red-50 border border-red-300'
                               : ''
@@ -1089,8 +1089,8 @@ export function LineItemsPreviewPanel({
                             )}
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                            matchedPO && hasMatchedUomDifference(line, matchedPO)
-                              ? 'bg-purple-50 border border-purple-300'
+                            matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
+                              ? 'bg-purple-50'
                               : matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
                               ? 'bg-red-50 border border-red-300'
                               : ''
@@ -1188,12 +1188,15 @@ export function LineItemsPreviewPanel({
                           {isEditMode && (
                             <td className="px-1.5 py-2 text-sm">
                               <div className="flex items-center justify-center gap-1">
-                                {matchedPO && status === 'variance' && hasUomDifference(line, matchedPO) && !hasUomConversion(line) && !hasCustomRule(line) && (
-                                  <SparkleButton
-                                    onClick={() => handleOpenTeachRuleDrawer(line)}
-                                    hasRule={false}
-                                  />
-                                )}
+                                <SparkleButton
+                                  onClick={() => {
+                                    // Only line 7 is functional for demo
+                                    if (line.line_no === 7) {
+                                      handleOpenTeachRuleDrawer(line);
+                                    }
+                                  }}
+                                  hasRule={false}
+                                />
                                 <button
                                   onClick={() => handleRemoveLine(lineIndex)}
                                   className="p-1 text-gray-900 hover:text-red-600 hover:bg-red-50 rounded transition-colors"
@@ -1351,13 +1354,13 @@ export function LineItemsPreviewPanel({
                           <td className="px-1.5 py-2 text-xs text-gray-950">{matchedPO.line_no}</td>
                           <td className={`px-1.5 py-2 text-xs text-gray-950 ${
                             invLine && (hasMatchedUomDifference(invLine, matchedPO) || hasMatchedDescriptionDifference(invLine, matchedPO) || hasCustomRuleMatch(invLine, matchedPO))
-                              ? 'bg-purple-50 border border-purple-300'
+                              ? 'bg-purple-50'
                               : invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && hasDescriptionDifference(invLine, matchedPO)) || hasSuggestion(invLine))
                               ? 'bg-red-50 border border-red-300'
                               : ''
                           }`}>
                             <div className="flex items-center gap-1.5">
-                              {invLine && (hasUomDifference(invLine, matchedPO) || hasDescriptionDifference(invLine, matchedPO) || hasCustomRule(invLine)) && !unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && (
+                              {invLine && (hasUomConversion(invLine) || hasDescriptionDifference(invLine, matchedPO) || hasCustomRule(invLine)) && !unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && (
                                 <Tooltip.Provider>
                                   <Tooltip.Root delayDuration={200} open={openPopoverId === `po-${invLine.id || `line-${invLine.line_no}`}` ? false : undefined}>
                                     {hasCustomRule(invLine) ? (
@@ -1438,8 +1441,8 @@ export function LineItemsPreviewPanel({
                             </div>
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                            invLine && hasMatchedUomDifference(invLine, matchedPO)
-                              ? 'bg-purple-50 border border-purple-300'
+                            invLine && (hasMatchedUomDifference(invLine, matchedPO) || hasCustomRuleMatch(invLine, matchedPO))
+                              ? 'bg-purple-50'
                               : invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01
                               ? 'bg-red-50 border border-red-300'
                               : ''
@@ -1448,8 +1451,8 @@ export function LineItemsPreviewPanel({
                           </td>
                           <td className="px-1.5 py-2 text-xs text-center text-gray-950">{matchedPO.uom}</td>
                           <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                            invLine && hasMatchedUomDifference(invLine, matchedPO)
-                              ? 'bg-purple-50 border border-purple-300'
+                            invLine && (hasMatchedUomDifference(invLine, matchedPO) || hasCustomRuleMatch(invLine, matchedPO))
+                              ? 'bg-purple-50'
                               : invLine && Math.abs(matchedPO.unit_price - invLine.unit_price) > 0.01
                               ? 'bg-red-50 border border-red-300'
                               : ''
@@ -1747,7 +1750,7 @@ export function LineItemsPreviewPanel({
                         </td>
                         <td className={`px-1.5 py-2 text-xs text-gray-950 ${
                           matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasMatchedDescriptionDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
-                            ? 'bg-purple-50 border border-purple-300'
+                            ? 'bg-purple-50'
                             : (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
                             ? 'bg-red-50 border border-red-300'
                             : ''
@@ -1761,7 +1764,7 @@ export function LineItemsPreviewPanel({
                             />
                           ) : (
                             <div className="flex items-center gap-1.5">
-                              {matchedPO && (hasUomDifference(line, matchedPO) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
+                              {matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
                                 <Tooltip.Provider>
                                   <Tooltip.Root delayDuration={200} open={openPopoverId === `invoice-detailed-${line.id || `line-${line.line_no}`}` ? false : undefined}>
                                     {hasCustomRule(line) ? (
@@ -1846,8 +1849,8 @@ export function LineItemsPreviewPanel({
                           {generateSKU(line.line_no)}
                         </td>
                         <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                          matchedPO && hasMatchedUomDifference(line, matchedPO)
-                            ? 'bg-purple-50 border border-purple-300'
+                          matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
+                            ? 'bg-purple-50'
                             : matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
                             ? 'bg-red-50 border border-red-300'
                             : ''
@@ -1880,8 +1883,8 @@ export function LineItemsPreviewPanel({
                           )}
                         </td>
                         <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                          matchedPO && hasMatchedUomDifference(line, matchedPO)
-                            ? 'bg-purple-50 border border-purple-300'
+                          matchedPO && (hasMatchedUomDifference(line, matchedPO) || hasCustomRuleMatch(line, matchedPO))
+                            ? 'bg-purple-50'
                             : matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
                             ? 'bg-red-50 border border-red-300'
                             : ''
@@ -1936,12 +1939,15 @@ export function LineItemsPreviewPanel({
                         <td className="px-1.5 py-2 text-xs text-center">
                           {isEditMode && (
                             <div className="flex items-center justify-center gap-1">
-                              {matchedPO && status === 'variance' && hasUomDifference(line, matchedPO) && !hasUomConversion(line) && !hasCustomRule(line) && (
-                                <SparkleButton
-                                  onClick={() => handleOpenTeachRuleDrawer(line)}
-                                  hasRule={false}
-                                />
-                              )}
+                              <SparkleButton
+                                onClick={() => {
+                                  // Only line 7 is functional for demo
+                                  if (line.line_no === 7) {
+                                    handleOpenTeachRuleDrawer(line);
+                                  }
+                                }}
+                                hasRule={false}
+                              />
                               <button
                                 onClick={() => handleRemoveLine(lineIndex)}
                                 className="p-1 text-gray-900 hover:text-red-600 hover:bg-red-50 rounded transition-colors"

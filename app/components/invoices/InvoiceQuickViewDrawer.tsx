@@ -47,6 +47,28 @@ export function InvoiceQuickViewDrawer({ invoiceId, isOpen, onClose }: InvoiceQu
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen]);
 
+  // Handle clicks outside drawer to close
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!isOpen) return;
+
+      const drawerElement = document.querySelector('[data-drawer="invoice-quick-view"]');
+      if (drawerElement && !drawerElement.contains(e.target as Node)) {
+        handleClose();
+      }
+    };
+
+    // Add listener with a slight delay to avoid closing immediately on open
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isOpen]);
+
   const fetchInvoiceData = async () => {
     if (!invoiceId) return;
 
@@ -215,8 +237,9 @@ export function InvoiceQuickViewDrawer({ invoiceId, isOpen, onClose }: InvoiceQu
 
   return createPortal(
     <div className="fixed inset-0 z-50 overflow-hidden pointer-events-none">
-      {/* Drawer - no backdrop to allow clicking on table below */}
+      {/* Drawer - no backdrop to allow scrolling table content */}
       <div
+        data-drawer="invoice-quick-view"
         className={`absolute right-0 top-0 h-full w-[650px] bg-white shadow-2xl transform transition-transform duration-300 ease-out pointer-events-auto ${
           isVisible ? 'translate-x-0' : 'translate-x-full'
         }`}

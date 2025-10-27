@@ -2,7 +2,7 @@
 
 import React from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Ruler, X, Check, Edit2, Trash2 } from 'lucide-react';
+import { Ruler, X, Check, Edit2 } from 'lucide-react';
 
 export interface UnitConversionRule {
   id: string;
@@ -149,9 +149,8 @@ export function CustomRulePopover({
           <div className="flex gap-2">
             <button
               onClick={handleRemove}
-              className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-white text-red-600 border border-red-300 rounded-md hover:bg-red-50 transition-colors focus:outline-none focus:ring-2 focus:ring-red-500 focus:ring-offset-2"
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
             >
-              <Trash2 className="h-4 w-4" />
               Remove Rule
             </button>
             <button

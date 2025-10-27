@@ -2,6 +2,7 @@
 
 import { useState, useMemo, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   FileText,
   MoreHorizontal,
@@ -353,6 +354,7 @@ export function EnhancedInvoiceTable({
   activeView = 'all',
   activeTab
 }: EnhancedInvoiceTableProps) {
+  const router = useRouter();
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [selectedDivisions, setSelectedDivisions] = useState<Set<string>>(new Set());
@@ -1396,22 +1398,10 @@ export function EnhancedInvoiceTable({
                       })()}
                       <button
                         onClick={(e) => {
-                          e.preventDefault();
-                          if (isQuickViewOpen) {
-                            // Drawer already open - just switch invoice
-                            setQuickViewInvoiceId(invoice.id);
-                          } else {
-                            // Drawer closed - open with this invoice
-                            setQuickViewInvoiceId(invoice.id);
-                            setIsQuickViewOpen(true);
-                          }
+                          e.stopPropagation(); // Prevent row click from firing
+                          router.push(`/invoices/${invoice.id}`);
                         }}
-                        className={cn(
-                          "text-sm text-purple-600 hover:text-purple-700",
-                          quickViewInvoiceId === invoice.id && isQuickViewOpen
-                            ? "font-bold tracking-tight"
-                            : "font-medium"
-                        )}
+                        className="text-sm text-purple-600 hover:text-purple-700 font-medium"
                       >
                         {invoice.invoice_number || 'Missing No.'}
                       </button>
