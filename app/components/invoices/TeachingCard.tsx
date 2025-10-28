@@ -1,7 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Sparkles, X } from 'lucide-react';
+import { Sparkles, X, Pin } from 'lucide-react';
+import { AnimatedPopover } from '../ui/AnimatedPopover';
 
 interface TeachingCardProps {
   fieldLabel: string;
@@ -15,7 +16,7 @@ export function TeachingCard({
   onClose,
 }: TeachingCardProps) {
   return (
-    <div className="border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+    <AnimatedPopover className="border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-purple-600 animate-pulse" />
@@ -47,9 +48,9 @@ export function TeachingCard({
         onClick={onPointToValue}
         className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
       >
-        <span className="text-base">📍</span>
+        <Pin className="h-4 w-4" />
         Point to Value on Document
       </button>
-    </div>
+    </AnimatedPopover>
   );
 }

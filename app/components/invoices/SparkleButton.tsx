@@ -26,7 +26,8 @@ export function SparkleButton({ onClick, hasRule = false }: SparkleButtonProps) 
         </Tooltip.Trigger>
         <Tooltip.Portal>
           <Tooltip.Content
-            className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md"
+            style={{ zIndex: 9999 }}
+            className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md"
             sideOffset={5}
           >
             {hasRule ? "View conversion rule" : "Apply rule"}
@@ -48,7 +49,7 @@ export function SparkleButton({ onClick, hasRule = false }: SparkleButtonProps) 
         }
 
         .sparkle-button:hover .sparkle-icon-wrapper {
-          background: linear-gradient(135deg, #7c3aed 0%, #ec4899 100%);
+          background: linear-gradient(135deg, #d8b4fe 0%, #ec4899 100%);
           -webkit-background-clip: text;
           -webkit-text-fill-color: transparent;
           background-clip: text;

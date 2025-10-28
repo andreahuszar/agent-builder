@@ -1283,7 +1283,8 @@ export function LineItemsPreviewPanel({
                                     )}
                                     <Tooltip.Portal>
                                       <Tooltip.Content
-                                        className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
+                                        style={{ zIndex: 9999 }}
+                                        className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
                                         sideOffset={5}
                                       >
                                         <div className="space-y-1">
@@ -1308,7 +1309,10 @@ export function LineItemsPreviewPanel({
                                       </button>
                                     </Tooltip.Trigger>
                                     <Tooltip.Portal>
-                                      <Tooltip.Content className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg">
+                                      <Tooltip.Content
+                                        style={{ zIndex: 9999 }}
+                                        className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg"
+                                      >
                                         Add custom rule
                                         <Tooltip.Arrow className="fill-gray-900" />
                                       </Tooltip.Content>
@@ -1970,7 +1974,8 @@ export function LineItemsPreviewPanel({
                                   )}
                                   <Tooltip.Portal>
                                     <Tooltip.Content
-                                      className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
+                                      style={{ zIndex: 9999 }}
+                                        className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
                                       sideOffset={5}
                                     >
                                       <div className="space-y-1">
@@ -1995,7 +2000,10 @@ export function LineItemsPreviewPanel({
                                     </button>
                                   </Tooltip.Trigger>
                                   <Tooltip.Portal>
-                                    <Tooltip.Content className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg">
+                                    <Tooltip.Content
+                                      style={{ zIndex: 9999 }}
+                                      className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg"
+                                    >
                                       Add custom rule
                                       <Tooltip.Arrow className="fill-gray-900" />
                                     </Tooltip.Content>
@@ -2097,7 +2105,8 @@ export function LineItemsPreviewPanel({
                                     )}
                                     <Tooltip.Portal>
                                       <Tooltip.Content
-                                        className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
+                                        style={{ zIndex: 9999 }}
+                                        className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
                                         sideOffset={5}
                                       >
                                         <div className="space-y-1">
@@ -2478,7 +2487,8 @@ export function LineItemsPreviewPanel({
                                         )}
                                         <Tooltip.Portal>
                                           <Tooltip.Content
-                                            className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
+                                            style={{ zIndex: 9999 }}
+                                        className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
                                             sideOffset={5}
                                           >
                                             <div className="space-y-1">
@@ -2703,7 +2713,8 @@ export function LineItemsPreviewPanel({
                                         )}
                                         <Tooltip.Portal>
                                           <Tooltip.Content
-                                            className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
+                                            style={{ zIndex: 9999 }}
+                                        className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
                                             sideOffset={5}
                                           >
                                             <div className="space-y-1">

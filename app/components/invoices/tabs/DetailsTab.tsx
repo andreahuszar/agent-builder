@@ -247,7 +247,8 @@ export function DetailsTab({
           { field: 'vendor_name_snapshot', label: 'Vendor Name', type: 'text' },
           { field: 'vendor_tax_id_snapshot', label: 'Vendor Tax ID', type: 'text' },
           { field: 'po_numbers_cached', label: 'PO Number', type: 'array' },
-          { field: 'job_number', label: 'Job Number', type: 'text' },
+          { field: 'job_number', label: 'Customer Ref. No.', type: 'text' },
+          { field: 'vehicle_registration_no', label: 'Vehicle Registration No.', type: 'text' },
           { field: 'subtotal', label: 'Subtotal', type: 'currency' },
           { field: 'currency', label: 'Currency', type: 'text' },
           { field: 'total', label: 'Total', type: 'currency' },
@@ -1088,7 +1089,7 @@ export function DetailsTab({
               <div ref={(el) => fieldRefs.current['job_number'] = el} className="relative">
                 <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
                   <span className="flex items-center">
-                    Job Number
+                    Customer Ref. No.
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.job_number} isEditMode={isEditing} hasValue={!!invoiceData.job_number} />
                   </span>
                   {!invoiceData.job_number && !agentPendingFields['job_number'] && (
@@ -1114,7 +1115,7 @@ export function DetailsTab({
                     type="text"
                     required={false}
                     fieldName="job_number"
-                    placeholder="Enter Job Number"
+                    placeholder="Enter Customer Ref. No."
                     onFocus={() => handleFieldFocus('job_number')}
                     onBlur={handleFieldBlur}
                   />
@@ -1179,7 +1180,7 @@ export function DetailsTab({
                 {expandedSuggestion === 'job_number' && (
                   <div ref={suggestionCardRef} className="absolute top-full left-0 mt-2 z-50 w-full min-w-[320px] max-w-md">
                     <TeachingCard
-                      fieldLabel="Job Number"
+                      fieldLabel="Customer Ref. No."
                       onPointToValue={() => {
                         // Close the popover
                         setExpandedSuggestion(null);
@@ -1201,6 +1202,55 @@ export function DetailsTab({
                   </div>
                 )}
               </div>
+              {/* Vehicle Registration No. - Only for baseline-po-bank-1 */}
+              {invoiceData.id === 'baseline-po-bank-1' && (
+                <div ref={(el) => fieldRefs.current['vehicle_registration_no'] = el} className="relative">
+                  <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                    <span className="flex items-center">
+                      Vehicle Registration No.
+                      <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.vehicle_registration_no} isEditMode={isEditing} hasValue={!!invoiceData.vehicle_registration_no} />
+                    </span>
+                  </label>
+                  {isEditing ? (
+                    <ValidatedEditableField
+                      value={agentPendingFields['vehicle_registration_no'] || editedData.vehicle_registration_no || ''}
+                      onChange={(value) => handleFieldChange('vehicle_registration_no', value)}
+                      type="text"
+                      required={false}
+                      fieldName="vehicle_registration_no"
+                      placeholder="Enter Vehicle Registration No."
+                      onFocus={() => handleFieldFocus('vehicle_registration_no')}
+                      onBlur={handleFieldBlur}
+                    />
+                  ) : agentPendingFields['vehicle_registration_no'] ? (
+                    <div className="flex items-center">
+                      <p className="text-sm font-medium text-gray-950">
+                        {agentPendingFields['vehicle_registration_no']}
+                      </p>
+                      <PendingConfirmationIndicator />
+                    </div>
+                  ) : (
+                    (() => {
+                      const hasValue = invoiceData.vehicle_registration_no;
+
+                      if (hasValue) {
+                        return (
+                          <p className="text-sm font-medium text-gray-950">
+                            {invoiceData.vehicle_registration_no}
+                          </p>
+                        );
+                      }
+
+                      // Show placeholder with red border if empty
+                      return (
+                        <p className="text-sm font-medium text-gray-950">
+                          {invoiceData.vehicle_registration_no || '--'}
+                        </p>
+                      );
+                    })()
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

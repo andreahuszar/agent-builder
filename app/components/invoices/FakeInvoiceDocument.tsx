@@ -184,20 +184,57 @@ export function FakeInvoiceDocument({
     >
       {/* Selection Mode Overlay */}
       {isSelectionMode && (
-        <div className="absolute inset-0 z-50 bg-purple-50 bg-opacity-20 ring-4 ring-purple-900 ring-inset pointer-events-none">
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 bg-purple-900 text-white px-4 py-2 rounded-b-md shadow-lg text-sm font-medium flex items-center gap-3 pointer-events-auto">
-            <span className="text-lg">👆</span>
-            <span>Click on the value in the document</span>
-            {onCancelSelection && (
-              <button
-                onClick={onCancelSelection}
-                className="ml-2 px-3 py-1 text-xs font-medium bg-white bg-opacity-20 hover:bg-opacity-30 rounded transition-colors"
-              >
-                Cancel
-              </button>
-            )}
+        <>
+          <style jsx>{`
+            @keyframes ripple {
+              0% {
+                transform: scale(1);
+                opacity: 0.6;
+              }
+              50% {
+                transform: scale(1.03);
+                opacity: 0.3;
+              }
+              100% {
+                transform: scale(1.03);
+                opacity: 0;
+              }
+            }
+            .animate-ripple {
+              animation: ripple 600ms ease-out forwards;
+            }
+            @keyframes bannerFade {
+              0% {
+                opacity: 0;
+              }
+              100% {
+                opacity: 1;
+              }
+            }
+            .animate-banner-fade {
+              animation: bannerFade 300ms ease-out forwards;
+              opacity: 0;
+            }
+          `}</style>
+          <div className="absolute inset-0 z-50 bg-purple-50 bg-opacity-20 ring-4 ring-purple-900 ring-inset pointer-events-none animate-in fade-in duration-300">
+            {/* Ripple effect layer */}
+            <div className="absolute inset-0 ring-4 ring-purple-500 ring-inset pointer-events-none animate-ripple" />
+
+            {/* Banner with fade-in animation */}
+            <div className="absolute -top-11 left-1/2 -translate-x-1/2 bg-purple-900 text-white px-4 pt-2.5 pb-2 rounded-t-md shadow-lg text-sm font-medium flex items-center gap-3 pointer-events-auto animate-banner-fade">
+              <span className="text-lg">👆</span>
+              <span>Click on the value in the document</span>
+              {onCancelSelection && (
+                <button
+                  onClick={onCancelSelection}
+                  className="ml-2 px-3 py-1 text-xs font-medium bg-white bg-opacity-20 hover:bg-opacity-30 rounded transition-colors"
+                >
+                  Cancel
+                </button>
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
 
       <div className="p-12">
@@ -295,15 +332,27 @@ export function FakeInvoiceDocument({
                   </div>
                 )}
                 <div className="flex justify-between gap-4">
-                  <span className="text-gray-800">Project Ref:</span>
+                  <span className="text-gray-800">Reference:</span>
                   <span className="font-semibold">
                     <FieldWithOCR fieldName="job_number">
-                      <SelectableText label="Project Ref">
+                      <SelectableText label="Reference">
                         WO-2025-445
                       </SelectableText>
                     </FieldWithOCR>
                   </span>
                 </div>
+                {invoice.id === 'baseline-po-bank-1' && invoice.vehicle_registration_no && (
+                  <div className="flex justify-between gap-4">
+                    <span className="text-gray-800">Vehicle Reg:</span>
+                    <span className="font-semibold">
+                      <FieldWithOCR fieldName="vehicle_registration_no">
+                        <SelectableText label="Vehicle Registration">
+                          {invoice.vehicle_registration_no}
+                        </SelectableText>
+                      </FieldWithOCR>
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -393,15 +442,27 @@ export function FakeInvoiceDocument({
                 </div>
               )}
               <div className="flex justify-between gap-4">
-                <span className="text-gray-800">Project Ref:</span>
+                <span className="text-gray-800">Reference:</span>
                 <span className="font-semibold">
                   <FieldWithOCR fieldName="job_number">
-                    <SelectableText label="Project Ref">
+                    <SelectableText label="Reference">
                       WO-2025-445
                     </SelectableText>
                   </FieldWithOCR>
                 </span>
               </div>
+              {invoice.id === 'baseline-po-bank-1' && invoice.vehicle_registration_no && (
+                <div className="flex justify-between gap-4">
+                  <span className="text-gray-800">Vehicle Reg:</span>
+                  <span className="font-semibold">
+                    <FieldWithOCR fieldName="vehicle_registration_no">
+                      <SelectableText label="Vehicle Registration">
+                        {invoice.vehicle_registration_no}
+                      </SelectableText>
+                    </FieldWithOCR>
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { X } from 'lucide-react';
 import { RuleChatInterface } from './RuleChatInterface';
 
@@ -46,62 +47,110 @@ export function TeachRuleDrawer({
   vendorName,
   onConfirm,
 }: TeachRuleDrawerProps) {
+  const [isVisible, setIsVisible] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Set mounted flag after hydration to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Trigger animation when drawer opens
+  useEffect(() => {
+    if (open && invoiceLine && poLine) {
+      setTimeout(() => setIsVisible(true), 10);
+    }
+  }, [open, invoiceLine, poLine]);
+
+  // Handle close with animation
+  const handleClose = () => {
+    setIsVisible(false);
+    setTimeout(() => {
+      onClose();
+    }, 200);
+  };
+
   // Close on Escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && open) {
-        onClose();
+        handleClose();
       }
     };
 
-    window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
-  }, [open, onClose]);
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [open]);
 
-  if (!open || !invoiceLine || !poLine) return null;
+  // Handle clicks outside drawer to close
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!open) return;
 
-  return (
-    <>
-      {/* Backdrop */}
+      const drawerElement = document.querySelector('[data-drawer="teach-rule"]');
+      if (drawerElement && !drawerElement.contains(e.target as Node)) {
+        handleClose();
+      }
+    };
+
+    // Add listener with a slight delay to avoid closing immediately on open
+    const timeoutId = setTimeout(() => {
+      document.addEventListener('mousedown', handleClickOutside);
+    }, 100);
+
+    return () => {
+      clearTimeout(timeoutId);
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [open]);
+
+  // Don't render until mounted to avoid hydration mismatch
+  if (!isMounted) return null;
+
+  // Don't render at all when closed to avoid blocking interactions
+  if (!open && !isVisible) return null;
+
+  if (!invoiceLine || !poLine) return null;
+
+  return createPortal(
+    <div className="fixed inset-0 z-50 overflow-hidden pointer-events-none">
+      {/* Drawer - no backdrop to allow interaction with background */}
       <div
-        className={`fixed inset-0 bg-black/50 z-40 transition-opacity duration-300 ${
-          open ? 'opacity-100' : 'opacity-0 pointer-events-none'
-        }`}
-        onClick={onClose}
-      />
-
-      {/* Drawer */}
-      <div
-        className={`fixed right-0 top-0 bottom-0 w-[480px] bg-white shadow-2xl z-50 flex flex-col transition-transform duration-300 ease-out ${
-          open ? 'translate-x-0' : 'translate-x-full'
+        data-drawer="teach-rule"
+        className={`absolute right-0 top-0 h-full w-[480px] bg-white shadow-2xl transform transition-transform duration-200 ease-in-out pointer-events-auto ${
+          isVisible ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-950">Apply Rule</h2>
-            <p className="text-sm text-gray-600 mt-0.5">Let the agent help you resolve this unit mismatch</p>
+        <div className="flex h-full flex-col">
+          {/* Header */}
+          <div className="border-b border-gray-200 px-4 py-2.5 flex-shrink-0">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleClose}
+                  className="rounded-lg p-1 hover:bg-gray-100 transition-colors"
+                  aria-label="Close drawer"
+                >
+                  <X className="h-5 w-5 text-gray-500" />
+                </button>
+                <h2 className="text-lg font-semibold text-gray-950">Apply Rule</h2>
+              </div>
+            </div>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded hover:bg-gray-100 transition-colors"
-            title="Close"
-          >
-            <X className="h-5 w-5 text-gray-600" />
-          </button>
-        </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-hidden p-6">
-          <RuleChatInterface
-            invoiceLine={invoiceLine}
-            poLine={poLine}
-            vendorName={vendorName}
-            onConfirm={onConfirm}
-            onCancel={onClose}
-          />
+          {/* Content */}
+          <div className="flex-1 overflow-hidden">
+            <RuleChatInterface
+              invoiceLine={invoiceLine}
+              poLine={poLine}
+              vendorName={vendorName}
+              onConfirm={onConfirm}
+              onCancel={handleClose}
+            />
+          </div>
         </div>
       </div>
-    </>
+    </div>,
+    document.body
   );
 }

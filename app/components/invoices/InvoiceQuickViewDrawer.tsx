@@ -108,7 +108,7 @@ export function InvoiceQuickViewDrawer({ invoiceId, isOpen, onClose }: InvoiceQu
       setInvoiceData(null);
       setMatchResults([]);
       setPoComparisonData(null);
-    }, 300);
+    }, 200);
   };
 
   const handleOpenFullDetails = () => {
@@ -240,7 +240,7 @@ export function InvoiceQuickViewDrawer({ invoiceId, isOpen, onClose }: InvoiceQu
       {/* Drawer - no backdrop to allow scrolling table content */}
       <div
         data-drawer="invoice-quick-view"
-        className={`absolute right-0 top-0 h-full w-[650px] bg-white shadow-2xl transform transition-transform duration-300 ease-out pointer-events-auto ${
+        className={`absolute right-0 top-0 h-full w-[650px] bg-white shadow-2xl transform transition-transform duration-200 ease-in-out pointer-events-auto ${
           isVisible ? 'translate-x-0' : 'translate-x-full'
         }`}
       >

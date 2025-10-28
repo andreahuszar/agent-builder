@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { Sparkles, Check, X, Eye, ChevronRight } from 'lucide-react';
+import { AnimatedPopover } from '../ui/AnimatedPopover';
 
 interface Candidate {
   value: string;
@@ -30,7 +31,7 @@ export function AISuggestionCard({
   const confidencePercent = Math.round(candidate.confidence * 100);
 
   return (
-    <div className="border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+    <AnimatedPopover className="border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-purple-600 animate-pulse" />
@@ -93,6 +94,6 @@ export function AISuggestionCard({
           </button>
         )}
       </div>
-    </div>
+    </AnimatedPopover>
   );
 }

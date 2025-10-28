@@ -459,6 +459,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     id: 'baseline-po-bank-1',
     invoice_number: 'IEC-2025-5678',
     job_number: 'JOB-2025-445',
+    vehicle_registration_no: 'VEH-ABC-1234',
     vendor_name_snapshot: 'Industrial Equipment Corp',
     vendor_id: 'VND-4001',
     vendor_tax_id_snapshot: 'TAX-VND-4001',
@@ -1100,6 +1101,7 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
       vendor_tax_id_snapshot: invoice.vendor_tax_id_snapshot && invoice.vendor_tax_id_snapshot.trim() !== '' ? 0.94 : 0,
       po_numbers_cached: invoice.po_numbers_cached?.length > 0 ? 0.92 : 0,
       job_number: 0, // Custom field - not found initially
+      vehicle_registration_no: invoice.id === 'baseline-po-bank-1' ? 0.92 : 0, // Custom field specific to Industrial Equipment Corp
 
       // Financial Details
       subtotal: invoice.subtotal > 0 ? 0.92 : 0,

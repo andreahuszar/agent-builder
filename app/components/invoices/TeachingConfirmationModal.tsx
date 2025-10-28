@@ -1,7 +1,9 @@
 'use client';
 
 import React from 'react';
-import { X, Sparkles, Check } from 'lucide-react';
+import { X, Sparkles, Check, MapPin, Brain } from 'lucide-react';
+import { AnimatedPopover } from '../ui/AnimatedPopover';
+import { SecondaryButton } from '../ui/SecondaryButton';
 
 interface TeachingConfirmationModalProps {
   fieldLabel: string;
@@ -22,7 +24,7 @@ export function TeachingConfirmationModal({
     <>
       {/* Popover Card */}
       <div className="fixed top-32 left-32 z-[101] w-full max-w-sm">
-        <div className="border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+        <AnimatedPopover className="border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
           {/* Header */}
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="h-4 w-4 text-purple-600 animate-pulse" />
@@ -48,29 +50,30 @@ export function TeachingConfirmationModal({
             </div>
 
             {/* Location Context */}
-            <div className="text-xs text-gray-950 mb-3">
-              📍 {context}
+            <div className="flex items-center gap-1.5 text-xs text-gray-950 mb-3">
+              <MapPin className="h-3.5 w-3.5 text-purple-600" />
+              {context}
             </div>
 
             {/* Learning Message */}
             <div className="bg-purple-50 border border-purple-200 rounded-md p-3 mb-3">
-              <p className="text-xs text-gray-950">
-                <span className="font-medium text-gray-900">🧠 I'll learn this!</span> Once you confirm,
-                I'll remember to look for "{fieldLabel}" in similar locations on future invoices
-                from this vendor.
+              <p className="text-xs text-gray-950 flex items-start gap-1.5">
+                <Brain className="h-3.5 w-3.5 text-purple-600 mt-0.5 flex-shrink-0" />
+                <span>
+                  <span className="font-medium text-gray-900">I'll learn this!</span> Once you confirm,
+                  I'll remember to look for "Customer Ref. No." in similar locations on future invoices
+                  from this vendor.
+                </span>
               </p>
             </div>
           </div>
 
           {/* Actions */}
           <div className="flex gap-2">
-            <button
-              onClick={onCancel}
-              className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
-            >
+            <SecondaryButton onClick={onCancel}>
               <X className="h-4 w-4" />
               Cancel
-            </button>
+            </SecondaryButton>
             <button
               onClick={() => onAccept(value)}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
@@ -79,7 +82,7 @@ export function TeachingConfirmationModal({
               Accept & Remember
             </button>
           </div>
-        </div>
+        </AnimatedPopover>
       </div>
     </>
   );

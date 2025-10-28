@@ -2,6 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { Bot, User, Check, AlertCircle, Send } from 'lucide-react';
+import { SecondaryButton } from '../ui/SecondaryButton';
 
 interface InvoiceLineData {
   qty: number;
@@ -56,6 +57,9 @@ export function RuleChatInterface({
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentParsedRule, setCurrentParsedRule] = useState<ParsedRule | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(true);
+  const [isTyping, setIsTyping] = useState(false);
+  const [revealedWords, setRevealedWords] = useState(0);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -63,37 +67,91 @@ export function RuleChatInterface({
   const conversionFactor = poLine.qty_ordered / invoiceLine.qty;
   const suggestedRule = `1 ${invoiceLine.uom.toLowerCase()} of ${invoiceLine.description.toLowerCase()} from ${vendorName} = ${conversionFactor} ${poLine.uom.toLowerCase()}`;
 
-  // Initial agent assessment message
-  const agentAssessment = `I've detected a unit mismatch on this line item:
+  // Assessment message content as plain text for typewriter
+  const assessmentText = `I've detected a unit mismatch on this line item. The financial totals align (£${invoiceLine.line_total.toFixed(2)}), but the units differ. How would you like me to handle this?`;
 
-**Invoice Line:**
-${invoiceLine.qty} ${invoiceLine.uom} - ${invoiceLine.description} @ £${invoiceLine.unit_price.toFixed(2)}/unit
+  // Split text into words for typewriter effect
+  const assessmentWords = assessmentText.split(' ');
 
-**Purchase Order:**
-${poLine.qty_ordered} ${poLine.uom} - ${poLine.description} @ £${poLine.unit_price.toFixed(2)}/unit
+  // Structured assessment content renderer
+  const renderAssessmentContent = (showTypewriter: boolean) => {
+    const displayText = showTypewriter
+      ? assessmentWords.slice(0, revealedWords).join(' ')
+      : assessmentText;
 
-The financial totals align (£${invoiceLine.line_total.toFixed(2)}), but the units differ.
+    const showCursor = showTypewriter && isTyping && revealedWords < assessmentWords.length;
 
-How would you like me to handle this?`;
+    return (
+      <div className="text-xs text-gray-950 space-y-3">
+        <p>
+          {displayText}
+          {showCursor && <span className="animate-pulse ml-0.5">▊</span>}
+        </p>
 
-  // Initialize with agent assessment on mount
+        {!showTypewriter && (
+          <>
+            <div className="bg-white border border-purple-200 rounded px-3 py-2 space-y-1.5">
+              <p className="font-medium text-gray-900">Invoice Line</p>
+              <p className="text-gray-700">
+                {invoiceLine.qty} {invoiceLine.uom} - {invoiceLine.description}
+              </p>
+              <p className="text-gray-600">@ £{invoiceLine.unit_price.toFixed(2)}/unit</p>
+            </div>
+
+            <div className="bg-white border border-purple-200 rounded px-3 py-2 space-y-1.5">
+              <p className="font-medium text-gray-900">Purchase Order</p>
+              <p className="text-gray-700">
+                {poLine.qty_ordered} {poLine.uom} - {poLine.description}
+              </p>
+              <p className="text-gray-600">@ £{poLine.unit_price.toFixed(2)}/unit</p>
+            </div>
+          </>
+        )}
+      </div>
+    );
+  };
+
+  // Initialize with loading state then assessment
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setMessages([{
-        sender: 'agent',
-        text: agentAssessment,
-        timestamp: Date.now(),
-        type: 'assessment'
-      }]);
-    }, 300); // Delay for animation effect
+    // Show loading state for 2000ms
+    const loadingTimer = setTimeout(() => {
+      setIsInitializing(false);
 
-    return () => clearTimeout(timer);
+      // Start typewriter effect after brief pause
+      const messageTimer = setTimeout(() => {
+        setMessages([{
+          sender: 'agent',
+          text: assessmentText,
+          timestamp: Date.now(),
+          type: 'assessment'
+        }]);
+        setIsTyping(true);
+      }, 400);
+
+      return () => clearTimeout(messageTimer);
+    }, 2000);
+
+    return () => clearTimeout(loadingTimer);
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Typewriter effect - reveal words progressively
+  useEffect(() => {
+    if (isTyping && revealedWords < assessmentWords.length) {
+      const timer = setTimeout(() => {
+        setRevealedWords(prev => prev + 1);
+      }, 50); // 50ms per word
+
+      return () => clearTimeout(timer);
+    } else if (revealedWords >= assessmentWords.length) {
+      // Typewriter complete
+      setIsTyping(false);
+    }
+  }, [isTyping, revealedWords, assessmentWords.length]);
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isProcessing]);
+  }, [messages, isProcessing, isInitializing, revealedWords]);
 
   // Parse natural language rule
   const parseRule = (text: string): ParsedRule => {
@@ -231,7 +289,30 @@ How would you like me to handle this?`;
   return (
     <div className="flex flex-col h-full">
       {/* Chat Messages Area */}
-      <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5">
+      <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
+        {/* Initial Loading State */}
+        {isInitializing && (
+          <div className="flex gap-3 animate-fadeIn">
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+                <Bot className="h-4 w-4 text-purple-600 animate-pulse" />
+              </div>
+            </div>
+            <div className="flex-1">
+              <div className="bg-purple-100 rounded-lg px-4 py-3 max-w-[85%]">
+                <div className="flex items-center gap-2">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
+                    <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
+                    <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
+                  </div>
+                  <span className="text-xs text-gray-600">Analyzing...</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {messages.map((message, index) => (
           <div
             key={index}
@@ -246,25 +327,22 @@ How would you like me to handle this?`;
             )}
             <div className={`flex-1 ${message.sender === 'user' ? 'flex justify-end' : ''}`}>
               {message.sender === 'agent' && message.type === 'assessment' && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 max-w-[85%]">
-                  <div className="text-sm font-medium text-purple-900 mb-2">Agent</div>
-                  <div className="text-xs text-gray-950 whitespace-pre-line">{message.text}</div>
+                <div className="bg-purple-100 rounded-lg px-4 py-3 max-w-[85%]">
+                  {renderAssessmentContent(isTyping)}
                 </div>
               )}
 
               {message.sender === 'agent' && message.type === 'modification_request' && (
-                <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 max-w-[85%]">
-                  <div className="text-sm font-medium text-purple-900 mb-2">Agent</div>
+                <div className="bg-purple-100 rounded-lg px-4 py-3 max-w-[85%]">
                   <div className="text-xs text-gray-950">{message.text}</div>
                 </div>
               )}
 
               {message.sender === 'agent' && message.type === 'rule_preview' && message.parsedRule && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 max-w-[85%]">
-                  <div className="text-sm font-medium text-purple-900 mb-2">Agent</div>
+                <div className="bg-green-100 rounded-lg px-4 py-3 max-w-[85%]">
                   <div className="flex items-center gap-2 mb-2">
                     <Check className="h-4 w-4 text-green-600" />
-                    <div className="text-sm font-medium text-green-900">Rule Understood!</div>
+                    <div className="text-xs font-medium text-green-900">Rule Interpretation</div>
                   </div>
                   <div className="text-xs text-gray-950 space-y-2">
                     <p className="font-medium">I understood your rule as:</p>
@@ -288,28 +366,24 @@ How would you like me to handle this?`;
                     </div>
                   </div>
                   <div className="flex gap-2 mt-3">
-                    <button
-                      onClick={handleModifyRule}
-                      className="px-3 py-1.5 text-xs font-medium bg-white text-gray-700 border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-                    >
+                    <SecondaryButton onClick={handleModifyRule} className="text-xs">
                       Modify Rule
-                    </button>
+                    </SecondaryButton>
                     <button
                       onClick={handleFinalConfirm}
                       className="flex-1 px-3 py-1.5 text-xs font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors"
                     >
-                      ✓ Confirm & Apply Rule
+                      Confirm & Apply Rule
                     </button>
                   </div>
                 </div>
               )}
 
               {message.sender === 'agent' && message.type === 'error' && message.parsedRule && (
-                <div className="bg-red-50 border border-red-300 rounded-lg p-3 max-w-[85%]">
-                  <div className="text-sm font-medium text-purple-900 mb-2">Agent</div>
+                <div className="bg-red-100 rounded-lg px-4 py-3 max-w-[85%]">
                   <div className="flex items-center gap-2 mb-2">
                     <AlertCircle className="h-4 w-4 text-red-600" />
-                    <div className="text-sm font-medium text-red-900">Unable to Parse Rule</div>
+                    <div className="text-xs font-medium text-red-900">Unable to Parse Rule</div>
                   </div>
                   <div className="text-xs text-gray-950 mb-3">
                     {message.text}
@@ -324,7 +398,7 @@ How would you like me to handle this?`;
               )}
 
               {message.sender === 'user' && (
-                <div className="bg-gray-100 border border-gray-300 rounded-lg p-3 max-w-[85%]">
+                <div className="bg-gray-100 rounded-lg px-4 py-3 max-w-[85%]">
                   <div className="text-xs text-gray-950">{message.text}</div>
                 </div>
               )}
@@ -348,7 +422,7 @@ How would you like me to handle this?`;
               </div>
             </div>
             <div className="flex-1">
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 max-w-[85%]">
+              <div className="bg-purple-100 rounded-lg px-4 py-3 max-w-[85%]">
                 <div className="flex items-center gap-2">
                   <div className="flex gap-1">
                     <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '0ms'}}></div>
@@ -366,7 +440,7 @@ How would you like me to handle this?`;
       </div>
 
       {/* Chat Input - Always at Bottom */}
-      <div className="sticky bottom-0 bg-white border-t border-gray-200 p-3">
+      <div className="sticky bottom-0 bg-white border-t border-gray-200 px-4 py-3">
         <div className="relative">
           <textarea
             ref={chatInputRef}
@@ -375,7 +449,7 @@ How would you like me to handle this?`;
             onFocus={handleChatFocus}
             onKeyPress={handleKeyPress}
             placeholder="Type your message or let me suggest a rule..."
-            className="w-full min-h-[48px] max-h-[120px] px-3 py-2 pr-16 text-sm border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full min-h-[48px] max-h-[120px] px-3 py-2 pr-16 text-xs border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             disabled={isProcessing}
           />
           <button
