@@ -137,7 +137,7 @@ export function UomMatchPopover({
             Don't Auto-Match Again
           </button>
 
-          <Popover.Arrow className="fill-white" />
+          <Popover.Arrow className="fill-purple-300" />
         </Popover.Content>
       </Popover.Portal>
     </Popover.Root>
