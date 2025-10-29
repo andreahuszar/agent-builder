@@ -102,7 +102,7 @@ export function BankDetailsVerificationPopover({
           sideOffset={5}
           align="start"
         >
-          <AnimatedPopover className="w-[500px] rounded-lg border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white shadow-lg">
+          <AnimatedPopover className="w-[420px] rounded-lg border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white shadow-lg">
             <div className="max-h-[450px] overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-purple-300 scrollbar-track-purple-50">
             {/* Header */}
             <div className="flex items-center gap-2 mb-3">
