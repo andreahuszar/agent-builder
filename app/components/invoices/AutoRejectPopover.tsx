@@ -142,7 +142,7 @@ export function AutoRejectPopover({
                   <div className="text-xs font-medium text-gray-950 mb-2">
                     {getRuleDetails(autoRejectRule).description}
                   </div>
-                  <div className="text-xs text-gray-700 leading-relaxed whitespace-pre-line">
+                  <div className="text-xs text-gray-950 leading-relaxed whitespace-pre-line">
                     {getRuleDetails(autoRejectRule).details}
                   </div>
                 </div>
