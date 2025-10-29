@@ -137,11 +137,11 @@ export function AutoRejectPopover({
               </p>
             </div>
 
-            {/* Rule Triggered - Collapsible */}
-            <div className="mb-3">
+            {/* Rule Triggered - Accordion Style */}
+            <div className="mb-3 border border-purple-200 rounded-md overflow-hidden">
               <button
                 onClick={() => setIsRuleExpanded(!isRuleExpanded)}
-                className="w-full flex items-center gap-2 p-3 bg-purple-100 border border-purple-200 rounded-md hover:bg-purple-150 transition-colors"
+                className="w-full flex items-center gap-2 p-3 bg-purple-100 hover:bg-purple-150 transition-colors"
               >
                 <Zap className="h-4 w-4 text-purple-600 flex-shrink-0" fill="currentColor" />
                 <div className="flex-1 text-left">
@@ -157,7 +157,7 @@ export function AutoRejectPopover({
               </button>
 
               {isRuleExpanded && (
-                <div className="mt-2 p-3 bg-white border border-purple-200 rounded-md">
+                <div className="border-t border-purple-200 bg-white p-3">
                   <div className="text-xs font-medium text-gray-950 mb-2">
                     {getRuleDetails(autoRejectRule).description}
                   </div>
