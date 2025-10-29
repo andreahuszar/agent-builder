@@ -3,11 +3,14 @@
 import React, { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { Sparkles, X, Check, ChevronRight, ChevronDown, ExternalLink, Plus } from 'lucide-react';
+import { LineItemsComparisonDrawer } from './LineItemsComparisonDrawer';
 
 interface MatchingFactors {
   vendor_match: boolean;
   date_proximity_days: number;
   line_items_overlap: number;
+  total_line_items?: number;
+  variance_count?: number;
 }
 
 interface POSummary {
@@ -23,14 +26,16 @@ interface CloseMatchPopoverProps {
   matchingFactors: MatchingFactors;
   poSummary: POSummary;
   invoiceTotal: number;
+  invoiceId?: string;
+  invoiceNumber?: string;
   onAccept: () => void;
   onSearchDifferent: () => void;
   onReject: () => void;
-  onShowDetails: () => void;
   onClose?: () => void;
   children: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  isPOSearchModalOpen?: boolean;
 }
 
 export function CloseMatchPopover({
@@ -39,16 +44,19 @@ export function CloseMatchPopover({
   matchingFactors,
   poSummary,
   invoiceTotal,
+  invoiceId = 'mock-001',
+  invoiceNumber,
   onAccept,
   onSearchDifferent,
   onReject,
-  onShowDetails,
   onClose,
   children,
   open,
   onOpenChange,
+  isPOSearchModalOpen = false,
 }: CloseMatchPopoverProps) {
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
+  const [showLineItemsDrawer, setShowLineItemsDrawer] = useState(false);
 
   const confidencePercent = Math.round(confidence * 100);
   const totalVariance = Math.abs(invoiceTotal - poSummary.total);
@@ -75,16 +83,12 @@ export function CloseMatchPopover({
 
   const handleSearchDifferent = () => {
     onSearchDifferent();
-    onOpenChange?.(false);
+    // Don't close the popover when selecting different PO
   };
 
   const handleReject = () => {
     onReject();
     onOpenChange?.(false);
-  };
-
-  const handleShowDetails = () => {
-    onShowDetails();
   };
 
   const handleClose = () => {
@@ -93,21 +97,33 @@ export function CloseMatchPopover({
   };
 
   return (
-    <Popover.Root open={open} onOpenChange={onOpenChange}>
-      <Popover.Trigger asChild>
-        {children}
-      </Popover.Trigger>
-      <Popover.Portal>
-        <Popover.Content
-          className="z-50 w-[450px] rounded-lg border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white shadow-lg p-4"
-          sideOffset={5}
-          align="start"
-        >
+    <>
+      <Popover.Root open={open} onOpenChange={onOpenChange}>
+        <Popover.Trigger asChild>
+          {children}
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Content
+            className="z-50 w-[450px] rounded-lg border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white shadow-lg p-4"
+            sideOffset={5}
+            align="start"
+            onInteractOutside={(e) => {
+              // Prevent closing when interacting with the drawer or PO search modal
+              const target = e.target as HTMLElement;
+              if (
+                target.closest('.line-items-drawer') ||
+                target.closest('.po-search-modal') ||
+                isPOSearchModalOpen
+              ) {
+                e.preventDefault();
+              }
+            }}
+          >
           {/* Header */}
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="h-4 w-4 text-purple-600" fill="currentColor" />
             <span className="text-sm font-semibold text-purple-900">AI PO Match Suggestion</span>
-            <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-orange-200 text-orange-800">
+            <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-green-200 text-green-800">
               {confidencePercent}% match
             </span>
             <button
@@ -121,16 +137,7 @@ export function CloseMatchPopover({
 
           {/* Suggested PO Number */}
           <div className="mb-3">
-            <div className="flex items-center justify-between mb-1">
-              <div className="text-xs font-medium text-gray-900">Suggested PO Number</div>
-              <button
-                onClick={handleShowDetails}
-                className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
-              >
-                <ExternalLink className="h-3 w-3" />
-                Show Details
-              </button>
-            </div>
+            <div className="text-xs font-medium text-gray-900 mb-1">Suggested PO Number</div>
             <div className="text-xl font-bold text-gray-950 bg-purple-100 px-3 py-2 rounded-md border border-purple-200">
               {suggestedPO}
             </div>
@@ -164,9 +171,18 @@ export function CloseMatchPopover({
               <Check className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
               <span className="font-medium">Matching items:</span>
               <span>
-                {matchingFactors.line_items_overlap} of {matchingFactors.line_items_overlap} line items
-                {poSummary.line_count && poSummary.line_count > matchingFactors.line_items_overlap && (
-                  <span className="text-gray-600 ml-1">(PO has {poSummary.line_count - matchingFactors.line_items_overlap} extra item{poSummary.line_count - matchingFactors.line_items_overlap !== 1 ? 's' : ''})</span>
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    setShowLineItemsDrawer(true);
+                  }}
+                  className="text-purple-600 hover:text-purple-700 underline focus:outline-none"
+                >
+                  {matchingFactors.line_items_overlap} of {matchingFactors.total_line_items || matchingFactors.line_items_overlap} line items
+                </button>
+                {matchingFactors.variance_count && matchingFactors.variance_count > 0 && (
+                  <span className="text-gray-600 ml-1">({matchingFactors.variance_count} variance{matchingFactors.variance_count !== 1 ? 's' : ''})</span>
                 )}
               </span>
             </div>
@@ -212,30 +228,36 @@ export function CloseMatchPopover({
           {/* Action Buttons */}
           <div className="flex items-center gap-1.5">
             <button
-              onClick={handleReject}
-              className="flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium border border-gray-300 bg-white text-gray-700 rounded-md hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-1 whitespace-nowrap"
-            >
-              <X className="h-3 w-3" />
-              Reject
-            </button>
-            <button
               onClick={handleSearchDifferent}
               className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium border border-purple-900 bg-white text-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 whitespace-nowrap"
             >
-              Select Different PO
+              Select other PO
             </button>
             <button
               onClick={handleAccept}
               className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 whitespace-nowrap"
             >
-              <Check className="h-3 w-3" />
-              Accept
+              Match
             </button>
           </div>
 
           <Popover.Arrow className="fill-purple-300" />
         </Popover.Content>
       </Popover.Portal>
-    </Popover.Root>
+      </Popover.Root>
+
+      {/* Line Items Comparison Drawer */}
+      <LineItemsComparisonDrawer
+        isOpen={showLineItemsDrawer}
+        onClose={() => setShowLineItemsDrawer(false)}
+        invoiceId={invoiceId}
+        invoiceNumber={invoiceNumber}
+        poNumber={suggestedPO}
+        matchedCount={matchingFactors.line_items_overlap}
+        totalCount={matchingFactors.line_items_overlap}
+        invoiceTotal={invoiceTotal}
+        poTotal={poSummary.total}
+      />
+    </>
   );
 }

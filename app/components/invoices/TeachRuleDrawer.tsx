@@ -133,7 +133,7 @@ export function TeachRuleDrawer({
                 >
                   <X className="h-5 w-5 text-gray-500" />
                 </button>
-                <h2 className="text-lg font-semibold text-gray-950">Apply Rule</h2>
+                <h2 className="text-lg font-semibold text-gray-950">Rule Builder Assistant</h2>
               </div>
             </div>
           </div>

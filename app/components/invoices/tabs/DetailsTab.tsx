@@ -27,7 +27,8 @@ import {
   Package,
   Sparkles,
   AlertCircle,
-  Shield
+  Shield,
+  Zap
 } from 'lucide-react';
 import { EditableField } from '../editing/EditableField';
 import { ValidatedEditableField } from '../editing/ValidatedEditableField';
@@ -46,8 +47,11 @@ import { TeachingCard } from '../TeachingCard';
 import { PendingConfirmationIndicator } from '../PendingConfirmationIndicator';
 import { FieldConfidencePill } from '../FieldConfidencePill';
 import { AutoCorrectionIndicator } from '../AutoCorrectionIndicator';
+import { CustomFieldIndicator } from '../CustomFieldIndicator';
 import { CloseMatchPopover } from '../CloseMatchPopover';
 import { BankDetailsVerificationPopover } from '../BankDetailsVerificationPopover';
+import { VendorSwapPopover } from '../VendorSwapPopover';
+import { AccountingAutoCodingPopover } from '../AccountingAutoCodingPopover';
 import { FraudRiskBanner } from '../FraudRiskBanner';
 
 interface DetailsTabProps {
@@ -187,6 +191,9 @@ export function DetailsTab({
   const [selectedPONumber, setSelectedPONumber] = useState<string | null>(null);
   const [isPODrawerOpen, setIsPODrawerOpen] = useState(false);
   const [isPOSearchModalOpen, setIsPOSearchModalOpen] = useState(false);
+  const [isCloseMatchPopoverOpen, setIsCloseMatchPopoverOpen] = useState(false);
+  const [isVendorSwapPopoverOpen, setIsVendorSwapPopoverOpen] = useState(false);
+  const [isAutoCodingPopoverOpen, setIsAutoCodingPopoverOpen] = useState(false);
 
   // Bank details verification state
   const [isBankVerifyOpen, setIsBankVerifyOpen] = useState(false);
@@ -255,6 +262,10 @@ export function DetailsTab({
         ];
 
         fieldsToCheck.forEach(({ field, label, type }) => {
+          // Skip PO Number and Customer Ref. No. validation for Non-PO invoices
+          if (invoiceData.type === 'Non-PO' && (field === 'po_numbers_cached' || field === 'job_number')) {
+            return;
+          }
           // Check both editedData and agentPendingFields for value
           const value = agentPendingFields[field] || editedData[field];
 
@@ -314,7 +325,7 @@ export function DetailsTab({
 
       return () => clearTimeout(timer);
     }
-  }, [forceEditMode, isEditing, showFieldErrors, invoiceData.id, agentPendingFields, editedData]); // Re-run when field values change
+  }, [forceEditMode, isEditing, showFieldErrors, invoiceData, agentPendingFields, editedData]); // Re-run when field values change
 
   // Run validations
   const validationResults = useMemo(() => {
@@ -438,6 +449,8 @@ export function DetailsTab({
               vendorName={autoCorrection.vendor_name}
               recentDocuments={autoCorrection.recent_documents}
               documentType={autoCorrection.document_type}
+              fieldName={fieldName}
+              onFieldFocus={onFieldFocus}
             />
           )}
         </div>
@@ -458,6 +471,8 @@ export function DetailsTab({
             vendorName={autoCorrection.vendor_name}
             recentDocuments={autoCorrection.recent_documents}
             documentType={autoCorrection.document_type}
+            fieldName={fieldName}
+            onFieldFocus={onFieldFocus}
           />
         )}
       </div>
@@ -778,7 +793,7 @@ export function DetailsTab({
                       className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
                     >
                       <Sparkles className="h-3 w-3" />
-                      Close Match
+                      Match Found
                     </button>
                   )}
                 </label>
@@ -838,6 +853,8 @@ export function DetailsTab({
                               vendorName={autoCorrection.vendor_name}
                               recentDocuments={autoCorrection.recent_documents}
                               documentType={autoCorrection.document_type}
+                              fieldName="invoice_number"
+                              onFieldFocus={onFieldFocus}
                             />
                           )}
                         </div>
@@ -932,11 +949,70 @@ export function DetailsTab({
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['vendor_name_snapshot'] = el}>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
-                  <span className="flex items-center">
-                    Vendor
-                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.vendor_name_snapshot} isEditMode={isEditing} />
-                  </span>
+                <label className="text-xs font-medium text-gray-700 mb-px">
+                  <div className="flex items-center gap-3 min-h-[20px]">
+                    <span className="flex items-center">
+                      Vendor
+                      <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.vendor_name_snapshot} isEditMode={isEditing} />
+                    </span>
+                    {/* Vendor Swap Suggestion */}
+                    {!isEditing && invoiceData.ocr_extractions?.vendor_name_snapshot?.candidates?.[0] && (
+                      <VendorSwapPopover
+                        currentVendor={invoiceData.vendor_name_snapshot}
+                        suggestedVendor={invoiceData.ocr_extractions.vendor_name_snapshot.candidates[0].value}
+                        confidence={invoiceData.ocr_extractions.vendor_name_snapshot.candidates[0].confidence}
+                        reason={invoiceData.ocr_extractions.vendor_name_snapshot.candidates[0].reason}
+                        open={isVendorSwapPopoverOpen}
+                        onOpenChange={setIsVendorSwapPopoverOpen}
+                        onSwap={() => {
+                          const suggestedVendor = invoiceData.ocr_extractions.vendor_name_snapshot.candidates[0].value;
+
+                          // Update the vendor field value
+                          const updatedData = { ...invoiceData };
+                          updatedData.vendor_name_snapshot = suggestedVendor;
+
+                          // Remove the candidate after accepting
+                          if (updatedData.ocr_extractions?.vendor_name_snapshot) {
+                            updatedData.ocr_extractions.vendor_name_snapshot.candidates = [];
+                          }
+
+                          // Clear any validation errors for vendor field
+                          if (updatedData.validation_errors) {
+                            updatedData.validation_errors = updatedData.validation_errors.filter(
+                              (error: any) => error.field !== 'vendor_name_snapshot'
+                            );
+                          }
+
+                          // Remove field error for vendor
+                          removeError('vendor_name_snapshot');
+
+                          // Update the edited data if in edit mode
+                          if (isEditing) {
+                            setEditedData({...editedData, vendor_name_snapshot: suggestedVendor});
+                          } else {
+                            // Also update editedData even when not in edit mode to ensure consistency
+                            setEditedData({...editedData, vendor_name_snapshot: suggestedVendor});
+                          }
+
+                          // Apply the update
+                          onUpdate?.(updatedData);
+                          setIsVendorSwapPopoverOpen(false);
+                        }}
+                        onCancel={() => {
+                          // Just close the popover
+                          setIsVendorSwapPopoverOpen(false);
+                        }}
+                      >
+                        <button
+                          onClick={() => setIsVendorSwapPopoverOpen(true)}
+                          className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
+                        >
+                          <Sparkles className="h-3.5 w-3.5" />
+                          Suggestion
+                        </button>
+                      </VendorSwapPopover>
+                    )}
+                  </div>
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
@@ -1001,7 +1077,10 @@ export function DetailsTab({
                 <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
                   <span className="flex items-center">
                     PO Number
-                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.po_numbers_cached} isEditMode={isEditing} />
+                    {/* Hide confidence pill for baseline-nonpo-1 */}
+                    {invoiceData.id !== 'baseline-nonpo-1' && (
+                      <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.po_numbers_cached} isEditMode={isEditing} />
+                    )}
                   </span>
                   {/* Close Match link on opposite side */}
                   {!isEditing && (!invoiceData.po_numbers_cached || invoiceData.po_numbers_cached.length === 0) && invoiceData.close_match_po && (
@@ -1011,29 +1090,38 @@ export function DetailsTab({
                       matchingFactors={invoiceData.close_match_po.matching_factors}
                       poSummary={invoiceData.close_match_po.po_summary}
                       invoiceTotal={invoiceData.total}
+                      invoiceId={invoiceData.id}
+                      invoiceNumber={invoiceData.invoice_number}
+                      open={isCloseMatchPopoverOpen}
+                      onOpenChange={setIsCloseMatchPopoverOpen}
+                      isPOSearchModalOpen={isPOSearchModalOpen}
                       onAccept={() => {
                         const poNumber = invoiceData.close_match_po.po_number;
                         acceptPONumber(poNumber);
+                        setIsCloseMatchPopoverOpen(false);
                       }}
                       onSearchDifferent={() => {
                         setIsPOSearchModalOpen(true);
+                        // Keep popover open when selecting other PO
+                        // Don't close the popover
                       }}
                       onReject={() => {
                         // Remove close_match_po from invoice data
                         const updatedData = { ...invoiceData };
                         delete updatedData.close_match_po;
                         onUpdate?.(updatedData);
+                        setIsCloseMatchPopoverOpen(false);
                       }}
-                      onShowDetails={() => {
-                        // Open PO details drawer with the suggested PO
-                        setSelectedPONumber(invoiceData.close_match_po.po_number);
-                        setIsPODrawerOpen(true);
+                      onClose={() => {
+                        setIsCloseMatchPopoverOpen(false);
                       }}
-                      onClose={() => {/* Popover closes automatically */}}
                     >
-                      <button className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors">
+                      <button
+                        onClick={() => setIsCloseMatchPopoverOpen(true)}
+                        className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
+                      >
                         <Sparkles className="h-3.5 w-3.5" />
-                        Close Match
+                        Match Found
                       </button>
                     </CloseMatchPopover>
                   )}
@@ -1058,8 +1146,10 @@ export function DetailsTab({
                   </div>
                 ) : (
                   <>
-                    {/* Check if PO is missing AND there's a close match suggestion */}
-                    {!hasPONumber && invoiceData.close_match_po ? (
+                    {/* For Non-PO invoices, show N/A */}
+                    {invoiceData.type === 'Non-PO' ? (
+                      <p className="text-sm font-medium text-gray-500">N/A</p>
+                    ) : !hasPONumber && invoiceData.close_match_po ? (
                       <div className="relative">
                         {/* Red-bordered empty input field */}
                         <input
@@ -1086,6 +1176,8 @@ export function DetailsTab({
                   </>
                 )}
               </div>
+              {/* Customer Ref. No. - Hidden for Non-PO invoice (baseline-nonpo-1) */}
+              {invoiceData.id !== 'baseline-nonpo-1' && (
               <div ref={(el) => fieldRefs.current['job_number'] = el} className="relative">
                 <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
                   <span className="flex items-center">
@@ -1202,6 +1294,7 @@ export function DetailsTab({
                   </div>
                 )}
               </div>
+              )}
               {/* Vehicle Registration No. - Only for baseline-po-bank-1 */}
               {invoiceData.id === 'baseline-po-bank-1' && (
                 <div ref={(el) => fieldRefs.current['vehicle_registration_no'] = el} className="relative">
@@ -1235,9 +1328,18 @@ export function DetailsTab({
 
                       if (hasValue) {
                         return (
-                          <p className="text-sm font-medium text-gray-950">
-                            {invoiceData.vehicle_registration_no}
-                          </p>
+                          <div className="flex items-center">
+                            <p className="text-sm font-medium text-gray-950">
+                              {invoiceData.vehicle_registration_no}
+                            </p>
+                            <CustomFieldIndicator
+                              fieldLabel="Vehicle Registration No."
+                              fieldValue={invoiceData.vehicle_registration_no}
+                              vendorName={invoiceData.vendor_name_snapshot}
+                              fieldName="vehicle_registration_no"
+                              onFieldFocus={onFieldFocus}
+                            />
+                          </div>
                         );
                       }
 
@@ -1641,23 +1743,17 @@ export function DetailsTab({
                             requisitionerName={invoiceData.requisitioner?.name}
                             requisitionerEmail={invoiceData.requisitioner?.email}
                             poNumber={invoiceData.po_numbers_cached?.[0]}
-                            onApprove={() => {
-                              console.log('Bank details approved');
-                              setIsBankVerifyOpen(false);
-                            }}
-                            onFlag={() => {
-                              console.log('Bank details flagged');
-                              setIsBankVerifyOpen(false);
-                            }}
                             open={isBankVerifyOpen}
                             onOpenChange={setIsBankVerifyOpen}
+                            fieldName="payment_bank_details.account_number"
+                            onFieldFocus={onFieldFocus}
                           >
                             <button
                               onClick={() => setIsBankVerifyOpen(true)}
                               className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors font-medium"
                             >
                               <Shield className="h-3 w-3" />
-                              Verify Change
+                              Mismatch Detected
                             </button>
                           </BankDetailsVerificationPopover>
                         </div>
@@ -1849,19 +1945,50 @@ export function DetailsTab({
               )}
               {invoiceData.ai_classification_reasoning && !isEditing && (
                 <div className={getFullSpan()}>
-                  <button
-                    onClick={() => setShowAIReasoning(!showAIReasoning)}
-                    className="flex items-center gap-2 text-xs font-medium text-gray-600 hover:text-gray-800 transition-colors mb-2"
-                  >
-                    {showAIReasoning ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                    AI Classification Reasoning
-                  </button>
-                  {showAIReasoning && (
-                    <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 transition-all">
-                      <p className="text-sm text-gray-950 leading-relaxed">
-                        {invoiceData.ai_classification_reasoning}
-                      </p>
+                  {/* Show thunderbolt link for auto-coded invoices */}
+                  {invoiceData.auto_coding_applied ? (
+                    <div className="flex items-center gap-2">
+                      <AccountingAutoCodingPopover
+                        ledger={invoiceData.ledger}
+                        costCenter={invoiceData.cost_center}
+                        costCenterName={invoiceData.cost_center_name}
+                        glCode={invoiceData.gl_code}
+                        department={invoiceData.department}
+                        confidence={invoiceData.ai_classification_confidence}
+                        reasoning={invoiceData.ai_classification_reasoning}
+                        similarInvoices={invoiceData.auto_coding_details?.similar_invoices}
+                        patternMatched={invoiceData.auto_coding_details?.pattern_matched}
+                        confidenceFactors={invoiceData.auto_coding_details?.confidence_factors}
+                        open={isAutoCodingPopoverOpen}
+                        onOpenChange={setIsAutoCodingPopoverOpen}
+                      >
+                        <button
+                          onClick={() => setIsAutoCodingPopoverOpen(true)}
+                          className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors"
+                        >
+                          <Zap className="h-3.5 w-3.5" fill="currentColor" />
+                          Auto-Coded
+                        </button>
+                      </AccountingAutoCodingPopover>
                     </div>
+                  ) : (
+                    /* Show collapsible reasoning for non-auto-coded invoices */
+                    <>
+                      <button
+                        onClick={() => setShowAIReasoning(!showAIReasoning)}
+                        className="flex items-center gap-2 text-xs font-medium text-gray-600 hover:text-gray-800 transition-colors mb-2"
+                      >
+                        {showAIReasoning ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                        AI Classification Reasoning
+                      </button>
+                      {showAIReasoning && (
+                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 transition-all">
+                          <p className="text-sm text-gray-950 leading-relaxed">
+                            {invoiceData.ai_classification_reasoning}
+                          </p>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               )}
@@ -1987,7 +2114,13 @@ export function DetailsTab({
       {/* PO Search Modal */}
       <POSearchModal
         isOpen={isPOSearchModalOpen}
-        onClose={() => setIsPOSearchModalOpen(false)}
+        onClose={() => {
+          setIsPOSearchModalOpen(false);
+          // Keep the close match popover open when closing PO search
+          if (invoiceData.close_match_po && !invoiceData.po_numbers_cached?.length) {
+            setIsCloseMatchPopoverOpen(true);
+          }
+        }}
         onLinkPO={handleLinkPO}
         vendorId={null}
         vendorName={editedData.vendor_name_snapshot}

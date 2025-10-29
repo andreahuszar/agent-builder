@@ -488,7 +488,7 @@ export function LineItemsPreviewPanel({
       fromQuantity: rule.fromQuantity,
       toUnit: rule.toUnit,
       toQuantity: rule.toQuantity,
-      vendorName: "Vendor Name", // TODO: Get actual vendor name
+      vendorName: "BuildTech Supplies Ltd",
       createdBy: "User", // TODO: Get actual user name
       createdAt: new Date()
     };
@@ -2823,7 +2823,7 @@ export function LineItemsPreviewPanel({
               unit_price: matchedPO.unit_price
             } : null;
           })() : null}
-          vendorName="Vendor Name" // TODO: Get actual vendor name from invoice
+          vendorName="BuildTech Supplies Ltd"
           onConfirm={handleConfirmRule}
         />
       </div>

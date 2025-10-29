@@ -436,7 +436,7 @@ export function DocumentPreview({
                   <FakeInvoiceDocument
                     invoice={invoiceData}
                     scale={1}
-                    showOCRHighlights={isEditing}
+                    showOCRHighlights={isEditing || !!focusedFieldName}
                     onFieldAccept={onFieldAccept}
                     onFieldReject={onFieldReject}
                     focusedFieldName={focusedFieldName}

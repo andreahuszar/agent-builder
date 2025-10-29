@@ -201,7 +201,7 @@ export function POSearchModal({
 
       {/* Modal */}
       <div
-        className={`relative bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[600px] flex flex-col transform transition-all duration-300 pointer-events-auto ${
+        className={`po-search-modal relative bg-white rounded-lg shadow-2xl w-full max-w-4xl h-[600px] flex flex-col transform transition-all duration-300 pointer-events-auto ${
           isVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
         }`}
       >

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Bot, User, Check, AlertCircle, Send } from 'lucide-react';
+import { Bot, User, Check, AlertCircle, Send, Zap, RefreshCw } from 'lucide-react';
 import { SecondaryButton } from '../ui/SecondaryButton';
 
 interface InvoiceLineData {
@@ -57,7 +57,7 @@ export function RuleChatInterface({
   const [isProcessing, setIsProcessing] = useState(false);
   const [currentParsedRule, setCurrentParsedRule] = useState<ParsedRule | null>(null);
   const [hasInteracted, setHasInteracted] = useState(false);
-  const [isInitializing, setIsInitializing] = useState(true);
+  const [showAnalyzing, setShowAnalyzing] = useState(false);
   const [isTyping, setIsTyping] = useState(false);
   const [revealedWords, setRevealedWords] = useState(0);
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
@@ -65,7 +65,7 @@ export function RuleChatInterface({
 
   // Calculate suggested rule
   const conversionFactor = poLine.qty_ordered / invoiceLine.qty;
-  const suggestedRule = `1 ${invoiceLine.uom.toLowerCase()} of ${invoiceLine.description.toLowerCase()} from ${vendorName} = ${conversionFactor} ${poLine.uom.toLowerCase()}`;
+  const suggestedRule = `Based on the quantities, 1 ${invoiceLine.uom.toLowerCase().replace(/s$/, '')} equals ${conversionFactor} ${poLine.uom.toLowerCase()}`;
 
   // Assessment message content as plain text for typewriter
   const assessmentText = `I've detected a unit mismatch on this line item. The financial totals align (£${invoiceLine.line_total.toFixed(2)}), but the units differ. How would you like me to handle this?`;
@@ -90,20 +90,20 @@ export function RuleChatInterface({
 
         {!showTypewriter && (
           <>
-            <div className="bg-white border border-purple-200 rounded px-3 py-2 space-y-1.5">
+            <div className="bg-white border border-purple-200 rounded px-3 py-2 space-y-1.5 animate-slideUp" style={{animationDelay: '0ms'}}>
               <p className="font-medium text-gray-900">Invoice Line</p>
-              <p className="text-gray-700">
+              <p className="text-gray-950">@ £{invoiceLine.unit_price.toFixed(2)}/unit</p>
+              <p className="text-gray-950">
                 {invoiceLine.qty} {invoiceLine.uom} - {invoiceLine.description}
               </p>
-              <p className="text-gray-600">@ £{invoiceLine.unit_price.toFixed(2)}/unit</p>
             </div>
 
-            <div className="bg-white border border-purple-200 rounded px-3 py-2 space-y-1.5">
-              <p className="font-medium text-gray-900">Purchase Order</p>
-              <p className="text-gray-700">
+            <div className="bg-white border border-purple-200 rounded px-3 py-2 space-y-1.5 animate-slideUp" style={{animationDelay: '150ms'}}>
+              <p className="font-medium text-gray-900">PO Line</p>
+              <p className="text-gray-950">@ £{poLine.unit_price.toFixed(2)}/{poLine.uom.toLowerCase().replace(/s$/, '')}</p>
+              <p className="text-gray-950">
                 {poLine.qty_ordered} {poLine.uom} - {poLine.description}
               </p>
-              <p className="text-gray-600">@ £{poLine.unit_price.toFixed(2)}/unit</p>
             </div>
           </>
         )}
@@ -113,12 +113,17 @@ export function RuleChatInterface({
 
   // Initialize with loading state then assessment
   useEffect(() => {
-    // Show loading state for 2000ms
-    const loadingTimer = setTimeout(() => {
-      setIsInitializing(false);
+    // Show "Analyzing..." after 500ms
+    const analyzingTimer = setTimeout(() => {
+      setShowAnalyzing(true);
+    }, 500);
+
+    // After 2000ms total, hide analyzing and start typewriter
+    const assessmentTimer = setTimeout(() => {
+      setShowAnalyzing(false);
 
       // Start typewriter effect after brief pause
-      const messageTimer = setTimeout(() => {
+      setTimeout(() => {
         setMessages([{
           sender: 'agent',
           text: assessmentText,
@@ -127,11 +132,12 @@ export function RuleChatInterface({
         }]);
         setIsTyping(true);
       }, 400);
-
-      return () => clearTimeout(messageTimer);
     }, 2000);
 
-    return () => clearTimeout(loadingTimer);
+    return () => {
+      clearTimeout(analyzingTimer);
+      clearTimeout(assessmentTimer);
+    };
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Typewriter effect - reveal words progressively
@@ -151,7 +157,7 @@ export function RuleChatInterface({
   // Auto-scroll to bottom when messages change
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, isProcessing, isInitializing, revealedWords]);
+  }, [messages, isProcessing, showAnalyzing, revealedWords]);
 
   // Parse natural language rule
   const parseRule = (text: string): ParsedRule => {
@@ -230,8 +236,8 @@ export function RuleChatInterface({
     // Show processing
     setIsProcessing(true);
 
-    // Simulate processing delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
+    // Simulate processing delay (doubled for rule interpretation)
+    await new Promise(resolve => setTimeout(resolve, 4000));
 
     // Parse the rule
     const parsed = parseRule(userMessage.text);
@@ -290,8 +296,24 @@ export function RuleChatInterface({
     <div className="flex flex-col h-full">
       {/* Chat Messages Area */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
-        {/* Initial Loading State */}
-        {isInitializing && (
+        {/* Welcome Message - Always visible */}
+        <div className="flex gap-3 animate-fadeIn">
+          <div className="flex-shrink-0">
+            <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
+              <Bot className="h-4 w-4 text-purple-600" />
+            </div>
+          </div>
+          <div className="flex-1">
+            <div className="bg-purple-100 rounded-lg px-4 py-3 max-w-[85%]">
+              <div className="text-xs text-gray-950">
+                Agent will help you create a matching rule. Analyzing the invoice and PO lines...
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Analyzing State */}
+        {showAnalyzing && (
           <div className="flex gap-3 animate-fadeIn">
             <div className="flex-shrink-0">
               <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
@@ -306,7 +328,7 @@ export function RuleChatInterface({
                     <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
                     <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
                   </div>
-                  <span className="text-xs text-gray-600">Analyzing...</span>
+                  <span className="text-xs text-gray-950">Analyzing...</span>
                 </div>
               </div>
             </div>
@@ -340,31 +362,61 @@ export function RuleChatInterface({
 
               {message.sender === 'agent' && message.type === 'rule_preview' && message.parsedRule && (
                 <div className="bg-green-100 rounded-lg px-4 py-3 max-w-[85%]">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    <div className="text-xs font-medium text-green-900">Rule Interpretation</div>
+                  {/* Header */}
+                  <div className="flex items-center gap-2 mb-3">
+                    <Zap className="h-4 w-4 text-green-600" />
+                    <div className="text-xs font-semibold text-green-900">Creating Conversion Rule</div>
                   </div>
-                  <div className="text-xs text-gray-950 space-y-2">
-                    <p className="font-medium">I understood your rule as:</p>
-                    <p className="bg-white border border-green-200 rounded px-2 py-1">
-                      {message.parsedRule.fromQuantity} {message.parsedRule.fromUnit} = {message.parsedRule.toQuantity} {message.parsedRule.toUnit}
-                    </p>
-                    <p className="font-medium mt-3">This means:</p>
-                    <div className="space-y-1 pl-3">
-                      <div className="flex items-center gap-1.5">
-                        <Check className="h-3 w-3 text-green-600" />
-                        <span>This line: {invoiceLine.qty} {message.parsedRule.fromUnit} = {poLine.qty_ordered} {message.parsedRule.toUnit} ✓</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Check className="h-3 w-3 text-green-600" />
-                        <span>Total matches: £{invoiceLine.line_total.toFixed(2)} = £{(poLine.qty_ordered * poLine.unit_price).toFixed(2)} ✓</span>
-                      </div>
-                      <div className="flex items-center gap-1.5">
-                        <Check className="h-3 w-3 text-green-600" />
-                        <span>Will apply to future invoices from {vendorName}</span>
+
+                  <div className="text-xs text-gray-950 space-y-3">
+                    {/* WHEN Section */}
+                    <div>
+                      <p className="font-bold text-gray-900 mb-1">WHEN we receive:</p>
+                      <div className="pl-2 space-y-0.5">
+                        <div className="flex items-start gap-1.5">
+                          <span className="text-gray-600">•</span>
+                          <span>{invoiceLine.description}</span>
+                        </div>
+                        <div className="flex items-start gap-1.5">
+                          <span className="text-gray-600">•</span>
+                          <span>From: {vendorName}</span>
+                        </div>
                       </div>
                     </div>
+
+                    {/* CONVERT Section */}
+                    <div>
+                      <p className="font-bold text-gray-900 mb-1">CONVERT:</p>
+                      <p className="bg-white border border-green-200 rounded px-2 py-1 font-medium">
+                        {message.parsedRule.fromQuantity} {message.parsedRule.fromUnit} = {message.parsedRule.toQuantity} {message.parsedRule.toUnit}
+                      </p>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="border-t border-green-200"></div>
+
+                    {/* Validation Section */}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5">
+                        <Check className="h-3 w-3 text-green-600 flex-shrink-0" />
+                        <span>Current line: {invoiceLine.qty} {message.parsedRule.fromUnit} → {poLine.qty_ordered} {message.parsedRule.toUnit}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Check className="h-3 w-3 text-green-600 flex-shrink-0" />
+                        <span>Total verified: £{invoiceLine.line_total.toFixed(2)}</span>
+                      </div>
+                    </div>
+
+                    {/* Future Impact Section */}
+                    <div className="bg-white/50 rounded px-2 py-2 flex items-start gap-2">
+                      <RefreshCw className="h-3.5 w-3.5 text-green-700 flex-shrink-0 mt-0.5" />
+                      <p className="text-gray-900">
+                        This rule will be saved and applied automatically to future invoices
+                      </p>
+                    </div>
                   </div>
+
+                  {/* Action Buttons */}
                   <div className="flex gap-2 mt-3">
                     <SecondaryButton onClick={handleModifyRule} className="text-xs">
                       Modify Rule
@@ -429,7 +481,7 @@ export function RuleChatInterface({
                     <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '150ms'}}></div>
                     <div className="w-2 h-2 bg-purple-600 rounded-full animate-bounce" style={{animationDelay: '300ms'}}></div>
                   </div>
-                  <span className="text-xs text-gray-600">Analyzing rule...</span>
+                  <span className="text-xs text-gray-950">Analyzing rule...</span>
                 </div>
               </div>
             </div>
@@ -449,13 +501,13 @@ export function RuleChatInterface({
             onFocus={handleChatFocus}
             onKeyPress={handleKeyPress}
             placeholder="Type your message or let me suggest a rule..."
-            className="w-full min-h-[48px] max-h-[120px] px-3 py-2 pr-16 text-xs border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+            className="w-full min-h-[48px] max-h-[120px] px-3 py-2.5 pr-14 text-xs border border-gray-300 rounded-md resize-none focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
             disabled={isProcessing}
           />
           <button
             onClick={handleSendMessage}
             disabled={!chatInput.trim() || isProcessing}
-            className="absolute right-2 bottom-2 p-2 bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="absolute right-2 top-2 p-2 bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             title="Send message"
           >
             <Send className="h-4 w-4" />
@@ -476,8 +528,24 @@ export function RuleChatInterface({
           }
         }
 
+        @keyframes slideUp {
+          from {
+            opacity: 0;
+            transform: translateY(15px);
+          }
+          to {
+            opacity: 1;
+            transform: translateY(0);
+          }
+        }
+
         .animate-fadeIn {
           animation: fadeIn 0.3s ease-out;
+        }
+
+        .animate-slideUp {
+          animation: slideUp 0.4s ease-out forwards;
+          opacity: 0;
         }
       `}</style>
     </div>

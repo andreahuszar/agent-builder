@@ -181,6 +181,11 @@ export function InvoiceTabs({
     ];
 
     requiredFields.forEach(field => {
+      // Skip job_number for Non-PO invoices
+      if (field === 'job_number' && invoiceData?.type === 'Non-PO') {
+        return;
+      }
+
       const value = invoiceData?.[field];
       // Check for falsy values, empty strings, and special placeholder values
       if (!value || value === '' || value === 'Unknown Vendor' || value === 'Invalid Date') {
@@ -188,8 +193,8 @@ export function InvoiceTabs({
       }
     });
 
-    // Check PO number if vendor requires PO
-    if (invoiceData?.vendor_requires_po && (!invoiceData?.po_numbers_cached || invoiceData.po_numbers_cached.length === 0)) {
+    // Check PO number if vendor requires PO (but not for Non-PO invoices)
+    if (invoiceData?.type !== 'Non-PO' && invoiceData?.vendor_requires_po && (!invoiceData?.po_numbers_cached || invoiceData.po_numbers_cached.length === 0)) {
       count++;
     }
 

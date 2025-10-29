@@ -80,7 +80,7 @@ export function FakeInvoiceDocument({
         {/* Animated ring outline when focused */}
         {isFocused && (
           <span
-            className={`absolute inset-0 pointer-events-none rounded-sm ring-4 ${colors.outline} ring-offset-2 animate-pulseRing`}
+            className={`absolute inset-0 pointer-events-none rounded-sm ring-4 ring-orange-500 ring-offset-2 animate-pulseRing`}
             style={{ margin: '-2px -4px' }}
           />
         )}
@@ -341,7 +341,7 @@ export function FakeInvoiceDocument({
                     </FieldWithOCR>
                   </span>
                 </div>
-                {invoice.id === 'baseline-po-bank-1' && invoice.vehicle_registration_no && (
+                {invoice.vehicle_registration_no && (
                   <div className="flex justify-between gap-4">
                     <span className="text-gray-800">Vehicle Reg:</span>
                     <span className="font-semibold">
@@ -451,7 +451,7 @@ export function FakeInvoiceDocument({
                   </FieldWithOCR>
                 </span>
               </div>
-              {invoice.id === 'baseline-po-bank-1' && invoice.vehicle_registration_no && (
+              {invoice.vehicle_registration_no && (
                 <div className="flex justify-between gap-4">
                   <span className="text-gray-800">Vehicle Reg:</span>
                   <span className="font-semibold">

@@ -157,7 +157,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
   mockInvoices.push({
     id: 'baseline-nonpo-1',
     invoice_number: 'PIT-250103001',
-    vendor_name_snapshot: 'Professional IT Services',
+    vendor_name_snapshot: 'CloudTech Solutions Inc',
     vendor_id: 'VND-2001',
     invoice_date: baselineNonPODate.toISOString().split('T')[0],
     due_date: baselineNonPODueDate.toISOString().split('T')[0],
@@ -179,7 +179,63 @@ export const generateBaselineInvoices = (): Invoice[] => {
     updated_at: baselineNonPODate.toISOString(),
     data_ingestion_date: baselineNonPODate.toISOString().split('T')[0],
     lines: baselineNonPOLines,
-    invoice_lines: baselineNonPOLines
+    invoice_lines: baselineNonPOLines,
+    // Accounting classification with auto-coding
+    ledger: 'Accounts Payable',
+    cost_center: 'CC-9001',
+    cost_center_name: 'General & Administrative',
+    gl_code: 'GL-5000',
+    department: 'US Inc',
+    auto_coding_applied: true,
+    auto_coding_details: {
+      similar_invoices: [
+        {
+          invoice_number: 'INV-2024-5337',
+          date: 'Sep 15, 2024',
+          cost_center: 'CC-9001',
+          gl_code: 'GL-5000',
+          department: 'US Inc'
+        },
+        {
+          invoice_number: 'INV-2024-4201',
+          date: 'Aug 12, 2024',
+          cost_center: 'CC-9001',
+          gl_code: 'GL-5000',
+          department: 'US Inc'
+        },
+        {
+          invoice_number: 'INV-2024-3089',
+          date: 'Jul 18, 2024',
+          cost_center: 'CC-9001',
+          gl_code: 'GL-5000',
+          department: 'US Inc'
+        }
+      ],
+      pattern_matched: 'IT Services - Monthly Subscription',
+      confidence_factors: [
+        'Vendor pattern: IT services provider',
+        'Amount range: $3,000-$5,000 (matches 5 previous invoices)',
+        'Previous invoices used G&A cost center 87% of the time',
+        'Consistent monthly billing pattern detected'
+      ]
+    },
+    ai_classification_confidence: 0.96,
+    ai_classification_reasoning: 'This Non-PO invoice was automatically classified based on historical patterns. The system analyzed 5 similar invoices from CloudTech Solutions Inc over the past 6 months and applied the most common accounting codes used for this vendor\'s IT services.',
+    // OCR extractions for vendor swap suggestion
+    ocr_extractions: {
+      vendor_name_snapshot: {
+        value: 'CloudTech Solutions Inc',
+        confidence: 0.92,
+        candidates: [
+          {
+            value: 'CloudTech Solutions Ltd',
+            confidence: 0.88,
+            source: 'ERP Vendor Matching',
+            reason: 'System matched invoice to parent company "CloudTech Solutions Inc" based on tax ID. However, remit-to address analysis indicates this invoice should be assigned to child company "CloudTech Solutions Ltd" for accurate accounting and payment processing.'
+          }
+        ]
+      }
+    }
   } as Invoice);
 
   // ========================================================================
@@ -346,32 +402,32 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po2-6',
       line_no: 6,
-      description: 'Project Coordination Services',
-      qty: 10,
-      uom: 'Days',
-      unit_price: 800.00,
-      net_amount: 8000.00,
-      line_total: 8000.00,
+      description: 'Legal Billing',
+      qty: 840,
+      uom: 'Minutes',
+      unit_price: 3.67,
+      net_amount: 3080.00,
+      line_total: 3080.00,
       po_line_id: 'po-line-9010-6', // Matched by system despite UOM difference
       gr_line_id: null,
       ses_line_id: null,
       // UOM conversion metadata for smart match
       uom_conversion: {
-        invoice_qty: 10,
-        invoice_uom: 'Days',
-        po_qty: 80,
+        invoice_qty: 840,
+        invoice_uom: 'Minutes',
+        po_qty: 14,
         po_uom: 'Hours',
-        conversion_factor: 8,
-        explanation: '8 hours per day'
+        conversion_factor: 60,
+        explanation: '60 minutes per hour'
       }
     },
     {
       id: 'line-baseline-po2-7',
       line_no: 7,
-      description: 'Steel piping - 3 metre sections',
-      qty: 30,
-      uom: 'Units',
-      unit_price: 90.00,
+      description: 'Premium Portland Cement - 50kg Bags',
+      qty: 54,
+      uom: 'Bags',
+      unit_price: 50.00,
       net_amount: 2700.00,
       line_total: 2700.00,
       po_line_id: 'po-line-9010-7',
@@ -380,9 +436,9 @@ export const generateBaselineInvoices = (): Invoice[] => {
     }
   ];
 
-  const baselinePO2Subtotal = 20150.00; // Updated: 2000 + 1900 + 900 + 2400 + 2250 + 8000 + 2700
-  const baselinePO2Tax = 4030.00; // 20% VAT
-  const baselinePO2Total = 24180.00; // Updated: 20150 + 4030
+  const baselinePO2Subtotal = 15230.00; // Updated: 2000 + 1900 + 900 + 2400 + 2250 + 3080 + 2700
+  const baselinePO2Tax = 3046.00; // 20% VAT
+  const baselinePO2Total = 18276.00; // Updated: 15230 + 3046
 
   mockInvoices.push({
     id: 'baseline-po-2',
@@ -489,7 +545,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     payment_bank_details: {
       bank_name: 'First National Bank',
       account_name: 'Industrial Equipment Corp',
-      account_number: '****1234',
+      account_number: '87654321234',
       routing_number: '123456789',
     },
     // Bank details exception - account changed
@@ -499,8 +555,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
       field: 'payment_bank_details',
       message: 'Bank account changed since last invoice',
       severity: 'error',
-      old_account: '****5678',
-      new_account: '****1234'
+      old_account: '12345675678',
+      new_account: '87654321234'
     }],
     // Requisitioner information for verification email
     requisitioner: {
@@ -640,7 +696,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     payment_bank_details: {
       bank_name: 'Commerce Bank',
       account_name: 'Premier Office Supplies',
-      account_number: '****9876',
+      account_number: '55667789876',
       routing_number: '987654321',
     },
     // Validation warning for missing PO
@@ -654,11 +710,13 @@ export const generateBaselineInvoices = (): Invoice[] => {
     // Close match AI suggestion for PO
     close_match_po: {
       po_number: 'PO-2025-8901',
-      confidence: 0.89,
+      confidence: 1.0,
       matching_factors: {
         vendor_match: true,
         date_proximity_days: 3,      // PO created Oct 18, invoice Oct 21
-        line_items_overlap: 4,        // All 4 invoice items match PO
+        line_items_overlap: 3,        // 3 of 4 invoice items match PO
+        total_line_items: 4,          // Total number of invoice line items
+        variance_count: 1,            // 1 item has variance
       },
       po_summary: {
         total: 1055.00,               // Slightly different from invoice $1080.54
@@ -787,6 +845,144 @@ export const generateBaselineInvoices = (): Invoice[] => {
     }
   } as Invoice);
 
+  // ========================================================================
+  // AUTO-REJECT INVOICE #1 - MISSING PO FOR 30+ DAYS
+  // ========================================================================
+  const autoReject1Date = new Date(now);
+  autoReject1Date.setDate(autoReject1Date.getDate() - 35); // Created 35 days ago
+  const autoReject1DueDate = new Date(autoReject1Date);
+  autoReject1DueDate.setDate(autoReject1DueDate.getDate() + 30); // Due date already passed
+
+  const autoReject1Lines = [
+    {
+      id: 'line-auto-reject-1-1',
+      line_no: 1,
+      description: 'Office Furniture - Ergonomic Chairs',
+      qty: 20,
+      uom: 'EA',
+      unit_price: 350.00,
+      net_amount: 7000.00,
+      line_total: 7000.00,
+      po_line_id: null,
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-auto-reject-1-2',
+      line_no: 2,
+      description: 'Standing Desks - Adjustable',
+      qty: 10,
+      uom: 'EA',
+      unit_price: 650.00,
+      net_amount: 6500.00,
+      line_total: 6500.00,
+      po_line_id: null,
+      gr_line_id: null,
+      ses_line_id: null
+    }
+  ];
+
+  const autoReject1Subtotal = 13500.00;
+  const autoReject1Tax = 1080.00; // 8% sales tax
+  const autoReject1Total = 14580.00;
+
+  mockInvoices.push({
+    id: 'auto-reject-1',
+    invoice_number: 'AR-2025-0001',
+    vendor_name_snapshot: 'Acme Office Supplies Ltd',
+    vendor_id: 'VND-6001',
+    vendor_tax_id_snapshot: 'TAX-VND-6001',
+    invoice_date: autoReject1Date.toISOString().split('T')[0],
+    due_date: autoReject1DueDate.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: autoReject1Subtotal,
+    tax_total: autoReject1Tax,
+    tax_rate_percent: 8,
+    total: autoReject1Total,
+    status: 'auto_rejected', // Auto-rejected status
+    match_status: 'auto_rejected',
+    type: 'PO',
+    vendor_requires_po: true,
+    vendor_is_verified: true,
+    approval_status: 'auto_rejected',
+    po_numbers_cached: [],
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: ['Auto-Rejected - Missing PO for 30+ days'],
+    created_at: autoReject1Date.toISOString(),
+    updated_at: autoReject1Date.toISOString(),
+    data_ingestion_date: autoReject1Date.toISOString().split('T')[0],
+    lines: autoReject1Lines,
+    invoice_lines: autoReject1Lines,
+    // Auto-reject metadata
+    auto_reject_reason: 'Invoice missing required PO number for over 30 days. Per company policy, invoices without PO assignment after 30 days are automatically rejected.',
+    auto_reject_date: new Date(now).toISOString().split('T')[0],
+    auto_reject_rule: 'missing_po_threshold'
+  } as Invoice);
+
+  // ========================================================================
+  // AUTO-REJECT INVOICE #2 - DUPLICATE INVOICE DETECTED
+  // ========================================================================
+  const autoReject2Date = new Date(now);
+  autoReject2Date.setDate(autoReject2Date.getDate() - 8); // Created 8 days ago
+  const autoReject2DueDate = new Date(autoReject2Date);
+  autoReject2DueDate.setDate(autoReject2DueDate.getDate() + 30); // Due in 22 days
+
+  const autoReject2Lines = [
+    {
+      id: 'line-auto-reject-2-1',
+      line_no: 1,
+      description: 'Monthly IT Maintenance Services',
+      qty: 1,
+      uom: 'Month',
+      unit_price: 4500.00,
+      net_amount: 4500.00,
+      line_total: 4500.00,
+      po_line_id: null,
+      gr_line_id: null,
+      ses_line_id: null
+    }
+  ];
+
+  const autoReject2Subtotal = 4500.00;
+  const autoReject2Tax = 900.00; // 20% VAT
+  const autoReject2Total = 5400.00;
+
+  mockInvoices.push({
+    id: 'auto-reject-2',
+    invoice_number: 'AR-2025-0002',
+    vendor_name_snapshot: 'Global IT Services Inc',
+    vendor_id: 'VND-6002',
+    vendor_tax_id_snapshot: 'TAX-VND-6002',
+    invoice_date: autoReject2Date.toISOString().split('T')[0],
+    due_date: autoReject2DueDate.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: autoReject2Subtotal,
+    tax_total: autoReject2Tax,
+    tax_rate_percent: 20,
+    total: autoReject2Total,
+    status: 'auto_rejected', // Auto-rejected status
+    match_status: 'auto_rejected',
+    type: 'Non-PO',
+    vendor_requires_po: false,
+    vendor_is_verified: true,
+    approval_status: 'auto_rejected',
+    po_numbers_cached: [],
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: ['Auto-Rejected - Duplicate Invoice Detected'],
+    created_at: autoReject2Date.toISOString(),
+    updated_at: autoReject2Date.toISOString(),
+    data_ingestion_date: autoReject2Date.toISOString().split('T')[0],
+    lines: autoReject2Lines,
+    invoice_lines: autoReject2Lines,
+    // Auto-reject metadata
+    auto_reject_reason: 'Duplicate invoice detected. Invoice number AR-2025-0002 was previously submitted and processed. System automatically rejected to prevent double payment.',
+    auto_reject_date: new Date(now).toISOString().split('T')[0],
+    auto_reject_rule: 'duplicate_invoice_detection',
+    duplicate_of_invoice: 'INV-2024-8956' // Reference to original invoice
+  } as Invoice);
+
   // Enrich all invoices with demo data using centralized service
   return mockInvoices.map(enrichInvoiceWithDemoData);
 };
@@ -813,7 +1009,7 @@ export const isMockInvoice = (id: string): boolean => {
   }
 
   // Updated prefixes for baseline approach and other mock scenarios
-  const mockPrefixes = ['baseline-', 'missing-po-', 'fraud-risk-'];
+  const mockPrefixes = ['baseline-', 'missing-po-', 'fraud-risk-', 'auto-reject-'];
   const isMock = mockPrefixes.some(prefix => id.startsWith(prefix));
 
   if (DEBUG_MOCK) {
@@ -1115,17 +1311,18 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
       terms_text: invoice.terms_text && invoice.terms_text.trim() !== '' ? 0.90 : 0,
 
       // Accounting Classification
-      ledger: invoice.ledger && invoice.ledger.trim() !== '' ? 0.85 : 0,
-      cost_center: invoice.cost_center && invoice.cost_center.trim() !== '' ? 0.87 : 0,
-      gl_code: invoice.gl_code && invoice.gl_code.trim() !== '' ? 0.86 : 0,
-      department: invoice.department && invoice.department.trim() !== '' ? 0.84 : 0
+      // Use higher confidence (94-98%) for auto-coded invoices
+      ledger: invoice.ledger && invoice.ledger.trim() !== '' ? (invoice.auto_coding_applied ? 0.96 : 0.85) : 0,
+      cost_center: invoice.cost_center && invoice.cost_center.trim() !== '' ? (invoice.auto_coding_applied ? 0.94 : 0.87) : 0,
+      gl_code: invoice.gl_code && invoice.gl_code.trim() !== '' ? (invoice.auto_coding_applied ? 0.98 : 0.86) : 0,
+      department: invoice.department && invoice.department.trim() !== '' ? (invoice.auto_coding_applied ? 0.95 : 0.84) : 0
     } : {},
     is_manually_edited: {},
     payment_method: 'bank_transfer',
     payment_bank_details: invoice.payment_bank_details || (invoice.vendor_name_snapshot ? {
       bank_name: 'First National Bank',
       account_name: invoice.vendor_name_snapshot,
-      account_number: '****1234',
+      account_number: '12345671234',
       routing_number: '123456789'
     } : null),
     lines: lines,
