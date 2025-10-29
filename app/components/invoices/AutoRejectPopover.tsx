@@ -61,25 +61,25 @@ export function AutoRejectPopover({
         return {
           name: 'Missing PO Threshold Rule',
           description: 'Vendor requires valid PO number for invoice processing',
-          details: 'This rule automatically rejects invoices when the vendor is configured as PO-required but no valid PO number can be found in the ERP system. The system attempts to notify the vendor via email to request the correct PO reference.'
+          details: '• Trigger: No valid PO number found in ERP system\n• Why: Vendor is configured as PO-required\n• Action: Invoice auto-rejected, vendor notified via email to provide PO reference'
         };
       case 'po_contract_violation':
         return {
           name: 'PO Contract Violation Rule',
           description: 'Contract term: Freight charges included',
-          details: 'This rule validates that invoice line items comply with the terms specified in the Purchase Order. In this case, the PO contract explicitly states that freight charges are included in the unit prices, so any separate freight line items constitute a contract violation requiring P2P team review.'
+          details: '• Trigger: Separate freight charges line item detected\n• Why: PO contract explicitly states freight is included in unit prices\n• Action: Invoice auto-rejected and flagged for P2P team review'
         };
       case 'duplicate_invoice_detection':
         return {
           name: 'Duplicate Detection Rule',
           description: 'Prevents duplicate invoice processing',
-          details: 'This rule identifies invoices that have already been processed in the system based on invoice number, vendor, and amount. Duplicate invoices are automatically rejected to prevent duplicate payments and maintain financial controls.'
+          details: '• Trigger: Matching invoice number, vendor, and amount found in system\n• Why: Invoice already processed previously\n• Action: Invoice auto-rejected to prevent duplicate payment'
         };
       default:
         return {
           name: 'Auto-Rejection Rule',
           description: 'Automated policy validation',
-          details: 'This invoice was rejected based on automated policy validation rules configured in the system.'
+          details: '• Trigger: Policy violation detected\n• Why: Invoice did not meet configured business rules\n• Action: Invoice auto-rejected for manual review'
         };
     }
   };
@@ -142,7 +142,7 @@ export function AutoRejectPopover({
                   <div className="text-xs font-medium text-gray-950 mb-2">
                     {getRuleDetails(autoRejectRule).description}
                   </div>
-                  <div className="text-xs text-gray-700 leading-relaxed">
+                  <div className="text-xs text-gray-700 leading-relaxed whitespace-pre-line">
                     {getRuleDetails(autoRejectRule).details}
                   </div>
                 </div>
