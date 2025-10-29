@@ -999,7 +999,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     lines: autoReject2Lines,
     invoice_lines: autoReject2Lines,
     // Auto-reject metadata
-    auto_reject_reason: 'Invoice includes freight charges ($450.00) that are explicitly included in Purchase Order PO-2025-8901. Contract terms state "freight charges included". System has flagged this for P2P team review. Vendor may need to be contacted to issue credit note or revised invoice.',
+    auto_reject_reason: 'Invoice includes freight charges ($450.00) that are explicitly included in Purchase Order PO-2025-8901. Contract terms state "freight charges included". Vendor has been notified to issue credit note or revised invoice.',
     auto_reject_date: new Date(now).toISOString().split('T')[0],
     auto_reject_rule: 'po_contract_violation',
     helpdesk_ticket_ref: 'TKT-2025-002',

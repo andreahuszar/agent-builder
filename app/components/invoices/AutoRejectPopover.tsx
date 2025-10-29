@@ -237,8 +237,7 @@ export function AutoRejectPopover({
               <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-md">
                 <div className="text-xs font-semibold text-gray-900 mb-2">P2P Review Required</div>
                 <p className="text-xs text-gray-950 mb-3 leading-relaxed">
-                  This invoice requires Procure-to-Pay team review due to a contract violation.
-                  Vendor contact may be necessary to resolve discrepancy.
+                  P2P team review required for contract violation. Vendor has been contacted via email.
                   Case tracked via Helpdesk ticket <span className="font-semibold">{helpdeskTicketRef}</span>.
                 </p>
                 <Link
