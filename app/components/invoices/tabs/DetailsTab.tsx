@@ -53,6 +53,7 @@ import { BankDetailsVerificationPopover } from '../BankDetailsVerificationPopove
 import { VendorSwapPopover } from '../VendorSwapPopover';
 import { AccountingAutoCodingPopover } from '../AccountingAutoCodingPopover';
 import { FraudRiskBanner } from '../FraudRiskBanner';
+import { AutoRejectBanner } from '../AutoRejectBanner';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -745,6 +746,19 @@ export function DetailsTab({
             />
           )}
 
+          {/* Auto-Reject Banner - Show when invoice is auto-rejected */}
+          {invoiceData.status === 'auto_rejected' && invoiceData.auto_reject_reason && (
+            <AutoRejectBanner
+              autoRejectReason={invoiceData.auto_reject_reason}
+              autoRejectDate={invoiceData.auto_reject_date || ''}
+              autoRejectRule={invoiceData.auto_reject_rule || ''}
+              duplicateOfInvoice={invoiceData.duplicate_of_invoice}
+              invoiceNumber={invoiceData.invoice_number || ''}
+              vendorName={invoiceData.vendor_name_snapshot}
+              helpdeskTicketRef={invoiceData.helpdesk_ticket_ref}
+            />
+          )}
+
           {/* Field Error Indicator - Show when editing OR when showFieldErrors is true */}
           {/* Show purple variant when agent changes pending, red variant when errors exist */}
           {((forceEditMode && isEditing) || showFieldErrors) && (fieldErrors.length > 0 || Object.keys(agentPendingFields).length > 0) && (
@@ -1176,8 +1190,8 @@ export function DetailsTab({
                   </>
                 )}
               </div>
-              {/* Customer Ref. No. - Hidden for Non-PO invoice (baseline-nonpo-1) */}
-              {invoiceData.id !== 'baseline-nonpo-1' && (
+              {/* Customer Ref. No. - Hidden for Non-PO invoice (baseline-nonpo-1) and auto-reject invoices */}
+              {invoiceData.id !== 'baseline-nonpo-1' && !invoiceData.id?.startsWith('auto-reject-') && (
               <div ref={(el) => fieldRefs.current['job_number'] = el} className="relative">
                 <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
                   <span className="flex items-center">

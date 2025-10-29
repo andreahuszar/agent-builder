@@ -53,6 +53,13 @@ export interface UnifiedInvoice extends InvoiceHeader {
 
   // Additional status tracking
   processed_status?: string;
+
+  // Auto-rejection fields
+  auto_reject_reason?: string;
+  auto_reject_date?: string;
+  auto_reject_rule?: string;
+  duplicate_of_invoice?: string;
+  helpdesk_ticket_ref?: string;
 }
 
 /**

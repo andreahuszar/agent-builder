@@ -1411,8 +1411,8 @@ export function EnhancedInvoiceTable({
                   {/* 7. Processed Status */}
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     {(() => {
-                      // Check for processed_status first (for Auto Rejected status)
-                      if (invoice.processed_status === 'Auto Rejected') {
+                      // Check for auto_rejected status first (for Auto Rejected status)
+                      if (invoice.status === 'auto_rejected' || invoice.processed_status === 'Auto Rejected') {
                         return (
                           <div className="inline-flex items-center gap-1.5">
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
@@ -1426,7 +1426,7 @@ export function EnhancedInvoiceTable({
                                   </div>
                                 </TooltipTrigger>
                                 <TooltipContent className="max-w-md z-50 whitespace-normal" side="top" align="center">
-                                  <p className="text-sm leading-relaxed">System couldn't find any PO related to this invoice and was auto rejected. A new copy was requested from the vendor.</p>
+                                  <p className="text-sm leading-relaxed">{invoice.auto_reject_reason || 'This invoice was automatically rejected by the system.'}</p>
                                 </TooltipContent>
                               </Tooltip>
                             </TooltipProvider>
@@ -1487,6 +1487,27 @@ export function EnhancedInvoiceTable({
                   {activeTab !== 'needs-info' && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {(() => {
+                        // Check for auto-rejected status first
+                        if (invoice.status === 'auto_rejected' && invoice.auto_reject_reason) {
+                          return (
+                            <TooltipProvider>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <div className="flex items-center gap-1.5 cursor-help">
+                                    <span className="truncate max-w-[200px]">
+                                      {invoice.issues?.[0] || 'Auto-Rejected'}
+                                    </span>
+                                    <Info className="h-4 w-4 text-red-600 flex-shrink-0" />
+                                  </div>
+                                </TooltipTrigger>
+                                <TooltipContent className="max-w-md z-50 whitespace-normal">
+                                  <p className="text-sm leading-relaxed">{invoice.auto_reject_reason}</p>
+                                </TooltipContent>
+                              </Tooltip>
+                            </TooltipProvider>
+                          );
+                        }
+
                         // For non-PO invoices in pending approval tab, show "Needs Approval"
                         if (activeTab === 'in-approval' && invoice.type === 'Non-PO') {
                           return (<span>{formatExceptionCode('Needs Approval')}</span>);

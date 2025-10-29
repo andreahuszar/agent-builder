@@ -908,16 +908,25 @@ export const generateBaselineInvoices = (): Invoice[] => {
     po_numbers_cached: [],
     gr_numbers: [],
     docType: 'Invoice',
-    issues: ['Auto-Rejected - Missing PO for 30+ days'],
+    issues: ['Auto-Rejected - No PO Found in ERP, Vendor Notified'],
     created_at: autoReject1Date.toISOString(),
     updated_at: autoReject1Date.toISOString(),
     data_ingestion_date: autoReject1Date.toISOString().split('T')[0],
     lines: autoReject1Lines,
     invoice_lines: autoReject1Lines,
+    // Validation errors to show red border on PO Number field
+    validation_errors: [
+      {
+        field: 'po_numbers_cached',
+        message: 'PO number is required for this vendor',
+        severity: 'error'
+      }
+    ],
     // Auto-reject metadata
-    auto_reject_reason: 'Invoice missing required PO number for over 30 days. Per company policy, invoices without PO assignment after 30 days are automatically rejected.',
+    auto_reject_reason: 'System could not find a matching Purchase Order in the ERP system. An automated email has been sent to the vendor requesting the correct PO number. Invoice processing has been paused pending vendor response.',
     auto_reject_date: new Date(now).toISOString().split('T')[0],
-    auto_reject_rule: 'missing_po_threshold'
+    auto_reject_rule: 'missing_po_threshold',
+    helpdesk_ticket_ref: 'TKT-2025-001'
   } as Invoice);
 
   // ========================================================================
