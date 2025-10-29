@@ -54,6 +54,25 @@ export function AutoRejectPopover({
   // State for collapsible rule section
   const [isRuleExpanded, setIsRuleExpanded] = useState(false);
 
+  // Helper to render rule details with styled labels
+  const renderRuleDetails = (details: string) => {
+    return details.split('\n').map((line, index) => {
+      // Match pattern: "• Label: Text"
+      const match = line.match(/^(• )(\w+:)(.+)$/);
+      if (match) {
+        const [, bullet, label, text] = match;
+        return (
+          <div key={index} className="mb-1 last:mb-0">
+            <span className="text-gray-950">{bullet}</span>
+            <span className="font-semibold text-gray-950">{label}</span>
+            <span className="text-gray-950">{text}</span>
+          </div>
+        );
+      }
+      return <div key={index}>{line}</div>;
+    });
+  };
+
   // Get rule display information
   const getRuleDetails = (rule: string): { name: string; description: string; details: string } => {
     switch (rule) {
@@ -142,8 +161,8 @@ export function AutoRejectPopover({
                   <div className="text-xs font-medium text-gray-950 mb-2">
                     {getRuleDetails(autoRejectRule).description}
                   </div>
-                  <div className="text-xs text-gray-950 leading-relaxed whitespace-pre-line">
-                    {getRuleDetails(autoRejectRule).details}
+                  <div className="text-xs leading-relaxed">
+                    {renderRuleDetails(getRuleDetails(autoRejectRule).details)}
                   </div>
                 </div>
               )}
