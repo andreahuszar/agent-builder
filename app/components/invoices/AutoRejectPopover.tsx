@@ -3,7 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import * as Popover from '@radix-ui/react-popover';
-import { AlertCircle, X, FileText, Calendar, Mail, ExternalLink } from 'lucide-react';
+import { AlertCircle, X, FileText, Calendar, Mail, ExternalLink, Zap } from 'lucide-react';
 
 interface AutoRejectPopoverProps {
   autoRejectReason: string;
@@ -51,6 +51,32 @@ export function AutoRejectPopover({
     }
   };
 
+  // Get rule display information
+  const getRuleDetails = (rule: string): { name: string; description: string } => {
+    switch (rule) {
+      case 'missing_po_threshold':
+        return {
+          name: 'Missing PO Threshold Rule',
+          description: 'Vendor requires valid PO number for invoice processing'
+        };
+      case 'po_contract_violation':
+        return {
+          name: 'PO Contract Violation Rule',
+          description: 'Contract term: Freight charges included'
+        };
+      case 'duplicate_invoice_detection':
+        return {
+          name: 'Duplicate Detection Rule',
+          description: 'Prevents duplicate invoice processing'
+        };
+      default:
+        return {
+          name: 'Auto-Rejection Rule',
+          description: 'Automated policy validation'
+        };
+    }
+  };
+
   return (
     <Popover.Root open={open} onOpenChange={onOpenChange}>
       <Popover.Trigger asChild>
@@ -83,6 +109,20 @@ export function AutoRejectPopover({
               <p className="text-xs text-gray-950 leading-relaxed">
                 {autoRejectReason}
               </p>
+            </div>
+
+            {/* Rule Triggered */}
+            <div className="mb-4 p-3 bg-purple-100 border border-purple-200 rounded-md">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="h-4 w-4 text-purple-600" fill="currentColor" />
+                <div className="text-xs font-semibold text-purple-900">Rule Triggered</div>
+              </div>
+              <div className="text-xs font-medium text-gray-950">
+                {getRuleDetails(autoRejectRule).name}
+              </div>
+              <div className="text-xs text-gray-600 mt-1">
+                {getRuleDetails(autoRejectRule).description}
+              </div>
             </div>
 
             {/* Rejection Metadata - Compact 3-column grid */}
