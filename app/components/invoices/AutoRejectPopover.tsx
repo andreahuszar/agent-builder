@@ -1,9 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
 import * as Popover from '@radix-ui/react-popover';
-import { AlertCircle, X, FileText, Calendar, Mail, ExternalLink, Zap } from 'lucide-react';
+import { AlertCircle, X, FileText, Calendar, Mail, ExternalLink, Zap, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface AutoRejectPopoverProps {
   autoRejectReason: string;
@@ -51,28 +51,35 @@ export function AutoRejectPopover({
     }
   };
 
+  // State for collapsible rule section
+  const [isRuleExpanded, setIsRuleExpanded] = useState(false);
+
   // Get rule display information
-  const getRuleDetails = (rule: string): { name: string; description: string } => {
+  const getRuleDetails = (rule: string): { name: string; description: string; details: string } => {
     switch (rule) {
       case 'missing_po_threshold':
         return {
           name: 'Missing PO Threshold Rule',
-          description: 'Vendor requires valid PO number for invoice processing'
+          description: 'Vendor requires valid PO number for invoice processing',
+          details: 'This rule automatically rejects invoices when the vendor is configured as PO-required but no valid PO number can be found in the ERP system. The system attempts to notify the vendor via email to request the correct PO reference.'
         };
       case 'po_contract_violation':
         return {
           name: 'PO Contract Violation Rule',
-          description: 'Contract term: Freight charges included'
+          description: 'Contract term: Freight charges included',
+          details: 'This rule validates that invoice line items comply with the terms specified in the Purchase Order. In this case, the PO contract explicitly states that freight charges are included in the unit prices, so any separate freight line items constitute a contract violation requiring P2P team review.'
         };
       case 'duplicate_invoice_detection':
         return {
           name: 'Duplicate Detection Rule',
-          description: 'Prevents duplicate invoice processing'
+          description: 'Prevents duplicate invoice processing',
+          details: 'This rule identifies invoices that have already been processed in the system based on invoice number, vendor, and amount. Duplicate invoices are automatically rejected to prevent duplicate payments and maintain financial controls.'
         };
       default:
         return {
           name: 'Auto-Rejection Rule',
-          description: 'Automated policy validation'
+          description: 'Automated policy validation',
+          details: 'This invoice was rejected based on automated policy validation rules configured in the system.'
         };
     }
   };
@@ -105,24 +112,41 @@ export function AutoRejectPopover({
           {/* Scrollable Content */}
           <div className="overflow-y-auto px-4 flex-1">
             {/* Rejection Explanation */}
-            <div className="mb-4 p-3 bg-white border border-purple-200 rounded-md">
+            <div className="mb-3 p-3 bg-white border border-purple-200 rounded-md">
               <p className="text-xs text-gray-950 leading-relaxed">
                 {autoRejectReason}
               </p>
             </div>
 
-            {/* Rule Triggered */}
-            <div className="mb-4 p-3 bg-purple-100 border border-purple-200 rounded-md">
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="h-4 w-4 text-purple-600" fill="currentColor" />
-                <div className="text-xs font-semibold text-purple-900">Rule Triggered</div>
-              </div>
-              <div className="text-xs font-medium text-gray-950">
-                {getRuleDetails(autoRejectRule).name}
-              </div>
-              <div className="text-xs text-gray-600 mt-1">
-                {getRuleDetails(autoRejectRule).description}
-              </div>
+            {/* Rule Triggered - Collapsible */}
+            <div className="mb-3">
+              <button
+                onClick={() => setIsRuleExpanded(!isRuleExpanded)}
+                className="w-full flex items-center gap-2 p-3 bg-purple-100 border border-purple-200 rounded-md hover:bg-purple-150 transition-colors"
+              >
+                <Zap className="h-4 w-4 text-purple-600 flex-shrink-0" fill="currentColor" />
+                <div className="flex-1 text-left">
+                  <div className="text-xs font-semibold text-purple-900">
+                    {getRuleDetails(autoRejectRule).name}
+                  </div>
+                </div>
+                {isRuleExpanded ? (
+                  <ChevronDown className="h-4 w-4 text-purple-700 flex-shrink-0" />
+                ) : (
+                  <ChevronRight className="h-4 w-4 text-purple-700 flex-shrink-0" />
+                )}
+              </button>
+
+              {isRuleExpanded && (
+                <div className="mt-2 p-3 bg-white border border-purple-200 rounded-md">
+                  <div className="text-xs font-medium text-gray-950 mb-2">
+                    {getRuleDetails(autoRejectRule).description}
+                  </div>
+                  <div className="text-xs text-gray-700 leading-relaxed">
+                    {getRuleDetails(autoRejectRule).details}
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Rejection Metadata - Compact 3-column grid */}
@@ -162,7 +186,7 @@ export function AutoRejectPopover({
 
             {/* Duplicate Invoice Reference (if applicable) */}
             {duplicateOfInvoice && (
-              <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+              <div className="mb-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
                 <div className="text-xs font-semibold text-gray-900 mb-1.5">Duplicate Reference</div>
                 <p className="text-xs text-gray-950">
                   This invoice is a duplicate of <span className="font-semibold">{duplicateOfInvoice}</span>, which was previously processed.
@@ -172,7 +196,7 @@ export function AutoRejectPopover({
 
             {/* Vendor Notification Section (for missing_po_threshold rule) */}
             {autoRejectRule === 'missing_po_threshold' && helpdeskTicketRef && (
-              <div className="mb-4 p-3 bg-purple-50 border border-purple-200 rounded-md">
+              <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-md">
                 <div className="text-xs font-semibold text-gray-900 mb-2">Vendor Notification Sent</div>
                 <p className="text-xs text-gray-950 mb-3 leading-relaxed">
                   An automated email has been sent to the vendor requesting the correct PO number.
@@ -191,7 +215,7 @@ export function AutoRejectPopover({
 
             {/* P2P Review Required Section (for po_contract_violation rule) */}
             {autoRejectRule === 'po_contract_violation' && helpdeskTicketRef && (
-              <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-md">
+              <div className="mb-3 p-3 bg-orange-50 border border-orange-200 rounded-md">
                 <div className="text-xs font-semibold text-gray-900 mb-2">P2P Review Required</div>
                 <p className="text-xs text-gray-950 mb-3 leading-relaxed">
                   This invoice requires Procure-to-Pay team review due to a contract violation.
