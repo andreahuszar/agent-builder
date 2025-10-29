@@ -138,8 +138,7 @@ export function SmartMatchPopover({
             onClick={handleUnmatch}
             className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-sm font-medium border border-purple-900 bg-white text-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
           >
-            <AlertTriangle className="h-4 w-4" />
-            Don't Auto-Match Again
+            Unmatch
           </button>
 
           <Popover.Arrow className="fill-purple-300" />

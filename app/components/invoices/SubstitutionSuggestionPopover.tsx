@@ -186,7 +186,7 @@ export function SubstitutionSuggestionPopover({
           <div className="flex gap-2 p-4 pt-3 border-t border-purple-200">
             <button
               onClick={handleReject}
-              className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-gray-100 text-gray-700 rounded-md hover:bg-gray-200 transition-colors focus:outline-none focus:ring-2 focus:ring-gray-400 focus:ring-offset-2"
+              className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
             >
               <X className="h-4 w-4" />
               Reject
