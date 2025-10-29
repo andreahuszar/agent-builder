@@ -32,6 +32,8 @@ export function AutoRejectBanner({
         return 'Invoice Auto-Rejected - No PO Found in ERP';
       case 'duplicate_invoice_detection':
         return 'Invoice Auto-Rejected - Duplicate Invoice Detected';
+      case 'po_contract_violation':
+        return 'Invoice Auto-Rejected - PO Contract Violation';
       default:
         return 'Invoice Auto-Rejected - Policy Violation';
     }

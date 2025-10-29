@@ -60,6 +60,12 @@ export interface UnifiedInvoice extends InvoiceHeader {
   auto_reject_rule?: string;
   duplicate_of_invoice?: string;
   helpdesk_ticket_ref?: string;
+  p2p_review_required?: boolean;
+  contract_violation_details?: {
+    po_number: string;
+    clause: string;
+    violated_by: string;
+  };
 }
 
 /**

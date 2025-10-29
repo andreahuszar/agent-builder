@@ -148,6 +148,26 @@ export function AutoRejectPopover({
                 </Link>
               </div>
             )}
+
+            {/* P2P Review Required Section (for po_contract_violation rule) */}
+            {autoRejectRule === 'po_contract_violation' && helpdeskTicketRef && (
+              <div className="mb-4 p-3 bg-orange-50 border border-orange-200 rounded-md">
+                <div className="text-xs font-semibold text-gray-900 mb-2">P2P Review Required</div>
+                <p className="text-xs text-gray-950 mb-3 leading-relaxed">
+                  This invoice requires Procure-to-Pay team review due to a contract violation.
+                  Vendor contact may be necessary to resolve discrepancy.
+                  Case tracked via Helpdesk ticket <span className="font-semibold">{helpdeskTicketRef}</span>.
+                </p>
+                <Link
+                  href="/helpdesk/inbox"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors text-xs font-medium"
+                >
+                  <Mail className="h-3.5 w-3.5" />
+                  <span>View in Helpdesk</span>
+                  <ExternalLink className="h-3 w-3" />
+                </Link>
+              </div>
+            )}
           </div>
 
           <Popover.Arrow className="fill-purple-300" />

@@ -930,7 +930,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
   } as Invoice);
 
   // ========================================================================
-  // AUTO-REJECT INVOICE #2 - DUPLICATE INVOICE DETECTED
+  // AUTO-REJECT INVOICE #2 - PO CONTRACT VIOLATION (FREIGHT CHARGES)
   // ========================================================================
   const autoReject2Date = new Date(now);
   autoReject2Date.setDate(autoReject2Date.getDate() - 8); // Created 8 days ago
@@ -941,26 +941,39 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-auto-reject-2-1',
       line_no: 1,
-      description: 'Monthly IT Maintenance Services',
+      description: 'Office Equipment Delivery',
       qty: 1,
-      uom: 'Month',
-      unit_price: 4500.00,
-      net_amount: 4500.00,
-      line_total: 4500.00,
+      uom: 'Shipment',
+      unit_price: 3200.00,
+      net_amount: 3200.00,
+      line_total: 3200.00,
+      po_line_id: 'po-line-8901-1',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-auto-reject-2-2',
+      line_no: 2,
+      description: 'Freight Charges',
+      qty: 1,
+      uom: 'Service',
+      unit_price: 450.00,
+      net_amount: 450.00,
+      line_total: 450.00,
       po_line_id: null,
       gr_line_id: null,
       ses_line_id: null
     }
   ];
 
-  const autoReject2Subtotal = 4500.00;
-  const autoReject2Tax = 900.00; // 20% VAT
-  const autoReject2Total = 5400.00;
+  const autoReject2Subtotal = 3650.00;
+  const autoReject2Tax = 730.00; // 20% VAT
+  const autoReject2Total = 4380.00;
 
   mockInvoices.push({
     id: 'auto-reject-2',
     invoice_number: 'AR-2025-0002',
-    vendor_name_snapshot: 'Global IT Services Inc',
+    vendor_name_snapshot: 'Global Logistics Services Inc',
     vendor_id: 'VND-6002',
     vendor_tax_id_snapshot: 'TAX-VND-6002',
     invoice_date: autoReject2Date.toISOString().split('T')[0],
@@ -972,24 +985,30 @@ export const generateBaselineInvoices = (): Invoice[] => {
     total: autoReject2Total,
     status: 'auto_rejected', // Auto-rejected status
     match_status: 'auto_rejected',
-    type: 'Non-PO',
-    vendor_requires_po: false,
+    type: 'PO',
+    vendor_requires_po: true,
     vendor_is_verified: true,
     approval_status: 'auto_rejected',
-    po_numbers_cached: [],
+    po_numbers_cached: ['PO-2025-8901'],
     gr_numbers: [],
     docType: 'Invoice',
-    issues: ['Auto-Rejected - Duplicate Invoice Detected'],
+    issues: ['Auto-Rejected - PO Contract Violation', 'Freight Charges Billed Separately'],
     created_at: autoReject2Date.toISOString(),
     updated_at: autoReject2Date.toISOString(),
     data_ingestion_date: autoReject2Date.toISOString().split('T')[0],
     lines: autoReject2Lines,
     invoice_lines: autoReject2Lines,
     // Auto-reject metadata
-    auto_reject_reason: 'Duplicate invoice detected. Invoice number AR-2025-0002 was previously submitted and processed. System automatically rejected to prevent double payment.',
+    auto_reject_reason: 'Invoice includes freight charges ($450.00) that are explicitly included in Purchase Order PO-2025-8901. Contract terms state "freight charges included". System has flagged this for P2P team review. Vendor may need to be contacted to issue credit note or revised invoice.',
     auto_reject_date: new Date(now).toISOString().split('T')[0],
-    auto_reject_rule: 'duplicate_invoice_detection',
-    duplicate_of_invoice: 'INV-2024-8956' // Reference to original invoice
+    auto_reject_rule: 'po_contract_violation',
+    helpdesk_ticket_ref: 'TKT-2025-002',
+    p2p_review_required: true,
+    contract_violation_details: {
+      po_number: 'PO-2025-8901',
+      clause: 'Freight charges included',
+      violated_by: 'Line 2: Freight Charges ($450.00)'
+    }
   } as Invoice);
 
   // Enrich all invoices with demo data using centralized service
