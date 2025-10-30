@@ -172,6 +172,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     vendor_requires_po: false,
     vendor_is_verified: true,
     approval_status: 'pending',
+    assigned_to_name: 'Sarah Mitchell', // Approver assigned
     po_numbers_cached: [],
     gr_numbers: [],
     docType: 'Invoice',
