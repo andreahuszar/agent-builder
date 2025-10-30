@@ -239,7 +239,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
   } as Invoice);
 
   // ========================================================================
-  // BASELINE NON-PO INVOICE #2 - Metro Utilities
+  // BASELINE NON-PO INVOICE #2 - Premier Facility Services
   // ========================================================================
   const baselineNonPO2Date = new Date(now);
   baselineNonPO2Date.setDate(baselineNonPO2Date.getDate() - 2); // Created 2 days ago
@@ -250,7 +250,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-nonpo-2-1',
       line_no: 1,
-      description: 'Electricity Services - January 2025',
+      description: 'Office Cleaning Services - January 2025',
       qty: 1,
       uom: 'Month',
       unit_price: 850.00,
@@ -263,7 +263,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-nonpo-2-2',
       line_no: 2,
-      description: 'Water & Sewerage Services - January 2025',
+      description: 'Security Services - January 2025',
       qty: 1,
       uom: 'Month',
       unit_price: 320.00,
@@ -276,7 +276,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-nonpo-2-3',
       line_no: 3,
-      description: 'Waste Management Services - January 2025',
+      description: 'Maintenance Services - January 2025',
       qty: 1,
       uom: 'Month',
       unit_price: 180.00,
@@ -294,8 +294,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
 
   mockInvoices.push({
     id: 'baseline-nonpo-2',
-    invoice_number: 'MUS-2025-1842',
-    vendor_name_snapshot: 'Metro Utilities & Services Ltd',
+    invoice_number: 'PFS-2025-1842',
+    vendor_name_snapshot: 'Premier Facility Services Ltd',
     vendor_id: 'VND-2002',
     vendor_tax_id_snapshot: 'TAX-VND-2002',
     invoice_date: baselineNonPO2Date.toISOString().split('T')[0],
