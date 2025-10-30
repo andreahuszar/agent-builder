@@ -52,7 +52,6 @@ import { CloseMatchPopover } from '../CloseMatchPopover';
 import { BankDetailsVerificationPopover } from '../BankDetailsVerificationPopover';
 import { VendorSwapPopover } from '../VendorSwapPopover';
 import { AccountingAutoCodingPopover } from '../AccountingAutoCodingPopover';
-import { ApproverRoutingPopover } from '../ApproverRoutingPopover';
 import { FraudRiskBanner } from '../FraudRiskBanner';
 import { AutoRejectBanner } from '../AutoRejectBanner';
 
@@ -1418,6 +1417,22 @@ export function DetailsTab({
                       </p>
                       <PendingConfirmationIndicator />
                     </div>
+                  ) : !invoiceData.assigned_to_name && expandedSuggestion !== 'assigned_to_name' ? (
+                    <div className="relative">
+                      {/* Red-bordered empty input field */}
+                      <input
+                        type="text"
+                        value=""
+                        readOnly
+                        className="w-full px-3 py-1.5 text-sm border-2 border-red-300 bg-red-50 rounded-md cursor-not-allowed"
+                      />
+
+                      {/* Validation message */}
+                      <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
+                        <AlertTriangle className="h-3 w-3" />
+                        <span>Approver required</span>
+                      </div>
+                    </div>
                   ) : (
                     <p className="text-sm font-medium text-gray-950">
                       {invoiceData.assigned_to_name || '--'}
@@ -1448,23 +1463,6 @@ export function DetailsTab({
                           }
                         }}
                       />
-                      {invoiceData.approver_routing_details && (
-                        <div className="mt-3">
-                          <ApproverRoutingPopover
-                            approverInfo={invoiceData.approver_routing_details.approver_info}
-                            confidence={invoiceData.approver_routing_confidence || 0}
-                            reasoning={invoiceData.approver_routing_reasoning || ''}
-                            matchingCriteria={invoiceData.approver_routing_details.matching_criteria}
-                            similarInvoices={invoiceData.approver_routing_details.similar_invoices}
-                            routingRules={invoiceData.approver_routing_details.routing_rules_applied}
-                          >
-                            <button className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors">
-                              <Zap className="h-3.5 w-3.5" fill="currentColor" />
-                              Why this suggestion?
-                            </button>
-                          </ApproverRoutingPopover>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
