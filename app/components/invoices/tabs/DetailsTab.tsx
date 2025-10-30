@@ -1091,8 +1091,8 @@ export function DetailsTab({
                 <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
                   <span className="flex items-center">
                     PO Number
-                    {/* Hide confidence pill for baseline-nonpo-1 */}
-                    {invoiceData.id !== 'baseline-nonpo-1' && (
+                    {/* Hide confidence pill for Non-PO invoices */}
+                    {!invoiceData.id?.startsWith('baseline-nonpo-') && (
                       <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.po_numbers_cached} isEditMode={isEditing} />
                     )}
                   </span>
@@ -1190,8 +1190,8 @@ export function DetailsTab({
                   </>
                 )}
               </div>
-              {/* Customer Ref. No. - Hidden for Non-PO invoice (baseline-nonpo-1) and auto-reject invoices */}
-              {invoiceData.id !== 'baseline-nonpo-1' && !invoiceData.id?.startsWith('auto-reject-') && (
+              {/* Customer Ref. No. - Hidden for Non-PO invoices and auto-reject invoices */}
+              {!invoiceData.id?.startsWith('baseline-nonpo-') && !invoiceData.id?.startsWith('auto-reject-') && (
               <div ref={(el) => fieldRefs.current['job_number'] = el} className="relative">
                 <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
                   <span className="flex items-center">
