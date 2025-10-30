@@ -66,6 +66,14 @@ export interface UnifiedInvoice extends InvoiceHeader {
     clause: string;
     violated_by: string;
   };
+
+  // Approver routing (smart suggestions)
+  suggested_approver?: string;
+  suggested_approver_user_id?: string;
+  approver_suggestion_pending?: boolean;
+  approver_routing_confidence?: number;
+  approver_routing_reasoning?: string;
+  approver_routing_details?: ApproverRoutingDetails;
 }
 
 /**
@@ -99,6 +107,34 @@ export interface Attachment {
   file_size: number;
   uploaded_at: string;
   uploaded_by?: string;
+}
+
+/**
+ * Approver Routing Details structure
+ */
+export interface ApproverRoutingDetails {
+  approver_info: {
+    name: string;
+    role: string;
+    authority_limit: number;
+    currency: string;
+    department: string;
+  };
+  matching_criteria: string[];
+  similar_invoices: {
+    invoice_number: string;
+    date: string;
+    vendor: string;
+    amount: number;
+    currency: string;
+    service: string;
+    approver: string;
+  }[];
+  routing_rules_applied: {
+    rule: string;
+    matched: boolean;
+    weight: number;
+  }[];
 }
 
 /**

@@ -12,6 +12,7 @@ import {
   Calendar,
   Building2,
   User,
+  UserCheck,
   Hash,
   Link2,
   AlertTriangle,
@@ -52,6 +53,7 @@ import { CloseMatchPopover } from '../CloseMatchPopover';
 import { BankDetailsVerificationPopover } from '../BankDetailsVerificationPopover';
 import { VendorSwapPopover } from '../VendorSwapPopover';
 import { AccountingAutoCodingPopover } from '../AccountingAutoCodingPopover';
+import { ApproverRoutingPopover } from '../ApproverRoutingPopover';
 import { FraudRiskBanner } from '../FraudRiskBanner';
 import { AutoRejectBanner } from '../AutoRejectBanner';
 
@@ -2009,6 +2011,58 @@ export function DetailsTab({
             </div>
           </div>
         </div>
+        )}
+
+        {/* Approval Routing Section - Only for Non-PO invoices with smart routing */}
+        {invoiceData.type === 'Non-PO' && invoiceData.approver_suggestion_pending && (
+          <div>
+            <div className="relative px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
+              <div className="flex items-center gap-2">
+                <UserCheck className="h-4 w-4 text-purple-600" />
+                <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Approval Routing</h3>
+              </div>
+            </div>
+            <div className="px-10 py-4 bg-white">
+              {/* AI Suggestion Card */}
+              <AISuggestionCard
+                candidate={{
+                  value: invoiceData.suggested_approver || '',
+                  confidence: invoiceData.approver_routing_confidence || 0,
+                  source: 'Smart Routing',
+                  reason: invoiceData.approver_routing_reasoning
+                }}
+                onAccept={() => {
+                  // Handle accept - set assigned_to_name
+                  console.log('Approver accepted:', invoiceData.suggested_approver);
+                  // In a real implementation, this would update the invoice data
+                }}
+                onReject={() => {
+                  // Handle reject - clear suggestion
+                  console.log('Approver rejected');
+                }}
+                fieldLabel="Suggested Approver"
+              />
+
+              {/* Why this suggestion? link */}
+              {invoiceData.approver_routing_details && (
+                <div className="mt-3">
+                  <ApproverRoutingPopover
+                    approverInfo={invoiceData.approver_routing_details.approver_info}
+                    confidence={invoiceData.approver_routing_confidence || 0}
+                    reasoning={invoiceData.approver_routing_reasoning || ''}
+                    matchingCriteria={invoiceData.approver_routing_details.matching_criteria}
+                    similarInvoices={invoiceData.approver_routing_details.similar_invoices}
+                    routingRules={invoiceData.approver_routing_details.routing_rules_applied}
+                  >
+                    <button className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors">
+                      <Zap className="h-3.5 w-3.5" fill="currentColor" />
+                      Why this suggestion?
+                    </button>
+                  </ApproverRoutingPopover>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Document Links Section */}

@@ -325,7 +325,75 @@ export const generateBaselineInvoices = (): Invoice[] => {
     cost_center: 'CC-9002',
     cost_center_name: 'Facilities & Operations',
     gl_code: 'GL-6100',
-    department: 'UK Ltd'
+    department: 'UK Ltd',
+    // Approver routing (smart suggestion - pending confirmation)
+    assigned_to_name: null, // Not yet confirmed
+    suggested_approver: 'Sarah Mitchell',
+    suggested_approver_user_id: 'user-sarah-mitchell',
+    approver_suggestion_pending: true,
+    approver_routing_confidence: 0.91,
+    approver_routing_reasoning: 'Based on service type (facility services), invoice amount (£1,620), and location (UK Office), the system recommends Sarah Mitchell (Facilities Manager) for approval.',
+    approver_routing_details: {
+      approver_info: {
+        name: 'Sarah Mitchell',
+        role: 'Facilities Manager - UK Operations',
+        authority_limit: 5000,
+        currency: 'GBP',
+        department: 'Facilities & Operations'
+      },
+      matching_criteria: [
+        'Service category: Facility Services (Office Cleaning, Security, Maintenance)',
+        'Amount: £1,620 within Sarah\'s approval threshold (£5,000)',
+        'Location match: UK Office → Sarah manages UK facilities',
+        'Cost center: Facilities & Operations'
+      ],
+      similar_invoices: [
+        {
+          invoice_number: 'INV-2024-8823',
+          date: 'Dec 15, 2024',
+          vendor: 'Premier Facility Services',
+          amount: 1450,
+          currency: 'GBP',
+          service: 'Office Cleaning',
+          approver: 'Sarah Mitchell'
+        },
+        {
+          invoice_number: 'INV-2024-7612',
+          date: 'Nov 20, 2024',
+          vendor: 'SecureGuard Ltd',
+          amount: 2100,
+          currency: 'GBP',
+          service: 'Security Services',
+          approver: 'Sarah Mitchell'
+        },
+        {
+          invoice_number: 'INV-2024-6405',
+          date: 'Oct 10, 2024',
+          vendor: 'CleanPro Services',
+          amount: 980,
+          currency: 'GBP',
+          service: 'Office Cleaning',
+          approver: 'Sarah Mitchell'
+        }
+      ],
+      routing_rules_applied: [
+        {
+          rule: 'Facility Services → Facilities Manager',
+          matched: true,
+          weight: 0.40
+        },
+        {
+          rule: 'UK Office Location → UK Facilities Manager',
+          matched: true,
+          weight: 0.30
+        },
+        {
+          rule: 'Amount < £5,000 → Department Manager Level',
+          matched: true,
+          weight: 0.30
+        }
+      ]
+    }
   } as Invoice);
 
   // ========================================================================
