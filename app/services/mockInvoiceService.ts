@@ -239,6 +239,96 @@ export const generateBaselineInvoices = (): Invoice[] => {
   } as Invoice);
 
   // ========================================================================
+  // BASELINE NON-PO INVOICE #2 - Metro Utilities
+  // ========================================================================
+  const baselineNonPO2Date = new Date(now);
+  baselineNonPO2Date.setDate(baselineNonPO2Date.getDate() - 2); // Created 2 days ago
+  const baselineNonPO2DueDate = new Date(baselineNonPO2Date);
+  baselineNonPO2DueDate.setDate(baselineNonPO2DueDate.getDate() + 30); // Due in 28 days
+
+  const baselineNonPO2Lines = [
+    {
+      id: 'line-baseline-nonpo-2-1',
+      line_no: 1,
+      description: 'Electricity Services - January 2025',
+      qty: 1,
+      uom: 'Month',
+      unit_price: 850.00,
+      net_amount: 850.00,
+      line_total: 850.00,
+      po_line_id: null,
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-baseline-nonpo-2-2',
+      line_no: 2,
+      description: 'Water & Sewerage Services - January 2025',
+      qty: 1,
+      uom: 'Month',
+      unit_price: 320.00,
+      net_amount: 320.00,
+      line_total: 320.00,
+      po_line_id: null,
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-baseline-nonpo-2-3',
+      line_no: 3,
+      description: 'Waste Management Services - January 2025',
+      qty: 1,
+      uom: 'Month',
+      unit_price: 180.00,
+      net_amount: 180.00,
+      line_total: 180.00,
+      po_line_id: null,
+      gr_line_id: null,
+      ses_line_id: null
+    }
+  ];
+
+  const baselineNonPO2Subtotal = 1350.00;
+  const baselineNonPO2Tax = 270.00; // 20% VAT
+  const baselineNonPO2Total = 1620.00;
+
+  mockInvoices.push({
+    id: 'baseline-nonpo-2',
+    invoice_number: 'MUS-2025-1842',
+    vendor_name_snapshot: 'Metro Utilities & Services Ltd',
+    vendor_id: 'VND-2002',
+    vendor_tax_id_snapshot: 'TAX-VND-2002',
+    invoice_date: baselineNonPO2Date.toISOString().split('T')[0],
+    due_date: baselineNonPO2DueDate.toISOString().split('T')[0],
+    currency: 'GBP',
+    subtotal: baselineNonPO2Subtotal,
+    tax_total: baselineNonPO2Tax,
+    tax_rate_percent: 20,
+    total: baselineNonPO2Total,
+    status: 'needs_info', // Exception status to appear in Non-PO tab
+    match_status: 'matched', // Non-PO doesn't require matching
+    type: 'Non-PO',
+    vendor_requires_po: false,
+    vendor_is_verified: true,
+    approval_status: 'pending',
+    po_numbers_cached: [],
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: [], // Will be populated when we apply scenario
+    created_at: baselineNonPO2Date.toISOString(),
+    updated_at: baselineNonPO2Date.toISOString(),
+    data_ingestion_date: baselineNonPO2Date.toISOString().split('T')[0],
+    lines: baselineNonPO2Lines,
+    invoice_lines: baselineNonPO2Lines,
+    // Accounting classification
+    ledger: 'Accounts Payable',
+    cost_center: 'CC-9002',
+    cost_center_name: 'Facilities & Operations',
+    gl_code: 'GL-6100',
+    department: 'UK Ltd'
+  } as Invoice);
+
+  // ========================================================================
   // BASELINE MATCHED INVOICE (Successfully Processed)
   // ========================================================================
   const baselineMatchedDate = new Date(now);
