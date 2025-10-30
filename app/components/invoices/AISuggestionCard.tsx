@@ -61,8 +61,8 @@ export function AISuggestionCard({
           {candidate.value}
         </div>
         {candidate.reason && (
-          <div className="text-xs text-gray-700 mt-2">
-            <span className="font-medium text-gray-900">Note:</span> {candidate.reason}
+          <div className="text-xs text-gray-950 mt-2">
+            <span className="font-medium text-gray-950">Note:</span> {candidate.reason}
           </div>
         )}
       </div>
@@ -74,7 +74,7 @@ export function AISuggestionCard({
           className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
         >
           <X className="h-4 w-4" />
-          Reject
+          Cancel
         </button>
         <button
           onClick={onAccept}
