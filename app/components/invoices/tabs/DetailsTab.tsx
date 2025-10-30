@@ -1417,7 +1417,7 @@ export function DetailsTab({
                       </p>
                       <PendingConfirmationIndicator />
                     </div>
-                  ) : !invoiceData.assigned_to_name && expandedSuggestion !== 'assigned_to_name' ? (
+                  ) : !invoiceData.assigned_to_name ? (
                     <div className="relative">
                       {/* Red-bordered empty input field */}
                       <input
