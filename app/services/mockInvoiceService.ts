@@ -962,6 +962,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     vendor_requires_po: true,
     vendor_is_verified: false, // Not verified due to high-risk jurisdiction
     approval_status: 'pending',
+    processed_status: 'Exception', // Exception status for fraud risk
     approver: undefined, // No approver - blocked for fraud risk review
     po_numbers_cached: ['PO-2025-7001'],
     gr_numbers: [],
