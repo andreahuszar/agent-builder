@@ -1434,6 +1434,15 @@ export function EnhancedInvoiceTable({
                         );
                       }
 
+                      // Check for Exception processed status (e.g., fraud risk)
+                      if (invoice.processed_status === 'Exception') {
+                        return (
+                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            Exception
+                          </span>
+                        );
+                      }
+
                       // Check for validation errors - these should show "Exception" even if matched
                       const hasValidationErrors = invoice.status === 'needs_info' || !invoice.invoice_number;
 

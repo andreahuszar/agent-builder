@@ -314,8 +314,8 @@ export const generateMockPOs = (): Record<string, POHeader> => {
         {
           id: 'po-line-9010-4',
           line_no: 4,
-          description: 'Support Contract - Extended Warranty',
-          item_description: '12-Month Premium Support',
+          description: 'Landscaping – seasonal cleanup',
+          item_description: '12-Month Landscaping Service Contract',
           qty_ordered: 12,
           uom: 'Months',
           unit_price: 200.00,

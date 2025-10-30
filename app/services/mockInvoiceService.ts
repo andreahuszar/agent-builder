@@ -516,7 +516,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po2-4',
       line_no: 4,
-      description: 'Annual Maintenance - 12 months cover',
+      description: 'Grounds maintenance; trimming & leaf removal',
       qty: 12,
       uom: 'Months',
       unit_price: 200.00,
