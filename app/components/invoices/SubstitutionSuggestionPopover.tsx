@@ -189,14 +189,14 @@ export function SubstitutionSuggestionPopover({
               className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
             >
               <X className="h-4 w-4" />
-              Reject
+              Unmatch
             </button>
             <button
               onClick={handleAccept}
               className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
             >
               <Check className="h-4 w-4" />
-              Accept & Remember
+              Accept
             </button>
           </div>
 

@@ -29,6 +29,11 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
     initialInvoice.invoice_number || invoiceNumber
   );
 
+  // Reactive status state (updates when validation completes)
+  const [reactiveStatus, setReactiveStatus] = useState<string>(
+    initialInvoice.status || 'draft'
+  );
+
   // Navigation context from URL params
   const invoiceListParam = searchParams.get('list');
   const indexParam = searchParams.get('index');
@@ -123,6 +128,11 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
     setReactiveInvoiceNumber(newInvoiceNumber);
   };
 
+  // Handle status updates (from successful validation)
+  const handleStatusUpdate = (newStatus: string) => {
+    setReactiveStatus(newStatus);
+  };
+
   // ViewModeSwitcher hidden for unified layout - will be removed in future phase
   const viewModeSwitcher = undefined;
 
@@ -143,7 +153,7 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
       invoiceNumber={reactiveInvoiceNumber}
       vendorName={initialInvoice.vendor_name_snapshot}
       viewModeSwitcher={viewModeSwitcher}
-      workflowStatus={initialInvoice.status || 'draft'}
+      workflowStatus={reactiveStatus}
       isNeedsInfo={isNeedsInfoMode}
       assignedUserName={assignedUserName}
       onAssignUser={handleAssignUser}
@@ -154,6 +164,7 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
         initialInvoice={initialInvoice}
         viewMode={viewMode}
         onInvoiceNumberUpdate={handleInvoiceNumberUpdate}
+        onStatusUpdate={handleStatusUpdate}
         assignedUserName={assignedUserName}
         onAssignUser={handleAssignUser}
       />
@@ -167,6 +178,7 @@ export function InvoiceDetailClientWithViewMode({
   initialInvoice,
   viewMode,
   onInvoiceNumberUpdate,
+  onStatusUpdate,
   assignedUserName,
   onAssignUser
 }: {
@@ -174,6 +186,7 @@ export function InvoiceDetailClientWithViewMode({
   initialInvoice: any;
   viewMode: ViewMode;
   onInvoiceNumberUpdate?: (invoiceNumber: string) => void;
+  onStatusUpdate?: (status: string) => void;
   assignedUserName?: string | null;
   onAssignUser?: (userName: string | null) => void;
 }) {
@@ -183,6 +196,7 @@ export function InvoiceDetailClientWithViewMode({
       initialInvoice={initialInvoice}
       viewMode={viewMode}
       onInvoiceNumberUpdate={onInvoiceNumberUpdate}
+      onStatusUpdate={onStatusUpdate}
       assignedUserName={assignedUserName}
       onAssignUser={onAssignUser}
     />

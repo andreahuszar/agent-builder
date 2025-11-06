@@ -12,6 +12,7 @@ import { GRDocumentTable } from '@/app/components/invoices/comparison/GRDocument
 import { GRDocumentPreview } from '@/app/components/invoices/comparison/GRDocumentPreview';
 import { TeachingConfirmationModal } from '@/app/components/invoices/TeachingConfirmationModal';
 import { useSelection } from '@/app/context/SelectionContext';
+import { useToast } from '@/app/components/ui/Toast';
 
 interface InvoiceDetailClientProps {
   invoiceId: string;
@@ -20,14 +21,16 @@ interface InvoiceDetailClientProps {
   onInvoiceNumberUpdate?: (invoiceNumber: string) => void;
   assignedUserName?: string | null;
   onAssignUser?: (userName: string | null) => void;
+  onStatusUpdate?: (status: string) => void;
 }
 
-export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'review', onInvoiceNumberUpdate, assignedUserName, onAssignUser }: InvoiceDetailClientProps) {
+export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'review', onInvoiceNumberUpdate, assignedUserName, onAssignUser, onStatusUpdate }: InvoiceDetailClientProps) {
   const [invoice, setInvoice] = useState(initialInvoice);
   const [matchResults, setMatchResults] = useState<any[]>([]);
   const [poComparisonData, setPoComparisonData] = useState<any>(null);
   const [grData, setGrData] = useState<any>(null);
   const { selectedLineId, selectInvoiceLine } = useSelection();
+  const { showToast } = useToast();
   // Track agent-accepted fields that are pending confirmation (not yet saved)
   const [agentPendingFields, setAgentPendingFields] = useState<{[key: string]: any}>({});
 
@@ -188,8 +191,37 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       // For now, just simulate the save
       await new Promise(resolve => setTimeout(resolve, 1000));
       console.log('Saved invoice data');
+
+      // Check validation status after save
+      const currentMissingFieldsCount = calculateMissingFieldsCount();
+      const currentLineItemsErrorCount = calculateLineItemsErrorCount();
+      const validationSucceeded = currentMissingFieldsCount === 0 && currentLineItemsErrorCount === 0;
+
+      // Only proceed if validation succeeded and currently in verification status
+      if (validationSucceeded && invoice.status === 'verification') {
+        // Wait 2 seconds before showing success
+        await new Promise(resolve => setTimeout(resolve, 2000));
+
+        // Show success toast
+        showToast('Validation completed successfully. Invoice posted.', 'success');
+
+        // Update status to 'posted' (final green status)
+        const newStatus = 'posted';
+        setInvoice((prev: any) => ({ ...prev, status: newStatus }));
+
+        // Notify parent of status change to update top bar badge
+        if (onStatusUpdate) {
+          onStatusUpdate(newStatus);
+        }
+
+        // Clear agent pending fields (removes purple banner)
+        setAgentPendingFields({});
+      }
+      // If validation failed, no toast - user sees errors in DiagnosticBanner
+
     } catch (error) {
       console.error('Error saving invoice:', error);
+      showToast('Revalidation failed. Please try again.', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -232,8 +264,9 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     setSelectedValue('');
     setSelectedContext('');
 
-    // TODO: Show success toast notification
-    console.log(`Learned custom field: ${teachingFieldName} = ${value}`);
+    // Show success toast notification
+    const fieldLabel = teachingFieldName === 'job_number' ? 'Job Number' : teachingFieldName;
+    showToast(`${fieldLabel} learned and will be remembered for future invoices from this vendor.`, 'success');
   };
 
   const handleTeachingCancel = () => {
@@ -295,7 +328,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               forceReadOnly={false}
               hideComparison={false}
               hidePreview={true}
-              showFieldErrors={isNeedsInfoMode}
+              showFieldErrors={invoice.status === 'verification' || invoice.status === 'needs_info' || invoice.status === 'needs-info'}
               initialTab="details"
               activeTab={activeTab}
               onTabChange={handleTabChange}
@@ -304,6 +337,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               onFieldReject={handleFieldReject}
               onFieldFocus={setFocusedFieldName}
               agentPendingFields={agentPendingFields}
+              lineItemsErrorCount={lineItemsErrorCount}
             />
           </div>
         </div>
@@ -353,7 +387,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           forceReadOnly={false}
           hideComparison={false}
           hidePreview={true}
-          showFieldErrors={isNeedsInfoMode}
+          showFieldErrors={invoice.status === 'verification' || invoice.status === 'needs_info' || invoice.status === 'needs-info'}
           initialTab="details"
           activeTab={activeTab}
           onTabChange={handleTabChange}
@@ -363,6 +397,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           onFieldFocus={setFocusedFieldName}
           onStartTeaching={handleStartTeaching}
           agentPendingFields={agentPendingFields}
+          lineItemsErrorCount={lineItemsErrorCount}
         />
       </ResizablePanel>
     );
@@ -506,6 +541,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         isSaving={isSaving}
         assignedUserName={assignedUserName}
         onAssignUser={onAssignUser}
+        workflowStatus={invoice.status}
       />
 
       {/* Main Content Area */}

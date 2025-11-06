@@ -267,7 +267,6 @@ export function LineItemsPreviewPanel({
   const [selectedLineForRule, setSelectedLineForRule] = useState<InvoiceLineItem | null>(null);
   const [viewMode, setViewMode] = useState<'default' | 'grouped'>('default');
   const [matchedItemsExpanded, setMatchedItemsExpanded] = useState(true);
-  const [statusSortOrder, setStatusSortOrder] = useState<'variance-first' | 'matched-first'>('variance-first');
   const containerRef = useRef<HTMLDivElement>(null);
   const flexContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -532,10 +531,6 @@ export function LineItemsPreviewPanel({
     showToast('Custom conversion rule removed.', 'info');
   };
 
-  // Handle status sort toggle
-  const handleStatusSortToggle = () => {
-    setStatusSortOrder(prev => prev === 'variance-first' ? 'matched-first' : 'variance-first');
-  };
 
   // Check if line has suggestion and it's not yet accepted/rejected
   const hasSuggestion = (line: InvoiceLineItem): boolean => {
@@ -804,18 +799,11 @@ export function LineItemsPreviewPanel({
   // Process slots for grouped view if needed
   const getDisplaySlots = () => {
     if (viewMode === 'default') {
-      // Apply status sorting in default view
+      // Sort by line number only
       const sortedSlots = [...slots].sort((a, b) => {
-        // Get line statuses
-        const statusA = a.invoiceLine ? getLineStatus(a.invoiceLine, a.poLine) : 'missing';
-        const statusB = b.invoiceLine ? getLineStatus(b.invoiceLine, b.poLine) : 'missing';
-
-        // Define sort order for statuses
-        const statusOrder = statusSortOrder === 'variance-first'
-          ? { variance: 0, missing: 1, matched: 2 }
-          : { matched: 0, missing: 1, variance: 2 };
-
-        return statusOrder[statusA] - statusOrder[statusB];
+        const lineNoA = a.invoiceLine?.line_no ?? Infinity;
+        const lineNoB = b.invoiceLine?.line_no ?? Infinity;
+        return lineNoA - lineNoB;
       });
 
       return sortedSlots;
@@ -1097,14 +1085,8 @@ export function LineItemsPreviewPanel({
                       )}
                       <th className="pl-4 pr-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
                       <th className="w-8"></th>
-                      <th
-                        className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
-                        onClick={handleStatusSortToggle}
-                      >
-                        <div className="flex items-center justify-center gap-1">
-                          <span>Status</span>
-                          <ArrowDownWideNarrow className={`h-3.5 w-3.5 transition-transform ${statusSortOrder === 'matched-first' ? 'rotate-180' : ''}`} />
-                        </div>
+                      <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">
+                        Status
                       </th>
                       <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
                       <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
@@ -1839,14 +1821,8 @@ export function LineItemsPreviewPanel({
                     )}
                     <th className="pl-4 pr-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
                     <th className="w-8"></th>
-                    <th
-                      className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase cursor-pointer hover:bg-gray-100 transition-colors"
-                      onClick={handleStatusSortToggle}
-                    >
-                      <div className="flex items-center justify-center gap-1">
-                        <span>Status</span>
-                        <ArrowDownWideNarrow className={`h-3.5 w-3.5 transition-transform ${statusSortOrder === 'matched-first' ? 'rotate-180' : ''}`} />
-                      </div>
+                    <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">
+                      Status
                     </th>
                     <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
                     <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>

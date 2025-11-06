@@ -243,6 +243,7 @@ export function ApprovalsTable({
                 key={invoice.id}
                 onClick={() => onInvoiceClick(invoice.id)}
                 className="hover:bg-purple-50 cursor-pointer"
+                data-invoice-row
               >
                 <td className="whitespace-nowrap px-6 py-2.5">
                   <button

@@ -93,7 +93,7 @@ export function SLAStatusPanel({
             </span>
           )}
         </div>
-        <div className={`flex items-center gap-1 text-xs ${colors.text}`}>
+        <div className="flex items-center gap-1 text-xs text-purple-700">
           <span>Expand</span>
           <ChevronUp className="h-3 w-3" />
         </div>
@@ -105,7 +105,10 @@ export function SLAStatusPanel({
   return (
     <div className="h-full border-t bg-white flex flex-col overflow-hidden">
       {/* Header */}
-      <div className={`flex-shrink-0 px-4 py-3 border-b ${colors.border} ${colors.bg}`}>
+      <button
+        onClick={onToggleCollapse}
+        className={`flex-shrink-0 px-4 py-3 border-b ${colors.border} ${colors.bg} w-full hover:opacity-90 transition-opacity cursor-pointer`}
+      >
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             {getStatusIcon()}
@@ -113,16 +116,12 @@ export function SLAStatusPanel({
               SLA Status: {getStatusLabel()}
             </h3>
           </div>
-          <button
-            onClick={onToggleCollapse}
-            className="flex items-center gap-1 px-2 py-1 text-xs text-purple-700 hover:text-purple-900 rounded transition-colors"
-            aria-label="Collapse SLA panel"
-          >
+          <div className="flex items-center gap-1 text-xs text-purple-700">
             <span>Collapse</span>
             <ChevronDown className="h-3 w-3" />
-          </button>
+          </div>
         </div>
-      </div>
+      </button>
 
       {/* Content - Card Style Dashboard */}
       <div className="flex-1 overflow-y-auto px-4 pt-4 pb-3">

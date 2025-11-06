@@ -128,6 +128,35 @@ export function InvoiceDrawer({
     };
   }, [isOpen]);
 
+  // Handle click-away to close drawer (except for table row clicks)
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+
+      // Don't close if clicking on the drawer itself
+      if (target.closest('[data-drawer="approvals-invoice"]')) {
+        return;
+      }
+
+      // Don't close if clicking on table row (preserve invoice switching)
+      if (target.closest('[data-invoice-row]')) {
+        return;
+      }
+
+      // Otherwise, close the drawer (clicked away)
+      handleClose();
+    };
+
+    // Use capture phase to catch clicks early
+    document.addEventListener('click', handleClickOutside, true);
+
+    return () => {
+      document.removeEventListener('click', handleClickOutside, true);
+    };
+  }, [isOpen]);
+
   const fetchInvoiceDetails = async () => {
     // Fetch additional invoice details if needed
   };

@@ -102,7 +102,7 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
                 >
                   <ChevronLeft className="h-4 w-4 text-gray-800" />
                 </button>
-                <span className="text-sm text-gray-700 font-medium px-1">
+                <span className="text-sm text-gray-950 font-medium px-1">
                   {navigationContext.current} of {navigationContext.total}
                 </span>
                 <button
@@ -123,7 +123,7 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
 
             <button
               onClick={onBackClick}
-              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-800 hover:text-gray-900 rounded-md hover:bg-gray-100 transition-colors"
+              className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-gray-950 hover:text-gray-900 rounded-md hover:bg-gray-100 transition-colors"
             >
               Exit
               <X className="h-4 w-4 ml-1.5" />

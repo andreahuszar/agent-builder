@@ -31,7 +31,7 @@ function getStatusColor(status: string): string {
       return 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200';
 
     case 'verification':
-      return 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200';
+      return 'bg-blue-50 text-blue-700';
 
     case 'approval':
       return 'bg-orange-50 text-orange-700 ring-1 ring-orange-200';

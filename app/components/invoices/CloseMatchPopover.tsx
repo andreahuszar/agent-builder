@@ -181,7 +181,7 @@ export function CloseMatchPopover({
                 >
                   {matchingFactors.line_items_overlap} of {matchingFactors.total_line_items || matchingFactors.line_items_overlap} line items
                 </button>
-                {matchingFactors.variance_count && matchingFactors.variance_count > 0 && (
+                {matchingFactors.variance_count > 0 && (
                   <span className="text-gray-600 ml-1">({matchingFactors.variance_count} variance{matchingFactors.variance_count !== 1 ? 's' : ''})</span>
                 )}
               </span>
@@ -231,13 +231,13 @@ export function CloseMatchPopover({
               onClick={handleSearchDifferent}
               className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium border border-purple-900 bg-white text-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 whitespace-nowrap"
             >
-              Select other PO
+              View Open POs
             </button>
             <button
               onClick={handleAccept}
               className="flex-1 flex items-center justify-center gap-1 px-2 py-1.5 text-xs font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 whitespace-nowrap"
             >
-              Match
+              Assign PO
             </button>
           </div>
 

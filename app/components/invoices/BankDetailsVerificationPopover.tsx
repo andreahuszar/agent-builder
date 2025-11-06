@@ -102,6 +102,7 @@ export function BankDetailsVerificationPopover({
       <Popover.Portal>
         <Popover.Content
           className="z-50"
+          side="right"
           sideOffset={5}
           align="start"
         >

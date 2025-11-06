@@ -28,9 +28,10 @@ interface FraudRisk {
 interface FraudRiskBannerProps {
   fraudRisk: FraudRisk;
   vendorName?: string;
+  onViewPolicy?: (policyLink: string) => void;
 }
 
-export function FraudRiskBanner({ fraudRisk, vendorName }: FraudRiskBannerProps) {
+export function FraudRiskBanner({ fraudRisk, vendorName, onViewPolicy }: FraudRiskBannerProps) {
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
 
   if (!fraudRisk?.triggered) {
@@ -46,6 +47,7 @@ export function FraudRiskBanner({ fraudRisk, vendorName }: FraudRiskBannerProps)
       <FraudRiskPopover
         fraudRisk={fraudRisk}
         vendorName={vendorName}
+        onViewPolicy={onViewPolicy}
         open={isPopoverOpen}
         onOpenChange={setIsPopoverOpen}
       >

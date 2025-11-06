@@ -45,6 +45,7 @@ import { POSearchModal } from '../POSearchModal';
 import { AISuggestionCard } from '../AISuggestionCard';
 import { TeachingCard } from '../TeachingCard';
 import { PendingConfirmationIndicator } from '../PendingConfirmationIndicator';
+import { useToast } from '@/app/components/ui/Toast';
 import { FieldConfidencePill } from '../FieldConfidencePill';
 import { AutoCorrectionIndicator } from '../AutoCorrectionIndicator';
 import { CustomFieldIndicator } from '../CustomFieldIndicator';
@@ -54,6 +55,7 @@ import { VendorSwapPopover } from '../VendorSwapPopover';
 import { AccountingAutoCodingPopover } from '../AccountingAutoCodingPopover';
 import { FraudRiskBanner } from '../FraudRiskBanner';
 import { AutoRejectBanner } from '../AutoRejectBanner';
+import { PolicyDocumentDrawer } from '../PolicyDocumentDrawer';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -98,6 +100,11 @@ export function DetailsTab({
   const [fieldToFocus, setFieldToFocus] = useState<string | null>(null);
   // Track bottom bar visibility for staggered animation
   const [showBottomBar, setShowBottomBar] = useState(false);
+  // Policy document drawer state
+  const [isPolicyDrawerOpen, setIsPolicyDrawerOpen] = useState(false);
+  const [policyLinkToView, setPolicyLinkToView] = useState<string | null>(null);
+  // Toast notifications
+  const { showToast } = useToast();
   // Calculate totals from line items for accuracy
   const calculatedSubtotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + (line.net_amount || 0), 0) || 0;
   const calculatedTaxTotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + ((line.line_total || 0) - (line.net_amount || 0)), 0) || 0;
@@ -239,6 +246,12 @@ export function DetailsTab({
     setIsEditing(newEditState);
   }, [forceEditMode, forceReadOnly]);
 
+  // Debug: Log fieldErrors whenever they change
+  useEffect(() => {
+    console.log('[DetailsTab] 📊 Final fieldErrors count:', fieldErrors.length);
+    console.log('[DetailsTab] 📊 Field errors:', fieldErrors.map(e => `${e.field}: ${e.message}`));
+  }, [fieldErrors]);
+
   // Validate required fields on mount for needs info mode or when showFieldErrors is true
   useEffect(() => {
     if ((forceEditMode && isEditing) || showFieldErrors) {
@@ -247,11 +260,13 @@ export function DetailsTab({
         // Clear any existing errors first
         clearErrors();
 
+        console.log('[DetailsTab] Starting validation for invoice:', invoiceData.id, invoiceData.invoice_number);
+        console.log('[DetailsTab] Invoice type:', invoiceData.type);
+
         // Check all required fields (matching ValidatedEditableField required prop)
         const fieldsToCheck = [
           { field: 'invoice_number', label: 'Invoice Number', type: 'text' },
           { field: 'invoice_date', label: 'Invoice Date', type: 'date' },
-          { field: 'due_date', label: 'Due Date', type: 'date' },
           { field: 'vendor_name_snapshot', label: 'Vendor Name', type: 'text' },
           { field: 'vendor_tax_id_snapshot', label: 'Vendor Tax ID', type: 'text' },
           { field: 'po_numbers_cached', label: 'PO Number', type: 'array' },
@@ -265,10 +280,19 @@ export function DetailsTab({
         fieldsToCheck.forEach(({ field, label, type }) => {
           // Skip PO Number and Customer Ref. No. validation for Non-PO invoices
           if (invoiceData.type === 'Non-PO' && (field === 'po_numbers_cached' || field === 'job_number')) {
+            console.log('[DetailsTab] Skipping field (Non-PO):', field);
             return;
           }
+
+          // Skip Vehicle Registration No. for baseline invoices (demo/testing scenarios)
+          if (field === 'vehicle_registration_no' && invoiceData.id?.startsWith('baseline-')) {
+            console.log('[DetailsTab] Skipping field (baseline invoice):', field);
+            return;
+          }
+
           // Check both editedData and agentPendingFields for value
           const value = agentPendingFields[field] || editedData[field];
+          console.log('[DetailsTab] Checking field:', field, 'value:', value, 'type:', type);
 
           // Skip validation if field has an agent-pending value
           if (agentPendingFields[field]) {
@@ -277,6 +301,7 @@ export function DetailsTab({
 
           // Special handling for vendor field - "Unknown Vendor" is considered invalid
           if (field === 'vendor_name_snapshot' && value === 'Unknown Vendor') {
+            console.log('[DetailsTab] ❌ Adding error for:', field, '- Unknown Vendor');
             addError(field, `${label} is invalid (Unknown Vendor)`, fieldRefs.current[field]);
             return;
           }
@@ -285,26 +310,31 @@ export function DetailsTab({
           if (type === 'array') {
             // For array fields like po_numbers_cached
             if (!value || (Array.isArray(value) && value.length === 0) || (Array.isArray(value) && !value[0])) {
+              console.log('[DetailsTab] ❌ Adding error for:', field, '- array is empty');
               addError(field, `${label} is required`, fieldRefs.current[field]);
             }
           } else if (type === 'date') {
             // For date fields
             if (!value || value === '') {
+              console.log('[DetailsTab] ❌ Adding error for:', field, '- date is missing');
               addError(field, `${label} is required`, fieldRefs.current[field]);
             } else {
               const date = new Date(value);
               if (isNaN(date.getTime())) {
+                console.log('[DetailsTab] ❌ Adding error for:', field, '- date is invalid');
                 addError(field, `${label} is invalid`, fieldRefs.current[field]);
               }
             }
           } else if (type === 'currency') {
             // For currency/number fields
             if (value === null || value === undefined || value === '' || isNaN(Number(value))) {
+              console.log('[DetailsTab] ❌ Adding error for:', field, '- currency is invalid');
               addError(field, `${label} is required`, fieldRefs.current[field]);
             }
           } else {
             // For text fields
             if (!value || value.toString().trim().length === 0) {
+              console.log('[DetailsTab] ❌ Adding error for:', field, '- text is empty');
               addError(field, `${label} is required`, fieldRefs.current[field]);
             }
           }
@@ -312,8 +342,11 @@ export function DetailsTab({
 
         // Also add validation warnings with error severity to field errors
         if (invoiceData.validation_warnings && Array.isArray(invoiceData.validation_warnings)) {
+          console.log('[DetailsTab] Checking validation_warnings:', invoiceData.validation_warnings.length, 'warnings');
           invoiceData.validation_warnings.forEach((warning: any) => {
+            console.log('[DetailsTab] Warning:', warning.field, 'severity:', warning.severity);
             if (warning.severity === 'error') {
+              console.log('[DetailsTab] ❌ Adding error from validation_warning:', warning.field);
               addError(
                 warning.field,
                 warning.message,
@@ -743,6 +776,10 @@ export function DetailsTab({
             <FraudRiskBanner
               fraudRisk={invoiceData.fraud_risk}
               vendorName={invoiceData.vendor_name_snapshot}
+              onViewPolicy={(policyLink) => {
+                setPolicyLinkToView(policyLink);
+                setIsPolicyDrawerOpen(true);
+              }}
             />
           )}
 
@@ -893,6 +930,7 @@ export function DetailsTab({
                       onAccept={() => {
                         onFieldAccept!('invoice_number', invoiceData.ocr_extractions?.invoice_number?.candidates[0].value);
                         setExpandedSuggestion(null);
+                        showToast('Invoice number accepted and saved for future invoices.', 'success');
                       }}
                       onReject={() => {
                         onFieldReject!('invoice_number');
@@ -970,22 +1008,19 @@ export function DetailsTab({
                       <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.vendor_name_snapshot} isEditMode={isEditing} />
                     </span>
                     {/* Vendor Swap Suggestion */}
-                    {!isEditing && invoiceData.ocr_extractions?.vendor_name_snapshot?.candidates?.[0] && (
+                    {!isEditing && invoiceData.ocr_extractions?.vendor_name_snapshot?.candidates && invoiceData.ocr_extractions.vendor_name_snapshot.candidates.length > 0 && (
                       <VendorSwapPopover
                         currentVendor={invoiceData.vendor_name_snapshot}
-                        suggestedVendor={invoiceData.ocr_extractions.vendor_name_snapshot.candidates[0].value}
-                        confidence={invoiceData.ocr_extractions.vendor_name_snapshot.candidates[0].confidence}
-                        reason={invoiceData.ocr_extractions.vendor_name_snapshot.candidates[0].reason}
+                        vendorCandidates={invoiceData.ocr_extractions.vendor_name_snapshot.candidates}
+                        explanation={invoiceData.ocr_extractions.vendor_name_snapshot.candidates[0].reason || 'AI suggests reassigning invoice based on analysis'}
                         open={isVendorSwapPopoverOpen}
                         onOpenChange={setIsVendorSwapPopoverOpen}
-                        onSwap={() => {
-                          const suggestedVendor = invoiceData.ocr_extractions.vendor_name_snapshot.candidates[0].value;
-
-                          // Update the vendor field value
+                        onAddVendor={(selectedVendor: string) => {
+                          // Update the vendor field value with the selected vendor
                           const updatedData = { ...invoiceData };
-                          updatedData.vendor_name_snapshot = suggestedVendor;
+                          updatedData.vendor_name_snapshot = selectedVendor;
 
-                          // Remove the candidate after accepting
+                          // Remove the candidates after accepting
                           if (updatedData.ocr_extractions?.vendor_name_snapshot) {
                             updatedData.ocr_extractions.vendor_name_snapshot.candidates = [];
                           }
@@ -1000,13 +1035,8 @@ export function DetailsTab({
                           // Remove field error for vendor
                           removeError('vendor_name_snapshot');
 
-                          // Update the edited data if in edit mode
-                          if (isEditing) {
-                            setEditedData({...editedData, vendor_name_snapshot: suggestedVendor});
-                          } else {
-                            // Also update editedData even when not in edit mode to ensure consistency
-                            setEditedData({...editedData, vendor_name_snapshot: suggestedVendor});
-                          }
+                          // Update the edited data to ensure consistency
+                          setEditedData({...editedData, vendor_name_snapshot: selectedVendor});
 
                           // Apply the update
                           onUpdate?.(updatedData);
@@ -1113,6 +1143,7 @@ export function DetailsTab({
                         const poNumber = invoiceData.close_match_po.po_number;
                         acceptPONumber(poNumber);
                         setIsCloseMatchPopoverOpen(false);
+                        showToast(`PO ${poNumber} accepted and matched to invoice.`, 'success');
                       }}
                       onSearchDifferent={() => {
                         setIsPOSearchModalOpen(true);
@@ -1451,6 +1482,7 @@ export function DetailsTab({
                         onAccept={() => {
                           onFieldAccept!('assigned_to_name', invoiceData.suggested_approver);
                           setExpandedSuggestion(null);
+                          showToast('Approver suggestion accepted and saved for future invoices.', 'success');
                         }}
                         onReject={() => {
                           onFieldReject!('assigned_to_name');
@@ -2111,6 +2143,7 @@ export function DetailsTab({
         )}
 
         {/* Document Links Section */}
+        {!hideDocumentLinksSection && (
         <div>
           <div className="relative px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
             <div className="flex items-center gap-2">
@@ -2190,6 +2223,7 @@ export function DetailsTab({
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Bottom Action Bar - Only shown in edit mode */}
@@ -2237,6 +2271,13 @@ export function DetailsTab({
         onLinkPO={handleLinkPO}
         vendorId={null}
         vendorName={editedData.vendor_name_snapshot}
+      />
+
+      {/* Policy Document Drawer */}
+      <PolicyDocumentDrawer
+        isOpen={isPolicyDrawerOpen}
+        onClose={() => setIsPolicyDrawerOpen(false)}
+        policyLink={policyLinkToView || undefined}
       />
       </div>
     </Tooltip.Provider>

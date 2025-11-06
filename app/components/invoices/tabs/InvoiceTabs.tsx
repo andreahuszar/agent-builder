@@ -51,6 +51,8 @@ interface InvoiceTabsProps {
   onStartTeaching?: (fieldName: string) => void;
   // Agent-pending fields (accepted but not yet saved)
   agentPendingFields?: {[key: string]: any};
+  // Line items error count (for variance highlighting)
+  lineItemsErrorCount?: number;
 }
 
 export function InvoiceTabs({
@@ -81,6 +83,7 @@ export function InvoiceTabs({
   onFieldFocus,
   onStartTeaching,
   agentPendingFields = {},
+  lineItemsErrorCount = 0,
 }: InvoiceTabsProps) {
   // Determine initial tab based on invoice status
   const getInitialTab = (): TabId => {
@@ -219,6 +222,7 @@ export function InvoiceTabs({
       label: 'Items',
       icon: Package,
       count: invoiceData?.lines?.length,
+      hasLineItemsError: lineItemsErrorCount > 0,
     },
     {
       id: 'matching' as TabId,
@@ -325,7 +329,13 @@ export function InvoiceTabs({
 
           {/* Regular count badges for other tabs */}
           {tab.id !== 'matching' && tab.id !== 'details' && tab.count !== undefined && tab.count > 0 && (
-            <span className="inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium rounded-full min-w-[20px] bg-purple-100 text-purple-900 flex-shrink-0">
+            <span className={`inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-medium rounded-full min-w-[20px] flex-shrink-0 ${
+              tab.id === 'line-items' && tab.hasLineItemsError
+                ? activeTab === tab.id
+                  ? 'bg-red-100 text-red-800'
+                  : 'bg-red-50 text-red-700'
+                : 'bg-purple-100 text-purple-900'
+            }`}>
               {tab.count}
             </span>
           )}
@@ -396,6 +406,7 @@ export function InvoiceTabs({
             hideFloatingSaveButton={forceEditMode}
             hideAccountingSection={forceEditMode}
             hidePaymentSection={forceEditMode}
+            hideDocumentLinksSection={true}
             showFieldErrors={showFieldErrors}
             onEditModeChange={onEditModeChange}
             onFieldAccept={onFieldAccept}

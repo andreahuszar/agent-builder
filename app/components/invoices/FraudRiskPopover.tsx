@@ -29,6 +29,7 @@ interface FraudRiskPopoverProps {
   fraudRisk: FraudRisk;
   vendorName?: string;
   onClose?: () => void;
+  onViewPolicy?: (policyLink: string) => void;
   children: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -38,6 +39,7 @@ export function FraudRiskPopover({
   fraudRisk,
   vendorName,
   onClose,
+  onViewPolicy,
   children,
   open,
   onOpenChange,
@@ -156,6 +158,7 @@ export function FraudRiskPopover({
                 </div>
                 <button
                   type="button"
+                  onClick={() => onViewPolicy?.(fraudRisk.policy_link)}
                   className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors font-medium cursor-pointer"
                 >
                   <ExternalLink className="h-3 w-3" />

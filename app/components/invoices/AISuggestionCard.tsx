@@ -15,6 +15,7 @@ interface AISuggestionCardProps {
   candidate: Candidate;
   onAccept: () => void;
   onReject: () => void;
+  onSelectOther?: () => void;
   onViewInPDF?: () => void;
   onClose?: () => void;
   fieldLabel?: string;
@@ -24,6 +25,7 @@ export function AISuggestionCard({
   candidate,
   onAccept,
   onReject,
+  onSelectOther,
   onViewInPDF,
   onClose,
   fieldLabel,
@@ -75,11 +77,19 @@ export function AISuggestionCard({
         >
           Cancel
         </button>
+        {onSelectOther && (
+          <button
+            onClick={onSelectOther}
+            className="flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+          >
+            Select Other
+          </button>
+        )}
         <button
           onClick={onAccept}
           className="flex-1 flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
         >
-          Accept & Remember
+          Accept
         </button>
         {onViewInPDF && (
           <button

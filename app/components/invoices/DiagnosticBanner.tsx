@@ -29,6 +29,7 @@ interface DiagnosticBannerProps {
   commentsCount?: number;
   assignedUserName?: string | null;
   onAssignUser?: (userName: string | null) => void;
+  workflowStatus?: string;
 }
 
 export function DiagnosticBanner({
@@ -54,6 +55,7 @@ export function DiagnosticBanner({
   commentsCount = 0,
   assignedUserName,
   onAssignUser,
+  workflowStatus,
 }: DiagnosticBannerProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
@@ -205,21 +207,22 @@ export function DiagnosticBanner({
           </div>
         )}
 
-        {/* Red Error Banner - Missing fields or line item discrepancies */}
-        {(missingFieldsCount > 0 || lineItemsErrorCount > 0) && (
+        {/* Red Error Banner - Missing fields only */}
+        {missingFieldsCount > 0 && (
           <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
             <AlertTriangle className="h-3 w-3" />
             <span>
-              {missingFieldsCount > 0 && lineItemsErrorCount > 0 ? (
-                // Both types of errors
-                `${missingFieldsCount} field${missingFieldsCount !== 1 ? 's' : ''} need${missingFieldsCount === 1 ? 's' : ''} attention, ${lineItemsErrorCount} line item${lineItemsErrorCount !== 1 ? 's' : ''} discrepancy`
-              ) : missingFieldsCount > 0 ? (
-                // Only missing fields
-                `${missingFieldsCount} field${missingFieldsCount !== 1 ? 's' : ''} need${missingFieldsCount === 1 ? 's' : ''} attention`
-              ) : (
-                // Only line items errors
-                `${lineItemsErrorCount} line item${lineItemsErrorCount !== 1 ? 's' : ''} discrepancy`
-              )}
+              {missingFieldsCount} field{missingFieldsCount !== 1 ? 's' : ''} need{missingFieldsCount === 1 ? 's' : ''} attention
+            </span>
+          </div>
+        )}
+
+        {/* Red Variance Banner - Line item variances */}
+        {lineItemsErrorCount > 0 && (
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+            <AlertTriangle className="h-3 w-3" />
+            <span>
+              {lineItemsErrorCount} line item{lineItemsErrorCount !== 1 ? 's' : ''} variance
             </span>
           </div>
         )}
@@ -251,11 +254,20 @@ export function DiagnosticBanner({
       {/* Action Buttons for all invoices */}
       <div className="ml-auto flex items-center gap-2">
         <button
-          onClick={onSaveClick}
-          disabled={isSaving}
-          className="px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+          onClick={workflowStatus === 'posted' ? undefined : onSaveClick}
+          disabled={isSaving || workflowStatus === 'posted'}
+          className="px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
         >
-          {isSaving ? 'Validating...' : 'Validate'}
+          {workflowStatus === 'posted' ? (
+            <>
+              <Check className="h-4 w-4" />
+              Validated
+            </>
+          ) : isSaving ? (
+            'Revalidating...'
+          ) : (
+            'Revalidate'
+          )}
         </button>
 
         {/* Actions Dropdown */}

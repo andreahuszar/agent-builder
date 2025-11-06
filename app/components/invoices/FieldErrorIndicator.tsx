@@ -83,7 +83,7 @@ export function FieldErrorIndicator({ errors, onDismiss, readOnly = false, hasPe
       <div className="bg-purple-50 border-b border-purple-200 px-4 py-2 flex items-center gap-2 sticky top-0 z-20">
         <Info className="h-4 w-4 text-purple-600 flex-shrink-0" />
         <span className="text-sm font-medium text-purple-900">
-          Pending changes - Reprocess invoice to apply agent-suggested values
+          Pending changes - revalidate invoice to apply agent-suggested values
         </span>
       </div>
     );
@@ -127,7 +127,7 @@ export function FieldErrorIndicator({ errors, onDismiss, readOnly = false, hasPe
           >
             <ChevronLeft className="h-3.5 w-3.5" />
           </button>
-          <span className="text-xs text-red-700 min-w-[30px] text-center">
+          <span className="text-xs text-red-900 min-w-[30px] text-center">
             {currentErrorIndex + 1}/{errors.length}
           </span>
           <button

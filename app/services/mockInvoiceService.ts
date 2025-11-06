@@ -165,7 +165,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
   mockInvoices.push({
     id: 'baseline-nonpo-1',
     invoice_number: 'PIT-250103001',
-    vendor_name_snapshot: 'CloudTech Solutions Inc',
+    vendor_name_snapshot: 'Unknown Vendor',
     vendor_id: 'VND-2001',
     invoice_date: baselineNonPODate.toISOString().split('T')[0],
     due_date: baselineNonPODueDate.toISOString().split('T')[0],
@@ -248,6 +248,24 @@ export const generateBaselineInvoices = (): Invoice[] => {
             confidence: 0.88,
             source: 'ERP Vendor Matching',
             reason: 'System matched invoice to parent company "CloudTech Solutions Inc" based on tax ID. However, remit-to address analysis indicates this invoice should be assigned to child company "CloudTech Solutions Ltd" for accurate accounting and payment processing.'
+          },
+          {
+            value: 'CloudTech Europe GmbH',
+            confidence: 0.82,
+            source: 'Address Analysis',
+            reason: 'Invoice remit-to address matches European subsidiary. This entity handles EU-based transactions for the CloudTech group.'
+          },
+          {
+            value: 'CloudTech Solutions Corp',
+            confidence: 0.75,
+            source: 'Historical Patterns',
+            reason: 'Similar invoice patterns from this vendor in past transactions. Corporate entity used for North American operations.'
+          },
+          {
+            value: 'CloudTech UK Ltd',
+            confidence: 0.68,
+            source: 'Tax ID Partial Match',
+            reason: 'UK-registered entity within CloudTech group. Tax identification shows partial match with invoice details.'
           }
         ]
       }
@@ -621,9 +639,9 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po2-7',
       line_no: 7,
-      description: 'Premium Portland Cement - 50kg Bags',
+      description: 'Premium Portland Cement',
       qty: 54,
-      uom: 'Bags',
+      uom: 'Each',
       unit_price: 50.00,
       net_amount: 2700.00,
       line_total: 2700.00,
@@ -645,6 +663,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     vendor_tax_id_snapshot: 'TAX-VND-1001',
     invoice_date: baselinePO2Date.toISOString().split('T')[0],
     due_date: baselinePO2DueDate.toISOString().split('T')[0],
+    job_number: 'WO-2025-445',
     currency: 'GBP',
     subtotal: baselinePO2Subtotal,
     tax_total: baselinePO2Tax,
@@ -939,9 +958,9 @@ export const generateBaselineInvoices = (): Invoice[] => {
       matching_factors: {
         vendor_match: true,
         date_proximity_days: 3,      // PO created Oct 18, invoice Oct 21
-        line_items_overlap: 3,        // 3 of 4 invoice items match PO
+        line_items_overlap: 4,        // All 4 invoice items match PO
         total_line_items: 4,          // Total number of invoice line items
-        variance_count: 1,            // 1 item has variance
+        variance_count: 0,            // No variance
       },
       po_summary: {
         total: 1055.00,               // Slightly different from invoice $1080.54
@@ -1018,6 +1037,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     vendor_postal_code_snapshot: '101000',
     invoice_date: fraudRiskDate.toISOString().split('T')[0],
     due_date: fraudRiskDueDate.toISOString().split('T')[0],
+    job_number: 'WC-2025-445',
     currency: 'GBP',
     subtotal: fraudRiskSubtotal,
     tax_total: fraudRiskTax,

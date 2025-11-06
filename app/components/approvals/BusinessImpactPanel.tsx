@@ -61,6 +61,14 @@ export function BusinessImpactPanel({
     }
   };
 
+  // Check if there's any content to show
+  const hasContent = (latePaymentPenalty?.applicable) || vendorRelationshipRisk;
+
+  // Don't render anything if there's no content
+  if (!hasContent) {
+    return null;
+  }
+
   return (
     <div className="space-y-4">
       <h4 className="text-sm font-bold text-gray-950">Business Impact</h4>
