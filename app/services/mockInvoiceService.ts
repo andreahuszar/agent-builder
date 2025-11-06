@@ -80,12 +80,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: baselinePOTax,
     tax_rate_percent: 20,
     total: baselinePOTotal,
-    status: 'needs_info', // Exception status to appear in PO tab
+    status: 'verification', // Verification stage (AI suggestions need review)
     match_status: 'matched', // Perfect 2-way PO match
     type: 'PO',
     vendor_requires_po: true,
     vendor_is_verified: true,
     approval_status: 'pending',
+    assigned_to_name: 'James Wilson',
+    assigned_to_user_id: 'user-4',
     po_numbers_cached: ['PO-2025-9001'],
     gr_numbers: [],
     docType: 'Invoice',
@@ -154,6 +156,12 @@ export const generateBaselineInvoices = (): Invoice[] => {
   const baselineNonPOTax = 700.00; // 20% VAT
   const baselineNonPOTotal = 4200.00;
 
+  // SLA tracking for baseline-nonpo-1
+  const baselineNonPOAssignedAt = new Date(now);
+  baselineNonPOAssignedAt.setDate(baselineNonPOAssignedAt.getDate() - 2); // Assigned 2 days ago
+  const baselineNonPODeadline = new Date(baselineNonPOAssignedAt);
+  baselineNonPODeadline.setHours(baselineNonPODeadline.getHours() + 48); // 48-hour SLA
+
   mockInvoices.push({
     id: 'baseline-nonpo-1',
     invoice_number: 'PIT-250103001',
@@ -166,16 +174,23 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: baselineNonPOTax,
     tax_rate_percent: 20,
     total: baselineNonPOTotal,
-    status: 'needs_info', // Exception status to appear in Non-PO tab
-    match_status: 'matched', // Non-PO doesn't require matching
+    status: 'approval', // Approval stage (awaiting approver action)
+    match_status: 'exception', // Exception due to vendor reassignment required
     type: 'Non-PO',
     vendor_requires_po: false,
     vendor_is_verified: true,
     approval_status: 'pending',
-    assigned_to_name: 'Sarah Mitchell', // Approver assigned
+    assigned_to_name: 'James Wilson', // Approver assigned
+    assigned_to_user_id: 'user-4',
+    // SLA tracking
+    assigned_at: baselineNonPOAssignedAt.toISOString(),
+    sla_hours: 48,
+    sla_deadline: baselineNonPODeadline.toISOString(),
+    sla_status: 'at_risk',
     po_numbers_cached: [],
     gr_numbers: [],
     docType: 'Invoice',
+    issues: ['Vendor Reassignment Required'],
     created_at: baselineNonPODate.toISOString(),
     updated_at: baselineNonPODate.toISOString(),
     data_ingestion_date: baselineNonPODate.toISOString().split('T')[0],
@@ -236,7 +251,17 @@ export const generateBaselineInvoices = (): Invoice[] => {
           }
         ]
       }
-    }
+    },
+    validation_warnings: [{
+      type: 'vendor_reassignment',
+      category: 'compliance',
+      field: 'vendor_name_snapshot',
+      message: 'AI suggests reassigning invoice to child company based on remit-to address',
+      severity: 'warning',
+      suggested_vendor: 'CloudTech Solutions Ltd',
+      current_vendor: 'CloudTech Solutions Inc',
+      confidence: 0.88
+    }]
   } as Invoice);
 
   // ========================================================================
@@ -306,8 +331,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: baselineNonPO2Tax,
     tax_rate_percent: 20,
     total: baselineNonPO2Total,
-    status: 'needs_info', // Exception status to appear in Non-PO tab
-    match_status: 'matched', // Non-PO doesn't require matching
+    status: 'approval', // Approval stage (awaiting smart-routed approver)
+    match_status: 'exception', // Exception due to approver confirmation required
     type: 'Non-PO',
     vendor_requires_po: false,
     vendor_is_verified: true,
@@ -315,7 +340,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     po_numbers_cached: [],
     gr_numbers: [],
     docType: 'Invoice',
-    issues: [], // Will be populated when we apply scenario
+    issues: ['Approver Confirmation Required'],
     created_at: baselineNonPO2Date.toISOString(),
     updated_at: baselineNonPO2Date.toISOString(),
     data_ingestion_date: baselineNonPO2Date.toISOString().split('T')[0],
@@ -328,7 +353,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
     gl_code: 'GL-6100',
     department: 'UK Ltd',
     // Approver routing (smart suggestion - pending confirmation)
-    assigned_to_name: null, // Not yet confirmed
+    assigned_to_name: 'James Wilson',
+    assigned_to_user_id: 'user-4',
     suggested_approver: 'Sarah Mitchell',
     suggested_approver_user_id: 'user-sarah-mitchell',
     approver_suggestion_pending: true,
@@ -394,7 +420,17 @@ export const generateBaselineInvoices = (): Invoice[] => {
           weight: 0.30
         }
       ]
-    }
+    },
+    validation_warnings: [{
+      type: 'approver_suggestion',
+      category: 'workflow',
+      field: 'assigned_to_name',
+      message: 'AI-suggested approver requires user confirmation',
+      severity: 'warning',
+      suggested_approver: 'Sarah Mitchell',
+      confidence: 0.91,
+      reasoning: 'Based on service type (facility services), invoice amount (£1,620), and location (UK Office)'
+    }]
   } as Invoice);
 
   // ========================================================================
@@ -450,12 +486,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: baselineMatchedTax,
     tax_rate_percent: 20,
     total: baselineMatchedTotal,
-    status: 'approved', // Successfully processed
+    status: 'posted', // Posted to accounting system
     match_status: 'matched',
     type: 'PO',
     vendor_requires_po: true,
     vendor_is_verified: true,
     approval_status: 'approved',
+    assigned_to_name: 'Caroline Walsh',
+    assigned_to_user_id: 'user-3',
     po_numbers_cached: ['PO-2025-8001'],
     gr_numbers: ['GR-2025-8001'],
     docType: 'Invoice',
@@ -612,12 +650,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: baselinePO2Tax,
     tax_rate_percent: 20,
     total: baselinePO2Total,
-    status: 'needs_info', // Exception status (quantity mismatch)
+    status: 'verification', // Verification stage (line item variances being checked)
     match_status: 'variance', // Has variance on line 3
     type: 'PO',
     vendor_requires_po: true,
     vendor_is_verified: true,
     approval_status: 'pending',
+    assigned_to_name: 'James Wilson',
+    assigned_to_user_id: 'user-4',
     po_numbers_cached: ['PO-2025-9010'],
     gr_numbers: [],
     docType: 'Invoice',
@@ -685,12 +725,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: baselinePOBankTax,
     tax_rate_percent: 20,
     total: baselinePOBankTotal,
-    status: 'needs_info', // Exception status (bank details change)
+    status: 'verification', // Verification stage (bank details need verification)
     match_status: 'exception', // Exception due to bank details only
     type: 'PO',
     vendor_requires_po: true,
     vendor_is_verified: true,
     approval_status: 'pending',
+    assigned_to_name: 'James Wilson',
+    assigned_to_user_id: 'user-4',
     po_numbers_cached: ['PO-2025-7755'],
     gr_numbers: [],
     docType: 'Invoice',
@@ -704,7 +746,10 @@ export const generateBaselineInvoices = (): Invoice[] => {
     payment_bank_details: {
       bank_name: 'First National Bank',
       account_name: 'Industrial Equipment Corp',
-      account_number: '87654321234',
+      iban: 'GB29NWBK60161331926819',
+      swift_bic: 'NWBKGB2L',
+      sort_code: '60-16-13',
+      account_number: '13319268',
       routing_number: '123456789',
     },
     // Bank details exception - account changed
@@ -714,6 +759,25 @@ export const generateBaselineInvoices = (): Invoice[] => {
       field: 'payment_bank_details',
       message: 'Bank account changed since last invoice',
       severity: 'error',
+      old_bank_details: {
+        bank_name: 'Western Bank',
+        account_name: 'Industrial Equipment Corp',
+        iban: 'GB82WEST12345698765432',
+        swift_bic: 'WESTNBB',
+        sort_code: '12-34-56',
+        account_number: '98765432',
+        routing_number: '987654321',
+      },
+      new_bank_details: {
+        bank_name: 'First National Bank',
+        account_name: 'Industrial Equipment Corp',
+        iban: 'GB29NWBK60161331926819',
+        swift_bic: 'NWBKGB2L',
+        sort_code: '60-16-13',
+        account_number: '13319268',
+        routing_number: '123456789',
+      },
+      // Legacy fields for backward compatibility
       old_account: '12345675678',
       new_account: '87654321234'
     }],
@@ -835,12 +899,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: missingPOTax,
     tax_rate_percent: 8,
     total: missingPOTotal,
-    status: 'needs_info', // Missing required PO field
-    match_status: 'pending', // Awaiting PO assignment
+    status: 'verification', // Verification stage (close match PO needs confirmation)
+    match_status: 'exception', // Exception due to missing PO
     type: 'PO',
     vendor_requires_po: true, // This vendor requires PO
     vendor_is_verified: true,
     approval_status: 'pending',
+    assigned_to_name: 'James Wilson',
+    assigned_to_user_id: 'user-4',
     po_numbers_cached: [], // MISSING - needs to be added
     po_id: null, // MISSING
     gr_numbers: [],
@@ -957,7 +1023,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: fraudRiskTax,
     tax_rate_percent: 9.09,
     total: fraudRiskTotal,
-    status: 'blocked', // Blocked due to fraud risk compliance hold
+    status: 'on_hold', // On hold due to fraud risk compliance hold
     match_status: 'matched',
     type: 'PO',
     vendor_requires_po: true,
@@ -965,6 +1031,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
     approval_status: 'pending',
     processed_status: 'Exception', // Exception status for fraud risk
     approver: undefined, // No approver - blocked for fraud risk review
+    assigned_to_name: 'Caroline Walsh',
+    assigned_to_user_id: 'user-3',
     po_numbers_cached: ['PO-2025-7001'],
     gr_numbers: [],
     docType: 'Invoice',
@@ -1059,12 +1127,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: autoReject1Tax,
     tax_rate_percent: 8,
     total: autoReject1Total,
-    status: 'auto_rejected', // Auto-rejected status
+    status: 'rejected', // Rejected (auto-rejected)
     match_status: 'auto_rejected',
     type: 'PO',
     vendor_requires_po: true,
     vendor_is_verified: true,
     approval_status: 'auto_rejected',
+    assigned_to_name: 'Caroline Walsh',
+    assigned_to_user_id: 'user-3',
     po_numbers_cached: [],
     gr_numbers: [],
     docType: 'Invoice',
@@ -1143,12 +1213,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: autoReject2Tax,
     tax_rate_percent: 20,
     total: autoReject2Total,
-    status: 'auto_rejected', // Auto-rejected status
+    status: 'rejected', // Rejected (contract violation)
     match_status: 'auto_rejected',
     type: 'PO',
     vendor_requires_po: true,
     vendor_is_verified: true,
     approval_status: 'auto_rejected',
+    assigned_to_name: 'Caroline Walsh',
+    assigned_to_user_id: 'user-3',
     po_numbers_cached: ['PO-2025-8901'],
     gr_numbers: [],
     docType: 'Invoice',
@@ -1168,6 +1240,372 @@ export const generateBaselineInvoices = (): Invoice[] => {
       po_number: 'PO-2025-8901',
       clause: 'Freight charges included',
       violated_by: 'Line 2: Freight Charges ($450.00)'
+    }
+  } as Invoice);
+
+  // ========================================================================
+  // SLA SCENARIO #1 - APPROACHING BREACH (AT-RISK, 6 HOURS REMAINING)
+  // ========================================================================
+  const slaApproaching1Date = new Date(now);
+  slaApproaching1Date.setDate(slaApproaching1Date.getDate() - 3); // Created 3 days ago
+  const slaApproaching1DueDate = new Date(slaApproaching1Date);
+  slaApproaching1DueDate.setDate(slaApproaching1DueDate.getDate() + 30); // Due in 27 days
+
+  const slaApproaching1AssignedAt = new Date(now);
+  slaApproaching1AssignedAt.setHours(slaApproaching1AssignedAt.getHours() - 42); // Assigned 42 hours ago
+  const slaApproaching1Deadline = new Date(slaApproaching1AssignedAt);
+  slaApproaching1Deadline.setHours(slaApproaching1Deadline.getHours() + 48); // 48-hour SLA
+
+  const slaApproaching1Lines = [
+    {
+      id: 'line-sla-approaching-1-1',
+      line_no: 1,
+      description: 'Office Supplies - Monthly Restocking',
+      qty: 50,
+      uom: 'EA',
+      unit_price: 64.00,
+      net_amount: 3200.00,
+      line_total: 3200.00,
+      po_line_id: 'po-line-9505-1',
+      gr_line_id: null,
+      ses_line_id: null
+    }
+  ];
+
+  const slaApproaching1Subtotal = 3200.00;
+  const slaApproaching1Tax = 256.00; // 8% sales tax
+  const slaApproaching1Total = 3456.00;
+
+  mockInvoices.push({
+    id: 'sla-approaching-1',
+    invoice_number: 'SLA-2025-0001',
+    vendor_name_snapshot: 'Office Equipment Plus',
+    vendor_id: 'VND-7001',
+    vendor_tax_id_snapshot: 'TAX-VND-7001',
+    invoice_date: slaApproaching1Date.toISOString().split('T')[0],
+    due_date: slaApproaching1DueDate.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: slaApproaching1Subtotal,
+    tax_total: slaApproaching1Tax,
+    tax_rate_percent: 8,
+    total: slaApproaching1Total,
+    status: 'pending_approval',
+    workflow_status: 'approval',
+    match_status: 'matched',
+    type: 'PO',
+    vendor_requires_po: true,
+    vendor_is_verified: true,
+    approval_status: 'pending',
+    po_numbers_cached: ['PO-2025-9505'],
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: [],
+    created_at: slaApproaching1Date.toISOString(),
+    updated_at: slaApproaching1Date.toISOString(),
+    data_ingestion_date: slaApproaching1Date.toISOString().split('T')[0],
+    lines: slaApproaching1Lines,
+    invoice_lines: slaApproaching1Lines,
+    assigned_to_name: 'Caroline Walsh',
+    assigned_to_user_id: 'user-3',
+    // SLA tracking
+    assigned_at: slaApproaching1AssignedAt.toISOString(),
+    sla_hours: 48,
+    sla_deadline: slaApproaching1Deadline.toISOString(),
+    sla_status: 'at_risk',
+    payment_terms: 'Net 30',
+    // Vendor communications (1 polite email)
+    vendor_communications: [
+      {
+        id: 'comm-1',
+        type: 'email',
+        timestamp: new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+        from: 'ap@officeequipmentplus.com',
+        subject: 'Payment Inquiry - Invoice SLA-2025-0001',
+        preview: 'We hope this email finds you well. We wanted to follow up on invoice SLA-2025-0001 dated ' + slaApproaching1Date.toISOString().split('T')[0] + ' for $3,456.00. Could you please provide an update on the payment status?',
+        tone: 'polite'
+      }
+    ],
+    approver_history: {
+      average_approval_time_hours: 18,
+      total_approvals: 67,
+      sla_breach_count: 1,
+      last_breach_date: '2024-10-15'
+    }
+  } as Invoice);
+
+  // ========================================================================
+  // SLA SCENARIO #2 - JUST BREACHED (4 HOURS OVERDUE)
+  // ========================================================================
+  const slaBreached1Date = new Date(now);
+  slaBreached1Date.setDate(slaBreached1Date.getDate() - 4); // Created 4 days ago
+  const slaBreached1DueDate = new Date(slaBreached1Date);
+  slaBreached1DueDate.setDate(slaBreached1DueDate.getDate() + 30); // Due in 26 days
+
+  const slaBreached1AssignedAt = new Date(now);
+  slaBreached1AssignedAt.setHours(slaBreached1AssignedAt.getHours() - 52); // Assigned 52 hours ago
+  const slaBreached1Deadline = new Date(slaBreached1AssignedAt);
+  slaBreached1Deadline.setHours(slaBreached1Deadline.getHours() + 48); // 48-hour SLA
+
+  const slaBreached1Lines = [
+    {
+      id: 'line-sla-breached-1-1',
+      line_no: 1,
+      description: 'IT Consulting Services - Q1 2025',
+      qty: 60,
+      uom: 'Hours',
+      unit_price: 125.00,
+      net_amount: 7500.00,
+      line_total: 7500.00,
+      po_line_id: 'po-line-9506-1',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-sla-breached-1-2',
+      line_no: 2,
+      description: 'Software Licenses - Annual Renewal',
+      qty: 5,
+      uom: 'License',
+      unit_price: 200.00,
+      net_amount: 1000.00,
+      line_total: 1000.00,
+      po_line_id: 'po-line-9506-2',
+      gr_line_id: null,
+      ses_line_id: null
+    }
+  ];
+
+  const slaBreached1Subtotal = 8500.00;
+  const slaBreached1Tax = 1700.00; // 20% VAT
+  const slaBreached1Total = 10200.00;
+
+  mockInvoices.push({
+    id: 'sla-breached-1',
+    invoice_number: 'SLA-2025-0002',
+    vendor_name_snapshot: 'TechSupply Solutions Ltd',
+    vendor_id: 'VND-1001',
+    vendor_tax_id_snapshot: 'TAX-VND-1001',
+    invoice_date: slaBreached1Date.toISOString().split('T')[0],
+    due_date: slaBreached1DueDate.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: slaBreached1Subtotal,
+    tax_total: slaBreached1Tax,
+    tax_rate_percent: 20,
+    total: slaBreached1Total,
+    status: 'pending_approval',
+    workflow_status: 'approval',
+    match_status: 'matched',
+    type: 'PO',
+    vendor_requires_po: true,
+    vendor_is_verified: true,
+    approval_status: 'pending',
+    po_numbers_cached: ['PO-2025-9506'],
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: ['SLA Breached'],
+    created_at: slaBreached1Date.toISOString(),
+    updated_at: slaBreached1Date.toISOString(),
+    data_ingestion_date: slaBreached1Date.toISOString().split('T')[0],
+    lines: slaBreached1Lines,
+    invoice_lines: slaBreached1Lines,
+    assigned_to_name: 'Caroline Walsh',
+    assigned_to_user_id: 'user-3',
+    // SLA tracking
+    assigned_at: slaBreached1AssignedAt.toISOString(),
+    sla_hours: 48,
+    sla_deadline: slaBreached1Deadline.toISOString(),
+    sla_status: 'breached',
+    hours_overdue: 4,
+    payment_terms: 'Net 30',
+    // Vendor communications (2 emails: polite → urgent)
+    vendor_communications: [
+      {
+        id: 'comm-2-1',
+        type: 'email',
+        timestamp: new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString(), // 24 hours ago
+        from: 'finance@techsupply.com',
+        subject: 'Payment Status Inquiry - Invoice SLA-2025-0002',
+        preview: 'Dear Accounts Payable Team, We are writing to inquire about the payment status for invoice SLA-2025-0002 dated ' + slaBreached1Date.toISOString().split('T')[0] + ' for $10,200.00. Please let us know when we can expect payment.',
+        tone: 'polite'
+      },
+      {
+        id: 'comm-2-2',
+        type: 'email',
+        timestamp: new Date(now.getTime() - 6 * 60 * 60 * 1000).toISOString(), // 6 hours ago
+        from: 'finance@techsupply.com',
+        subject: 'URGENT: Payment Overdue - Invoice SLA-2025-0002',
+        preview: 'This is a follow-up to our previous email. Invoice SLA-2025-0002 for $10,200.00 is now overdue per our payment terms. We kindly request immediate attention to this matter. Please provide an update on the payment timeline.',
+        tone: 'urgent'
+      }
+    ],
+    approver_history: {
+      average_approval_time_hours: 12,
+      total_approvals: 45,
+      sla_breach_count: 2,
+      last_breach_date: '2024-11-15'
+    }
+  } as Invoice);
+
+  // ========================================================================
+  // SLA SCENARIO #3 - SEVERELY BREACHED (48 HOURS OVERDUE, 2 DAYS)
+  // ========================================================================
+  const slaSevere1Date = new Date(now);
+  slaSevere1Date.setDate(slaSevere1Date.getDate() - 8); // Created 8 days ago
+  const slaSevere1DueDate = new Date(slaSevere1Date);
+  slaSevere1DueDate.setDate(slaSevere1DueDate.getDate() + 30); // Due in 22 days
+
+  const slaSevere1AssignedAt = new Date(now);
+  slaSevere1AssignedAt.setDate(slaSevere1AssignedAt.getDate() - 5); // Assigned 5 days ago (120 hours)
+  const slaSevere1Deadline = new Date(slaSevere1AssignedAt);
+  slaSevere1Deadline.setHours(slaSevere1Deadline.getHours() + 48); // 48-hour SLA
+
+  const slaSevere1Lines = [
+    {
+      id: 'line-sla-severe-1-1',
+      line_no: 1,
+      description: 'Industrial Equipment - Heavy Machinery Parts',
+      qty: 12,
+      uom: 'EA',
+      unit_price: 1850.00,
+      net_amount: 22200.00,
+      line_total: 22200.00,
+      po_line_id: 'po-line-9507-1',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-sla-severe-1-2',
+      line_no: 2,
+      description: 'Installation and Configuration Services',
+      qty: 15,
+      uom: 'Hours',
+      unit_price: 170.00,
+      net_amount: 2550.00,
+      line_total: 2550.00,
+      po_line_id: 'po-line-9507-2',
+      gr_line_id: null,
+      ses_line_id: null
+    }
+  ];
+
+  const slaSevere1Subtotal = 24750.00;
+  const slaSevere1Tax = 4950.00; // 20% VAT
+  const slaSevere1Total = 29700.00;
+
+  mockInvoices.push({
+    id: 'sla-severe-1',
+    invoice_number: 'SLA-2025-0003',
+    vendor_name_snapshot: 'Industrial Equipment Corp',
+    vendor_id: 'VND-2001',
+    vendor_tax_id_snapshot: 'TAX-VND-2001',
+    invoice_date: slaSevere1Date.toISOString().split('T')[0],
+    due_date: slaSevere1DueDate.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: slaSevere1Subtotal,
+    tax_total: slaSevere1Tax,
+    tax_rate_percent: 20,
+    total: slaSevere1Total,
+    status: 'pending_approval',
+    workflow_status: 'approval',
+    match_status: 'matched',
+    type: 'PO',
+    vendor_requires_po: true,
+    vendor_is_verified: true,
+    approval_status: 'pending',
+    po_numbers_cached: ['PO-2025-9507'],
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: ['SLA Severely Breached - Escalation Required'],
+    created_at: slaSevere1Date.toISOString(),
+    updated_at: slaSevere1Date.toISOString(),
+    data_ingestion_date: slaSevere1Date.toISOString().split('T')[0],
+    lines: slaSevere1Lines,
+    invoice_lines: slaSevere1Lines,
+    assigned_to_name: 'Caroline Walsh',
+    assigned_to_user_id: 'user-3',
+    // SLA tracking
+    assigned_at: slaSevere1AssignedAt.toISOString(),
+    sla_hours: 48,
+    sla_deadline: slaSevere1Deadline.toISOString(),
+    sla_status: 'severe_breach',
+    hours_overdue: 72, // 3 days overdue (72 hours)
+    payment_terms: 'Net 30',
+    late_payment_penalty: {
+      applicable: true,
+      rate: '1.5% per month',
+      estimated_amount: 371.25 // 1.5% of $24,750
+    },
+    vendor_relationship_risk: 'medium',
+    // Escalation tracking
+    escalation_level: 1, // First escalation due
+    escalation_to: {
+      name: 'James Wilson',
+      role: 'Finance Manager',
+      email: 'james.wilson@company.com'
+    },
+    previous_escalations: 0,
+    // Vendor communications (4 emails + 2 phone calls, escalating)
+    vendor_communications: [
+      {
+        id: 'comm-3-1',
+        type: 'email',
+        timestamp: new Date(now.getTime() - 96 * 60 * 60 * 1000).toISOString(), // 4 days ago
+        from: 'accounts@industrialeq.com',
+        subject: 'Payment Inquiry - Invoice SLA-2025-0003',
+        preview: 'Dear AP Team, We wanted to follow up on invoice SLA-2025-0003 dated ' + slaSevere1Date.toISOString().split('T')[0] + ' for $29,700.00. Could you please confirm receipt and provide an expected payment date?',
+        tone: 'polite'
+      },
+      {
+        id: 'comm-3-2',
+        type: 'email',
+        timestamp: new Date(now.getTime() - 72 * 60 * 60 * 1000).toISOString(), // 3 days ago
+        from: 'accounts@industrialeq.com',
+        subject: 'Follow-up: Payment Status - Invoice SLA-2025-0003',
+        preview: 'We have not yet received a response to our previous inquiry. Please advise on the payment timeline for invoice SLA-2025-0003 ($29,700.00). This invoice is approaching the payment due date.',
+        tone: 'urgent'
+      },
+      {
+        id: 'comm-3-3',
+        type: 'phone',
+        timestamp: new Date(now.getTime() - 48 * 60 * 60 * 1000).toISOString(), // 2 days ago
+        from: 'Jennifer Adams, AP Manager',
+        notes: 'Calling to inquire about payment delay for invoice SLA-2025-0003. Mentioned vendor relationship and preferred supplier status. Requested callback.',
+        tone: 'urgent',
+        duration: 5
+      },
+      {
+        id: 'comm-3-4',
+        type: 'email',
+        timestamp: new Date(now.getTime() - 36 * 60 * 60 * 1000).toISOString(), // 1.5 days ago
+        from: 'accounts@industrialeq.com',
+        subject: 'URGENT: Overdue Payment - Invoice SLA-2025-0003',
+        preview: 'This is our third attempt to contact you regarding invoice SLA-2025-0003 for $29,700.00. The payment is now significantly overdue. Please note that late payment penalties may apply per our contract terms (1.5% per month). We require immediate attention to this matter.',
+        tone: 'escalated'
+      },
+      {
+        id: 'comm-3-5',
+        type: 'phone',
+        timestamp: new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString(), // 12 hours ago
+        from: 'Jennifer Adams, AP Manager',
+        notes: 'Second phone call. Expressed concern about payment delay affecting future business relationship. Mentioned that delayed payment could impact preferred supplier status and early payment discount eligibility on future orders.',
+        tone: 'escalated',
+        duration: 8
+      },
+      {
+        id: 'comm-3-6',
+        type: 'email',
+        timestamp: new Date(now.getTime() - 4 * 60 * 60 * 1000).toISOString(), // 4 hours ago
+        from: 'robert.chen@industrialeq.com',
+        subject: 'FINAL NOTICE: Escalation to Management - Invoice SLA-2025-0003',
+        preview: 'Dear Sir/Madam, Due to continued non-response regarding invoice SLA-2025-0003 ($29,700.00), this matter is being escalated to our senior management and your procurement team. Late payment penalties totaling $371.25 are now applicable. We expect immediate resolution within 24 hours to avoid further escalation. Our CFO will be contacting your Finance Manager directly.',
+        tone: 'escalated'
+      }
+    ],
+    approver_history: {
+      average_approval_time_hours: 36,
+      total_approvals: 28,
+      sla_breach_count: 5,
+      last_breach_date: '2025-01-02'
     }
   } as Invoice);
 
@@ -1197,7 +1635,7 @@ export const isMockInvoice = (id: string): boolean => {
   }
 
   // Updated prefixes for baseline approach and other mock scenarios
-  const mockPrefixes = ['baseline-', 'missing-po-', 'fraud-risk-', 'auto-reject-'];
+  const mockPrefixes = ['baseline-', 'missing-po-', 'fraud-risk-', 'auto-reject-', 'sla-'];
   const isMock = mockPrefixes.some(prefix => id.startsWith(prefix));
 
   if (DEBUG_MOCK) {

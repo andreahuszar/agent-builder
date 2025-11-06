@@ -692,12 +692,16 @@ export default function EnhancedInvoicesClient({
 
       switch(tab) {
         case 'po-invoices':
-          // PO invoices with exceptions only (exclude pending approval)
+          // PO invoices with exceptions only (exclude pending approval and rejected)
           // Use vendor_requires_po as fallback if type is not set
           return allInvoices.filter(inv =>
             (inv.type === 'PO' || inv.vendor_requires_po === true) &&
             !inv.approver && // Exclude pending approval
-            (inv.status === 'needs_info' ||
+            inv.status !== 'rejected' && // Exclude rejected (closed/done)
+            (inv.status === 'verification' ||
+             inv.status === 'approval' ||
+             inv.status === 'on_hold' ||
+             inv.status === 'disputed' ||
              inv.match_status === 'exception' ||
              inv.match_status === 'not_matched' ||
              inv.match_status === 'unmatched' ||
@@ -706,41 +710,43 @@ export default function EnhancedInvoicesClient({
              inv.match_status === 'quantity_mismatch' ||
              inv.match_status === 'amount_mismatch' ||
              inv.match_status === 'line_mismatch' ||
-             inv.status === 'requires_review' ||
-             inv.status === 'needs_review' ||
-             inv.status === 'blocked')
+             inv.match_status === 'variance')
           );
 
         case 'non-po-invoices':
-          // Non-PO invoices with exceptions only (exclude pending approval)
+          // Non-PO invoices with exceptions only (exclude pending approval and rejected)
           // Use vendor_requires_po as fallback if type is not set
           return allInvoices.filter(inv =>
             (inv.type === 'Non-PO' || inv.vendor_requires_po === false) &&
             !inv.approver && // Exclude pending approval
-            (inv.status === 'needs_info' ||
+            inv.status !== 'rejected' && // Exclude rejected (closed/done)
+            (inv.status === 'verification' ||
+             inv.status === 'approval' ||
+             inv.status === 'on_hold' ||
+             inv.status === 'disputed' ||
              inv.match_status === 'exception' ||
              inv.match_status === 'not_matched' ||
              inv.match_status === 'unmatched' ||
              inv.match_status === 'mismatch' ||
-             inv.status === 'requires_review' ||
-             inv.status === 'needs_review' ||
-             inv.status === 'blocked')
+             inv.match_status === 'variance')
           );
 
         case 'unclassified':
-          // Invoices without clear type with exceptions only (exclude pending approval)
+          // Invoices without clear type with exceptions only (exclude pending approval and rejected)
           // This captures invoices where both type and vendor_requires_po are undefined/null
           return allInvoices.filter(inv =>
             !inv.type && inv.vendor_requires_po === undefined &&
             !inv.approver && // Exclude pending approval
-            (inv.status === 'needs_info' ||
+            inv.status !== 'rejected' && // Exclude rejected (closed/done)
+            (inv.status === 'verification' ||
+             inv.status === 'approval' ||
+             inv.status === 'on_hold' ||
+             inv.status === 'disputed' ||
              inv.match_status === 'exception' ||
              inv.match_status === 'not_matched' ||
              inv.match_status === 'unmatched' ||
              inv.match_status === 'mismatch' ||
-             inv.status === 'requires_review' ||
-             inv.status === 'needs_review' ||
-             inv.status === 'blocked')
+             inv.match_status === 'variance')
           );
 
         case 'all':
@@ -766,27 +772,30 @@ export default function EnhancedInvoicesClient({
     // Original mode tabs
     switch(tab) {
       case 'exceptions':
-        // Combines needs-info + blocked/mismatched
+        // Combines verification/approval/on_hold/disputed + blocked/mismatched (exclude rejected)
         return allInvoices.filter(inv =>
-          // Needs info
-          inv.status === 'needs_info' ||
-          // OR Blocked/Mismatched (not in approval, has match issues)
+          inv.status !== 'rejected' && // Exclude rejected (closed/done)
           (
-            !inv.approver &&
-            inv.status !== 'needs_info' &&
-            inv.match_status !== 'matched' &&
+            // Active exception workflow statuses
+            inv.status === 'verification' ||
+            inv.status === 'approval' ||
+            inv.status === 'on_hold' ||
+            inv.status === 'disputed' ||
+            // OR Blocked/Mismatched (not in approval, has match issues)
             (
-              inv.status === 'requires_review' ||
-              inv.status === 'needs_review' ||
-              inv.status === 'blocked' ||
-              inv.match_status === 'exception' ||
-              inv.match_status === 'not_matched' ||
-              inv.match_status === 'unmatched' ||
-              inv.match_status === 'mismatch' ||
-              inv.match_status === 'over_tolerance' ||
-              inv.match_status === 'quantity_mismatch' ||
-              inv.match_status === 'amount_mismatch' ||
-              inv.match_status === 'line_mismatch'
+              !inv.approver &&
+              inv.match_status !== 'matched' &&
+              (
+                inv.match_status === 'exception' ||
+                inv.match_status === 'not_matched' ||
+                inv.match_status === 'unmatched' ||
+                inv.match_status === 'mismatch' ||
+                inv.match_status === 'over_tolerance' ||
+                inv.match_status === 'quantity_mismatch' ||
+                inv.match_status === 'amount_mismatch' ||
+                inv.match_status === 'line_mismatch' ||
+                inv.match_status === 'variance'
+              )
             )
           )
         );

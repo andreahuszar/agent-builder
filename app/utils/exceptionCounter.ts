@@ -215,9 +215,13 @@ export function shouldShowExceptionPanel(
   exceptionResult: ExceptionResult
 ): boolean {
   // Check if invoice has validation errors (takes priority over match status)
-  // Validation errors include: status='needs_info' or missing critical fields
+  // Validation errors include: active exception statuses or missing critical fields
+  // Note: 'rejected' is excluded as it's a closed/done state, not an active exception
   const hasValidationErrors =
-    invoiceData?.status === 'needs_info' ||
+    invoiceData?.status === 'verification' ||
+    invoiceData?.status === 'approval' ||
+    invoiceData?.status === 'on_hold' ||
+    invoiceData?.status === 'disputed' ||
     !invoiceData?.invoice_number;  // Missing invoice number is a critical validation error
 
   // Always show panel if there are validation errors, regardless of match_status

@@ -4,6 +4,15 @@ import React from 'react';
 import AppLayout from './AppLayout';
 import InvoiceDetailTopBar from './InvoiceDetailTopBar';
 
+interface NavigationContext {
+  current: number;
+  total: number;
+  onPrevious: () => void;
+  onNext: () => void;
+  hasPrevious: boolean;
+  hasNext: boolean;
+}
+
 interface InvoiceDetailLayoutProps {
   invoiceNumber: string;
   vendorName?: string;
@@ -14,9 +23,10 @@ interface InvoiceDetailLayoutProps {
   isNeedsInfo?: boolean;
   assignedUserName?: string | null;
   onAssignUser?: (userName: string | null) => void;
+  navigationContext?: NavigationContext;
 }
 
-export default function InvoiceDetailLayout({ invoiceNumber, vendorName, children, documentType = 'invoice', viewModeSwitcher, workflowStatus, isNeedsInfo = false, assignedUserName, onAssignUser }: InvoiceDetailLayoutProps) {
+export default function InvoiceDetailLayout({ invoiceNumber, vendorName, children, documentType = 'invoice', viewModeSwitcher, workflowStatus, isNeedsInfo = false, assignedUserName, onAssignUser, navigationContext }: InvoiceDetailLayoutProps) {
   const handleBackClick = () => {
     // Navigate to appropriate view based on document type
     const hash = documentType === 'purchase-order' ? 'purchase-orders' : 'invoices';
@@ -34,6 +44,7 @@ export default function InvoiceDetailLayout({ invoiceNumber, vendorName, childre
       isNeedsInfo={isNeedsInfo}
       assignedUserName={assignedUserName}
       onAssignUser={onAssignUser}
+      navigationContext={navigationContext}
     />
   );
 

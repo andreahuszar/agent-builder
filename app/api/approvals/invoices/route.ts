@@ -1,19 +1,116 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { getAllMockInvoices } from '@/app/services/mockInvoiceService';
+
+const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true';
 
 export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const view = searchParams.get('view') || 'pending';
 
+    // If using mock data, return mock invoices
+    if (USE_MOCK_DATA) {
+      const mockInvoices = getAllMockInvoices();
+
+      // Filter by view
+      let filteredInvoices = mockInvoices;
+      const now = new Date();
+      switch (view) {
+        case 'pending':
+          filteredInvoices = mockInvoices.filter(inv => {
+            // Include standard pending statuses
+            const isPendingStatus = ['pending_approval', 'requires_review', 'processing', 'validating', 'draft'].includes(inv.status);
+
+            // Also include overdue invoices
+            const dueDate = new Date(inv.due_date);
+            const isOverdue = dueDate < now && !['paid', 'approved', 'rejected', 'void'].includes(inv.status);
+
+            return isPendingStatus || isOverdue;
+          });
+          break;
+        case 'approved':
+          filteredInvoices = mockInvoices.filter(inv =>
+            ['approved', 'approved_ready_for_payment', 'paid'].includes(inv.status)
+          );
+          break;
+        case 'rejected':
+          filteredInvoices = mockInvoices.filter(inv =>
+            ['rejected', 'void'].includes(inv.status)
+          );
+          break;
+        case 'on-hold':
+          filteredInvoices = mockInvoices.filter(inv => inv.status === 'on_hold');
+          break;
+        case 'all':
+        default:
+          // No filter
+          break;
+      }
+
+      // Mock team members
+      const teamMembers = [
+        {
+          id: 'user-1',
+          name: 'Sarah Mitchell',
+          email: 'sarah.mitchell@company.com',
+          role: 'Approver',
+          initials: 'SM',
+          color: 'bg-purple-600',
+          status: 'available',
+          current_workload: 5,
+          capacity: 20
+        },
+        {
+          id: 'user-2',
+          name: 'James Thompson',
+          email: 'james.thompson@company.com',
+          role: 'Approver',
+          initials: 'JT',
+          color: 'bg-blue-600',
+          status: 'available',
+          current_workload: 3,
+          capacity: 20
+        },
+        {
+          id: 'user-3',
+          name: 'Caroline Walsh',
+          email: 'caroline.walsh@company.com',
+          role: 'Approver',
+          initials: 'CW',
+          color: 'bg-green-600',
+          status: 'available',
+          current_workload: 4,
+          capacity: 20
+        }
+      ];
+
+      return NextResponse.json({
+        invoices: filteredInvoices,
+        teamMembers
+      });
+    }
+
     // Build where clause based on view
     let whereClause: any = {};
-    
+    const now = new Date();
+
     switch (view) {
       case 'pending':
-        whereClause.status = {
-          in: ['pending_approval', 'requires_review', 'processing', 'validating', 'draft']
-        };
+        // Include both standard pending statuses AND overdue invoices
+        whereClause.OR = [
+          {
+            status: {
+              in: ['pending_approval', 'requires_review', 'processing', 'validating', 'draft']
+            }
+          },
+          {
+            due_date: { lt: now },
+            status: {
+              notIn: ['paid', 'approved', 'rejected', 'void']
+            }
+          }
+        ];
         break;
       case 'approved':
         whereClause.status = {
@@ -23,14 +120,6 @@ export async function GET(request: NextRequest) {
       case 'rejected':
         whereClause.status = {
           in: ['rejected', 'void']
-        };
-        break;
-      case 'overdue':
-        whereClause = {
-          due_date: { lt: new Date() },
-          status: {
-            notIn: ['paid', 'approved', 'rejected', 'void']
-          }
         };
         break;
       case 'on-hold':
@@ -51,7 +140,6 @@ export async function GET(request: NextRequest) {
       take: 100
     });
 
-    const now = new Date();
     const invoices = invoiceHeaders.map(ih => {
       const dueDate = new Date(ih.due_date);
       const daysPastDue = dueDate < now 

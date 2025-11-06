@@ -186,7 +186,7 @@ export function BulkAssignmentDrawer({
 
           {/* Strategy Selection */}
           <div className="border-b border-gray-200 px-6 py-4">
-            <h3 className="text-sm font-semibold text-gray-950 mb-3">
+            <h3 className="text-sm font-bold text-gray-950 mb-3">
               Assignment Strategy
             </h3>
             <div className="grid grid-cols-2 gap-3">
@@ -226,7 +226,7 @@ export function BulkAssignmentDrawer({
           {/* Direct Assignment Member Selection */}
           {strategy === 'direct' && (
             <div className="border-b border-gray-200 px-6 py-4">
-              <h3 className="text-sm font-semibold text-gray-950 mb-3">
+              <h3 className="text-sm font-bold text-gray-950 mb-3">
                 Select Team Member
               </h3>
               
@@ -282,7 +282,7 @@ export function BulkAssignmentDrawer({
 
           {/* Assignment Preview */}
           <div className="flex-1 overflow-y-auto px-6 py-4">
-            <h3 className="text-sm font-semibold text-gray-950 mb-3">
+            <h3 className="text-sm font-bold text-gray-950 mb-3">
               Assignment Preview
             </h3>
             

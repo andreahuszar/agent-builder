@@ -18,9 +18,11 @@ interface InvoiceDetailClientProps {
   initialInvoice: any;
   viewMode?: ViewMode;
   onInvoiceNumberUpdate?: (invoiceNumber: string) => void;
+  assignedUserName?: string | null;
+  onAssignUser?: (userName: string | null) => void;
 }
 
-export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'review', onInvoiceNumberUpdate }: InvoiceDetailClientProps) {
+export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'review', onInvoiceNumberUpdate, assignedUserName, onAssignUser }: InvoiceDetailClientProps) {
   const [invoice, setInvoice] = useState(initialInvoice);
   const [matchResults, setMatchResults] = useState<any[]>([]);
   const [poComparisonData, setPoComparisonData] = useState<any>(null);
@@ -502,6 +504,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         showSaveButton={true}
         onSaveClick={handleSave}
         isSaving={isSaving}
+        assignedUserName={assignedUserName}
+        onAssignUser={onAssignUser}
       />
 
       {/* Main Content Area */}

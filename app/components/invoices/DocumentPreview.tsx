@@ -309,7 +309,7 @@ export function DocumentPreview({
       </div>
 
       {/* Document Display Area */}
-      <div className="flex-1 overflow-auto p-4 relative bg-gray-100">
+      <div className="flex-1 overflow-auto relative bg-gray-100">
         {hasAttachment ? (
           <>
             {isLoading && (

@@ -1,6 +1,6 @@
 # Xelix Connect 2025 Demo - Project Guide
 
-**Last Updated:** January 27, 2025 (Commit: 2ca676f)
+**Last Updated:** Nov 5, 2025
 **Purpose:** Complete context for building and maintaining the Xelix Connect 2025 demo application
 **Target Audience:** Development teams, AI assistants, future maintainers
 
@@ -90,70 +90,18 @@ We build features **frontend-first with mock data**, then connect to database wh
 
 ## Technical Architecture
 
-### Technology Stack
+**Stack:** Next.js 15 + TypeScript + Tailwind CSS + Radix UI components. Anthropic Claude Vision for invoice extraction. PostgreSQL database available but not primary.
 
-**Core Framework:**
-- **Next.js 15** with App Router - Modern React framework
-- **TypeScript** - Type safety throughout
-- **Tailwind CSS** - Utility-first styling with custom Xelix purple theme
-- **Radix UI** - Accessible component primitives
+**Architecture:** Frontend-first with three layers:
+1. **Frontend Layer** - React components, invoice pages, AI features
+2. **Mock Data Layer (PRIMARY)** - Frontend-only services (`mockInvoiceService.ts`, `mockPOService.ts`, `mockDataConfig.ts`) for rapid development
+3. **Database Layer** - PostgreSQL + Prisma available but currently unused for demo
 
-**Backend (Available but Not Primary):**
-- **PostgreSQL** - Fully functional database (for future production use)
-- **Prisma ORM** - Type-safe database access
-- **Docker** - Local development database
+**Data Flow:** User Action → Frontend Component → Mock Service → Display (with local React state). Database integration available for production but demo runs entirely frontend.
 
-**AI Integration:**
-- **Anthropic Claude** (Vision + Text) - Primary AI for invoice extraction
-- **OpenAI GPT-4 Turbo** - Alternative AI integration
+**Deployment:** Railway auto-deploys on git push to main.
 
-**Deployment:**
-- **Railway** - Auto-deployment on git push
-- **GitHub** - Version control
-
-### Architecture Layers
-
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Frontend Layer                           │
-│  Next.js App Router, React Components, Tailwind CSS         │
-│  - Invoice detail pages                                     │
-│  - Exception handling UI                                    │
-│  - AI candidate suggestions                                 │
-│  - Mock PDF invoice generation                              │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────────┐
-│                  Mock Data Layer (PRIMARY)                   │
-│  Frontend-only data services for rapid development          │
-│  - mockInvoiceService.ts (3 baseline invoices)             │
-│  - mockPOService.ts (7 purchase orders)                     │
-│  - mockDataConfig.ts (master data: vendors, users)          │
-│  - invoiceDataService.ts (enrichment logic)                 │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-┌────────────────────▼────────────────────────────────────────┐
-│              Database Layer (AVAILABLE)                      │
-│  PostgreSQL + Prisma (preserved for future production)      │
-│  - Full schema ready                                        │
-│  - Migrations working                                       │
-│  - Currently NOT used in demo                               │
-└─────────────────────────────────────────────────────────────┘
-```
-
-### Data Flow Philosophy
-
-**Current Demo Approach:**
-```
-User Action → Frontend Component → Mock Service → Display
-             ↑                                        ↓
-             └────────── State Update ───────────────┘
-```
-
-**NOT Using (But Available):**
-```
-User Action → API Route → Database → Response → Display
-```
+*See CLAUDE.md for complete technical specifications and setup instructions.*
 
 ---
 
@@ -171,41 +119,9 @@ For demo applications, frontend-first development provides:
 
 ### How It Works
 
-**Step 1: Build UI with Mock Data**
-```typescript
-// mockInvoiceService.ts - Frontend data service
-export const generateBaselineInvoices = () => {
-  return [
-    {
-      id: 'baseline-po-1',
-      invoice_number: 'TS-2025-000001',
-      vendor_name_snapshot: 'TechSupply Solutions Ltd',
-      total: 5000,
-      // ... complete invoice object
-    }
-  ];
-};
-```
-
-**Step 2: Components Use Mock Data**
-```typescript
-// InvoiceDetailClient.tsx
-import { getMockInvoiceById } from '@/app/services/mockInvoiceService';
-
-const invoice = getMockInvoiceById('baseline-po-1');
-// Renders immediately with realistic data
-```
-
-**Step 3: State Management in Frontend**
-```typescript
-// All state lives in React components
-const [invoice, setInvoice] = useState(initialData);
-
-// Updates happen locally, no API calls
-const handleFieldAccept = (field, value) => {
-  setInvoice(prev => ({ ...prev, [field]: value }));
-};
-```
+1. **Mock Data** - Define complete invoice objects in `mockInvoiceService.ts`
+2. **Component Integration** - Components import and use mock data directly via `getMockInvoiceById()`
+3. **Local State** - All updates managed in React component state with `useState()`, no API calls needed
 
 ### When to Use Database
 
@@ -226,12 +142,11 @@ But for demo features:
 ### Current Status (Baseline Approach)
 
 **As of January 2025, we've refactored to a focused baseline:**
-- **5 baseline invoices** (down from 49 archived invoices)
-- **1 primary generator function** (8 archived)
+- **9 demo invoices** (5 baseline + 4 specialized scenarios)
 - **Focus:** Build demo-specific scenarios iteratively as needed
 - **Each invoice demonstrates specific capabilities** - No redundant scenarios
 
-### The 5 Baseline Invoices
+### The 9 Demo Invoices
 
 1. **`baseline-po-1`** - AI Candidate Suggestions + Teaching Workflow
    - Invoice Number: `#0123-10` (abbreviated format - less obvious)
@@ -264,8 +179,9 @@ But for demo features:
 
 4. **`baseline-nonpo-1`** - Simple non-PO workflow
    - Invoice Number: `PIT-250103001`
-   - Vendor: Professional IT Services
-   - Scenario: Standard non-PO invoice processing
+   - Vendor: CloudTech Solutions Inc
+   - Approver: Sarah Mitchell
+   - Scenario: Standard non-PO invoice processing with assigned approver
    - Use Case: Show non-PO workflow simplicity
    - Features: Non-PO approval workflow
 
@@ -276,6 +192,37 @@ But for demo features:
    - Use Case: Happy path demonstration, appears in "All" tab
    - PO: PO-2025-8001, GR: GR-2025-8001
 
+6. **`baseline-nonpo-2`** - Smart Approver Routing
+   - Invoice Number: `INV-MU-2025-0089`
+   - Vendor: Metro Utilities & Services
+   - Scenario: AI-suggested approver based on service type and historical patterns
+   - Use Case: Demonstrate intelligent approver assignment for non-PO invoices
+   - Features: ApproverRoutingPopover with confidence scoring
+
+7. **`fraud-risk-1`** - Fraud Risk Compliance Hold
+   - Invoice Number: `INV-RU-2025-0001`
+   - Vendor: Volga Industrial Supplies LLC (Russia)
+   - Amount: $240,000 (exceeds $100K high-risk threshold)
+   - Processed Status: `'Exception'`
+   - Scenario: High-risk jurisdiction with amount threshold exceeded
+   - Use Case: Demonstrate fraud risk detection and compliance workflow
+   - Features: Compliance hold, manual review required, FraudRiskBanner
+
+8. **`auto-reject-1`** - Auto-Rejection: Missing PO Threshold
+   - Invoice Number: `INV-2025-5501`
+   - Vendor: Office Equipment Plus
+   - Amount: $7,500 (exceeds $5K no-PO threshold)
+   - Scenario: Vendor requires PO but none provided, amount over threshold
+   - Use Case: Demonstrate automatic rejection with policy enforcement
+   - Features: AutoRejectBanner, AutoRejectPopover, automated vendor email
+
+9. **`auto-reject-2`** - Auto-Rejection: PO Contract Violation
+   - Invoice Number: `LOG-2025-1103`
+   - Vendor: National Logistics Partners
+   - Scenario: Freight charges billed separately when PO contract specifies "freight included"
+   - Use Case: Demonstrate contract term enforcement
+   - Features: AutoRejectBanner showing contract violation, P2P team flagging
+
 ### Mock Data Philosophy
 
 **"Start Small, Build as Needed"**
@@ -285,19 +232,6 @@ Instead of maintaining 49 invoices with complex scenarios:
 2. Add new scenarios only when demo requires them
 3. Each new invoice should demonstrate a specific capability
 4. Archive old scenarios that aren't actively used
-
-### File Structure
-
-```
-/app/services/
-  ├── mockDataConfig.ts           # Master data (vendors, users, cost centers)
-  ├── invoiceDataService.ts       # Pure enrichment functions
-  ├── mockInvoiceService.ts       # 5 baseline invoice generators
-  ├── mockPOService.ts            # 7 purchase orders (static)
-  └── mockInvoiceService.archive.ts  # 49 archived invoices (reference only)
-
-/MOCK_INVOICES_ARCHIVE.md        # Documentation of archived scenarios
-```
 
 ### Key Data Structures in Mock Invoices
 
@@ -331,28 +265,6 @@ auto_corrections: [
 ]
 ```
 
-**Suggested PO Match (Substitution Suggestions):**
-```typescript
-// In line item object:
-suggested_po_match: {
-  po_line_id: 'po-line-9010-5',
-  po_line_no: 5,
-  po_description: 'Premium pleated air filters with MERV 9 rating',
-  po_qty: 50,
-  po_unit_price: 45.00,
-  po_uom: 'EA',
-  confidence: 0.78,
-  reason: 'System detected similar items with specification differences',
-  differences: [
-    {
-      field: 'specification',
-      invoice_value: 'MERV 8',
-      po_value: 'MERV 9'
-    }
-  ]
-}
-```
-
 **UOM Conversion (Unit of Measure Matching):**
 ```typescript
 // In line item object:
@@ -363,15 +275,6 @@ uom_conversion: {
   po_uom: 'Hours',
   conversion_factor: 8,
   explanation: '8 hours per day'
-}
-```
-
-**Requisitioner Information (Bank Verification):**
-```typescript
-requisitioner: {
-  name: 'Sarah Johnson',
-  email: 'sarah.johnson@company.com',
-  department: 'Operations'
 }
 ```
 
@@ -390,31 +293,12 @@ validation_warnings: [
 ]
 ```
 
-### Adding Demo Scenarios
-
-When you need to demonstrate a new capability:
-
+**Processed Status (Exception Handling):**
 ```typescript
-// 1. Add scenario to mockInvoiceService.ts
-const newInvoice = {
-  id: 'baseline-exception-1',
-  invoice_number: 'EX-2025-0001',
-  vendor_name_snapshot: 'New Demo Vendor',
-  total: 12500,
-  status: 'needs_info',
-  // Scenario-specific fields
-  missing_field: 'po_number',
-  exception_reason: 'Missing PO reference'
-};
-
-// 2. Add to baseline generator
-export const generateBaselineInvoices = () => {
-  return [
-    // existing invoices...
-    newInvoice
-  ].map(enrichInvoiceWithDemoData);
-};
+processed_status: 'Exception'  // For fraud risk, compliance holds, critical exceptions
 ```
+
+*See `mockInvoiceService.ts` for complete examples and additional data structures.*
 
 ### Environment Control
 
@@ -592,160 +476,197 @@ USE_MOCK_DATA=false
 - Configurable threshold for what constitutes "close"
 - Integration with field update system
 
-### 6. Advanced Line Items Features
+### 6. Auto-Rejection Workflow
 
-**Purpose:** Demonstrate sophisticated line item matching, conversion, and intelligence
+**Purpose:** Automatically reject invoices violating business rules with policy enforcement
 
-**Implementation:** All features demonstrated in `baseline-po-2` invoice
-
-#### 6.1 Smart Match System
-
-**What It Is:** Auto-matching invoice lines to PO lines based on financial data despite different descriptions
-
-**Visual Indicators:**
-- 🟣 **Purple Zap Icon** - Successfully matched line
-- 🔴 **Red Zap Icon** - Match has issues or was unmatched
-
-**Components:**
-- `SmartMatchPopover.tsx` - Shows match details and unmatch option
-- `LineItemsPreviewPanel.tsx` - Displays zap icons on matched lines
-
-**User Experience:**
-1. Open `baseline-po-2` invoice
-2. Go to line items section
-3. Line 7 shows purple zap icon (⚡)
-4. Click zap → Popover explains:
-   - "System matched this line based on financial data despite different descriptions"
-   - Shows invoice description vs PO description
-   - Shows qty/price comparison
-   - Option to "Unmatch" if incorrect
-5. If descriptions actually match semantic intent, purple zap = good match
-6. If match seems wrong, user can unmatch and system learns
-
-**Technical Approach:**
-- Matches on qty × unit_price = line_total
-- Tolerates description variations
-- `po_line_id` field indicates match
-- Smart match flag distinguishes from exact description matches
-
-#### 6.2 Substitution Suggestions
-
-**What It Is:** AI suggests matching invoice lines to PO lines when products are similar but specs differ
-
-**Visual Indicators:**
-- ✨ **Sparkles Icon (Orange)** - Substitution suggestion available
-- Confidence percentage badge
-
-**Components:**
-- `SubstitutionSuggestionPopover.tsx` - Detailed comparison with differences highlighted
-
-**Example Scenario (baseline-po-2, Line 5):**
-- **Invoice:** "Pleated air filters, 20×20×2, MERV 8" (50 EA @ $45)
-- **PO:** "Premium pleated air filters with MERV 9 rating" (50 EA @ $45)
-- **Difference:** MERV 8 vs MERV 9 specification
-- **Confidence:** 78%
-- **Reason:** "System detected similar items with specification differences"
-
-**User Experience:**
-1. Line shows sparkles icon with orange "Needs Review" badge
-2. Click sparkles → Popover shows:
-   - Suggested match with confidence %
-   - Invoice description with **bold MERV 8**
-   - PO description with **bold MERV 9**
-   - Collapsible "Specification Differences" section
-   - Qty/price comparison
-3. User can "Accept Match" or "Reject"
-4. If accepted, line links to PO line and badge changes to "Matched"
-
-**Technical Approach:**
-- `suggested_po_match` object in line item data
-- Differences array highlights specific mismatches
-- Bold text highlights in descriptions
-- Confidence scoring based on similarity
-- Integration with match results system
-
-#### 6.3 UOM Conversion & Teaching
-
-**What It Is:** Handle unit of measure differences between invoice and PO with conversion rules
-
-**Visual Indicators:**
-- ⚡ **Purple Zap with Info Badge** - UOM conversion applied
-
-**Components:**
-- `UomMatchPopover.tsx` - Shows conversion details
-- `CustomRulePopover.tsx` - Interface for teaching new conversion rules
-- `TeachRuleDrawer.tsx` - Conversational drawer for rule creation
-
-**Example Scenario (baseline-po-2, Line 6):**
-- **Invoice:** 10 Days @ $800 = $8,000
-- **PO:** 80 Hours @ $100 = $8,000
-- **Conversion:** 8 hours per day
-- **Match:** Successful (financial equivalence)
-
-**User Experience:**
-1. Line shows purple zap icon
-2. Click zap → Popover explains conversion:
-   - "UOM Conversion Applied"
-   - Invoice: 10 Days
-   - PO: 80 Hours
-   - Conversion: 8:1 ratio (8 hours = 1 day)
-   - Financial match confirmed
-3. For new conversions, "Teach Rule" button appears
-4. Click "Teach Rule" → Conversational drawer opens
-5. System asks questions to learn conversion:
-   - "What unit are you converting FROM?"
-   - "What unit are you converting TO?"
-   - "What's the conversion factor?"
-6. User provides answers, system saves rule for future invoices
-
-**Technical Approach:**
-- `uom_conversion` metadata in line item
-- Conversion rules stored by vendor or globally
-- Financial equivalence validation (qty × price must match)
-- TeachRuleDrawer uses conversational UI pattern
-- Rules apply automatically to future invoices
-
-#### 6.4 Drag-and-Drop Line Reordering
-
-**What It Is:** Allow users to reorder invoice lines via drag-and-drop
+**Demo Invoices:** `auto-reject-1` (Missing PO), `auto-reject-2` (Contract violation)
 
 **Implementation:**
-- `@dnd-kit` library for drag-and-drop functionality
-- Visual feedback with purple highlight on drop target
+- **AutoRejectBanner.tsx** - Red banner at top of invoice detail page
+- **AutoRejectPopover.tsx** - Detailed rejection info with collapsible rule section
+
+**Rejection Scenarios:**
+1. **Missing PO Threshold** - Vendor requires PO, none provided, amount > $5K threshold
+2. **Contract Violation** - Invoice terms violate PO contract (e.g., freight billed separately when contract says "freight included")
+3. **Duplicate Detection** - Prevents duplicate payments
 
 **User Experience:**
-1. Hover over line item → Cursor changes to grab
-2. Click and drag line
-3. Target position highlights in purple
-4. Drop line → Order updates
-5. Line numbers remain stable (only display position changes)
+- Red "Auto-Rejected" banner shows policy violation summary
+- Click "View Details" → Popover with compact 3-column metadata, collapsible "Rule Triggered" accordion
+- Actions: Automated vendor email sent, helpdesk ticket created, P2P team flagged
 
-**Technical Approach:**
-- `display_position` field independent of `line_no`
-- DndContext wraps line items table
-- Purple hover state on drop zones
-- Smooth animations for reordering
+### 7. Smart Approver Routing
 
-#### 6.5 Variance Detection
+**Purpose:** AI suggests appropriate approver for Non-PO invoices based on service type, vendor, amount, historical patterns
 
-**What It Is:** Detailed variance columns showing qty and price differences
+**Demo Invoice:** `baseline-nonpo-2` (Metro Utilities)
 
-**Visual Indicators:**
-- 🟢 **Green badge with checkmark** - Within tolerance
-- 🔴 **Red badge with X** - Outside tolerance
-
-**Columns:**
-- **Qty Var:** Quantity variance (invoice qty - PO qty)
-- **Price Var:** Price variance (invoice price - PO price)
-- **Delta:** Overall financial impact
+**Implementation:**
+- **ApproverRoutingPopover.tsx** - Inline in Details tab approver field
+- Shows confidence %, matching criteria, similar invoices
 
 **User Experience:**
-1. Line items table shows variance columns
-2. Green badges for acceptable variances
-3. Red badges for variances needing approval
-4. Click badge → Explanation tooltip
+1. Non-PO invoice opens
+2. Approver field shows AI suggestion with confidence score
+3. Click field → Popover explains reasoning (service type match, historical patterns)
+4. Accept suggestion or manually override
 
-### 7. Confidence Indicators
+### 8. Fraud Risk Compliance
+
+**Purpose:** Detect high-risk jurisdictions and enforce amount thresholds for compliance review
+
+**Demo Invoice:** `fraud-risk-1` (Volga Industrial, Russia, $240K)
+
+**Implementation:**
+- `processed_status: 'Exception'` for compliance holds
+- **FraudRiskBanner.tsx** - Red banner with jurisdiction and amount warnings
+- Manual compliance review required before processing
+
+**Detection Rules:**
+- High-risk jurisdiction list (Russia, etc.)
+- Amount threshold (>$100K to high-risk countries)
+- Automatic "Compliance Hold" status
+
+### 9. Accounting Auto-Coding
+
+**Purpose:** Automatically classify invoices with GL codes, cost centers, departments based on vendor history and content
+
+**Implementation:**
+- **AccountingAutoCodingPopover.tsx** - Purple lightning bolt indicator
+- Shows confidence score, reasoning, collapsible "Similar invoices" history
+
+**User Experience:**
+- Invoice shows pre-filled accounting codes with lightning bolt icon
+- Click icon → Popover explains classification logic
+- Historical pattern recognition: "Last 15 invoices from this vendor coded to GL-4200"
+
+### 10. Vendor Swap Detection
+
+**Purpose:** Detect parent/child company mismatches and suggest correct entity based on tax ID, remit-to address, patterns
+
+**Implementation:**
+- **VendorSwapPopover.tsx** - Orange "Vendor Reassignment" badge
+- Shows suggested swap with confidence %, reasoning
+
+**Detection Triggers:**
+- Tax ID mismatch between invoice and vendor record
+- Remit-to address indicates different subsidiary
+- Historical payment patterns show different entity
+
+**User Experience:**
+- Orange badge alerts to potential vendor mismatch
+- Click → Popover shows parent vs child company comparison
+- Accept to swap vendor or confirm original
+
+### 11. Line Items Comparison Drawer
+
+**Purpose:** Side-by-side comparison of invoice vs PO line items grouped by status
+
+**Implementation:**
+- **LineItemsComparisonDrawer.tsx** - Slides in from right
+- Collapsible sections: Matched, Variance, Unmatched
+- Shows detailed variance analysis per line
+
+**User Experience:**
+- Click "Compare Lines" button in line items section
+- Drawer opens with grouped comparison
+- Expand/collapse sections to focus on exceptions
+- Clear visual distinction between matched and problem lines
+
+### 12. Line Items Interface & Actions
+
+**Purpose:** Comprehensive line item management with inline editing, smart matching, UOM conversions, and custom rules
+
+**Demo Invoice:** All features in `baseline-po-2`
+
+#### Panel Header Controls (First Row)
+
+| Button | Icon | Location | Action |
+|--------|------|----------|--------|
+| **Group by Status** | ArrowDownWideNarrow/List | Top right, before Maximize | Toggles between default view (all items) and grouped view (variance lines + collapsible matched section) |
+| **Maximize** | Maximize2/X | Top right corner | Expands panel to fullscreen, click again to exit |
+
+#### Table Header Controls (Second Row)
+
+| Button | Location | States | Action |
+|--------|----------|--------|--------|
+| **Edit/Done** | Right of "Invoice" label | Edit (white bg, purple text) / Done (purple bg, white text) | Toggles inline editing mode: enables qty/price/UOM editing, shows drag handles, reveals Actions column, shows "Add Line" button |
+| **Status Sort** | Status column header icon | Variance-first (default) / Matched-first | Toggles sort order, icon rotates 180° when switched |
+
+#### Per-Line Actions (Edit Mode Only)
+
+**Actions Column** (rightmost, visible only when Edit Mode active):
+
+| Button | Icon | Color | Action |
+|--------|------|-------|--------|
+| **Delete** | Trash2 | Gray → Red on hover | Removes line immediately (no confirmation) |
+| **More Actions** | MoreVertical (3 dots) | Gray | Opens dropdown menu |
+
+**More Actions Dropdown:**
+- **Mark as Matched** - Manually marks line as matched, removes red highlighting, useful for accepting known discrepancies
+
+#### Smart Indicators (Icon Column)
+
+Lines show interactive icons based on match state (priority order):
+
+1. **AI Substitution** (gradient Sparkles) - Highest priority
+   - AI suggests product substitution (e.g., MERV 8 vs MERV 9)
+   - Click → SubstitutionSuggestionPopover with confidence %, differences, Accept/Reject buttons
+   - Example: baseline-po-2, Line 5
+
+2. **Smart Match** (purple Zap ⚡)
+   - UOM conversion applied, description difference, or custom rule
+   - Click → Opens UomMatchPopover, SmartMatchPopover, or CustomRulePopover
+   - Example: baseline-po-2, Lines 6 & 7
+
+3. **Teach Rule Button** (Sparkles in description cell)
+   - For UOM mismatches without auto-conversion
+   - Gradient purple-pink on hover
+   - Click → Opens TeachRuleDrawer for creating conversion rules
+
+4. **Purple Plus Icon** (hover state)
+   - Appears on hover when no other indicators present
+   - Opens TeachRuleDrawer to create custom rule
+
+#### TeachRuleDrawer (Conversational UI)
+
+**Opens when:** Clicking Sparkle button, Plus icon, or Edit in CustomRulePopover
+
+**Layout:** 500px side drawer from right
+
+**Contents:**
+- Read-only line context (invoice qty/UOM, PO qty/UOM, description, prices)
+- **RuleChatInterface** with 3-step conversational flow:
+  1. Welcome message explaining rule creation
+  2. Natural language input (e.g., "1 box = 12 units")
+  3. Preview of parsed rule with validation (green check or red X)
+- **Apply Rule** button (purple) - Validates and applies rule, line turns purple
+- **Cancel** button (gray) - Closes without saving
+
+**Rule Parsing:** Supports patterns like "X [unit] = Y [unit]", case insensitive, extracts quantities and units
+
+#### Additional Features
+
+**Drag-and-Drop Reordering:**
+- Hover → grab cursor → drag line → purple drop target → reorder
+- Uses `@dnd-kit` library, disabled in grouped view
+
+**Variance Detection:**
+- Qty Var, Price Var, Delta columns
+- Green badges (within tolerance) / Red badges (needs approval)
+
+**Add Line Button:**
+- Bottom of table (Edit Mode only)
+- Purple Plus icon + "Add Line" label
+- Creates new blank editable row
+
+**Grouped View:**
+- Toggle separates variance lines from matched items
+- "Matched Items (N)" collapsible section
+- Improves focus on exceptions
+
+### 13. Confidence Indicators
 
 **Purpose:** Show OCR confidence levels for extracted fields
 
@@ -773,16 +694,18 @@ USE_MOCK_DATA=false
 - Radix UI Tooltip for accessibility
 - Conditional rendering based on field state
 
-### 8. Visual Indicator Reference
+### 14. Visual Indicator Reference
 
 **Quick reference for all visual indicators in the system:**
 
 | Icon | Meaning | Color | Where Used |
 |------|---------|-------|------------|
 | ✨ Sparkles | AI Suggestion Available | Purple | Fields with candidates, Substitution suggestions |
-| ⚡ Lightning Bolt (filled) | Auto-Correction Applied | Purple | Fields that were auto-corrected |
+| ⚡ Lightning Bolt (filled) | Auto-Correction / Auto-Coding | Purple | Fields auto-corrected or auto-coded |
 | ⚡ Lightning Bolt (outline) | Smart Match | Purple/Red | Line items with smart matches |
 | 🛡️ Shield | Security Verification | Purple | Bank details verification |
+| 🔴 Red Banner | Auto-Rejected / Fraud Risk | Red | Policy violations, high-risk invoices |
+| 🟠 Orange Badge | Vendor Reassignment | Orange | Parent/child vendor mismatch |
 | 🟣 Purple Dot | High Confidence | Purple | OCR confidence indicators |
 | 🟠 Orange Dot | Medium Confidence | Orange | OCR confidence indicators |
 | 🔴 Red Dot | Low Confidence | Red | OCR confidence indicators |
@@ -790,6 +713,7 @@ USE_MOCK_DATA=false
 | ✓ Checkmark | Within Tolerance | Green | Variance badges |
 | ✗ X Mark | Outside Tolerance | Red | Variance badges |
 | 🎯 Target | Pending Confirmation | Purple | Taught values awaiting confirmation |
+| Exception | Compliance Hold | Red badge | Fraud risk, manual review required |
 
 **Button Text Standards:**
 - "Accept & Remember" (Teaching workflow)
@@ -797,8 +721,9 @@ USE_MOCK_DATA=false
 - "Verify Change" (Bank details)
 - "Teach Agent" (Custom fields)
 - "Apply Rule" (UOM conversions)
+- "Cancel" (Reject AI suggestions - changed from "Reject")
 
-### 9. Mock PDF Invoice Generation
+### 15. Mock PDF Invoice Generation
 
 **Purpose:** Display realistic invoice documents in the interface
 
@@ -850,84 +775,48 @@ USE_MOCK_DATA=false
 
 ## Development Workflow
 
-### Typical Feature Development
+**Typical Flow:** Update mock data in `mockInvoiceService.ts` → Refresh browser → Test features → Iterate based on feedback.
 
-**Scenario:** Add new AI suggestion for vendor field
+**Testing:** Ensure visual polish, mock data works standalone, responsive design, accessibility, no console errors.
 
-**Step 1: Update Mock Data**
-```typescript
-// mockInvoiceService.ts
-{
-  id: 'baseline-vendor-suggestion-1',
-  vendor_name_snapshot: null,  // Missing vendor
-  ocr_extractions: {
-    vendor_name_snapshot: {
-      value: null,
-      confidence: 0.0,
-      candidates: [{
-        value: 'TechSupply Solutions Ltd',
-        confidence: 0.85,
-        source: 'Claude Vision',
-        reason: 'Extracted from invoice header'
-      }]
-    }
-  }
-}
-```
+**Git:** Work on feature branches, commit frequently, push to trigger Railway auto-deployment.
 
-**Step 2: Update Display Config**
-```typescript
-display_config: {
-  template: 'compact',
-  interactiveFields: ['invoice_number', 'vendor_name_snapshot']  // Add vendor
-}
-```
-
-**Step 3: Test in UI**
-- No database changes needed
-- No API modifications required
-- Just refresh browser to see changes
-
-**Step 4: Polish & Iterate**
-- Adjust UX based on feedback
-- Tweak styling and interactions
-- Refine copy and messaging
-
-### Testing Checklist
-
-Before marking any feature complete:
-
-1. ✅ Visual appearance matches requirements
-2. ✅ Works with mock data (no database needed)
-3. ✅ State updates correctly (React state management)
-4. ✅ Responsive at different screen sizes
-5. ✅ Accessible (keyboard navigation, screen readers)
-6. ✅ No console errors or warnings
-7. ✅ Code follows existing patterns
-
-### Git Workflow
-
-```bash
-# Always work on feature branches
-git checkout -b feature/ai-vendor-suggestions
-
-# Commit frequently with clear messages
-git commit -m "Add AI vendor suggestion to baseline-po-1"
-
-# Push to trigger Railway deployment
-git push origin feature/ai-vendor-suggestions
-
-# Merge to demo-event branch for Xelix Connect
-git checkout demo-event
-git merge feature/ai-vendor-suggestions
-git push origin demo-event
-```
+*See CLAUDE.md for complete development setup, commands, and workflows.*
 
 ---
 
 ## Recent Major Work
 
-### Bank Details Verification Workflow (Latest - Jan 27, 2025)
+### Demo Expansion & Feature Refinements (Jan 28 - Feb 5, 2025)
+
+**Commits:** cdc706e, 93a4118, db221a3, and others
+**Goal:** Expand demo scenarios and refine existing workflows
+
+**What We Built:**
+1. **Smart Approver Routing** - AI-suggested approvers for Non-PO invoices (baseline-nonpo-2)
+2. **Fraud Risk Compliance** - High-risk jurisdiction detection with Exception status (fraud-risk-1)
+3. **Auto-Rejection Workflow** - Policy enforcement with auto-reject banners (auto-reject-1, auto-reject-2)
+4. **Grouped Line Items View** - Toggle for variance/matched separation
+5. **UI Refinements** - Approver field simplification, button text updates (Reject→Cancel), icon removal
+
+**Files Created:**
+- `ApproverRoutingPopover.tsx` - Smart approver suggestions
+- `AutoRejectBanner.tsx` & `AutoRejectPopover.tsx` - Rejection workflow
+- `FraudRiskBanner.tsx` - Compliance holds
+
+**Files Modified:**
+- `mockInvoiceService.ts` - Added 4 new invoices, processed_status field, approver data
+- `EnhancedInvoiceTable.tsx` - Exception status rendering
+- `AISuggestionCard.tsx` - Removed icons, renamed button to "Cancel"
+- `DetailsTab.tsx` - Inline approver field with error states
+- `LineItemsPreviewPanel.tsx` - Grouped view toggle
+
+**Key Innovation:**
+- Expanded from 5 to 9 demo invoices covering diverse scenarios
+- Simplified approver routing from separate section to inline field
+- Comprehensive exception handling (fraud risk, auto-rejection, compliance)
+
+### Bank Details Verification Workflow (Jan 27, 2025)
 
 **Commit:** 2ca676f
 **Goal:** Security workflow for verifying bank account changes before payment processing
@@ -1001,126 +890,7 @@ git push origin demo-event
 - Pattern detection based on vendor history
 - Helps users understand why system made corrections
 
-### Smart Match Visual States (Jan 19-20, 2025)
-
-**Commits:** 269c1ad, 61ddce4
-**Goal:** Improve visual distinction between successful and problematic smart matches
-
-**What We Built:**
-1. **Color-Coded Indicators** - Purple for success, red for issues
-2. **Description Scenario** - Different descriptions but same financial data
-3. **UOM Scenario** - Unit conversions with visual feedback
-
-**Files Modified:**
-- `SmartMatchPopover.tsx` - Updated styling and visual states
-- `LineItemsPreviewPanel.tsx` - Added zap icon color logic
-- `mockInvoiceService.ts` - Enhanced line item scenarios
-
-**Key Innovation:**
-- Clear visual distinction helps users understand match quality
-- Purple/red color scheme aligns with success/error patterns
-
-### UOM Auto-Match Scenario (Jan 19, 2025)
-
-**Commit:** 9309b79
-**Goal:** Demonstrate UOM conversion capabilities
-
-**What We Built:**
-1. **UOM Conversion Popover** - Shows conversion math and ratios
-2. **Financial Equivalence Display** - Confirms qty × price match
-3. **Baseline-PO-2 Invoice** - Comprehensive line items showcase
-
-**Files Created:**
-- `UomMatchPopover.tsx` - Conversion details and explanation
-
-**Files Modified:**
-- `LineItemsPreviewPanel.tsx` - UOM conversion integration
-- `mockInvoiceService.ts` - Added uom_conversion metadata
-- Created/enhanced `baseline-po-2` with multiple line item scenarios
-
-**Key Innovation:**
-- Shows both unit conversion AND financial validation
-- Helps users understand why different UOMs are acceptable
-
-### Teaching Workflow & Confidence Indicators (Jan 18, 2025)
-
-**Commit:** e149e3b
-**Goal:** Let users teach AI where to find custom fields
-
-**What We Built:**
-1. **Teaching Cards** - Interface for teaching custom field locations
-2. **Confirmation Modal** - "Accept & Remember" workflow
-3. **Confidence Pills** - Visual indicators for OCR confidence levels
-4. **Pending Indicators** - Show unconfirmed taught values
-
-**Files Created:**
-- `TeachingCard.tsx` - Teaching interface card
-- `TeachingConfirmationModal.tsx` - Location confirmation modal
-- `FieldConfidencePill.tsx` - Colored confidence indicators
-- `PendingConfirmationIndicator.tsx` - Purple dot for pending confirms
-
-**Files Modified:**
-- `DetailsTab.tsx` - Integrated teaching workflow
-- `mockInvoiceService.ts` - Added job_number field teaching scenario
-
-**Key Innovation:**
-- Location context: "📍 Found in document header, right side"
-- AI learns from user corrections for future invoices
-- Confidence pills help users prioritize review
-
-### AI Candidate Suggestion System (Jan 17, 2025)
-
-**Commit:** cdf8c26
-**Goal:** Allow users to accept/reject AI-suggested values for missing fields
-
-**What We Built:**
-1. **Non-disruptive Details Tab UX** - "Fix Suggestion" button instead of immediate card
-2. **PDF Candidate Display** - Show suggested value with dashed border (unconfirmed)
-3. **Dual Interaction Points** - Accept from PDF or Details tab
-4. **Synchronized Highlighting** - Opening Details card highlights field in PDF
-5. **State Management** - Top-level state in InvoiceDetailClient for synchronization
-
-**Files Created:**
-- `AISuggestionCard.tsx` - Full suggestion card for Details tab
-- `CandidatePopover.tsx` - Quick popover for PDF sparkle clicks
-- `EditableField.tsx` - Wrapper for interactive fields with sparkle icon
-
-**Files Modified:**
-- `DetailsTab.tsx` - Added Fix Suggestion button and inline expansion
-- `FakeInvoiceDocument.tsx` - Show candidate values, unconfirmed styling
-- `InvoiceDetailClient.tsx` - State management and handler passing
-- `mockInvoiceService.ts` - Added `ocr_extractions` to baseline-po-1
-
-**Technical Approach:**
-- Pure frontend implementation (no database, no API)
-- React state management for temporary updates
-- Callback props for synchronization between components
-- Visual indicators (sparkles, dashed borders, yellow highlights)
-
-### Mock PDF Invoice System
-
-**Goal:** Scalable template system for generating realistic invoice documents
-
-**What We Built:**
-1. **Template System** - Config-driven layouts (compact, standard)
-2. **Vendor Customization** - Per-invoice display preferences
-3. **Interactive Fields** - Wrap any field with AI candidate support
-4. **OCR Highlights** - Show field boundaries when in edit mode
-
-**Key Innovation:**
-- `display_config` object allows per-invoice customization
-- `interactiveFields` array defines which fields can have AI suggestions
-- `renderField` helper wraps fields conditionally based on config
-
-### Table UX Improvements
-
-**Goal:** Professional, responsive table experience
-
-**What We Improved:**
-1. Column visibility based on screen width
-2. Sticky headers staying above content
-3. Compact input fields for editing
-4. Consistent styling throughout
+*For earlier development history (Jan 17-20, 2025), see git log or previous versions of this guide.*
 
 ---
 
@@ -1243,6 +1013,13 @@ When starting a new development session:
 - `app/components/invoices/BankDetailsVerificationPopover.tsx` - Bank verification workflow
 - `app/components/invoices/CloseMatchPopover.tsx` - Near-match suggestions
 - `app/components/invoices/FraudRiskBanner.tsx` - High-risk jurisdiction alerts
+- `app/components/invoices/AutoRejectBanner.tsx` - Auto-rejection banner
+- `app/components/invoices/AutoRejectPopover.tsx` - Rejection details and rules
+
+**Workflow Automation:**
+- `app/components/invoices/ApproverRoutingPopover.tsx` - Smart approver suggestions
+- `app/components/invoices/AccountingAutoCodingPopover.tsx` - GL code auto-classification
+- `app/components/invoices/VendorSwapPopover.tsx` - Parent/child vendor detection
 
 **Line Items Intelligence:**
 - `app/components/invoices/preview/LineItemsPreviewPanel.tsx` - Main line items display with drag-drop
@@ -1251,6 +1028,8 @@ When starting a new development session:
 - `app/components/invoices/UomMatchPopover.tsx` - UOM conversion display
 - `app/components/invoices/CustomRulePopover.tsx` - Custom conversion rules interface
 - `app/components/invoices/TeachRuleDrawer.tsx` - Conversational rule teaching
+- `app/components/invoices/RuleChatInterface.tsx` - 3-step conversational UI
+- `app/components/invoices/LineItemsComparisonDrawer.tsx` - Side-by-side comparison
 
 ### Common Commands
 
@@ -1275,12 +1054,12 @@ git push origin demo-event  # Auto-deploys to Railway
 
 ### Finding Invoice Data
 
-**View baseline invoices:**
+**View all demo invoices:**
 ```typescript
 // In browser console or Node
 import { getAllMockInvoices } from '@/app/services/mockInvoiceService';
 console.log(getAllMockInvoices());
-// Returns 5 invoices: baseline-po-1, baseline-po-2, baseline-po-bank-1, baseline-nonpo-1, baseline-matched-1
+// Returns 9 invoices: 5 baseline + baseline-nonpo-2, fraud-risk-1, auto-reject-1, auto-reject-2
 ```
 
 **Find specific invoice:**
@@ -1292,54 +1071,13 @@ console.log(invoice);
 
 ### Understanding the Demo Flow
 
-**Comprehensive Demo Scenario (baseline-po-1):**
+**Demo Scenarios:**
 
-1. **Open Invoice List** → Shows mix of invoices with status indicators
-2. **Click "Baseline PO Invoice"** → Opens `baseline-po-1` detail page
-3. **See Exception Badge** → "Needs Info" status (2 missing fields)
-4. **Details Tab** → Shows "Not found" for Invoice Number and Job Number
+- **`baseline-po-1`** - AI candidates for missing invoice number, teaching workflow for job_number field
+- **`baseline-po-2`** - Line item intelligence: variances, UOM conversions, substitution suggestions, smart matches
+- **`baseline-po-bank-1`** - Auto-correction indicators (swapped fields), bank details verification with email drafting
 
-**AI Candidate Suggestion Flow:**
-5. **Invoice Number Field** → See "Fix Suggestion" button with sparkle icon
-6. **Click "Fix Suggestion"** → Card expands showing AI suggestion "#0123-10"
-7. **PDF Synchronization** → Field pulses yellow highlight in left panel
-8. **Review Confidence** → 78% confident, Claude Vision source shown
-9. **Accept Suggestion** → Both panels update, exception counter decreases
-
-**Teaching Workflow Flow:**
-10. **Job Number Field** → See "Teach Agent" button (AI has no candidates)
-11. **Click "Teach Agent"** → Teaching card appears
-12. **Select Value from PDF** → Click "JOB-2025-042" in document header
-13. **Confirmation Modal** → Shows value with location context "📍 Found in document header, right side"
-14. **Click "Accept & Remember"** → System learns location for future invoices
-15. **Result** → Both exceptions resolved, invoice ready for processing
-
-**Line Items Demo Scenario (baseline-po-2):**
-
-1. **Open `baseline-po-2` Invoice** → Shows line items with various match states
-2. **Line 3** → Red variance badge (qty mismatch: 20 vs 15)
-3. **Line 5** → Orange sparkles icon for substitution suggestion (MERV 8 vs MERV 9)
-4. **Click Sparkles** → Popover shows product comparison with confidence 78%
-5. **Line 6** → Purple zap icon for UOM conversion (10 Days = 80 Hours)
-6. **Click Zap** → Shows conversion ratio and financial equivalence
-7. **Line 7** → Purple zap for smart match (different descriptions, same financial data)
-8. **Click Zap** → Explains match despite description difference
-
-**Bank Details Verification Flow (baseline-po-bank-1):**
-
-1. **Open `baseline-po-bank-1` Invoice** → Shows bank details change alert
-2. **Details Tab** → See lightning bolt ⚡ on Invoice Number (auto-corrected)
-3. **Click Lightning Bolt** → Popover shows original vs corrected values
-4. **PDF Preview** → Document shows SWAPPED values (what's actually printed)
-5. **Bank Details Section** → Red "Unverified" badge appears
-6. **Click "Verify Change"** → Bank verification popover opens
-7. **Security Alert** → Red warning about fraud risk
-8. **Account Comparison** → Previous: ****5678 → New: ****1234
-9. **Expand Email Draft** → Pre-filled verification email appears
-10. **Click "Copy Email"** → Email copied to clipboard for helpdesk ticket
-11. **Click "Approve Change"** → Bank details verified, invoice proceeds to approval
-
-**Result:** Comprehensive demonstration of all AI and workflow features
+*Open each invoice to explore interactive features. See feature sections above for detailed workflows.*
 
 ### What to Build Next
 

@@ -3,8 +3,14 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   MessageSquare, Mail, Upload, Edit, Check, X,
-  RefreshCw, Link, FileCheck, Clock, Send, User
+  RefreshCw, Link, FileCheck, Clock, Send, User, ChevronDown
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
 
 // Unified timeline item type
 interface TimelineItem {
@@ -39,6 +45,7 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
   const [newComment, setNewComment] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'comments' | 'email' | 'system'>('all');
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
@@ -62,6 +69,28 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
     }
   }, [timelineItems, filter]);
 
+  // Calculate counts for each filter type
+  const filterCounts = useMemo(() => {
+    return {
+      all: timelineItems.length,
+      comments: timelineItems.filter(item => item.type === 'user_comment').length,
+      email: timelineItems.filter(item => item.type === 'email').length,
+      system: timelineItems.filter(item => item.type === 'system_event').length,
+    };
+  }, [timelineItems]);
+
+  // Get filter label with count
+  const getFilterLabel = (filterType: typeof filter) => {
+    const labels = {
+      all: 'All Activities',
+      comments: 'Comments',
+      email: 'Email',
+      system: 'System',
+    };
+    const count = filterCounts[filterType];
+    return `${labels[filterType]} (${count})`;
+  };
+
   // Notify parent component when comments count changes
   useEffect(() => {
     if (onCommentsCountChange) {
@@ -70,15 +99,20 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
   }, [realCommentsCount, onCommentsCountChange]);
 
   useEffect(() => {
+    setIsInitialLoad(true); // Reset on invoice change
     fetchUnifiedTimeline();
   }, [invoiceId]);
 
-  // Scroll to bottom when new comment is added
+  // Scroll to bottom when data loads or new comment is added
   useEffect(() => {
     if (bottomRef.current && timelineItems.length > 0) {
-      bottomRef.current.scrollIntoView({ behavior: 'smooth' });
+      // Instant scroll on initial load, smooth scroll for new comments
+      bottomRef.current.scrollIntoView({ behavior: isInitialLoad ? 'auto' : 'smooth' });
+      if (isInitialLoad) {
+        setIsInitialLoad(false);
+      }
     }
-  }, [timelineItems.length]);
+  }, [timelineItems.length, isInitialLoad]);
 
   const fetchUnifiedTimeline = async () => {
     setIsLoading(true);
@@ -97,7 +131,129 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
   };
 
   const getMockTimelineData = (): TimelineItem[] => {
-    // Merge mock data from ActivityTab and CommunicationTab
+    // Special timeline for severe SLA breach invoice (sla-severe-1)
+    if (invoiceId === 'sla-severe-1') {
+      const events: TimelineItem[] = [
+        // 1. System Event: Invoice created (8 days ago)
+        {
+          id: 'sys-1',
+          type: 'system_event',
+          eventType: 'created',
+          user: 'System',
+          timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toISOString(),
+          message: 'System created the invoice from uploaded document',
+        },
+        // 2. System Event: Document uploaded (8 days ago, 1 min later)
+        {
+          id: 'sys-2',
+          type: 'system_event',
+          eventType: 'uploaded',
+          user: 'AP Team',
+          timestamp: new Date(Date.now() - 8 * 24 * 60 * 60 * 1000 + 60000).toISOString(),
+          message: 'AP Team uploaded the invoice document',
+        },
+        // 3. System Event: Assigned to Caroline Walsh (5 days ago) ← SLA starts
+        {
+          id: 'sys-3',
+          type: 'system_event',
+          eventType: 'assigned',
+          user: 'System',
+          timestamp: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
+          message: 'System assigned invoice to Caroline Walsh for approval (SLA: 48 hours)',
+        },
+        // 4. Email FROM vendor: Initial inquiry (4 days ago)
+        {
+          id: 'email-1',
+          type: 'email',
+          user: 'accounts@industrialeq.com',
+          userInitials: 'IE',
+          from: 'accounts@industrialeq.com',
+          to: 'ap@xelix.com',
+          subject: 'Payment Inquiry - Invoice SLA-2025-0003',
+          message: `Dear AP Team,\n\nWe wanted to follow up on invoice SLA-2025-0003 dated ${new Date(Date.now() - 8 * 24 * 60 * 60 * 1000).toLocaleDateString()} for $29,700.00.\n\nCould you please confirm receipt and provide an expected payment date?\n\nBest regards,\nAccounts Receivable\nIndustrial Equipment Corp`,
+          timestamp: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString(),
+          ticketRef: 'TICKET-891234',
+        },
+        // 5. Email TO vendor: AP response (3.5 days ago)
+        {
+          id: 'email-2',
+          type: 'email',
+          user: 'ap@xelix.com',
+          userInitials: 'AP',
+          from: 'ap@xelix.com',
+          to: 'accounts@industrialeq.com',
+          subject: 'RE: Payment Inquiry - Invoice SLA-2025-0003',
+          message: 'Thank you for your inquiry. We have received invoice SLA-2025-0003 and it is currently being reviewed by our approvals team. We will update you on the payment timeline shortly.',
+          timestamp: new Date(Date.now() - 3.5 * 24 * 60 * 60 * 1000).toISOString(),
+          ticketRef: 'TICKET-891234',
+        },
+        // 6. Email FROM vendor: Follow-up getting urgent (3 days ago)
+        {
+          id: 'email-3',
+          type: 'email',
+          user: 'accounts@industrialeq.com',
+          userInitials: 'IE',
+          from: 'accounts@industrialeq.com',
+          to: 'ap@xelix.com',
+          subject: 'Follow-up: Payment Status - Invoice SLA-2025-0003',
+          message: 'We have not yet received a response with a specific payment timeline. Please advise on the payment schedule for invoice SLA-2025-0003 ($29,700.00). This invoice is approaching the payment due date and we need to update our cash flow forecasts.',
+          timestamp: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+          ticketRef: 'TICKET-891234',
+        },
+        // 7. Internal Comment: Caroline notes concern (2.5 days ago)
+        {
+          id: 'comment-1',
+          type: 'user_comment',
+          user: 'Caroline Walsh',
+          userInitials: 'CW',
+          message: 'I need to verify the equipment delivery dates with Operations before approving. This is a non-PO invoice and I want to confirm all items were received as specified. Reaching out to warehouse manager.',
+          timestamp: new Date(Date.now() - 2.5 * 24 * 60 * 60 * 1000).toISOString(),
+        },
+        // 8. Email TO vendor: AP apologizing for delay (2 days ago)
+        {
+          id: 'email-4',
+          type: 'email',
+          user: 'ap@xelix.com',
+          userInitials: 'AP',
+          from: 'ap@xelix.com',
+          to: 'accounts@industrialeq.com',
+          subject: 'RE: Follow-up: Payment Status - Invoice SLA-2025-0003',
+          message: 'We apologize for the delay. The invoice is in final approval review. We are working to process this as quickly as possible and will provide you with a payment date within 24-48 hours.',
+          timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+          ticketRef: 'TICKET-891234',
+        },
+        // 9. Email FROM vendor: URGENT - mentioning penalties (1.5 days ago)
+        {
+          id: 'email-5',
+          type: 'email',
+          user: 'accounts@industrialeq.com',
+          userInitials: 'IE',
+          from: 'accounts@industrialeq.com',
+          to: 'ap@xelix.com',
+          subject: 'URGENT: Overdue Payment - Invoice SLA-2025-0003',
+          message: 'This is our third attempt to contact you regarding invoice SLA-2025-0003 for $29,700.00. The payment is now significantly overdue.\n\nPlease note that late payment penalties may apply per our contract terms (1.5% per month). We require immediate attention to this matter to maintain our business relationship.\n\nExpected penalty if not resolved: $371.25',
+          timestamp: new Date(Date.now() - 1.5 * 24 * 60 * 60 * 1000).toISOString(),
+          ticketRef: 'TICKET-891234',
+        },
+        // 10. Email FROM vendor: FINAL NOTICE - CFO escalation (4 hours ago)
+        {
+          id: 'email-6',
+          type: 'email',
+          user: 'robert.chen@industrialeq.com',
+          userInitials: 'RC',
+          from: 'robert.chen@industrialeq.com',
+          to: 'ap@xelix.com',
+          subject: 'FINAL NOTICE: Escalation to Management - Invoice SLA-2025-0003',
+          message: 'Dear Sir/Madam,\n\nDue to continued non-response regarding invoice SLA-2025-0003 ($29,700.00), this matter is being escalated to our senior management and your procurement team.\n\nLate payment penalties totaling $371.25 are now applicable per our contract terms. We expect immediate resolution within 24 hours to avoid further escalation.\n\nOur CFO will be contacting your Finance Manager directly if this remains unresolved.\n\nRobert Chen\nCFO, Industrial Equipment Corp',
+          timestamp: new Date(Date.now() - 4 * 60 * 60 * 1000).toISOString(),
+          ticketRef: 'TICKET-891234',
+        },
+      ];
+
+      return events.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
+    }
+
+    // Default/generic timeline for other invoices
     const events: TimelineItem[] = [
       // System events from ActivityTab
       {
@@ -361,8 +517,8 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
               <span className="text-sm font-semibold text-gray-950">{item.user}</span>
               <span className="text-xs text-gray-500">{formatTimestamp(item.timestamp)}</span>
             </div>
-            {/* Message bubble - purple-100 to match email, no border */}
-            <div className="bg-purple-100 rounded-lg px-4 py-3">
+            {/* Message bubble - blue for internal comments */}
+            <div className="bg-blue-50 rounded-lg px-4 py-3">
               <p className="text-sm text-gray-950 whitespace-pre-wrap">{item.message}</p>
             </div>
           </div>
@@ -462,10 +618,10 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
   if (isLoading) {
     return (
       <div className="h-full flex flex-col bg-white">
-        <div className="flex items-center px-4 py-3 border-b border-gray-200 bg-gray-50">
+        <div className="flex items-center px-4 py-2 border-b border-gray-200 bg-gray-50">
           <MessageSquare className="h-4 w-4 text-purple-600" />
           <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider ml-2">
-            COMMENTS
+            ACTIVITY
           </h3>
         </div>
         <div className="flex items-center justify-center flex-1">
@@ -477,64 +633,51 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
 
   return (
     <div className="h-full flex flex-col bg-white">
-      {/* Header with Filter Bar */}
+      {/* Header with Filter Dropdown */}
       <div className="border-b border-gray-200 bg-gray-50">
-        <div className="flex items-center justify-between px-4 py-3">
+        <div className="flex items-center justify-between px-4 py-2">
           <div className="flex items-center">
             <MessageSquare className="h-4 w-4 text-purple-600" />
             <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider ml-2">
-              COMMENTS
+              ACTIVITY
             </h3>
-            {realCommentsCount > 0 && (
-              <span className="ml-2 inline-flex items-center justify-center px-2 py-0.5 text-xs font-medium rounded-full bg-purple-100 text-purple-900">
-                {realCommentsCount}
-              </span>
-            )}
           </div>
 
-          {/* Quick Filter */}
-          <div className="flex items-center gap-1 bg-white rounded-md border border-gray-200 p-0.5">
-            <button
-              onClick={() => setFilter('all')}
-              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                filter === 'all'
-                  ? 'bg-purple-900 text-white'
-                  : 'text-gray-700 hover:text-gray-950 hover:bg-gray-100'
-              }`}
-            >
-              All
-            </button>
-            <button
-              onClick={() => setFilter('comments')}
-              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                filter === 'comments'
-                  ? 'bg-purple-900 text-white'
-                  : 'text-gray-700 hover:text-gray-950 hover:bg-gray-100'
-              }`}
-            >
-              Comments
-            </button>
-            <button
-              onClick={() => setFilter('email')}
-              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                filter === 'email'
-                  ? 'bg-purple-900 text-white'
-                  : 'text-gray-700 hover:text-gray-950 hover:bg-gray-100'
-              }`}
-            >
-              Email
-            </button>
-            <button
-              onClick={() => setFilter('system')}
-              className={`px-2 py-1 text-xs font-medium rounded transition-colors ${
-                filter === 'system'
-                  ? 'bg-purple-900 text-white'
-                  : 'text-gray-700 hover:text-gray-950 hover:bg-gray-100'
-              }`}
-            >
-              System
-            </button>
-          </div>
+          {/* Filter Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium text-gray-950 bg-white rounded-md border border-gray-200 hover:bg-gray-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
+                {getFilterLabel(filter)}
+                <ChevronDown className="h-3 w-3 text-gray-500" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem
+                onClick={() => setFilter('all')}
+                className={`cursor-pointer ${filter === 'all' ? 'bg-purple-50 text-purple-900 font-medium' : ''}`}
+              >
+                {getFilterLabel('all')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setFilter('comments')}
+                className={`cursor-pointer ${filter === 'comments' ? 'bg-purple-50 text-purple-900 font-medium' : ''}`}
+              >
+                {getFilterLabel('comments')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setFilter('email')}
+                className={`cursor-pointer ${filter === 'email' ? 'bg-purple-50 text-purple-900 font-medium' : ''}`}
+              >
+                {getFilterLabel('email')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setFilter('system')}
+                className={`cursor-pointer ${filter === 'system' ? 'bg-purple-50 text-purple-900 font-medium' : ''}`}
+              >
+                {getFilterLabel('system')}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 

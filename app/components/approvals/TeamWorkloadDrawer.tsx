@@ -152,7 +152,7 @@ export function TeamWorkloadDrawer({
               return (
                 <div
                   key={member.id}
-                  className="bg-white border border-gray-200 rounded-lg p-4 hover:border-gray-300 hover:shadow-sm transition-all"
+                  className="bg-white border border-gray-200 rounded-lg p-3 shadow-sm hover:border-gray-300 hover:shadow transition-all"
                 >
                   {/* Member Header */}
                   <div className="flex items-center justify-between mb-3">

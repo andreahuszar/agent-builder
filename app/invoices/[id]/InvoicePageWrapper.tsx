@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import InvoiceDetailLayout from '@/app/components/InvoiceDetailLayout';
 import { ViewModeSwitcher, ViewMode } from '@/app/components/invoices/ViewModeSwitcher';
 import { InvoiceDetailClient } from './InvoiceDetailClient';
@@ -12,6 +13,9 @@ interface InvoicePageWrapperProps {
 }
 
 export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }: InvoicePageWrapperProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+
   const [viewMode, setViewMode] = useState<ViewMode>('review');
   const [hasGR, setHasGR] = useState(false);
   const [hasSES, setHasSES] = useState(false);
@@ -24,6 +28,59 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
   const [reactiveInvoiceNumber, setReactiveInvoiceNumber] = useState<string>(
     initialInvoice.invoice_number || invoiceNumber
   );
+
+  // Navigation context from URL params
+  const invoiceListParam = searchParams.get('list');
+  const indexParam = searchParams.get('index');
+  const invoiceList = invoiceListParam ? JSON.parse(decodeURIComponent(invoiceListParam)) : [];
+  const currentIndex = indexParam ? parseInt(indexParam) : -1;
+  const hasListContext = invoiceList.length > 0 && currentIndex >= 0;
+
+  // Navigation state
+  const hasPrevious = hasListContext && currentIndex > 0;
+  const hasNext = hasListContext && currentIndex < invoiceList.length - 1;
+
+  // Navigation functions
+  const navigateToPrevious = () => {
+    if (hasPrevious) {
+      const prevId = invoiceList[currentIndex - 1];
+      const listParam = encodeURIComponent(JSON.stringify(invoiceList));
+      router.push(`/invoices/${prevId}?list=${listParam}&index=${currentIndex - 1}`);
+    }
+  };
+
+  const navigateToNext = () => {
+    if (hasNext) {
+      const nextId = invoiceList[currentIndex + 1];
+      const listParam = encodeURIComponent(JSON.stringify(invoiceList));
+      router.push(`/invoices/${nextId}?list=${listParam}&index=${currentIndex + 1}`);
+    }
+  };
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyPress = (e: KeyboardEvent) => {
+      // Don't trigger if user is typing in input/textarea/select
+      if (
+        e.target instanceof HTMLInputElement ||
+        e.target instanceof HTMLTextAreaElement ||
+        e.target instanceof HTMLSelectElement
+      ) {
+        return;
+      }
+
+      if ((e.key === 'ArrowLeft' || e.key === 'j' || e.key === 'J') && hasPrevious) {
+        e.preventDefault();
+        navigateToPrevious();
+      } else if ((e.key === 'ArrowRight' || e.key === 'k' || e.key === 'K') && hasNext) {
+        e.preventDefault();
+        navigateToNext();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, [currentIndex, invoiceList, hasPrevious, hasNext]);
 
   // Check for PO attachment
   useEffect(() => {
@@ -69,6 +126,18 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
   // ViewModeSwitcher hidden for unified layout - will be removed in future phase
   const viewModeSwitcher = undefined;
 
+  // Build navigation context (only if we have list context from URL)
+  const navigationContext = hasListContext
+    ? {
+        current: currentIndex + 1, // Display as 1-indexed
+        total: invoiceList.length,
+        onPrevious: navigateToPrevious,
+        onNext: navigateToNext,
+        hasPrevious,
+        hasNext,
+      }
+    : undefined;
+
   return (
     <InvoiceDetailLayout
       invoiceNumber={reactiveInvoiceNumber}
@@ -78,12 +147,15 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
       isNeedsInfo={isNeedsInfoMode}
       assignedUserName={assignedUserName}
       onAssignUser={handleAssignUser}
+      navigationContext={navigationContext}
     >
       <InvoiceDetailClientWithViewMode
         invoiceId={invoiceId}
         initialInvoice={initialInvoice}
         viewMode={viewMode}
         onInvoiceNumberUpdate={handleInvoiceNumberUpdate}
+        assignedUserName={assignedUserName}
+        onAssignUser={handleAssignUser}
       />
     </InvoiceDetailLayout>
   );
@@ -94,12 +166,16 @@ export function InvoiceDetailClientWithViewMode({
   invoiceId,
   initialInvoice,
   viewMode,
-  onInvoiceNumberUpdate
+  onInvoiceNumberUpdate,
+  assignedUserName,
+  onAssignUser
 }: {
   invoiceId: string;
   initialInvoice: any;
   viewMode: ViewMode;
   onInvoiceNumberUpdate?: (invoiceNumber: string) => void;
+  assignedUserName?: string | null;
+  onAssignUser?: (userName: string | null) => void;
 }) {
   return (
     <InvoiceDetailClient
@@ -107,6 +183,8 @@ export function InvoiceDetailClientWithViewMode({
       initialInvoice={initialInvoice}
       viewMode={viewMode}
       onInvoiceNumberUpdate={onInvoiceNumberUpdate}
+      assignedUserName={assignedUserName}
+      onAssignUser={onAssignUser}
     />
   );
 }

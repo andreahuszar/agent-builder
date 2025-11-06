@@ -2,7 +2,7 @@
 
 import React from 'react';
 import {
-  Check, X, MoreHorizontal, FileText
+  Check, X, MoreHorizontal, FileText, CheckSquare, Square
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -10,7 +10,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/app/components/ui/tooltip';
 import { ViewType, UserRole } from '@/app/components/approvals/ApprovalsClient';
+import { SLAStatusBadge } from './SLAStatusBadge';
+import { StatusBadge } from '@/app/components/invoices/StatusBadge';
+import { formatTimePending, calculatePriority, getPriorityLabel, getPriorityColors, type SLAStatus } from '@/app/services/slaService';
 
 interface Invoice {
   id: string;
@@ -22,6 +31,7 @@ interface Invoice {
   total: number;
   status: string;
   match_status: string;
+  workflow_status?: string;
   assigned_to_user_id?: string;
   assigned_to_name?: string;
   department?: string;
@@ -32,6 +42,11 @@ interface Invoice {
   rejection_reason?: string;
   approved_date?: string;
   rejected_date?: string;
+  // SLA fields
+  assigned_at?: string;
+  sla_hours?: number;
+  sla_status?: SLAStatus;
+  hours_overdue?: number;
 }
 
 interface TeamMember {
@@ -159,73 +174,115 @@ export function ApprovalsTable({
   }
 
   return (
-    <table className="w-full">
-      <thead className="bg-gray-50 border-b border-gray-200">
+    <table className="w-full divide-y divide-gray-200">
+      <thead className="bg-white border-b border-gray-200">
           <tr>
-            <th className="px-6 py-3 text-left">
-              <input
-                type="checkbox"
-                checked={allSelected}
-                ref={(el) => {
-                  if (el) el.indeterminate = someSelected;
-                }}
-                onChange={(e) => onSelectAll(e.target.checked)}
-                className="h-4 w-4 text-purple-900 focus:ring-purple-500 border-gray-300 rounded"
-              />
+            <th className="px-6 py-2 text-left">
+              <button
+                onClick={() => onSelectAll(!allSelected)}
+                className="p-0"
+              >
+                {allSelected ? (
+                  <CheckSquare className="h-4 w-4 text-purple-600" />
+                ) : someSelected ? (
+                  <CheckSquare className="h-4 w-4 text-purple-600" />
+                ) : (
+                  <Square className="h-4 w-4 text-gray-400" />
+                )}
+              </button>
             </th>
-            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
+            <th scope="col" className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800 truncate">
+              SLA Status
+            </th>
+            <th scope="col" className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800 truncate">
+              Time Pending
+            </th>
+            <th scope="col" className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800 truncate">
+              Priority
+            </th>
+            <th scope="col" className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800 truncate">
               Invoice No.
             </th>
-            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
+            <th scope="col" className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800 truncate">
               Vendor
             </th>
-            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
+            <th scope="col" className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800 truncate">
               Invoice Date
             </th>
-            <th scope="col" className="px-3 py-3.5 text-right text-sm font-semibold text-gray-800">
+            <th scope="col" className="px-3 py-2.5 text-right text-sm font-semibold text-gray-800 truncate">
               Total
             </th>
-            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
+            <th scope="col" className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800 truncate">
               Due Date
             </th>
-            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-              Match Status
+            <th scope="col" className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800 truncate">
+              Workflow Status
             </th>
-            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-              Status
+            <th scope="col" className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800 truncate">
+              Approver
             </th>
-            <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-              Assigned To
-            </th>
-            {(activeView === 'pending' || activeView === 'overdue') && (
-              <th scope="col" className="relative py-3.5 pl-3 pr-6">
-                <span className="sr-only">Actions</span>
+            {activeView === 'pending' && (
+              <th scope="col" className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800 truncate">
+                Actions
               </th>
             )}
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-white divide-y divide-gray-100">
           {invoices.map((invoice) => {
             const overdueDays = getDaysOverdue(invoice.due_date);
             const assignedMember = teamMembers.find(m => m.id === invoice.assigned_to_user_id);
-            
+
+            // Calculate SLA-related data
+            const hasSLA = invoice.assigned_at && invoice.sla_hours;
+            const priority = hasSLA && invoice.sla_status ? calculatePriority(invoice.sla_status, invoice.total) : 'low';
+            const priorityColors = getPriorityColors(priority);
+
             return (
-              <tr key={invoice.id} className="hover:bg-gray-50">
+              <tr
+                key={invoice.id}
+                onClick={() => onInvoiceClick(invoice.id)}
+                className="hover:bg-purple-50 cursor-pointer"
+              >
                 <td className="whitespace-nowrap px-6 py-2.5">
-                  <input
-                    type="checkbox"
-                    checked={selectedInvoices.has(invoice.id)}
-                    onChange={(e) => onSelectInvoice(invoice.id, e.target.checked)}
-                    className="h-4 w-4 text-purple-900 focus:ring-purple-500 border-gray-300 rounded"
-                  />
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onSelectInvoice(invoice.id, !selectedInvoices.has(invoice.id));
+                    }}
+                    className="p-0"
+                  >
+                    {selectedInvoices.has(invoice.id) ? (
+                      <CheckSquare className="h-4 w-4 text-purple-600" />
+                    ) : (
+                      <Square className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-sm">
-                  <button
-                    onClick={() => onInvoiceClick(invoice.id)}
-                    className="font-medium text-purple-600 hover:text-purple-700 hover:underline"
-                  >
+                  {hasSLA ? (
+                    <SLAStatusBadge
+                      assignedAt={invoice.assigned_at!}
+                      slaHours={invoice.sla_hours!}
+                      slaStatus={invoice.sla_status}
+                      compact
+                    />
+                  ) : (
+                    <span className="text-gray-400 text-xs">N/A</span>
+                  )}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-sm font-medium text-gray-950">
+                  {hasSLA ? formatTimePending(invoice.assigned_at!) : '-'}
+                </td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-sm">
+                  <span className={`inline-flex items-center px-2 py-0.5 text-xs font-medium rounded-full ${priorityColors.badge} ${priorityColors.text} ring-1 ${priorityColors.ring}`}>
+                    {getPriorityLabel(priority)}
+                  </span>
+                </td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-sm">
+                  <span className="font-medium text-purple-600">
                     {invoice.invoice_number}
-                  </button>
+                  </span>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-sm font-medium text-gray-950">
                   {invoice.vendor_name_snapshot}
@@ -247,10 +304,7 @@ export function ApprovalsTable({
                   </div>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-sm">
-                  {getMatchStatusBadge(invoice.match_status)}
-                </td>
-                <td className="whitespace-nowrap px-3 py-2.5 text-sm">
-                  {getStatusBadge(invoice.status)}
+                  <StatusBadge status={invoice.workflow_status || invoice.status || 'approval'} size="sm" />
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-sm">
                   {assignedMember ? (
@@ -266,32 +320,49 @@ export function ApprovalsTable({
                     <span className="text-gray-500 text-sm">Unassigned</span>
                   )}
                 </td>
-                {(activeView === 'pending' || activeView === 'overdue') && (
-                  <td className="relative whitespace-nowrap py-2.5 pl-3 pr-6 text-right text-sm font-medium">
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button className="inline-flex items-center justify-center rounded-md p-1 text-gray-950 hover:text-gray-950 hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">Open menu</span>
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem
-                          onClick={() => onApprove(invoice.id)}
-                          className="hover:bg-gray-50 focus:bg-gray-50"
-                        >
-                          <Check className="mr-2 h-4 w-4" />
-                          Approve
-                        </DropdownMenuItem>
-                        <DropdownMenuItem
-                          onClick={() => onReject(invoice.id, 'Needs review')}
-                          className="hover:bg-gray-50 focus:bg-gray-50"
-                        >
-                          <X className="mr-2 h-4 w-4" />
-                          Reject
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                {activeView === 'pending' && (
+                  <td
+                    onClick={(e) => e.stopPropagation()}
+                    className="px-3 py-2.5 whitespace-nowrap"
+                  >
+                    <div className="flex items-center gap-2">
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onApprove(invoice.id);
+                              }}
+                              className="p-0 hover:bg-gray-100 rounded transition-colors group"
+                            >
+                              <Check className="h-4 w-4 text-gray-900 group-hover:text-green-600 transition-colors" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-gray-800 text-white border-gray-800">
+                            <p>Approve</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onReject(invoice.id, 'Needs review');
+                              }}
+                              className="p-0 hover:bg-gray-100 rounded transition-colors group"
+                            >
+                              <X className="h-4 w-4 text-gray-900 group-hover:text-red-600 transition-colors" />
+                            </button>
+                          </TooltipTrigger>
+                          <TooltipContent className="bg-gray-800 text-white border-gray-800">
+                            <p>Reject</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </td>
                 )}
               </tr>

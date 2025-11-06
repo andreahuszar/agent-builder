@@ -823,56 +823,39 @@ export function EnhancedInvoiceTable({
   const getStatusColor = (status: string, hasApprover: boolean = false) => {
     const normalizedStatus = status?.toLowerCase() || '';
 
-    // Check for archived first
-    if (normalizedStatus === 'archived') {
-      return 'bg-gray-100 text-gray-700';
-    }
-
-    // Override for in-approval items
-    if (hasApprover && normalizedStatus !== 'approved' && normalizedStatus !== 'paid') {
-      return 'bg-purple-50 text-purple-700 ring-1 ring-purple-200';
-    }
-
-    // Check exact matches first
-    if (normalizedStatus === 'needs_info' || normalizedStatus === 'needs info') {
-      return 'bg-red-50 text-red-700 ring-1 ring-red-200';
-    }
-    if (normalizedStatus === 'draft' || normalizedStatus === 'new') {
-      return 'bg-gray-50 text-gray-700 ring-1 ring-gray-200';
-    }
-    if (normalizedStatus === 'requires_review' || normalizedStatus === 'needs_review' || normalizedStatus === 'needs review') {
-      return 'bg-orange-50 text-orange-700 ring-1 ring-orange-200';
-    }
-    // If pending without approver (blocked tab), treat as needs review
-    if (normalizedStatus === 'pending' && !hasApprover) {
-      return 'bg-orange-50 text-orange-700 ring-1 ring-orange-200';
-    }
-    if (normalizedStatus === 'pending') {
-      return 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200';
-    }
-    if (normalizedStatus === 'approved') {
+    // New 10 Workflow Statuses
+    if (normalizedStatus === 'received_new' || normalizedStatus === 'received') {
       return 'bg-blue-50 text-blue-700 ring-1 ring-blue-200';
     }
-    if (normalizedStatus === 'ready_for_payment' || normalizedStatus === 'ready_to_pay' || normalizedStatus === 'ready to pay') {
+    if (normalizedStatus === 'data_capture') {
+      return 'bg-purple-50 text-purple-700 ring-1 ring-purple-200';
+    }
+    if (normalizedStatus === 'matching') {
+      return 'bg-indigo-50 text-indigo-700 ring-1 ring-indigo-200';
+    }
+    if (normalizedStatus === 'verification') {
+      return 'bg-yellow-50 text-yellow-700 ring-1 ring-yellow-200';
+    }
+    if (normalizedStatus === 'approval') {
+      return 'bg-orange-50 text-orange-700 ring-1 ring-orange-200';
+    }
+    if (normalizedStatus === 'posted') {
       return 'bg-green-50 text-green-700 ring-1 ring-green-200';
     }
-
-    // Then check for partial matches - but exclude the ones we've already handled
-    if (normalizedStatus.includes('process')) {
-      return 'bg-blue-100 text-blue-700';
+    if (normalizedStatus === 'disputed') {
+      return 'bg-red-50 text-red-700 ring-1 ring-red-200';
     }
-    if (normalizedStatus.includes('approved') || normalizedStatus.includes('paid') ||
-        normalizedStatus.includes('completed') || normalizedStatus.includes('closed')) {
-      return 'bg-green-100 text-green-700';
+    if (normalizedStatus === 'rejected') {
+      return 'bg-red-100 text-red-800 ring-1 ring-red-300';
     }
-    if (normalizedStatus.includes('reject') || normalizedStatus.includes('cancel') ||
-        normalizedStatus.includes('void')) {
-      return 'bg-red-100 text-red-700';
+    if (normalizedStatus === 'on_hold') {
+      return 'bg-gray-50 text-gray-700 ring-1 ring-gray-200';
     }
-    if (normalizedStatus.includes('hold')) {
-      return 'bg-orange-100 text-orange-700';
+    if (normalizedStatus === 'archived_closed' || normalizedStatus === 'archived') {
+      return 'bg-gray-100 text-gray-600 ring-1 ring-gray-300';
     }
 
+    // Fallback for any unmapped statuses
     return 'bg-gray-100 text-gray-700';
   };
 
@@ -936,9 +919,9 @@ export function EnhancedInvoiceTable({
       )}
       <div ref={scrollContainerRef} className="overflow-x-auto">
         <table className="min-w-full divide-y divide-gray-200">
-          <thead>
+          <thead className="bg-white border-b border-gray-200">
             <tr>
-              <th scope="col" className="sticky left-0 z-10 bg-white px-6 py-1.5 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
+              <th scope="col" className="sticky left-0 z-10 bg-white px-6 py-2 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                 <button
                   onClick={onToggleAll}
                   className="p-0"
@@ -954,7 +937,7 @@ export function EnhancedInvoiceTable({
               </th>
               <th scope="col"
                 ref={sourceHeaderRef}
-                className="px-2 py-1.5 text-center text-sm font-semibold text-gray-950">
+                className="px-2 py-2.5 text-center text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('ingestion_source')}
                   className="flex items-center gap-1 hover:text-gray-900 w-full justify-center"
@@ -965,18 +948,18 @@ export function EnhancedInvoiceTable({
               </th>
               <th scope="col"
                 ref={ingestionDateHeaderRef}
-                className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('data_ingestion_date')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  <span className="whitespace-normal">Ingestion Date</span>
+                  <span className="truncate">Ingestion Date</span>
                   {getSortIcon('data_ingestion_date')}
                 </button>
               </th>
               <th scope="col"
                 ref={vendorHeaderRef}
-                className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950 max-w-[200px]">
+                className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800 max-w-[200px]">
                 <button
                   onClick={() => handleSort('vendor_name_snapshot')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
@@ -987,50 +970,50 @@ export function EnhancedInvoiceTable({
               </th>
               <th scope="col"
                 ref={vendorIdHeaderRef}
-                className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('vendorId')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  Vendor ID
+                  <span className="truncate">Vendor ID</span>
                   {getSortIcon('vendorId')}
                 </button>
               </th>
               <th scope="col"
                 ref={invoiceHeaderRef}
                 className={cn(
-                  "px-6 py-1.5 text-left text-sm font-semibold text-gray-950",
+                  "px-3 py-2.5 text-left text-sm font-semibold text-gray-800",
                   hasInvoices && "sticky left-[64px] z-10 bg-white"
                 )}>
                 <button
                   onClick={() => handleSort('invoice_number')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  Invoice No.
+                  <span className="truncate">Invoice No.</span>
                   {getSortIcon('invoice_number')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('match_status')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  <span className="whitespace-normal">Processed Status</span>
+                  <span className="truncate">Processed Status</span>
                   {getSortIcon('match_status')}
                 </button>
               </th>
               {activeTab !== 'needs-info' && (
-                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
                     onClick={() => handleSort('reason')}
                     className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                   >
-                    <span className="whitespace-normal">Status Reason</span>
+                    <span className="truncate">Status Reason</span>
                     {getSortIcon('reason')}
                   </button>
                 </th>
               )}
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('currency')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
@@ -1039,70 +1022,70 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('currency')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
+              <th scope="col" className="px-3 py-2.5 text-right text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('total')}
                   className="flex items-end gap-1 hover:text-gray-900 justify-end w-full text-right"
                 >
-                  <span className="whitespace-normal text-right">Total Amount</span>
+                  <span className="truncate text-right">Total Amount</span>
                   {getSortIcon('total')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
+              <th scope="col" className="px-3 py-2.5 text-right text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('netAmount')}
                   className="flex items-end gap-1 hover:text-gray-900 justify-end w-full text-right"
                 >
-                  <span className="whitespace-normal text-right">Net Amount</span>
+                  <span className="truncate text-right">Net Amount</span>
                   {getSortIcon('netAmount')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('customer_no')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  Customer No.
+                  <span className="truncate">Customer No.</span>
                   {getSortIcon('customer_no')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('docType')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  Doc. Type
+                  <span className="truncate">Doc. Type</span>
                   {getSortIcon('docType')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('invoice_date')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  Invoice Date
+                  <span className="truncate">Invoice Date</span>
                   {getSortIcon('invoice_date')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('due_date')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  Due Date
+                  <span className="truncate">Due Date</span>
                   {getSortIcon('due_date')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('dueStatus')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  Due Status
+                  <span className="truncate">Due Status</span>
                   {getSortIcon('dueStatus')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
+              <th scope="col" className="px-3 py-2.5 text-right text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('aging')}
                   className="flex items-end gap-1 hover:text-gray-900 justify-end w-full text-right"
@@ -1111,26 +1094,26 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('aging')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('agingBracket')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  Aging Bracket
+                  <span className="truncate">Aging Bracket</span>
                   {getSortIcon('agingBracket')}
                 </button>
               </th>
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('status')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  <span className="whitespace-normal">Workflow Status</span>
+                  <span className="truncate">Workflow Status</span>
                   {getSortIcon('status')}
                 </button>
               </th>
               {(activeView === 'all' || activeView === 'po') && (
-                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
                     onClick={() => handleSort('poNumbers')}
                     className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
@@ -1141,7 +1124,7 @@ export function EnhancedInvoiceTable({
                 </th>
               )}
               {(activeView === 'all' || activeView === 'po') && (
-                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
                     onClick={() => handleSort('grNumbers')}
                     className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
@@ -1152,7 +1135,7 @@ export function EnhancedInvoiceTable({
                 </th>
               )}
               {activeTab !== 'needs-info' && (
-                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => handleSort('division')}
@@ -1239,29 +1222,29 @@ export function EnhancedInvoiceTable({
                 </th>
               )}
               {activeTab !== 'needs-info' && (
-                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
                     onClick={() => handleSort('costCentre')}
                     className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                   >
-                    Cost Centre
+                    <span className="truncate">Cost Centre</span>
                     {getSortIcon('costCentre')}
                   </button>
                 </th>
               )}
               {activeTab !== 'needs-info' && (
-                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
                     onClick={() => handleSort('accountCode')}
                     className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                   >
-                    Account Code
+                    <span className="truncate">Account Code</span>
                     {getSortIcon('accountCode')}
                   </button>
                 </th>
               )}
               {activeTab !== 'needs-info' && (
-                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
                     onClick={() => handleSort('approver')}
                     className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
@@ -1272,17 +1255,17 @@ export function EnhancedInvoiceTable({
                 </th>
               )}
               {activeTab !== 'needs-info' && (
-                <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+                <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
                     onClick={() => handleSort('daysWithApprover')}
                     className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                   >
-                    Days with Approver
+                    <span className="truncate">Days with Approver</span>
                     {getSortIcon('daysWithApprover')}
                   </button>
                 </th>
               )}
-              <th scope="col" className="px-6 py-1.5 text-left text-sm font-semibold text-gray-950">
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('assignedTo')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
@@ -1291,7 +1274,7 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('assignedTo')}
                 </button>
               </th>
-              <th ref={actionsHeaderRef} scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-950">
+              <th ref={actionsHeaderRef} scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-800">
                 Actions
               </th>
             </tr>
@@ -1399,7 +1382,11 @@ export function EnhancedInvoiceTable({
                       <button
                         onClick={(e) => {
                           e.stopPropagation(); // Prevent row click from firing
-                          router.push(`/invoices/${invoice.id}`);
+                          // Build navigation context for list navigation
+                          const invoiceIds = sortedInvoices.map(inv => inv.id);
+                          const currentIndex = invoiceIds.indexOf(invoice.id);
+                          const listParam = encodeURIComponent(JSON.stringify(invoiceIds));
+                          router.push(`/invoices/${invoice.id}?list=${listParam}&index=${currentIndex}`);
                         }}
                         className="text-sm text-purple-600 hover:text-purple-700 font-medium"
                       >
@@ -1659,22 +1646,28 @@ export function EnhancedInvoiceTable({
                       const chipClass = forceReady
                         ? 'bg-green-50 text-green-700 ring-1 ring-green-200'
                         : getStatusColor(invoice.status, !!invoice.approver);
+
+                      // Format status labels for the 10 new workflow statuses
+                      const formatStatusLabel = (status: string) => {
+                        switch(status) {
+                          case 'received_new': return 'Received';
+                          case 'data_capture': return 'Data Capture';
+                          case 'matching': return 'Matching';
+                          case 'verification': return 'Verification';
+                          case 'approval': return 'Approval';
+                          case 'posted': return 'Posted';
+                          case 'disputed': return 'Disputed';
+                          case 'rejected': return 'Rejected';
+                          case 'on_hold': return 'On Hold';
+                          case 'archived_closed': return 'Archived';
+                          default: return status?.charAt(0).toUpperCase() + status?.slice(1).replace(/_/g, ' ') || 'Unknown';
+                        }
+                      };
+
                       const label = forceReady
                         ? 'Ready for posting'
-                        : (activeTab === 'blocked' && invoice.type === 'Non-PO')
-                        ? 'Needs Review'
-                        : (
-                            invoice.status === 'archived' ? 'Archived' :
-                            invoice.approver && invoice.status !== 'approved' && invoice.status !== 'paid' ? 'In Approval' :
-                            invoice.status === 'needs_info' ? 'Needs info' :
-                            (invoice.status === 'requires_review' || invoice.status === 'needs_review') ? 'Needs Review' :
-                            (invoice.status === 'ready_for_payment' || invoice.status === 'ready_to_pay') ? 'Ready for posting' :
-                            invoice.status === 'approved' ? 'Approved' :
-                            (invoice.status === 'pending' && !invoice.approver) ? 'Needs Review' :
-                            invoice.status === 'pending' ? 'Pending' :
-                            invoice.status === 'draft' ? 'Draft' :
-                            (invoice.status?.charAt(0).toUpperCase() + invoice.status?.slice(1).replace(/_/g, ' ') || 'Draft')
-                          );
+                        : formatStatusLabel(invoice.status);
+
                       return (
                         <span className={cn(
                           "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",

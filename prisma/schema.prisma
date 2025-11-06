@@ -930,19 +930,16 @@ enum hold_reason_code {
 }
 
 enum invoice_status {
-  draft
-  processing
-  validating
-  requires_review
-  in_approval
-  pending_approval
-  approved
-  ready_for_payment
-  approved_ready_for_payment
+  received_new
+  data_capture
+  matching
+  verification
+  approval
   posted
-  paid
-  void
+  disputed
+  rejected
   on_hold
+  archived_closed
 }
 
 enum invoice_type {

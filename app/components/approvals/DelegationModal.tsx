@@ -60,7 +60,7 @@ export function DelegationModal({
         <div className="relative bg-white rounded-lg shadow-xl max-w-md w-full">
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-950">
+            <h3 className="text-lg font-bold text-gray-950">
               Delegate Invoice
             </h3>
             <button

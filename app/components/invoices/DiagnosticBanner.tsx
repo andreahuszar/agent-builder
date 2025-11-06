@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import { Check, AlertTriangle, X, ChevronDown, MessageSquare, FileCheck, FileText, Pause, Mail, Send, CheckCircle, Trash2, XCircle } from 'lucide-react';
 import { HelpdeskPill } from './HelpdeskPill';
+import { UserAssignmentDropdown } from './UserAssignmentDropdown';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
 
 interface DiagnosticBannerProps {
@@ -26,6 +27,8 @@ interface DiagnosticBannerProps {
   isSaving?: boolean;
   onCommentsClick?: () => void;
   commentsCount?: number;
+  assignedUserName?: string | null;
+  onAssignUser?: (userName: string | null) => void;
 }
 
 export function DiagnosticBanner({
@@ -49,6 +52,8 @@ export function DiagnosticBanner({
   isSaving = false,
   onCommentsClick,
   commentsCount = 0,
+  assignedUserName,
+  onAssignUser,
 }: DiagnosticBannerProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
@@ -250,7 +255,7 @@ export function DiagnosticBanner({
           disabled={isSaving}
           className="px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
         >
-          {isSaving ? 'Reprocessing...' : 'Reprocess'}
+          {isSaving ? 'Validating...' : 'Validate'}
         </button>
 
         {/* Actions Dropdown */}
@@ -265,7 +270,7 @@ export function DiagnosticBanner({
 
           {/* Dropdown Menu */}
           {isDropdownOpen && (
-            <div className="absolute right-0 mt-1 w-48 bg-white border border-gray-200 rounded-md shadow-lg z-50">
+            <div className="absolute right-0 mt-1 w-56 bg-white border border-gray-200 rounded-md shadow-lg z-50">
               <button
                 onClick={() => {
                   setIsDropdownOpen(false);
@@ -276,16 +281,18 @@ export function DiagnosticBanner({
                 <Pause className="h-4 w-4" />
                 <span>On-Hold</span>
               </button>
-              <button
-                onClick={() => {
-                  setIsDropdownOpen(false);
-                  setIsRejectModalOpen(true);
-                }}
-                className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
-              >
-                <XCircle className="h-4 w-4" />
-                <span>Reject to Requisitioner</span>
-              </button>
+              {poNumber && (
+                <button
+                  onClick={() => {
+                    setIsDropdownOpen(false);
+                    setIsRejectModalOpen(true);
+                  }}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
+                >
+                  <XCircle className="h-4 w-4" />
+                  <span>Reject to PO Owner</span>
+                </button>
+              )}
               <button
                 onClick={() => {
                   setIsDropdownOpen(false);
@@ -307,7 +314,7 @@ export function DiagnosticBanner({
                 className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
               >
                 <Send className="h-4 w-4" />
-                <span>Post to ERP</span>
+                <span>Force Post to ERP</span>
               </button>
               <button
                 onClick={() => {
@@ -317,7 +324,7 @@ export function DiagnosticBanner({
                 className="w-full text-left px-4 py-2 text-sm text-gray-950 font-medium hover:bg-gray-50 transition-colors flex items-center gap-2"
               >
                 <CheckCircle className="h-4 w-4" />
-                <span>Resolve</span>
+                <span>Approve Anyway</span>
               </button>
 
               <div className="border-t border-gray-200 my-1"></div>
@@ -335,18 +342,24 @@ export function DiagnosticBanner({
             </div>
           )}
         </div>
+
+        {/* User Assignment */}
+        <UserAssignmentDropdown
+          assignedUserName={assignedUserName}
+          onAssignUser={onAssignUser}
+        />
       </div>
 
-      {/* Reject to Requisitioner Modal */}
+      {/* Reject to PO Owner Modal */}
       {isRejectModalOpen && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50">
           <div className="bg-white rounded-lg shadow-xl w-full max-w-md mx-4">
             <div className="px-6 py-4 border-b border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-950">Reject Invoice to Requisitioner</h3>
+              <h3 className="text-lg font-semibold text-gray-950">Reject Invoice to PO Owner</h3>
             </div>
             <div className="px-6 py-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Message to Requisitioner
+                Message to PO Owner
               </label>
               <textarea
                 value={rejectMessage}

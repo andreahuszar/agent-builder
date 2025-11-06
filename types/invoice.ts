@@ -74,6 +74,42 @@ export interface UnifiedInvoice extends InvoiceHeader {
   approver_routing_confidence?: number;
   approver_routing_reasoning?: string;
   approver_routing_details?: ApproverRoutingDetails;
+
+  // SLA tracking (for approvals workflow)
+  assigned_at?: string; // When invoice was assigned to approver
+  sla_hours?: number; // Standard SLA period in hours (e.g., 48)
+  sla_deadline?: string; // Calculated deadline based on assigned_at + sla_hours
+  sla_status?: 'on_time' | 'at_risk' | 'breached' | 'severe_breach';
+  hours_overdue?: number; // Hours past SLA deadline (null if not breached)
+
+  // Vendor communication tracking (evidence of chasing)
+  vendor_communications?: VendorCommunication[];
+
+  // Business impact (late payment penalties, relationship risk)
+  payment_terms?: string; // e.g., "Net 30"
+  late_payment_penalty?: {
+    applicable: boolean;
+    rate: string; // e.g., "1.5% per month"
+    estimated_amount: number;
+  };
+  vendor_relationship_risk?: 'low' | 'medium' | 'high';
+
+  // Escalation tracking
+  escalation_level?: number; // 0 = normal, 1 = first escalation due, 2+ = escalated
+  escalation_to?: {
+    name: string;
+    role: string;
+    email: string;
+  };
+  previous_escalations?: number;
+
+  // Approver performance history (for context)
+  approver_history?: {
+    average_approval_time_hours: number;
+    total_approvals: number;
+    sla_breach_count: number;
+    last_breach_date?: string;
+  };
 }
 
 /**
@@ -135,6 +171,22 @@ export interface ApproverRoutingDetails {
     matched: boolean;
     weight: number;
   }[];
+}
+
+/**
+ * Vendor Communication structure (emails, calls, notes)
+ * Used to track evidence of vendor chasing for payment
+ */
+export interface VendorCommunication {
+  id: string;
+  type: 'email' | 'phone' | 'note';
+  timestamp: string;
+  from?: string; // Email address or caller name
+  subject?: string; // For emails
+  preview?: string; // Email preview text or call notes
+  tone: 'polite' | 'urgent' | 'escalated'; // Escalating urgency indicator
+  duration?: number; // For phone calls (in minutes)
+  notes?: string; // Internal notes
 }
 
 /**

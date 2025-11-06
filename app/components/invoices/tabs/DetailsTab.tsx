@@ -1851,9 +1851,8 @@ export function DetailsTab({
                             invoiceAmount={invoiceData.total}
                             currency={invoiceData.currency}
                             dueDate={invoiceData.due_date}
-                            oldAccount={bankWarning?.old_account || '****0000'}
-                            newAccount={bankWarning?.new_account || invoiceData.payment_bank_details?.account_number}
-                            currentBankDetails={invoiceData.payment_bank_details}
+                            oldBankDetails={bankWarning?.old_bank_details || invoiceData.payment_bank_details}
+                            newBankDetails={bankWarning?.new_bank_details || invoiceData.payment_bank_details}
                             requisitionerName={invoiceData.requisitioner?.name}
                             requisitionerEmail={invoiceData.requisitioner?.email}
                             poNumber={invoiceData.po_numbers_cached?.[0]}
