@@ -109,8 +109,7 @@ const getContextualTabs = (invoiceType: string, useExceptionNavigation?: boolean
     return [
       { id: 'po-invoices', label: 'PO Invoices' },
       { id: 'non-po-invoices', label: 'Non-PO Invoices' },
-      { id: 'unclassified', label: 'Unclassified' },
-      { id: 'all', label: 'All' }
+      { id: 'unclassified', label: 'Unclassified' }
     ];
   }
 
@@ -120,7 +119,6 @@ const getContextualTabs = (invoiceType: string, useExceptionNavigation?: boolean
     return [
       { id: 'exceptions', label: 'Exceptions' },
       { id: 'in-approval', label: 'Pending Approval' },
-      { id: 'all', label: 'All (PO)' },
       { id: 'archived', label: 'Archived' }
     ];
   } else if (invoiceType === 'non-po') {
@@ -128,7 +126,6 @@ const getContextualTabs = (invoiceType: string, useExceptionNavigation?: boolean
     return [
       { id: 'exceptions', label: 'Exceptions' },
       { id: 'in-approval', label: 'Pending Approval' },
-      { id: 'all', label: 'All (Non-PO)' },
       { id: 'archived', label: 'Archived' }
     ];
   } else {
@@ -136,7 +133,6 @@ const getContextualTabs = (invoiceType: string, useExceptionNavigation?: boolean
     return [
       { id: 'exceptions', label: 'Exceptions' },
       { id: 'in-approval', label: 'Pending Approval' },
-      { id: 'all', label: 'All' },
       { id: 'archived', label: 'Archived' }
     ];
   }

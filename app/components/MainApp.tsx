@@ -4,6 +4,7 @@ import React, { useEffect, useState } from 'react';
 import AppLayout from './AppLayout';
 import InvoicesClient from './invoices/InvoicesClient';
 import EnhancedInvoicesClient from './invoices/EnhancedInvoicesClient';
+import AllInvoicesClient from './invoices/AllInvoicesClient';
 import PurchaseOrdersClient from './purchase-orders/PurchaseOrdersClient';
 import { ApprovalsClient } from './approvals/ApprovalsClient';
 import { EscalationsClient } from './escalations/EscalationsClient';
@@ -103,6 +104,7 @@ function InvoiceProcessingContent({ currentView = 'invoices' }: InvoiceProcessin
       {currentView === 'goods-receipts' && (
         <GoodsReceiptsClient />
       )}
+      {currentView === 'all-invoices' && <AllInvoicesClient />}
     </>
   );
 }

@@ -301,43 +301,45 @@ export function ApprovalsClient() {
           Approvals
         </h1>
 
-        {/* User/Admin Toggle */}
-        <div className="flex items-center gap-4">
-          {userRole === 'admin' && (
-            <button
-              onClick={() => setShowTeamWorkloadDrawer(true)}
-              className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
-            >
-              <Users className="h-4 w-4" />
-              Team Workload
-            </button>
-          )}
+        {/* User/Admin Toggle - Hidden temporarily */}
+        {false && (
+          <div className="flex items-center gap-4">
+            {userRole === 'admin' && (
+              <button
+                onClick={() => setShowTeamWorkloadDrawer(true)}
+                className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-md hover:bg-gray-50 transition-colors"
+              >
+                <Users className="h-4 w-4" />
+                Team Workload
+              </button>
+            )}
 
-          <div className="flex items-center bg-gray-100 rounded-lg p-1">
-            <button
-              onClick={() => setUserRole('user')}
-              className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
-                userRole === 'user'
-                  ? 'bg-white text-gray-950 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-950'
-              }`}
-            >
-              <User className="h-4 w-4 inline mr-1" />
-              User View
-            </button>
-            <button
-              onClick={() => setUserRole('admin')}
-              className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
-                userRole === 'admin'
-                  ? 'bg-white text-gray-950 shadow-sm'
-                  : 'text-gray-600 hover:text-gray-950'
-              }`}
-            >
-              <Users className="h-4 w-4 inline mr-1" />
-              Admin View
-            </button>
+            <div className="flex items-center bg-gray-100 rounded-lg p-1">
+              <button
+                onClick={() => setUserRole('user')}
+                className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
+                  userRole === 'user'
+                    ? 'bg-white text-gray-950 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-950'
+                }`}
+              >
+                <User className="h-4 w-4 inline mr-1" />
+                User View
+              </button>
+              <button
+                onClick={() => setUserRole('admin')}
+                className={`px-3 py-1 text-sm font-medium rounded transition-colors ${
+                  userRole === 'admin'
+                    ? 'bg-white text-gray-950 shadow-sm'
+                    : 'text-gray-600 hover:text-gray-950'
+                }`}
+              >
+                <Users className="h-4 w-4 inline mr-1" />
+                Admin View
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* STATS CARDS - Hidden but preserved for easy restoration
@@ -381,10 +383,9 @@ export function ApprovalsClient() {
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
             {[
-              { id: 'pending', label: 'Pending', count: stats.pending },
-              { id: 'approved', label: 'Approved', count: stats.approved },
+              { id: 'pending', label: 'Pending Review', count: stats.pending },
+              { id: 'approved', label: 'Pending Approval', count: stats.approved },
               { id: 'rejected', label: 'Rejected', count: stats.rejected },
-              { id: 'all', label: 'All', count: allInvoices.length },
             ].map((tab) => (
               <button
                 key={tab.id}
