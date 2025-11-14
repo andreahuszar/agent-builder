@@ -358,6 +358,43 @@ export function PurpleModernTemplate({
           This is an electronically generated document, no signature is required.
         </div>
       </div>
+
+      {/* Page Break - Visual Separation */}
+      <div className="mt-8" />
+
+      {/* Second Page */}
+      <div className="max-w-5xl mx-auto bg-white p-12 min-h-[1100px] flex flex-col">
+        {/* Additional Notes Header */}
+        <h2 className="text-lg font-bold text-purple-600 mb-4">Additional Notes</h2>
+
+        {/* Bank Details Content */}
+        <div className="text-sm text-gray-950 space-y-2 mb-auto">
+          <p>
+            Bank Details: {invoice.vendor_name_snapshot}, {invoice.payment_bank_details?.bank_name || 'HSBC UK'}, 1 Centenary Square, Birmingham, B2 4JU
+          </p>
+          <p>
+            Bank Name: {invoice.payment_bank_details?.bank_name || 'HSBC'} | Sort Code: {invoice.payment_bank_details?.sort_code || '40-05-15'} | Account Number: {invoice.payment_bank_details?.account_number || '12345674'} | IBAN: {invoice.payment_bank_details?.iban || 'GB63 HBUK 4005 1512 3456 74'}
+          </p>
+        </div>
+
+        {/* Page 2 Footer */}
+        <div className="pt-6 border-t border-dashed border-gray-300 mt-auto">
+          <div className="flex justify-between items-center text-xs text-gray-700">
+            <div className="space-x-8">
+              <span>Trn.</span>
+              <span>{getDocumentDisplayValue('invoice_number', invoice.invoice_number)}</span>
+              <span><span className="font-medium">Invoice Date</span> {formatDate(invoice.invoice_date)}</span>
+              <span><span className="font-medium">Billed To</span> {invoice.bill_to_snapshot?.legal_name || 'GSPV Ltd'}</span>
+            </div>
+            <div>
+              <span className="font-medium">Page 2 of 2</span>
+            </div>
+          </div>
+          <div className="text-center text-xs text-red-600 mt-2">
+            This is an electronically generated document, no signature is required.
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
