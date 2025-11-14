@@ -755,6 +755,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po-bank-1',
       line_no: 1,
+      sku: '-',
       description: 'Toyota Prius 2022 (7 days)',
       qty: 7,
       uom: 'DAYS',
@@ -771,6 +772,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po-bank-2',
       line_no: 2,
+      sku: '-',
       description: 'Motor Insurnace - Comprehensive (Class 2 Vehicle)',
       qty: 7,
       uom: 'DAYS',
