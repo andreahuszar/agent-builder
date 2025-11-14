@@ -68,7 +68,7 @@ export function PurpleModernTemplate({
   return (
     <div>
       {/* Page 1 */}
-      <div className="max-w-5xl mx-auto bg-white p-12 shadow-md mb-16">
+      <div className="max-w-5xl mx-auto bg-white p-12 shadow-md mb-8">
         {/* Header Section */}
       <div className="flex justify-between items-start mb-8">
         {/* Left: Invoice heading and details */}
