@@ -7,6 +7,7 @@ import { GreenMinimalTemplate } from './GreenMinimalTemplate';
 import { GreenPremierTemplate } from './GreenPremierTemplate';
 import { SimpleTableInvoiceTemplate } from './SimpleTableInvoiceTemplate';
 import { BlackEnterpriseTemplate } from './BlackEnterpriseTemplate';
+import { SpectreProfessionalTemplate } from './SpectreProfessionalTemplate';
 
 /**
  * Template Registry
@@ -434,6 +435,56 @@ export const TEMPLATE_REGISTRY: Record<string, TemplateRegistryEntry> = {
           tax: 'TAX',
           lineTotal: 'Total',
         },
+      },
+    },
+  },
+
+  'spectre-professional': {
+    id: 'spectre-professional',
+    name: 'Spectre Professional',
+    description: 'Professional enterprise template with 3-column header, pink table headers, red total box, terms, and bank details',
+    category: 'enterprise',
+    component: SpectreProfessionalTemplate,
+    defaultConfig: {
+      layout: {
+        style: 'enterprise',
+        pageSize: 'A4',
+        maxWidth: '900px',
+        showPageNumbers: false,
+      },
+      theme: {
+        primaryColor: 'red',
+        headerBgColor: 'bg-rose-50',
+        headerTextColor: 'text-gray-950',
+        borderColor: 'border-gray-300',
+        accentColor: 'text-red-600',
+      },
+      labels: {
+        invoiceNumber: 'Invoice No #',
+        invoiceDate: 'Invoice Date',
+        dueDate: 'Due Date',
+        poNumber: 'Purchase Order',
+        vendor: 'Billed By',
+        billTo: 'Billed To',
+        paymentTerms: 'Terms and Conditions',
+        subtotal: 'Amount',
+        tax: 'VAT',
+        total: 'Total',
+        tableHeaders: {
+          description: 'Item',
+          qty: 'Quantity',
+          uom: 'Unit of Measure',
+          unitPrice: 'Rate',
+          netAmount: 'Amount',
+          taxRate: 'VAT Rate',
+          tax: 'VAT',
+          lineTotal: 'Total',
+        },
+      },
+      logo: {
+        url: '/spectre-logo.png',
+        width: '150',
+        height: '75',
       },
     },
   },

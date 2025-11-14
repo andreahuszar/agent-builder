@@ -890,9 +890,9 @@ export const generateBaselineInvoices = (): Invoice[] => {
       bank_currency: 'GBP',
       bank_address: 'BARCLAYS BANK PLC WHOLESALE, 1 CHURCHILL PLACE, LONDON'
     },
-    // Display configuration for blue header template with Spectre logo
+    // Display configuration for Spectre professional template
     display_config: {
-      template: 'blue-header',
+      template: 'spectre-professional',
       config: {
         logo: {
           url: '/spectre-logo.png',
