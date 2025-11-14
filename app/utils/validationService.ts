@@ -127,9 +127,9 @@ export class InvoiceValidator {
 
     requiredFields.forEach(field => {
       if (!this.invoice[field as keyof InvoiceValidationData]) {
-        // Custom message for job_number to indicate it's a custom field
+        // Custom message for job_number
         const message = field === 'job_number'
-          ? 'job number is required (custom field)'
+          ? 'Customer ID is required'
           : `${field.replace('_', ' ')} is required`;
 
         this.errors.push({

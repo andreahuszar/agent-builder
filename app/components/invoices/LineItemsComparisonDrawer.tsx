@@ -3,6 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Check, AlertTriangle, ChevronDown, ChevronRight } from 'lucide-react';
+import { getMockInvoiceById } from '@/app/services/mockInvoiceService';
+import { getMockPOByNumber } from '@/app/services/mockPOService';
 
 interface LineComparison {
   lineNumber: number;
@@ -53,89 +55,127 @@ export function LineItemsComparisonDrawer({
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set(['matched']));
   const [actualMatchedCount, setActualMatchedCount] = useState(0);
 
-  // Mock data for now - will be replaced with API call
+  // Fetch actual invoice and PO data
   useEffect(() => {
     if (isOpen) {
-      // Generate mock line comparison data
-      const mockData: LineComparison[] = [
-        {
-          lineNumber: 1,
-          invoice: {
-            description: 'Premium Office Supplies Kit',
-            quantity: 2,
-            unit: 'units',
-            unitPrice: 25.50,
-            lineTotal: 51.00,
-          },
-          po: {
-            description: 'Premium Office Supplies Kit',
-            quantity: 2,
-            unit: 'units',
-            unitPrice: 25.50,
-            lineTotal: 51.00,
-          },
-          status: 'matched',
-        },
-        {
-          lineNumber: 2,
-          invoice: {
-            description: 'A4 Printer Paper',
-            quantity: 5,
-            unit: 'reams',
-            unitPrice: 42.00,
-            lineTotal: 210.00,
-          },
-          po: {
-            description: 'A4 Printer Paper - Premium',
-            quantity: 5,
-            unit: 'reams',
-            unitPrice: 45.00,
-            lineTotal: 225.00,
-          },
-          status: 'variance',
-          varianceAmount: 15.00,
-        },
-        {
-          lineNumber: 3,
-          invoice: {
-            description: 'Toner Cartridge - Black',
-            quantity: 1,
-            unit: 'unit',
-            unitPrice: 389.54,
-            lineTotal: 389.54,
-          },
-          po: {
-            description: 'Toner Cartridge - Black',
-            quantity: 1,
-            unit: 'unit',
-            unitPrice: 389.54,
-            lineTotal: 389.54,
-          },
-          status: 'matched',
-        },
-        {
-          lineNumber: 4,
-          invoice: {
-            description: 'USB-C Cables (3-pack)',
-            quantity: 10,
-            unit: 'packs',
-            unitPrice: 43.00,
-            lineTotal: 430.00,
-          },
-          po: {
-            description: 'USB-C Cables (3-pack)',
-            quantity: 10,
-            unit: 'packs',
-            unitPrice: 43.00,
-            lineTotal: 430.00,
-          },
-          status: 'matched',
-        },
-      ];
-      setLineComparisons(mockData);
+      const invoice = getMockInvoiceById(invoiceId);
 
-      // Calculate actual matched count based on status
-      const matched = mockData.filter(item => item.status === 'matched').length;
+      if (!invoice) {
+        setLineComparisons([]);
+        setActualMatchedCount(0);
+        return;
+      }
+
+      const invoiceLines = invoice.lines || [];
+
+      // If no PO number provided or PO not found, show invoice lines only (unmatched)
+      if (!poNumber) {
+        const unmatchedData: LineComparison[] = invoiceLines.map((line: any, index: number) => ({
+          lineNumber: line.line_no || index + 1,
+          invoice: {
+            description: line.description || '',
+            quantity: line.qty || 0,
+            unit: line.uom || 'EA',
+            unitPrice: line.unit_price || 0,
+            lineTotal: line.line_total || line.net_amount || 0,
+          },
+          po: {
+            description: '',
+            quantity: 0,
+            unit: '',
+            unitPrice: 0,
+            lineTotal: 0,
+          },
+          status: 'unmatched' as const,
+        }));
+        setLineComparisons(unmatchedData);
+        setActualMatchedCount(0);
+        return;
+      }
+
+      // Fetch PO data
+      const po = getMockPOByNumber(poNumber);
+
+      if (!po) {
+        // PO not found, show invoice lines as unmatched
+        const unmatchedData: LineComparison[] = invoiceLines.map((line: any, index: number) => ({
+          lineNumber: line.line_no || index + 1,
+          invoice: {
+            description: line.description || '',
+            quantity: line.qty || 0,
+            unit: line.uom || 'EA',
+            unitPrice: line.unit_price || 0,
+            lineTotal: line.line_total || line.net_amount || 0,
+          },
+          po: {
+            description: '',
+            quantity: 0,
+            unit: '',
+            unitPrice: 0,
+            lineTotal: 0,
+          },
+          status: 'unmatched' as const,
+        }));
+        setLineComparisons(unmatchedData);
+        setActualMatchedCount(0);
+        return;
+      }
+
+      const poLines = po.lines || [];
+
+      // Match invoice lines with PO lines
+      const comparisonData: LineComparison[] = invoiceLines.map((invLine: any, index: number) => {
+        const lineNo = invLine.line_no || index + 1;
+
+        // Try to find matching PO line (simple matching by line number for now)
+        const matchedPOLine = poLines.find((poLine: any) =>
+          (poLine.line_no || poLines.indexOf(poLine) + 1) === lineNo
+        ) || poLines[index]; // Fallback to index-based matching
+
+        const invQty = invLine.qty || 0;
+        const invPrice = invLine.unit_price || 0;
+        const invTotal = invLine.line_total || invLine.net_amount || 0;
+
+        const poQty = matchedPOLine?.qty_ordered || 0;
+        const poPrice = matchedPOLine?.unit_price || 0;
+        const poTotal = matchedPOLine ? (matchedPOLine.qty_ordered || 0) * (matchedPOLine.unit_price || 0) : 0;
+
+        // Determine status
+        let status: 'matched' | 'variance' | 'unmatched' = 'matched';
+        let varianceAmount = 0;
+
+        if (!matchedPOLine) {
+          status = 'unmatched';
+        } else if (invQty !== poQty || invPrice !== poPrice) {
+          status = 'variance';
+          varianceAmount = Math.abs(invTotal - poTotal);
+        }
+
+        return {
+          lineNumber: lineNo,
+          invoice: {
+            description: invLine.description || '',
+            quantity: invQty,
+            unit: invLine.uom || 'EA',
+            unitPrice: invPrice,
+            lineTotal: invTotal,
+          },
+          po: {
+            description: matchedPOLine?.description || '',
+            quantity: poQty,
+            unit: matchedPOLine?.uom || 'EA',
+            unitPrice: poPrice,
+            lineTotal: poTotal,
+          },
+          status,
+          varianceAmount: varianceAmount > 0 ? varianceAmount : undefined,
+        };
+      });
+
+      setLineComparisons(comparisonData);
+
+      // Calculate actual matched count
+      const matched = comparisonData.filter(item => item.status === 'matched').length;
       setActualMatchedCount(matched);
     }
   }, [isOpen, invoiceId, poNumber]);

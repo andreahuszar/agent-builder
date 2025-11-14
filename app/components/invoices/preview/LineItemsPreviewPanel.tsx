@@ -714,11 +714,17 @@ export function LineItemsPreviewPanel({
     const rule = getCustomRule(invoiceLine);
     if (!rule) return false;
 
-    // Validate that the rule applies to this line
-    const expectedPOQty = invoiceLine.qty * (rule.toQuantity / rule.fromQuantity);
-    const matches = Math.abs(expectedPOQty - poLine.qty_ordered) < 0.01;
+    // Validate rule in BOTH directions since we don't know which way it was defined
+    // Direction 1: Convert PO qty to Invoice UOM
+    const convertedFromPO = poLine.qty_ordered * (rule.toQuantity / rule.fromQuantity);
+    const matchesFromPO = Math.abs(convertedFromPO - invoiceLine.qty) < 0.01;
 
-    return matches;
+    // Direction 2: Convert Invoice qty to PO UOM
+    const convertedFromInvoice = invoiceLine.qty * (rule.fromQuantity / rule.toQuantity);
+    const matchesFromInvoice = Math.abs(convertedFromInvoice - poLine.qty_ordered) < 0.01;
+
+    // Match if either direction validates
+    return matchesFromPO || matchesFromInvoice;
   };
 
   // Generate random SKU for display purposes
@@ -2791,11 +2797,16 @@ export function LineItemsPreviewPanel({
             line_total: selectedLineForRule.line_total
           } : null}
           poLine={selectedLineForRule ? (() => {
-            const matchedPO = poLines.find(po => po.id === selectedLineForRule.po_line_id);
+            // Find the matched PO line using the same logic as the table rendering
+            const lineIndex = editableLines.findIndex(l =>
+              (l.id || `line-${l.line_no}`) === (selectedLineForRule.id || `line-${selectedLineForRule.line_no}`)
+            );
+            const matchedPO = getMatchedPOLine(selectedLineForRule, lineIndex);
+
             return matchedPO ? {
               qty_ordered: matchedPO.qty_ordered,
               uom: matchedPO.uom,
-              description: matchedPO.description,
+              description: matchedPO.item_description || matchedPO.description,
               unit_price: matchedPO.unit_price
             } : null;
           })() : null}

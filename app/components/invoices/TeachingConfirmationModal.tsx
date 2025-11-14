@@ -60,9 +60,9 @@ export function TeachingConfirmationModal({
               <p className="text-xs text-gray-950 flex items-start gap-1.5">
                 <Brain className="h-3.5 w-3.5 text-purple-600 mt-0.5 flex-shrink-0" />
                 <span>
-                  <span className="font-medium text-gray-900">I'll learn this!</span> Once you confirm,
-                  I'll remember to look for "Customer Ref. No." in similar locations on future invoices
-                  from this vendor.
+                  <span className="font-medium text-gray-900">AI Learning:</span> Once confirmed,
+                  I'll automatically extract "{fieldLabel}" from this location when processing
+                  future invoices from this vendor.
                 </span>
               </p>
             </div>

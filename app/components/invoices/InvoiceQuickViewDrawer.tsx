@@ -10,9 +10,11 @@ interface InvoiceQuickViewDrawerProps {
   invoiceId: string | null;
   isOpen: boolean;
   onClose: () => void;
+  invoiceList?: string[];
+  currentIndex?: number;
 }
 
-export function InvoiceQuickViewDrawer({ invoiceId, isOpen, onClose }: InvoiceQuickViewDrawerProps) {
+export function InvoiceQuickViewDrawer({ invoiceId, isOpen, onClose, invoiceList, currentIndex }: InvoiceQuickViewDrawerProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [invoiceData, setInvoiceData] = useState<any>(null);
@@ -114,7 +116,15 @@ export function InvoiceQuickViewDrawer({ invoiceId, isOpen, onClose }: InvoiceQu
   const handleOpenFullDetails = () => {
     if (invoiceId) {
       handleClose();
-      router.push(`/invoices/${invoiceId}`);
+
+      // Build URL with list context if available
+      let url = `/invoices/${invoiceId}`;
+      if (invoiceList && invoiceList.length > 0 && currentIndex !== undefined && currentIndex >= 0) {
+        const listParam = encodeURIComponent(JSON.stringify(invoiceList));
+        url = `/invoices/${invoiceId}?list=${listParam}&index=${currentIndex}`;
+      }
+
+      router.push(url);
     }
   };
 

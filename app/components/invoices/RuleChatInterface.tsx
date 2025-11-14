@@ -63,9 +63,11 @@ export function RuleChatInterface({
   const chatInputRef = useRef<HTMLTextAreaElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  // Calculate suggested rule
-  const conversionFactor = poLine.qty_ordered / invoiceLine.qty;
-  const suggestedRule = `Based on the quantities, 1 ${invoiceLine.uom.toLowerCase().replace(/s$/, '')} equals ${conversionFactor} ${poLine.uom.toLowerCase()}`;
+  // Calculate suggested rule (PO UOM to Invoice UOM)
+  const conversionFactor = invoiceLine.qty / poLine.qty_ordered;
+  // Extract item name without SKU (remove " - XXX-XXXXX" pattern)
+  const poItemName = poLine.description.toLowerCase().replace(/\s*-\s*[a-z0-9-]+$/i, '');
+  const suggestedRule = `Based on the quantities, each ${poItemName} equals ${conversionFactor} ${invoiceLine.uom.toLowerCase()}`;
 
   // Assessment message content as plain text for typewriter
   const assessmentText = `I've detected a unit mismatch on this line item. The financial totals align (£${invoiceLine.line_total.toFixed(2)}), but the units differ. How would you like me to handle this?`;
@@ -92,7 +94,7 @@ export function RuleChatInterface({
           <>
             <div className="bg-white border border-purple-200 rounded px-3 py-2 space-y-1.5 animate-slideUp" style={{animationDelay: '0ms'}}>
               <p className="font-medium text-gray-900">Invoice Line</p>
-              <p className="text-gray-950">@ £{invoiceLine.unit_price.toFixed(2)}/unit</p>
+              <p className="text-gray-950">@ £{invoiceLine.unit_price.toFixed(2)}/{invoiceLine.uom}</p>
               <p className="text-gray-950">
                 {invoiceLine.qty} {invoiceLine.uom} - {invoiceLine.description}
               </p>
@@ -162,6 +164,7 @@ export function RuleChatInterface({
   // Parse natural language rule
   const parseRule = (text: string): ParsedRule => {
     const patterns = [
+      /each\s+.*?\s+(?:equals?|=|is)\s+(\d+(?:\.\d+)?)\s*([a-zA-Z]+)/i,
       /(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s*(?:=|equals?|is)\s*(\d+(?:\.\d+)?)\s*([a-zA-Z]+)/i,
       /(\d+(?:\.\d+)?)\s*([a-zA-Z]+)\s+of\s+.*?(?:=|equals?|is)\s*(\d+(?:\.\d+)?)\s*([a-zA-Z]+)/i,
     ];
@@ -169,14 +172,70 @@ export function RuleChatInterface({
     for (const pattern of patterns) {
       const match = text.match(pattern);
       if (match) {
-        const [, fromQtyStr, fromUnit, toQtyStr, toUnit] = match;
-        const fromQuantity = parseFloat(fromQtyStr);
-        const toQuantity = parseFloat(toQtyStr);
+        let fromQuantity: number;
+        let fromUnit: string;
+        let toQuantity: number;
+        let toUnit: string;
 
-        const expectedPOQty = invoiceLine.qty * (toQuantity / fromQuantity);
-        const matches = Math.abs(expectedPOQty - poLine.qty_ordered) < 0.01;
+        // Check if this is the "each [item] equals [number] [unit]" format
+        if (match[0].toLowerCase().startsWith('each')) {
+          // "each X equals Y unit" format - only 2 capture groups
+          fromQuantity = 1;
+          fromUnit = poLine.uom; // Use PO's UOM as the fromUnit
+          toQuantity = parseFloat(match[1]);
+          toUnit = match[2];
+        } else {
+          // Standard "X unit = Y unit" format - 4 capture groups
+          const [, fromQtyStr, fromUnitStr, toQtyStr, toUnitStr] = match;
+          fromQuantity = parseFloat(fromQtyStr);
+          fromUnit = fromUnitStr;
+          toQuantity = parseFloat(toQtyStr);
+          toUnit = toUnitStr;
+        }
 
-        if (!matches) {
+        // Determine which direction to apply the conversion
+        // Check if PO UOM matches fromUnit or toUnit to apply conversion correctly
+        const poUomNormalized = poLine.uom.toLowerCase().replace(/s$/, '');
+        const invoiceUomNormalized = invoiceLine.uom.toLowerCase().replace(/s$/, '');
+        const fromUnitNormalized = fromUnit.toLowerCase().replace(/s$/, '');
+        const toUnitNormalized = toUnit.toLowerCase().replace(/s$/, '');
+
+        let expectedPOQty: number;
+        let expectedInvoiceQty: number;
+
+        if (poUomNormalized === fromUnitNormalized) {
+          // PO is in fromUnit, so convert PO qty to invoice UOM
+          expectedInvoiceQty = poLine.qty_ordered * (toQuantity / fromQuantity);
+          const matches = Math.abs(expectedInvoiceQty - invoiceLine.qty) < 0.01;
+
+          if (!matches) {
+            return {
+              naturalLanguage: text,
+              fromQuantity,
+              fromUnit,
+              toQuantity,
+              toUnit,
+              isValid: false,
+              error: `This conversion doesn't match the line quantities. With your rule, ${poLine.qty_ordered} ${fromUnit} would equal ${expectedInvoiceQty.toFixed(2)} ${toUnit}, but the invoice shows ${invoiceLine.qty} ${toUnit}.`
+            };
+          }
+        } else if (poUomNormalized === toUnitNormalized) {
+          // PO is in toUnit, so convert invoice qty to PO UOM
+          expectedPOQty = invoiceLine.qty * (fromQuantity / toQuantity);
+          const matches = Math.abs(expectedPOQty - poLine.qty_ordered) < 0.01;
+
+          if (!matches) {
+            return {
+              naturalLanguage: text,
+              fromQuantity,
+              fromUnit,
+              toQuantity,
+              toUnit,
+              isValid: false,
+              error: `This conversion doesn't match the line quantities. With your rule, ${invoiceLine.qty} ${toUnit} would equal ${expectedPOQty.toFixed(2)} ${fromUnit}, but the PO shows ${poLine.qty_ordered} ${fromUnit}.`
+            };
+          }
+        } else {
           return {
             naturalLanguage: text,
             fromQuantity,
@@ -184,7 +243,7 @@ export function RuleChatInterface({
             toQuantity,
             toUnit,
             isValid: false,
-            error: `This conversion doesn't match the line quantities. With your rule, ${invoiceLine.qty} ${fromUnit} would equal ${expectedPOQty.toFixed(2)} ${toUnit}, but the PO shows ${poLine.qty_ordered} ${toUnit}.`
+            error: `Neither the PO unit (${poLine.uom}) nor the invoice unit (${invoiceLine.uom}) matches your conversion units (${fromUnit} and ${toUnit}).`
           };
         }
 
@@ -217,7 +276,7 @@ export function RuleChatInterface({
       setHasInteracted(true);
     } else if (currentParsedRule && messages[messages.length - 1]?.type === 'modification_request') {
       // Modification interaction - prepopulate with simplified suggestion
-      setChatInput(`Simplify to: 1 ${invoiceLine.uom.toLowerCase()} = ${conversionFactor} ${poLine.uom.toLowerCase()}`);
+      setChatInput(`Simplify to: each ${poItemName} = ${conversionFactor} ${invoiceLine.uom.toLowerCase()}`);
     }
   };
 

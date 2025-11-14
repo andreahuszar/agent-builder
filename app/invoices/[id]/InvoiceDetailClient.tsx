@@ -25,6 +25,9 @@ interface InvoiceDetailClientProps {
 }
 
 export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'review', onInvoiceNumberUpdate, assignedUserName, onAssignUser, onStatusUpdate }: InvoiceDetailClientProps) {
+  // Preserve original invoice data for static preview display
+  const [originalInvoice] = useState(initialInvoice);
+  // Editable invoice data for right panel
   const [invoice, setInvoice] = useState(initialInvoice);
   const [matchResults, setMatchResults] = useState<any[]>([]);
   const [poComparisonData, setPoComparisonData] = useState<any>(null);
@@ -105,29 +108,46 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
   // Field candidate accept handler
   const handleFieldAccept = (fieldName: string, value: string) => {
-    // Always mark as agent-pending (works for both edit and read-only mode)
-    setAgentPendingFields(prev => ({
-      ...prev,
-      [fieldName]: value
-    }));
+    console.log('[handleFieldAccept] Called with fieldName:', fieldName, 'value:', value);
 
-    // Update invoice state immediately so error calculations see the new value
-    setInvoice((prev: any) => {
-      const updated = { ...prev };
-      // Set the field value
-      updated[fieldName] = value;
-      // Remove the candidate from ocr_extractions
-      if (updated.ocr_extractions?.[fieldName]) {
-        const newExtractions = { ...updated.ocr_extractions };
-        delete newExtractions[fieldName];
-        updated.ocr_extractions = newExtractions;
-      }
-      return updated;
-    });
+    // For job_number (Customer ID) and po_numbers_cached (PO Number), skip agent-pending and go straight to auto-reprocess
+    if (fieldName !== 'job_number' && fieldName !== 'po_numbers_cached') {
+      console.log('[handleFieldAccept] Adding to agentPendingFields (not job_number or po_numbers_cached)');
+      // Mark as agent-pending (works for both edit and read-only mode)
+      setAgentPendingFields(prev => ({
+        ...prev,
+        [fieldName]: value
+      }));
+    } else {
+      console.log('[handleFieldAccept] Skipping agentPendingFields for', fieldName);
+    }
+
+    // Construct updated invoice BEFORE setInvoice (state setters are async and return void)
+    const updatedInvoice = {
+      ...invoice,
+      [fieldName]: value
+    };
+
+    // Remove candidate from ocr_extractions if exists
+    if (updatedInvoice.ocr_extractions?.[fieldName]) {
+      const newExtractions = { ...updatedInvoice.ocr_extractions };
+      delete newExtractions[fieldName];
+      updatedInvoice.ocr_extractions = newExtractions;
+    }
+
+    // Update state with constructed object
+    setInvoice(updatedInvoice);
 
     // Update top title if invoice_number was accepted (Close Match)
     if (fieldName === 'invoice_number' && onInvoiceNumberUpdate) {
       onInvoiceNumberUpdate(value);
+    }
+
+    // Trigger auto-reprocess for job_number field (Customer ID) and po_numbers_cached (PO Number)
+    if (fieldName === 'job_number' || fieldName === 'po_numbers_cached') {
+      console.log('[handleFieldAccept] About to call handleAutoReprocess for', fieldName);
+      console.log('[handleFieldAccept] updatedInvoice value:', updatedInvoice[fieldName]);
+      handleAutoReprocess(fieldName, updatedInvoice);
     }
   };
 
@@ -152,6 +172,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const [activeTab, setActiveTab] = useState<TabId>('details');
   const [isEditing, setIsEditing] = useState(false);
   const [focusedFieldName, setFocusedFieldName] = useState<string | null>(null);
+  const [isReprocessingField, setIsReprocessingField] = useState<string | null>(null);
 
   // Teaching mode state
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -227,6 +248,149 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     }
   };
 
+  // Auto-reprocess handler triggered when Customer ID is saved
+  const handleAutoReprocess = async (field: string, updatedInvoice?: any, onComplete?: () => void) => {
+    // Only auto-reprocess for job_number (Customer ID) and po_numbers_cached (PO Number) fields
+    if (field !== 'job_number' && field !== 'po_numbers_cached') return;
+
+    // Use passed invoice data or fall back to current state
+    const invoiceToValidate = updatedInvoice || invoice;
+
+    console.log('[Auto-Reprocess] Starting auto-reprocess for field:', field);
+    console.log('[Auto-Reprocess] Current invoice state:', {
+      id: invoiceToValidate.id,
+      status: invoiceToValidate.status,
+      job_number: invoiceToValidate.job_number,
+      po_numbers_cached: invoiceToValidate.po_numbers_cached,
+      type: invoiceToValidate.type
+    });
+
+    setIsReprocessingField(field);
+
+    try {
+      // Wait for validation simulation (in demo mode, no actual database call)
+      await new Promise(resolve => setTimeout(resolve, 2500));
+
+      // Check validation status after reprocessing
+      const missingFields = calculateMissingFieldsCount(invoiceToValidate);
+      // For PO assignment, skip line items check since match results will be refreshed with new PO
+      const lineItemErrors = field === 'po_numbers_cached' ? 0 : calculateLineItemsErrorCount();
+      const validationSucceeded = missingFields === 0 && lineItemErrors === 0;
+
+      console.log('[Auto-Reprocess] Validation results:', {
+        missingFields,
+        lineItemErrors,
+        validationSucceeded,
+        currentStatus: invoiceToValidate.status,
+        job_number: invoiceToValidate.job_number,
+        po_numbers_cached: invoiceToValidate.po_numbers_cached
+      });
+
+      // If all validations pass and currently in verification status, move to posted
+      if (validationSucceeded && invoiceToValidate.status === 'verification') {
+        console.log('[Auto-Reprocess] All validations passed! Updating status to posted...');
+
+        // Update status to 'posted' (final green status)
+        const newStatus = 'posted';
+
+        // For PO assignment, update invoice state with all changes in one call
+        if (field === 'po_numbers_cached') {
+          console.log('[Auto-Reprocess] PO assignment complete - updating UI state...');
+
+          // Get the assigned PO number
+          const poNumber = invoiceToValidate.po_numbers_cached[0];
+
+          // Update invoice lines to link to PO lines
+          const poSuffix = poNumber.split('-').pop();
+          const updatedLines = invoiceToValidate.lines?.map((line: any, index: number) => {
+            return {
+              ...line,
+              po_line_id: `po-line-${poSuffix}-${index + 1}`
+            };
+          }) || invoiceToValidate.lines;
+
+          // Update invoice state with new PO, status, type, and linked lines (all in one call)
+          setInvoice((prev: any) => ({
+            ...prev,
+            po_numbers_cached: invoiceToValidate.po_numbers_cached,
+            status: newStatus,  // 'posted'
+            type: 'PO',
+            lines: updatedLines,
+            invoice_lines: updatedLines
+          }));
+
+          console.log('[Auto-Reprocess] UI state updated successfully. Status:', newStatus);
+        } else {
+          // For job_number, just update status
+          setInvoice((prev: any) => ({ ...prev, status: newStatus }));
+        }
+
+        // Notify parent of status change to update workflow breadcrumb
+        if (onStatusUpdate) {
+          console.log('[Auto-Reprocess] Calling onStatusUpdate with:', newStatus);
+          onStatusUpdate(newStatus);
+        } else {
+          console.warn('[Auto-Reprocess] onStatusUpdate callback not available!');
+        }
+
+        // Clear agent pending fields (removes purple banner)
+        setAgentPendingFields({});
+
+        // Show success toast based on field type
+        const successMessage = field === 'job_number'
+          ? 'Customer ID validated. Invoice posted.'
+          : 'PO assigned and validated. Invoice posted.';
+        showToast(successMessage, 'success');
+
+        // For PO assignment, persist to mock cache and fetch PO comparison data
+        if (field === 'po_numbers_cached') {
+          console.log('[Auto-Reprocess] Persisting PO assignment to mock cache...');
+
+          // Update invoice lines to link to PO lines
+          const poNumber = invoiceToValidate.po_numbers_cached[0];
+          const poSuffix = poNumber.split('-').pop();
+          const updatedLines = invoiceToValidate.lines?.map((line: any, index: number) => {
+            return {
+              ...line,
+              po_line_id: `po-line-${poSuffix}-${index + 1}`
+            };
+          }) || invoiceToValidate.lines;
+
+          // Persist changes to mock cache via API
+          await fetch(`/api/invoices/${invoiceId}/update`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              po_numbers_cached: invoiceToValidate.po_numbers_cached,
+              status: newStatus,
+              type: 'PO',
+              lines: updatedLines,
+              invoice_lines: updatedLines
+            })
+          });
+
+          console.log('[Auto-Reprocess] PO assignment persisted. Fetching PO comparison data...');
+          await fetchPoComparisonData();
+          console.log('[Auto-Reprocess] PO comparison data loaded - three-column view should now appear.');
+        }
+
+        console.log('[Auto-Reprocess] Status updated successfully to:', newStatus);
+      } else {
+        console.log('[Auto-Reprocess] Validation failed or status not verification. No status change.');
+      }
+    } catch (error) {
+      console.error('Error during auto-reprocess:', error);
+    } finally {
+      setIsReprocessingField(null);
+      console.log('[Auto-Reprocess] Auto-reprocess complete. Loader cleared.');
+
+      // Call completion callback if provided
+      if (onComplete) {
+        onComplete();
+      }
+    }
+  };
+
   // Teaching mode handlers
   const handleStartTeaching = (fieldName: string) => {
     setTeachingFieldName(fieldName);
@@ -241,32 +405,54 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   };
 
   const handleTeachingAccept = (value: string) => {
-    // Mark as agent-pending (same as Close Match flow)
-    setAgentPendingFields(prev => ({
-      ...prev,
-      [teachingFieldName!]: value
-    }));
+    console.log('[handleTeachingAccept] Called with value:', value, 'fieldName:', teachingFieldName);
+
+    // For job_number (Customer ID), skip agent-pending and go straight to auto-reprocess
+    if (teachingFieldName !== 'job_number') {
+      console.log('[handleTeachingAccept] Adding to agentPendingFields (not job_number)');
+      // Mark as agent-pending (same as Close Match flow)
+      setAgentPendingFields(prev => ({
+        ...prev,
+        [teachingFieldName!]: value
+      }));
+    } else {
+      console.log('[handleTeachingAccept] Skipping agentPendingFields for job_number');
+    }
 
     // Update the invoice data with the learned value
-    setInvoice((prev: any) => ({
-      ...prev,
-      [teachingFieldName!]: value,
-    }));
+    let updatedInvoice: any;
+    setInvoice((prev: any) => {
+      const updated = {
+        ...prev,
+        [teachingFieldName!]: value,
+      };
+      updatedInvoice = updated;
+      return updated;
+    });
 
     // Update top title if invoice_number was taught
     if (teachingFieldName === 'invoice_number' && onInvoiceNumberUpdate) {
       onInvoiceNumberUpdate(value);
     }
 
-    // Close modal and reset teaching state
+    // Close modal immediately
     setShowTeachingModal(false);
     setTeachingFieldName(null);
     setSelectedValue('');
     setSelectedContext('');
 
-    // Show success toast notification
-    const fieldLabel = teachingFieldName === 'job_number' ? 'Job Number' : teachingFieldName;
-    showToast(`${fieldLabel} learned and will be remembered for future invoices from this vendor.`, 'success');
+    // Trigger auto-reprocess for job_number field (Customer ID)
+    if (teachingFieldName === 'job_number') {
+      console.log('[handleTeachingAccept] About to call handleAutoReprocess');
+      console.log('[handleTeachingAccept] updatedInvoice.job_number:', updatedInvoice?.job_number);
+      // Call without completion callback - modal already closed
+      handleAutoReprocess(teachingFieldName, updatedInvoice);
+    } else {
+      // Show success toast notification for non-job_number fields
+      // job_number will show its own success toast after auto-reprocess completes
+      const fieldLabel = teachingFieldName;
+      showToast(`${fieldLabel} learned and will be remembered for future invoices from this vendor.`, 'success');
+    }
   };
 
   const handleTeachingCancel = () => {
@@ -356,7 +542,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         <DocumentPreview
           invoiceId={invoiceId}
           hasAttachment={invoice.attachments && invoice.attachments.length > 0}
-          invoiceData={invoice}
+          invoiceData={originalInvoice}
           matchResults={matchResults}
           poComparisonData={poComparisonData}
           hideLineComparison={false}
@@ -398,6 +584,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           onStartTeaching={handleStartTeaching}
           agentPendingFields={agentPendingFields}
           lineItemsErrorCount={lineItemsErrorCount}
+          isReprocessingField={isReprocessingField}
+          onFieldAutoReprocess={handleAutoReprocess}
         />
       </ResizablePanel>
     );
@@ -455,7 +643,10 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
   // Calculate missing fields count
   // This MUST match the exact logic in InvoiceTabs fieldErrorsCount
-  const calculateMissingFieldsCount = () => {
+  const calculateMissingFieldsCount = (invoiceData?: any) => {
+    // Use passed invoice data or fall back to current state
+    const invoiceToValidate = invoiceData || invoice;
+
     let count = 0;
     const requiredFields = [
       'invoice_number',
@@ -468,11 +659,11 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
     requiredFields.forEach(field => {
       // Skip job_number for Non-PO invoices
-      if (field === 'job_number' && invoice.type === 'Non-PO') {
+      if (field === 'job_number' && invoiceToValidate.type === 'Non-PO') {
         return;
       }
 
-      const value = invoice[field];
+      const value = invoiceToValidate[field];
       // Check for falsy values, empty strings, and special placeholder values
       if (!value || value === '' || value === 'Unknown Vendor' || value === 'Invalid Date') {
         count++;
@@ -480,13 +671,13 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     });
 
     // Check PO number if vendor requires PO (but not for Non-PO invoices)
-    if (invoice.type !== 'Non-PO' && invoice.vendor_requires_po && (!invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0)) {
+    if (invoiceToValidate.type !== 'Non-PO' && invoiceToValidate.vendor_requires_po && (!invoiceToValidate.po_numbers_cached || invoiceToValidate.po_numbers_cached.length === 0)) {
       count++;
     }
 
     // Check for bank details exceptions
-    if (invoice.validation_warnings && Array.isArray(invoice.validation_warnings)) {
-      const hasBankDetailsException = invoice.validation_warnings.some((w: any) =>
+    if (invoiceToValidate.validation_warnings && Array.isArray(invoiceToValidate.validation_warnings)) {
+      const hasBankDetailsException = invoiceToValidate.validation_warnings.some((w: any) =>
         w.type === 'bank_details_change' && w.severity === 'error'
       );
       if (hasBankDetailsException) {
@@ -552,7 +743,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       {/* Teaching Confirmation Modal */}
       {showTeachingModal && (
         <TeachingConfirmationModal
-          fieldLabel={teachingFieldName === 'job_number' ? 'Job Number' : teachingFieldName || ''}
+          fieldLabel={teachingFieldName === 'job_number' ? 'Customer ID' : teachingFieldName || ''}
           value={selectedValue}
           context={selectedContext}
           onAccept={handleTeachingAccept}

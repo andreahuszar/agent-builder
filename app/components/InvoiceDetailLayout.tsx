@@ -24,9 +24,13 @@ interface InvoiceDetailLayoutProps {
   assignedUserName?: string | null;
   onAssignUser?: (userName: string | null) => void;
   navigationContext?: NavigationContext;
+  invoiceStatus?: string;
+  poNumbersCached?: string[];
+  vendorRequiresPo?: boolean;
+  invoiceType?: string;
 }
 
-export default function InvoiceDetailLayout({ invoiceNumber, vendorName, children, documentType = 'invoice', viewModeSwitcher, workflowStatus, isNeedsInfo = false, assignedUserName, onAssignUser, navigationContext }: InvoiceDetailLayoutProps) {
+export default function InvoiceDetailLayout({ invoiceNumber, vendorName, children, documentType = 'invoice', viewModeSwitcher, workflowStatus, isNeedsInfo = false, assignedUserName, onAssignUser, navigationContext, invoiceStatus, poNumbersCached, vendorRequiresPo, invoiceType }: InvoiceDetailLayoutProps) {
   const handleBackClick = () => {
     // Navigate to appropriate view based on document type
     const hash = documentType === 'purchase-order' ? 'purchase-orders' : 'invoices';
@@ -45,6 +49,10 @@ export default function InvoiceDetailLayout({ invoiceNumber, vendorName, childre
       assignedUserName={assignedUserName}
       onAssignUser={onAssignUser}
       navigationContext={navigationContext}
+      invoiceStatus={invoiceStatus}
+      poNumbersCached={poNumbersCached}
+      vendorRequiresPo={vendorRequiresPo}
+      invoiceType={invoiceType}
     />
   );
 

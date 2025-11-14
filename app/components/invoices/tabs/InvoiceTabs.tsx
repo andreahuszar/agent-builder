@@ -53,6 +53,9 @@ interface InvoiceTabsProps {
   agentPendingFields?: {[key: string]: any};
   // Line items error count (for variance highlighting)
   lineItemsErrorCount?: number;
+  // Auto-reprocess state for Customer ID field
+  isReprocessingField?: string | null;
+  onFieldAutoReprocess?: (field: string) => void;
 }
 
 export function InvoiceTabs({
@@ -84,6 +87,8 @@ export function InvoiceTabs({
   onStartTeaching,
   agentPendingFields = {},
   lineItemsErrorCount = 0,
+  isReprocessingField = null,
+  onFieldAutoReprocess,
 }: InvoiceTabsProps) {
   // Determine initial tab based on invoice status
   const getInitialTab = (): TabId => {
@@ -414,6 +419,8 @@ export function InvoiceTabs({
             onFieldFocus={onFieldFocus}
             onStartTeaching={onStartTeaching}
             agentPendingFields={agentPendingFields}
+            isReprocessingField={isReprocessingField}
+            onFieldAutoReprocess={onFieldAutoReprocess}
           />
         )}
         {activeTab === 'line-items' && (

@@ -39,12 +39,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po-1',
       line_no: 1,
-      description: 'Professional Services - IT Consulting',
-      qty: 40,
-      uom: 'Hours',
-      unit_price: 125.00,
-      net_amount: 5000.00,
-      line_total: 5000.00,
+      sku: 'DK-0001',
+      product_code: 'DK-0001',
+      description: 'Software License - Annual Subscription',
+      qty: 10,
+      uom: 'EA',
+      unit_price: 200.00,
+      net_amount: 2000.00,
+      line_total: 2000.00,
       po_line_id: 'po-line-9001-1',
       gr_line_id: null,
       ses_line_id: null
@@ -52,12 +54,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po-2',
       line_no: 2,
-      description: 'Software License - Annual Subscription',
-      qty: 10,
-      uom: 'License',
-      unit_price: 200.00,
-      net_amount: 2000.00,
-      line_total: 2000.00,
+      sku: 'TV-0002',
+      product_code: 'TV-0002',
+      description: 'Professional Services - Account Onboarding Sessions',
+      qty: 4,
+      uom: 'EA',
+      unit_price: 1250.00,
+      net_amount: 5000.00,
+      line_total: 5000.00,
       po_line_id: 'po-line-9001-2',
       gr_line_id: null,
       ses_line_id: null
@@ -70,11 +74,25 @@ export const generateBaselineInvoices = (): Invoice[] => {
 
   mockInvoices.push({
     id: 'baseline-po-1',
-    invoice_number: '',
+    invoice_number: 'INV3745-02', // Found in unusual location (footer)
     vendor_name_snapshot: 'TechSupply Solutions Ltd',
-    vendor_id: 'VND-1001',
-    invoice_date: baselinePODate.toISOString().split('T')[0],
-    due_date: baselinePODueDate.toISOString().split('T')[0],
+    vendor_id: 'VND0001412',
+    vendor_tax_id_snapshot: '637 214 5',
+    vendor_address_snapshot: 'Office 12, 123 Fairview, Claremont Street, Stratford-upon-Avon, CV37 0AE',
+    vendor_email: 'accountsreceiveable@techsupplysls.com',
+    vendor_phone: '+44 (0) 1789 557 849',
+    customer_no: 'CS948929',
+    job_number: null, // Will be filled by user or AI suggestion
+    // Customer/Bill To information
+    bill_to_snapshot: {
+      legal_name: 'GSPV Ltd',
+      tax_id: '927 8131 1',
+      email: 'phil@xelix.com',
+      phone: '+44 20 8648 4267',
+      address: 'Senna Building, Gorsuch Pl, London, E2 8JF'
+    },
+    invoice_date: '2025-11-08',
+    due_date: '2025-12-08',
     currency: 'GBP',
     subtotal: baselinePOSubtotal,
     tax_total: baselinePOTax,
@@ -95,8 +113,22 @@ export const generateBaselineInvoices = (): Invoice[] => {
     created_at: baselinePODate.toISOString(),
     updated_at: baselinePODate.toISOString(),
     data_ingestion_date: baselinePODate.toISOString().split('T')[0],
+    // Accounting codes from spreadsheet
+    ledger: 'Accounts Payable',
+    cost_center: 'CC-9002 - Corporate Services',
+    gl_code: 'GL-5000',
+    department: 'Product',
+    payment_terms: '30', // Net 30
     lines: baselinePOLines,
     invoice_lines: baselinePOLines,
+    // Banking information from spreadsheet
+    payment_bank_details: {
+      bank_name: 'HSBC UK',
+      account_number: '12345674',
+      iban: 'GB63 HBUK 4005 1512 3456 74',
+      swift_bic: 'HBUKGB4B',
+      sort_code: '40-05-15'
+    },
     // OCR extraction results with AI candidate suggestion
     ocr_extractions: {
       invoice_number: {
@@ -104,10 +136,10 @@ export const generateBaselineInvoices = (): Invoice[] => {
         confidence: 0.0,
         candidates: [
           {
-            value: '#0123-10',
-            confidence: 0.78,
+            value: 'INV3745-02',
+            confidence: 0.85,
             source: 'Claude Vision',
-            reason: 'Found abbreviated reference "#0123-10" in document header - identified as invoice number based on sequential numbering pattern and document context'
+            reason: 'Found invoice reference "INV3745-02" in document header area - identified as invoice number based on format pattern and positioning near vendor details'
           }
         ]
       },
@@ -117,15 +149,31 @@ export const generateBaselineInvoices = (): Invoice[] => {
         candidates: [] // Empty - AI doesn't know where to look yet
       }
     },
-    // Display configuration for compact layout
+    // Display configuration for purple modern template
     display_config: {
-      template: 'compact',
+      template: 'purple-modern',
       interactiveFields: ['invoice_number', 'job_number'], // Enable AI suggestions for these fields
       layout: {
         invoiceNumberPlacement: 'above-logo',
         showInvoiceNumberLabel: false
       }
-    }
+    },
+    // Auto-correction: Invoice number found in unusual location
+    auto_corrections: [
+      {
+        field: 'invoice_number',
+        original_value: 'INV3745-02',
+        corrected_value: 'INV3745-02',
+        reason: 'Invoice number found in unusual location (document footer) instead of standard header position. Value confirmed correct despite non-standard placement.',
+        vendor_name: 'TechSupply Solutions Ltd',
+        document_type: 'invoice',
+        recent_documents: [
+          { number: 'INV3745-02', date: 'Nov 8, 2025', amount: '$8,400.00', is_current: true },
+          { number: 'INV3745-03', date: 'Nov 15, 2025', amount: '$6,800.00' },
+          { number: 'INV3745-04', date: 'Nov 22, 2025', amount: '$7,200.00' }
+        ]
+      }
+    ]
   } as Invoice);
 
   // ========================================================================
@@ -279,7 +327,11 @@ export const generateBaselineInvoices = (): Invoice[] => {
       suggested_vendor: 'CloudTech Solutions Ltd',
       current_vendor: 'CloudTech Solutions Inc',
       confidence: 0.88
-    }]
+    }],
+    // Display configuration for green minimal template
+    display_config: {
+      template: 'green-minimal'
+    }
   } as Invoice);
 
   // ========================================================================
@@ -534,58 +586,63 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po2-1',
       line_no: 1,
-      description: 'Hardware Equipment - Server Components',
+      sku: 'EQ-012001',
+      description: 'Equipment - Mower Extension',
       qty: 25,
       uom: 'Units',
       unit_price: 80.00,
       net_amount: 2000.00,
       line_total: 2000.00,
-      po_line_id: 'po-line-9010-1',
+      po_line_id: 'po-line-9011-1',
       gr_line_id: null,
       ses_line_id: null
     },
     {
       id: 'line-baseline-po2-2',
       line_no: 2,
+      sku: 'SE-002377',
       description: 'Installation Services - On-site Setup',
       qty: 20,
       uom: 'Hours',
       unit_price: 95.00,
       net_amount: 1900.00,
       line_total: 1900.00,
-      po_line_id: 'po-line-9010-2',
+      po_line_id: 'po-line-9011-2',
       gr_line_id: null,
       ses_line_id: null
     },
     {
       id: 'line-baseline-po2-3',
       line_no: 3,
+      sku: 'GU-00101',
       description: 'Training Materials - User Guides',
       qty: 20, // MISMATCH: PO has 15, invoice has 20 (variance = 5)
       uom: 'Units',
       unit_price: 45.00,
       net_amount: 900.00,
       line_total: 900.00,
-      po_line_id: 'po-line-9010-3',
+      po_line_id: 'po-line-9011-3',
       gr_line_id: null,
       ses_line_id: null
     },
     {
       id: 'line-baseline-po2-4',
       line_no: 4,
-      description: 'Grounds maintenance; trimming & leaf removal',
+      sku: 'SE-101789',
+      description: 'Grounds Maintenance Services',
       qty: 12,
       uom: 'Months',
       unit_price: 200.00,
       net_amount: 2400.00,
       line_total: 2400.00,
-      po_line_id: 'po-line-9010-4',
+      po_line_id: 'po-line-9011-4',
       gr_line_id: null,
       ses_line_id: null
     },
     {
       id: 'line-baseline-po2-5',
       line_no: 5,
+      sku: 'EQ-800111',
       description: 'Pleated air filters, 20×20×2, MERV 8',
       qty: 50,
       uom: 'EA',
@@ -597,7 +654,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
       ses_line_id: null,
       // AI Substitution Suggestion
       suggested_po_match: {
-        po_line_id: 'po-line-9010-5',
+        po_line_id: 'po-line-9011-5',
         po_line_no: 5,
         po_description: 'Premium pleated air filters with MERV 9 rating',
         po_qty: 50,
@@ -623,7 +680,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
       unit_price: 3.67,
       net_amount: 3080.00,
       line_total: 3080.00,
-      po_line_id: 'po-line-9010-6', // Matched by system despite UOM difference
+      po_line_id: 'po-line-9011-6', // Matched by system despite UOM difference
       gr_line_id: null,
       ses_line_id: null,
       // UOM conversion metadata for smart match
@@ -639,13 +696,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po2-7',
       line_no: 7,
-      description: 'Premium Portland Cement',
-      qty: 54,
-      uom: 'Each',
-      unit_price: 50.00,
+      sku: 'MA-145784',
+      description: 'Landscaping Sand',
+      qty: 2700,
+      uom: 'KG',
+      unit_price: 1.00,
       net_amount: 2700.00,
       line_total: 2700.00,
-      po_line_id: 'po-line-9010-7',
+      po_line_id: null,
       gr_line_id: null,
       ses_line_id: null
     }
@@ -658,11 +716,15 @@ export const generateBaselineInvoices = (): Invoice[] => {
   mockInvoices.push({
     id: 'baseline-po-2',
     invoice_number: 'INV-2025-0124',
-    vendor_name_snapshot: 'TechSupply Solutions Ltd',
-    vendor_id: 'VND-1001',
-    vendor_tax_id_snapshot: 'TAX-VND-1001',
-    invoice_date: baselinePO2Date.toISOString().split('T')[0],
-    due_date: baselinePO2DueDate.toISOString().split('T')[0],
+    vendor_name_snapshot: 'JanServ Plc',
+    vendor_id: 'VND0001489',
+    vendor_tax_id_snapshot: '28N0929',
+    vendor_address_snapshot: 'Danefield House, Selby Rd, Leeds, West Yorkshire (WY), United Kingdom (UK), LS25 1NG',
+    vendor_email: 'accountspayable@janserv.com',
+    vendor_phone: '+44 113 264 5295',
+    invoice_date: '2025-11-07',
+    due_date: '2025-12-08',
+    customer_no: 'W4828999',
     job_number: 'WO-2025-445',
     currency: 'GBP',
     subtotal: baselinePO2Subtotal,
@@ -677,7 +739,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     approval_status: 'pending',
     assigned_to_name: 'James Wilson',
     assigned_to_user_id: 'user-4',
-    po_numbers_cached: ['PO-2025-9010'],
+    po_numbers_cached: ['PO-2025-9011'],
     gr_numbers: [],
     docType: 'Invoice',
     issues: ['Line Item Variance'],
@@ -685,7 +747,22 @@ export const generateBaselineInvoices = (): Invoice[] => {
     updated_at: baselinePO2Date.toISOString(),
     data_ingestion_date: baselinePO2Date.toISOString().split('T')[0],
     lines: baselinePO2Lines,
-    invoice_lines: baselinePO2Lines
+    invoice_lines: baselinePO2Lines,
+    // Payment bank details
+    payment_bank_details: {
+      bank_name: 'SANTANDER',
+      account_name: 'JanServ Plc',
+      account_number: '60891848',
+      sort_code: '09-01-29',
+      iban: 'GB44ABBY09012960891848',
+      swift: 'ABBYGB2LXXX',
+      bank_currency: 'GBP',
+      bank_address: 'Bridle Road, Bootle, Merseyside, United Kingdom (UK), GIR 0AA'
+    },
+    // Display configuration for blue header template (JanServ-inspired design)
+    display_config: {
+      template: 'blue-header'
+    }
   } as Invoice);
 
   // ========================================================================
@@ -700,49 +777,60 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po-bank-1',
       line_no: 1,
-      description: 'Industrial Pump Model XL-500',
-      qty: 5,
-      uom: 'EA',
-      unit_price: 2400.00,
-      net_amount: 12000.00,
-      line_total: 12000.00,
-      po_line_id: 'po-line-7755-1',
+      description: 'Toyota Prius 2022 (7 days)',
+      qty: 7,
+      uom: 'DAYS',
+      unit_price: 120.00,
+      net_amount: 840.00,
+      tax_rate: 15,
+      tax_amount: 126.00,
+      line_total: 966.00,
+      po_line_id: 'po-line-9011-1',
       gr_line_id: null,
-      ses_line_id: null
+      ses_line_id: null,
+      notes: 'Class 2 Vehicle rental. Pick-up and drop-off from same location. Fleet Booking (rentalcars.com). Full-to-full return policy.'
     },
     {
       id: 'line-baseline-po-bank-2',
       line_no: 2,
-      description: 'Hydraulic Valve Set - Premium',
-      qty: 10,
-      uom: 'EA',
-      unit_price: 350.00,
-      net_amount: 3500.00,
-      line_total: 3500.00,
-      po_line_id: 'po-line-7755-2',
+      description: 'Motor Insurnace - Comprehensive (Class 2 Vehicle)',
+      qty: 7,
+      uom: 'DAYS',
+      unit_price: 30.00,
+      net_amount: 210.00,
+      tax_rate: 15,
+      tax_amount: 31.50,
+      line_total: 241.50,
+      po_line_id: 'po-line-9011-2',
       gr_line_id: null,
-      ses_line_id: null
+      ses_line_id: null,
+      notes: 'Full protection incl. 3rd-Party Liability'
     }
   ];
 
-  const baselinePOBankSubtotal = 15500.00;
-  const baselinePOBankTax = 3100.00; // 20% VAT
-  const baselinePOBankTotal = 18600.00;
+  const baselinePOBankSubtotal = 1050.00;
+  const baselinePOBankTax = 157.50; // 15% tax
+  const baselinePOBankTotal = 1207.50;
 
   mockInvoices.push({
     id: 'baseline-po-bank-1',
-    invoice_number: 'IEC-2025-5678',
-    job_number: 'JOB-2025-445',
-    vehicle_registration_no: 'VEH-ABC-1234',
-    vendor_name_snapshot: 'Industrial Equipment Corp',
-    vendor_id: 'VND-4001',
-    vendor_tax_id_snapshot: 'TAX-VND-4001',
-    invoice_date: baselinePOBankDate.toISOString().split('T')[0],
-    due_date: baselinePOBankDueDate.toISOString().split('T')[0],
+    invoice_number: 'IV472-884',
+    vehicle_registration_no: 'BIL5954',
+    customer_no: 'C1118382',
+    job_number: 'C1118382',
+    vendor_name_snapshot: 'Fleet Inc.',
+    vendor_id: 'VND0001544',
+    vendor_tax_id_snapshot: 'WB474PR',
+    vendor_email: 'receiveables@fleetinc.com',
+    vendor_phone: '+1 (253) 212-1077',
+    vendor_address_snapshot: '2608 84th Street Ct S, Lakewood, Washington (WA), 98499',
+    invoice_date: '2025-11-09',
+    due_date: '2025-12-09',
+    payment_terms: 'NET 30',
     currency: 'USD',
     subtotal: baselinePOBankSubtotal,
     tax_total: baselinePOBankTax,
-    tax_rate_percent: 20,
+    tax_rate_percent: 15,
     total: baselinePOBankTotal,
     status: 'verification', // Verification stage (bank details need verification)
     match_status: 'exception', // Exception due to bank details only
@@ -752,7 +840,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
     approval_status: 'pending',
     assigned_to_name: 'James Wilson',
     assigned_to_user_id: 'user-4',
-    po_numbers_cached: ['PO-2025-7755'],
+    po_numbers_cached: ['PO-2025-9010'],
+    bill_to_snapshot: {
+      legal_name: 'GSPV Ltd',
+      address: 'Senna Building, Gorsuch Pl, London, E2 8JF',
+      tax_id: '927 8131 1',
+      email: 'phil@xelix.com',
+      phone: '+44 20 8648 4267'
+    },
     gr_numbers: [],
     docType: 'Invoice',
     issues: ['Bank Details Change'],
@@ -763,13 +858,12 @@ export const generateBaselineInvoices = (): Invoice[] => {
     invoice_lines: baselinePOBankLines,
     // Payment bank details (new account that differs from MVD)
     payment_bank_details: {
-      bank_name: 'First National Bank',
-      account_name: 'Industrial Equipment Corp',
-      iban: 'GB29NWBK60161331926819',
-      swift_bic: 'NWBKGB2L',
-      sort_code: '60-16-13',
-      account_number: '13319268',
-      routing_number: '123456789',
+      bank_name: 'EASTERN BANK',
+      account_name: 'Fleet Inc.',
+      account_number: '13719713158835300',
+      routing_number: '011002550',
+      bank_currency: 'USD',
+      bank_address: '195 MARKET STREET, LYNN, MASSACHUSETTS MA, 01901'
     },
     // Bank details exception - account changed
     validation_warnings: [{
@@ -779,62 +873,92 @@ export const generateBaselineInvoices = (): Invoice[] => {
       message: 'Bank account changed since last invoice',
       severity: 'error',
       old_bank_details: {
-        bank_name: 'Western Bank',
-        account_name: 'Industrial Equipment Corp',
-        iban: 'GB82WEST12345698765432',
-        swift_bic: 'WESTNBB',
-        sort_code: '12-34-56',
-        account_number: '98765432',
-        routing_number: '987654321',
+        bank_name: 'WESTERN BANK',
+        account_name: 'Fleet Inc.',
+        account_number: '98765432101',
+        routing_number: '011002551',
+        bank_currency: 'USD',
+        bank_address: '195 MARKET STREET, LYNN, MASSACHUSETTS MA, 01901'
       },
       new_bank_details: {
-        bank_name: 'First National Bank',
-        account_name: 'Industrial Equipment Corp',
-        iban: 'GB29NWBK60161331926819',
-        swift_bic: 'NWBKGB2L',
-        sort_code: '60-16-13',
-        account_number: '13319268',
-        routing_number: '123456789',
+        bank_name: 'EASTERN BANK',
+        account_name: 'Fleet Inc.',
+        account_number: '13719713158835300',
+        routing_number: '011002550',
+        bank_currency: 'USD',
+        bank_address: '195 MARKET STREET, LYNN, MASSACHUSETTS MA, 01901'
       },
       // Legacy fields for backward compatibility
-      old_account: '12345675678',
-      new_account: '87654321234'
+      old_account: '****2101',
+      new_account: '****5300'
     }],
     // Requisitioner information for verification email
     requisitioner: {
       name: 'Sarah Johnson',
       email: 'sarah.johnson@company.com',
-      department: 'Operations'
+      department: 'Sales'
+    },
+    // OCR extractions with confidence scores
+    ocr_extractions: {
+      invoice_number: {
+        value: 'IV472-884',
+        confidence: 0.96,
+        candidates: []
+      },
+      customer_no: {
+        value: 'C1118382',
+        confidence: 0.94,
+        candidates: []
+      },
+      job_number: {
+        value: 'C1118382',
+        confidence: 0.94,
+        candidates: []
+      },
+      vehicle_registration_no: {
+        value: 'BIL5954',
+        confidence: 0.92,
+        candidates: []
+      },
+      po_numbers_cached: {
+        value: 'PO-2025-9010',
+        confidence: 0.95,
+        candidates: []
+      }
     },
     // Auto-corrections for fields that were mixed up on scanned document
     auto_corrections: [
       {
         field: 'invoice_number',
-        original_value: 'PO-2025-7755',
-        corrected_value: 'IEC-2025-5678',
+        original_value: 'PO-2025-9010',
+        corrected_value: 'IV472-884',
         reason: 'Invoice and PO numbers were swapped on the scanned document. Auto-corrected based on detected numbering patterns.',
-        vendor_name: 'Industrial Equipment Corp',
+        vendor_name: 'Fleet Inc.',
         document_type: 'invoice',
         recent_documents: [
-          { number: 'IEC-2025-5676', date: 'Oct 15, 2025', amount: '$2,450.00' },
-          { number: 'IEC-2025-5677', date: 'Oct 17, 2025', amount: '$1,890.00' },
-          { number: 'IEC-2025-5678', date: 'Oct 19, 2025', amount: '$2,400.00', is_current: true }
+          { number: 'IV472-882', date: 'Oct 20, 2025', amount: '$1,150.00' },
+          { number: 'IV472-883', date: 'Nov 1, 2025', amount: '$890.50' },
+          { number: 'IV472-884', date: 'Nov 9, 2025', amount: '$1,207.50', is_current: true }
         ]
       },
       {
         field: 'po_numbers_cached',
-        original_value: 'IEC-2025-5678',
-        corrected_value: 'PO-2025-7755',
+        original_value: 'IV472-884',
+        corrected_value: 'PO-2025-9010',
         reason: 'Invoice and PO numbers were swapped on the scanned document. Auto-corrected based on detected numbering patterns.',
-        vendor_name: 'Industrial Equipment Corp',
+        vendor_name: 'Fleet Inc.',
         document_type: 'po',
         recent_documents: [
-          { number: 'PO-2025-7753', date: 'Oct 12, 2025', amount: '$3,200.00' },
-          { number: 'PO-2025-7754', date: 'Oct 16, 2025', amount: '$1,950.00' },
-          { number: 'PO-2025-7755', date: 'Oct 18, 2025', amount: '$2,520.00', is_current: true }
+          { number: 'PO-2025-9008', date: 'Oct 15, 2025', amount: '$2,100.00' },
+          { number: 'PO-2025-9009', date: 'Oct 28, 2025', amount: '$950.00' },
+          { number: 'PO-2025-9010', date: 'Nov 5, 2025', amount: '$1,207.50', is_current: true }
         ]
       }
-    ]
+    ],
+    // Display configuration for simple table invoice template
+    display_config: {
+      template: 'simple-table-invoice'
+    }
   } as Invoice);
 
   // ============================================================================
@@ -850,11 +974,15 @@ export const generateBaselineInvoices = (): Invoice[] => {
       id: 'line-missing-po-1',
       line_no: 1,
       description: 'Premium Copy Paper, 8.5×11, 20lb, White',
+      sku: 'PA1144',
+      notes: 'Reem of 100gsm premium paper',
       qty: 10,
       uom: 'RM',
       unit_price: 45.00,
       net_amount: 450.00,
-      line_total: 450.00,
+      tax_rate: 20,
+      tax_amount: 90.00,
+      line_total: 540.00,
       po_line_id: null, // No PO match
       gr_line_id: null,
       ses_line_id: null
@@ -863,11 +991,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
       id: 'line-missing-po-2',
       line_no: 2,
       description: 'Laser Printer Toner Cartridge, Black, High Yield',
+      sku: 'PR4882',
       qty: 5,
       uom: 'EA',
       unit_price: 89.00,
       net_amount: 445.00,
-      line_total: 445.00,
+      tax_rate: 20,
+      tax_amount: 89.00,
+      line_total: 534.00,
       po_line_id: null, // No PO match
       gr_line_id: null,
       ses_line_id: null
@@ -876,11 +1007,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
       id: 'line-missing-po-3',
       line_no: 3,
       description: 'Manila File Folders, Letter Size, Box of 100',
+      sku: 'FO1134',
       qty: 3,
       uom: 'BX',
       unit_price: 18.50,
       net_amount: 55.50,
-      line_total: 55.50,
+      tax_rate: 20,
+      tax_amount: 11.10,
+      line_total: 66.60,
       po_line_id: null, // No PO match
       gr_line_id: null,
       ses_line_id: null
@@ -889,11 +1023,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
       id: 'line-missing-po-4',
       line_no: 4,
       description: 'Ballpoint Pens, Black, Medium Point, Box of 12',
+      sku: 'PE8447',
       qty: 8,
       uom: 'BX',
       unit_price: 6.25,
       net_amount: 50.00,
-      line_total: 50.00,
+      tax_rate: 20,
+      tax_amount: 10.00,
+      line_total: 60.00,
       po_line_id: null, // No PO match
       gr_line_id: null,
       ses_line_id: null
@@ -901,8 +1038,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
   ];
 
   const missingPOSubtotal = 1000.50;
-  const missingPOTax = 80.04; // 8% sales tax
-  const missingPOTotal = 1080.54;
+  const missingPOTax = 200.10; // 20% sales tax
+  const missingPOTotal = 1200.60;
 
   mockInvoices.push({
     id: 'missing-po-1',
@@ -910,32 +1047,41 @@ export const generateBaselineInvoices = (): Invoice[] => {
     job_number: 'JOB-2025-450',
     vendor_name_snapshot: 'Premier Office Supplies',
     vendor_id: 'VND-5002',
-    vendor_tax_id_snapshot: 'TAX-VND-5002',
+    vendor_tax_id_snapshot: 'WB994610',
+    vendor_address_snapshot: '19200 SW 116th Ave Miami FL 33157',
+    vendor_country_snapshot: 'United States of America (USA)',
     invoice_date: missingPODate.toISOString().split('T')[0],
     due_date: missingPODueDate.toISOString().split('T')[0],
     currency: 'USD',
+    customer_no: 'CUST661000',
     subtotal: missingPOSubtotal,
     tax_total: missingPOTax,
-    tax_rate_percent: 8,
+    tax_rate_percent: 20,
     total: missingPOTotal,
-    status: 'verification', // Verification stage (close match PO needs confirmation)
-    match_status: 'exception', // Exception due to missing PO
+    status: 'verification', // Verification stage (close match PO needs user confirmation)
+    match_status: null, // No PO assigned yet, awaiting user decision on close_match_po suggestion
     type: 'PO',
     vendor_requires_po: true, // This vendor requires PO
     vendor_is_verified: true,
     approval_status: 'pending',
     assigned_to_name: 'James Wilson',
     assigned_to_user_id: 'user-4',
-    po_numbers_cached: [], // MISSING - needs to be added
-    po_id: null, // MISSING
+    po_numbers_cached: [], // Empty - no PO assigned yet (user must accept AI suggestion)
+    po_id: null, // No PO ID until user accepts the close_match_po suggestion
     gr_numbers: [],
     docType: 'Invoice',
-    issues: ['Missing PO'],
+    issues: [],
     created_at: missingPODate.toISOString(),
     updated_at: missingPODate.toISOString(),
     data_ingestion_date: missingPODate.toISOString().split('T')[0],
     lines: missingPOLines,
     invoice_lines: missingPOLines,
+    bill_to_snapshot: {
+      legal_name: 'GPSV Ltd',
+      address: 'Senna Building, Gorsuch Pl, London, Greater London, United Kingdom (UK) - E2 8JF',
+      tax_id: '927 8131 1',
+      email: 'accountspayables@xelix.com'
+    },
     payment_method: 'bank_transfer',
     payment_bank_details: {
       bank_name: 'Commerce Bank',
@@ -943,14 +1089,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
       account_number: '55667789876',
       routing_number: '987654321',
     },
-    // Validation warning for missing PO
-    validation_warnings: [{
-      type: 'missing_po',
-      category: 'compliance',
-      field: 'po_numbers_cached',
-      message: 'PO number required - vendor requires PO for all invoices',
-      severity: 'error'
-    }],
+    // Validation warnings (empty - missing PO is handled by InvoiceValidator)
+    validation_warnings: [],
     // Close match AI suggestion for PO
     close_match_po: {
       po_number: 'PO-2025-8901',
@@ -963,32 +1103,39 @@ export const generateBaselineInvoices = (): Invoice[] => {
         variance_count: 0,            // No variance
       },
       po_summary: {
-        total: 1055.00,               // Slightly different from invoice $1080.54
+        total: 1000.50,               // Matches invoice subtotal (before tax)
         created_date: '2025-10-18',
         vendor_name: 'Premier Office Supplies',
-        line_count: 6                 // PO has 2 extra items
+        line_count: 4                 // Perfect match - 4 items
       }
+    },
+    // Display configuration for green Premier Office Supplies template
+    display_config: {
+      template: 'green-premier'
     }
   } as Invoice);
 
   // ========================================================================
   // FRAUD RISK INVOICE - HIGH-RISK JURISDICTION & THRESHOLD EXCEEDED
+  // Russian vendor with Bulgarian bank account + inflated invoice total
   // ========================================================================
-  const fraudRiskDate = new Date(now);
-  fraudRiskDate.setDate(fraudRiskDate.getDate() - 2); // Created 2 days ago
-  const fraudRiskDueDate = new Date(fraudRiskDate);
-  fraudRiskDueDate.setDate(fraudRiskDueDate.getDate() + 30); // Due in 28 days
-
   const fraudRiskLines = [
     {
       id: 'line-fraud-risk-1',
       line_no: 1,
-      description: 'Industrial Manufacturing Equipment - Heavy Machinery',
+      sku: 'DIS_37199/44',
+      product_code: 'DIS_37199/44',
+      description: 'Industrial Manufacturing Equipment - Distillation Column (17 stages)',
+      description_detail: 'Mono-acetate polymer aluminium distillation column ( 20m x 5 )',
       qty: 2,
-      uom: 'Units',
+      uom: 'UNIT',
       unit_price: 85000.00,
       net_amount: 170000.00,
+      tax_rate: 5,
+      tax_amount: 8500.00,
+      landed_cost: 0,
       line_total: 170000.00,
+      line_gross_amount: 178500.00,
       po_line_id: 'po-line-7001-1',
       gr_line_id: null,
       ses_line_id: null
@@ -996,12 +1143,19 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-fraud-risk-2',
       line_no: 2,
+      sku: 'SER_474789',
+      product_code: 'SER_474789',
       description: 'Installation & Commissioning Services',
+      description_detail: 'Installation of columns at facility',
       qty: 160,
-      uom: 'Hours',
+      uom: 'HOUR',
       unit_price: 250.00,
       net_amount: 40000.00,
+      tax_rate: 5,
+      tax_amount: 2000.00,
+      landed_cost: 0,
       line_total: 40000.00,
+      line_gross_amount: 42000.00,
       po_line_id: 'po-line-7001-2',
       gr_line_id: null,
       ses_line_id: null
@@ -1009,12 +1163,19 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-fraud-risk-3',
       line_no: 3,
+      sku: 'TR_0004888',
+      product_code: 'TR_0004888',
       description: 'Technical Documentation & Training',
+      description_detail: 'Training software and 3 on-site sessions',
       qty: 1,
-      uom: 'Package',
+      uom: 'PACKAGE',
       unit_price: 10000.00,
       net_amount: 10000.00,
+      tax_rate: 5,
+      tax_amount: 500.00,
+      landed_cost: 0,
       line_total: 10000.00,
+      line_gross_amount: 10500.00,
       po_line_id: 'po-line-7001-3',
       gr_line_id: null,
       ses_line_id: null
@@ -1022,27 +1183,61 @@ export const generateBaselineInvoices = (): Invoice[] => {
   ];
 
   const fraudRiskSubtotal = 220000.00;
-  const fraudRiskTax = 20000.00; // ~9% tax
-  const fraudRiskTotal = 240000.00;
+  const fraudRiskTax = 11000.00; // 5% tax per line (8500 + 2000 + 500)
+  const fraudRiskTotal = 240000.00; // FRAUD INDICATOR: Should be €231,000 (€9,000 overcharge!)
 
   mockInvoices.push({
     id: 'fraud-risk-1',
-    invoice_number: 'INV-RU-2025-0001',
-    vendor_name_snapshot: 'Volga Industrial Supplies LLC',
-    vendor_id: 'VND-RU-7001',
-    vendor_tax_id_snapshot: 'RU7707083893',
-    vendor_address_snapshot: 'Ulitsa Krasnaya 125, Moscow, 101000, Russian Federation',
+    invoice_number: 'SCHET0074-2025', // Russian invoice format (SCHET = invoice)
+    vendor_name_snapshot: 'Volga Industrial Supplies OOO',
+    vendor_id: 'VND0099905',
+    vendor_tax_id_snapshot: 'XHP1993-443',
+    vendor_address_snapshot: 'Head Office, Ulitsa Krasnaya 125, Moscow, 101000, Russian Federation',
     vendor_city_snapshot: 'Moscow',
     vendor_country_snapshot: 'Russia',
     vendor_postal_code_snapshot: '101000',
-    invoice_date: fraudRiskDate.toISOString().split('T')[0],
-    due_date: fraudRiskDueDate.toISOString().split('T')[0],
+    vendor_phone: '+7 (35130) 21846',
+    vendor_email: 'receiveables@vis.ru',
+    // Customer/Bill To
+    customer_id: 'T92190-00',
+    bill_to_snapshot: {
+      legal_name: 'GSPV Ltd',
+      tax_id: '927 8131 1',
+      address: 'Senna Building, Gorsuch Pl,\nLondon,\nGreater London, United Kingdom (UK) - E2 8JF',
+      email: 'accountspayable@xelix.com'
+    },
+    // Dates (FRAUD INDICATOR: 1 day payment term despite stating 30 days!)
+    invoice_date: '2025-11-11',
+    due_date: '2025-11-12', // Only 1 day! (suspicious)
     job_number: 'WC-2025-445',
-    currency: 'GBP',
+    // Payment Terms
+    payment_terms: '30',
+    payment_terms_days: 30,
+    // Accounting / ERP Fields
+    gl_account_code: 'GL-2211',
+    cost_center_code: 'CC-6606 - Manufacturing',
+    account_category: 'Accounts Payable',
+    department: 'Manufacturing',
+    // Amounts (EUR not GBP!)
+    currency: 'EUR',
     subtotal: fraudRiskSubtotal,
     tax_total: fraudRiskTax,
-    tax_rate_percent: 9.09,
-    total: fraudRiskTotal,
+    tax_rate_percent: 5,
+    total: fraudRiskTotal, // Inflated by €9,000!
+    // Bank Details - FRAUD INDICATOR: Bulgarian bank for Russian vendor!
+    payment_bank_details: {
+      account_name: 'Volga Engineering EOOD',
+      bank_name: 'FIRST INVESTMENT BANK',
+      account_number: '1020345678',
+      swift_code: 'FINVBGSF',
+      iban: 'BG 80 BNBG 9661 1020345678',
+      bank_currency: 'EUR',
+      bank_address: 'FIRST INVESTMENT BANK AD, DRAGAN TZANKOV BLVD 37, SOFIA',
+      bank_country: 'Bulgaria',
+      bank_city: 'Sofia'
+    },
+    payment_terms_text: '1. Please pay within 30 days from the date of invoice, overdue interest @ 14% will be charged on delayed payments.\n2. Please quote invoice number when remitting funds.\n3. Delivery commences after payment is received',
+    // Status
     status: 'on_hold', // On hold due to fraud risk compliance hold
     match_status: 'matched',
     type: 'PO',
@@ -1056,10 +1251,16 @@ export const generateBaselineInvoices = (): Invoice[] => {
     po_numbers_cached: ['PO-2025-7001'],
     gr_numbers: [],
     docType: 'Invoice',
-    issues: ['Fraud Risk - High-Risk Jurisdiction', 'Fraud Risk - Threshold Exceeded'],
-    created_at: fraudRiskDate.toISOString(),
-    updated_at: fraudRiskDate.toISOString(),
-    data_ingestion_date: fraudRiskDate.toISOString().split('T')[0],
+    issues: [
+      'Fraud Risk - High-Risk Jurisdiction',
+      'Fraud Risk - Threshold Exceeded',
+      'Invoice Total Discrepancy - Overcharged by €9,000',
+      'Payment Terms Inconsistency - 1 day vs stated 30 days',
+      'Bank Jurisdiction Mismatch - Bulgarian bank for Russian vendor'
+    ],
+    created_at: '2025-11-11T00:00:00.000Z',
+    updated_at: '2025-11-11T00:00:00.000Z',
+    data_ingestion_date: '2025-11-11',
     lines: fraudRiskLines,
     invoice_lines: fraudRiskLines,
     // Fraud Risk Detection
@@ -1078,7 +1279,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
           details: 'Invoice value exceeds compliance threshold for high-risk jurisdictions',
           threshold: 100000,
           actual_value: 240000,
-          currency: 'GBP',
+          currency: 'EUR',
           severity: 'high' as const
         }
       ],
@@ -1089,7 +1290,18 @@ export const generateBaselineInvoices = (): Invoice[] => {
       policy_reference: 'Global Procurement & Vendor Payment Policy',
       policy_link: '/policies/global-procurement',
       short_message: 'Invoice paused - High-risk jurisdiction & threshold exceeded',
-      full_message: 'This invoice has been automatically paused because the vendor Volga Industrial Supplies LLC operates in a high-risk jurisdiction (Russia) and the invoice value (£240,000) exceeds the threshold defined in your company\'s Global Procurement & Vendor Payment Policy. Per compliance guidelines, additional due diligence and approval from the Finance Director and Compliance Officer are required before payment can be processed.'
+      full_message: 'This invoice has been automatically paused because the vendor Volga Industrial Supplies LLC operates in a high-risk jurisdiction (Russia) and the invoice value (€240,000) exceeds the threshold defined in your company\'s Global Procurement & Vendor Payment Policy. Per compliance guidelines, additional due diligence and approval from the Finance Director and Compliance Officer are required before payment can be processed.'
+    },
+    // Display Configuration - Black Enterprise Template
+    display_config: {
+      template: 'black-enterprise',
+      config: {
+        logo: {
+          url: '/volga-group-logo.png',
+          width: 180,
+          height: 90
+        }
+      }
     }
   } as Invoice);
 
@@ -1640,6 +1852,57 @@ export const generateBaselineInvoices = (): Invoice[] => {
 const USE_MOCK_DATA = process.env.USE_MOCK_DATA !== 'false'; // Default to true
 const DEBUG_MOCK = process.env.DEBUG_MOCK === 'true';
 
+// ============================================================================
+// MOCK INVOICE CACHE (In-Memory Persistence)
+// ============================================================================
+// Cache for storing updated mock invoices to simulate database persistence
+// Survives page refreshes but clears on server restart
+let mockInvoiceCache = new Map<string, Invoice>();
+
+/**
+ * Update a mock invoice in the cache
+ * This simulates database persistence for mock invoices within the current session
+ */
+export const updateMockInvoice = (id: string, updates: Partial<Invoice>): Invoice | null => {
+  if (DEBUG_MOCK) {
+    console.log('[MockService] Updating mock invoice:', id, updates);
+  }
+
+  // Get current invoice (either from cache or fresh generation)
+  const currentInvoice = getMockInvoiceById(id);
+
+  if (!currentInvoice) {
+    console.error('[MockService] Cannot update - invoice not found:', id);
+    return null;
+  }
+
+  // Merge updates with current invoice data
+  const updatedInvoice = {
+    ...currentInvoice,
+    ...updates,
+    updated_at: new Date().toISOString()
+  };
+
+  // Store in cache
+  mockInvoiceCache.set(id, updatedInvoice);
+
+  if (DEBUG_MOCK) {
+    console.log('[MockService] Invoice updated in cache:', id);
+    console.log('[MockService] Updated fields:', Object.keys(updates));
+  }
+
+  return updatedInvoice;
+};
+
+/**
+ * Clear the mock invoice cache
+ * Useful for testing and resetting mock data to original state
+ */
+export const clearMockInvoiceCache = () => {
+  mockInvoiceCache.clear();
+  console.log('[MockService] Cache cleared - all mock invoices reset to original state');
+};
+
 /**
  * Check if an invoice ID is a mock ID
  */
@@ -1683,6 +1946,7 @@ export const getAllMockInvoices = (): Invoice[] => {
 
 /**
  * Get a specific mock invoice by ID
+ * Checks cache first for updated invoices, then generates fresh if not cached
  */
 export const getMockInvoiceById = (id: string): Invoice | null => {
   if (DEBUG_MOCK) {
@@ -1695,6 +1959,15 @@ export const getMockInvoiceById = (id: string): Invoice | null => {
       return null;
     }
 
+    // Check cache first - return cached version if it exists
+    if (mockInvoiceCache.has(id)) {
+      if (DEBUG_MOCK) {
+        console.log('[MockService] Returning cached invoice:', id);
+      }
+      return mockInvoiceCache.get(id)!;
+    }
+
+    // Not in cache - generate fresh invoice
     const allMockInvoices = getAllMockInvoices();
     if (DEBUG_MOCK) {
       console.log('[MockService] Total mock invoices available:', allMockInvoices.length);
@@ -1712,7 +1985,12 @@ export const getMockInvoiceById = (id: string): Invoice | null => {
     }
 
     // Transform to full invoice structure with additional fields
-    return transformToFullInvoice(invoice);
+    const transformedInvoice = transformToFullInvoice(invoice);
+
+    // Store in cache for future requests
+    mockInvoiceCache.set(id, transformedInvoice);
+
+    return transformedInvoice;
   } catch (error) {
     console.error('[MockService] Error getting mock invoice:', error);
     return null;
@@ -1796,6 +2074,9 @@ export const getMockPoComparisonData = (invoiceId: string): any | null => {
 
     const qtyVariance = poLine ? invLine.qty - poLine.qty_ordered : 0;
     const priceVariance = poLine ? invLine.unit_price - poLine.unit_price : 0;
+    // Use net_amount (before tax) for comparison with PO, not line_total (includes tax)
+    const invoiceNetAmount = invLine.net_amount || (invLine.qty * invLine.unit_price);
+    const poNetAmount = poLine ? (poLine.qty_ordered * poLine.unit_price) : 0;
 
     return {
       id: `match-${index + 1}`,
@@ -1804,9 +2085,9 @@ export const getMockPoComparisonData = (invoiceId: string): any | null => {
       matched_gr_line_id: null,
       qty_variance: qtyVariance,
       price_variance: priceVariance,
-      amount_variance: poLine ? (invLine.line_total || 0) - (poLine.qty_ordered * poLine.unit_price) : 0,
+      amount_variance: poLine ? invoiceNetAmount - poNetAmount : 0,
       within_tolerance: poLine ? (Math.abs(qtyVariance) < 1 && Math.abs(priceVariance) < 10) : false,
-      explanation_code: poLine ? (Math.abs(qtyVariance) > 1 ? 'QTY_MISMATCH' : Math.abs(priceVariance) > 10 ? 'PRICE_MISMATCH' : null) : 'NO_PO_LINE',
+      explanation_code: poLine ? (Math.abs(qtyVariance) > 1 ? 'QTY_MISMATCH' : Math.abs(priceVariance) > 10 ? 'PRICE_MISMATCH' : 'PERFECT_MATCH') : 'NO_PO_LINE',
       po_line_no: poLine?.line_no || null,
       po_description: poLine?.description || null,
       po_qty: poLine?.qty_ordered || null,
@@ -1895,7 +2176,8 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
   const absTotal = Math.abs(total);
 
   // Calculate financial breakdown
-  const taxRate = 0.20; // 20% VAT
+  // Use invoice's tax rate if available, otherwise default to 20% VAT
+  const taxRate = invoice.tax_rate_percent ? invoice.tax_rate_percent / 100 : 0.20;
   const subtotal = invoice.subtotal || (hasTotal ? absTotal / (1 + taxRate) : 0);
   const taxTotal = invoice.tax_total || (hasTotal ? absTotal - subtotal : 0);
 
@@ -1917,7 +2199,7 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
     currency: invoice.currency || 'USD',
     subtotal: isNegative ? -subtotal : subtotal,
     tax_total: isNegative ? -taxTotal : taxTotal,
-    tax_rate_percent: hasTotal ? taxRate * 100 : undefined,
+    tax_rate_percent: invoice.tax_rate_percent ?? (hasTotal ? taxRate * 100 : undefined),
     shipping_total: 0,
     other_charges_total: 0,
     discount_total: 0,

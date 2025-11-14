@@ -17,6 +17,7 @@ import { EscalationPreviewPanel } from './EscalationPreviewPanel';
 import { DocumentPreview } from '../invoices/DocumentPreview';
 import { ResizablePanel } from '../invoices/ResizablePanel';
 import { VendorCommunication } from '@/types/invoice';
+import { WorkflowBreadcrumb } from '@/app/components/invoices/WorkflowBreadcrumb';
 
 interface Invoice {
   id: string;
@@ -303,6 +304,12 @@ export function InvoiceDrawer({
               )}
             </div>
           </div>
+
+          {/* Workflow Breadcrumb */}
+          <WorkflowBreadcrumb
+            currentStatus={invoice.status || 'data_capture'}
+            invoiceType={invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? 'PO' : 'Non-PO'}
+          />
 
           {/* Tabs */}
           <div className="border-b border-gray-200">

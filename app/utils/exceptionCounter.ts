@@ -99,11 +99,11 @@ export function calculateInvoiceExceptions(
     });
   }
 
-  // 2b. Check for missing job number (custom field)
+  // 2b. Check for missing Customer ID (custom field)
   if (!invoiceData?.job_number || invoiceData.job_number.trim() === '') {
     exceptions.push({
       severity: 'error',
-      message: 'Missing job number',
+      message: 'Missing Customer ID',
       type: 'missing_job_number',
       field: 'job_number',
     });

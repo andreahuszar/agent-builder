@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Check, AlertTriangle, X, ChevronDown, MessageSquare, FileCheck, FileText, Pause, Mail, Send, CheckCircle, Trash2, XCircle } from 'lucide-react';
+import { Check, AlertTriangle, X, ChevronDown, MessageSquare, FileCheck, FileText, Pause, Mail, Send, CheckCircle, Trash2, XCircle, MoreVertical, RefreshCw } from 'lucide-react';
 import { HelpdeskPill } from './HelpdeskPill';
 import { UserAssignmentDropdown } from './UserAssignmentDropdown';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
@@ -256,28 +256,34 @@ export function DiagnosticBanner({
         <button
           onClick={workflowStatus === 'posted' ? undefined : onSaveClick}
           disabled={isSaving || workflowStatus === 'posted'}
-          className="px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
+          className="px-3 py-1.5 text-sm bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
         >
           {workflowStatus === 'posted' ? (
             <>
               <Check className="h-4 w-4" />
-              Validated
+              Posted
             </>
           ) : isSaving ? (
-            'Revalidating...'
+            <>
+              <RefreshCw className="h-4 w-4 animate-spin" />
+              Reprocessing...
+            </>
           ) : (
-            'Revalidate'
+            <>
+              <RefreshCw className="h-4 w-4" />
+              Reprocess
+            </>
           )}
         </button>
 
-        {/* Actions Dropdown */}
+        {/* More Dropdown */}
         <div className="relative">
           <button
             onClick={() => setIsDropdownOpen(!isDropdownOpen)}
             className="px-3 py-1.5 text-sm bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
           >
-            <span>Actions</span>
-            <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+            <MoreVertical className="h-3.5 w-3.5" />
+            <span>More</span>
           </button>
 
           {/* Dropdown Menu */}

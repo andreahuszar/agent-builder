@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
+import { isMockInvoice, updateMockInvoice } from '@/app/services/mockInvoiceService';
 
-// Helper to detect mock invoice IDs
-function isMockInvoice(id: string): boolean {
-  const mockPatterns = ['baseline-', 'needs-info-', 'blocked-', 'mock-', 'due-', 'cn-', 'pf-', 'approval-'];
-  return mockPatterns.some(pattern => id.startsWith(pattern));
-}
+// Note: isMockInvoice is now imported from mockInvoiceService for consistency
 
 export async function PATCH(
   request: NextRequest,
@@ -15,17 +12,21 @@ export async function PATCH(
     const { id } = await context.params;
     const body = await request.json();
 
-    // Handle mock invoices - return success without database updates
+    // Handle mock invoices - update in-memory cache
     if (isMockInvoice(id)) {
-      console.log(`[Mock Invoice Update] Skipping database update for mock invoice: ${id}`);
-      // Return the updated data as if it was saved
-      return NextResponse.json({
-        id,
-        ...body,
-        is_manually_edited: body.is_manually_edited || {},
-        extraction_field_confidences: body.extraction_field_confidences || {},
-        updated_at: new Date().toISOString()
-      });
+      console.log(`[Mock Invoice Update] Updating mock invoice in cache: ${id}`, body);
+
+      const updatedInvoice = updateMockInvoice(id, body);
+
+      if (!updatedInvoice) {
+        return NextResponse.json(
+          { error: 'Mock invoice not found' },
+          { status: 404 }
+        );
+      }
+
+      console.log(`[Mock Invoice Update] Successfully updated mock invoice: ${id}`);
+      return NextResponse.json(updatedInvoice);
     }
 
     // Get current invoice to detect which fields are being changed

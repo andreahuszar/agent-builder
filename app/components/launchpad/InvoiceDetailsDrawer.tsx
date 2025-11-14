@@ -3,6 +3,7 @@
 import React, { useEffect } from 'react';
 import { X, FileText, Calendar, User, DollarSign, Building2, CreditCard, Edit2, MessageSquare, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { WorkflowBreadcrumb } from '@/app/components/invoices/WorkflowBreadcrumb';
 
 interface InvoiceDetailsDrawerProps {
   isOpen: boolean;
@@ -87,6 +88,12 @@ export function InvoiceDetailsDrawer({ isOpen, onClose, invoice }: InvoiceDetail
                 <X className="h-5 w-5 text-gray-500" />
               </button>
             </div>
+
+            {/* Workflow Breadcrumb */}
+            <WorkflowBreadcrumb
+              currentStatus={invoice.status || invoice.workflow_status || 'data_capture'}
+              invoiceType={invoice.poNumber || invoice.po_numbers_cached?.length > 0 ? 'PO' : 'Non-PO'}
+            />
 
             {/* Tabs */}
             <div className="flex border-b border-gray-200">

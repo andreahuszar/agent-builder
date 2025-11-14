@@ -28,7 +28,8 @@ import {
   Sparkles,
   AlertCircle,
   Shield,
-  Zap
+  Zap,
+  Loader2
 } from 'lucide-react';
 import { EditableField } from '../editing/EditableField';
 import { ValidatedEditableField } from '../editing/ValidatedEditableField';
@@ -74,6 +75,8 @@ interface DetailsTabProps {
   onFieldFocus?: (fieldName: string | null) => void; // Highlight field in PDF when focused
   onStartTeaching?: (fieldName: string) => void; // Trigger teaching mode for custom fields
   agentPendingFields?: {[key: string]: any}; // Agent-accepted fields pending confirmation
+  isReprocessingField?: string | null; // Track which field is currently reprocessing
+  onFieldAutoReprocess?: (field: string) => void; // Trigger auto-reprocess after field save
 }
 
 export function DetailsTab({
@@ -92,7 +95,9 @@ export function DetailsTab({
   onFieldReject,
   onFieldFocus,
   onStartTeaching,
-  agentPendingFields = {}
+  agentPendingFields = {},
+  isReprocessingField = null,
+  onFieldAutoReprocess
 }: DetailsTabProps) {
   // Track which field's AI suggestion is expanded
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
@@ -270,7 +275,7 @@ export function DetailsTab({
           { field: 'vendor_name_snapshot', label: 'Vendor Name', type: 'text' },
           { field: 'vendor_tax_id_snapshot', label: 'Vendor Tax ID', type: 'text' },
           { field: 'po_numbers_cached', label: 'PO Number', type: 'array' },
-          { field: 'job_number', label: 'Customer Ref. No.', type: 'text' },
+          { field: 'job_number', label: 'Customer ID', type: 'text' },
           { field: 'vehicle_registration_no', label: 'Vehicle Registration No.', type: 'text' },
           { field: 'subtotal', label: 'Subtotal', type: 'currency' },
           { field: 'currency', label: 'Currency', type: 'text' },
@@ -278,15 +283,15 @@ export function DetailsTab({
         ];
 
         fieldsToCheck.forEach(({ field, label, type }) => {
-          // Skip PO Number and Customer Ref. No. validation for Non-PO invoices
+          // Skip PO Number and Customer ID validation for Non-PO invoices
           if (invoiceData.type === 'Non-PO' && (field === 'po_numbers_cached' || field === 'job_number')) {
             console.log('[DetailsTab] Skipping field (Non-PO):', field);
             return;
           }
 
-          // Skip Vehicle Registration No. for baseline invoices (demo/testing scenarios)
-          if (field === 'vehicle_registration_no' && invoiceData.id?.startsWith('baseline-')) {
-            console.log('[DetailsTab] Skipping field (baseline invoice):', field);
+          // Skip Vehicle Registration No. for baseline and missing-po invoices (demo/testing scenarios)
+          if (field === 'vehicle_registration_no' && (invoiceData.id?.startsWith('baseline-') || invoiceData.id?.startsWith('missing-po-'))) {
+            console.log('[DetailsTab] Skipping field (baseline or missing-po invoice):', field);
             return;
           }
 
@@ -567,9 +572,14 @@ export function DetailsTab({
 
       if (response.ok) {
         const result = await response.json();
-        setEditedData(updatedData);
-        onUpdate?.(updatedData);
+        setEditedData(result);
+        onUpdate?.(result);
         removeError(field);
+
+        // Trigger auto-reprocess for Customer ID field
+        if (field === 'job_number' && onFieldAutoReprocess) {
+          onFieldAutoReprocess(field);
+        }
       }
     } catch (error) {
       console.error('Error saving field:', error);
@@ -1098,7 +1108,7 @@ export function DetailsTab({
               <div ref={(el) => fieldRefs.current['vendor_tax_id_snapshot'] = el}>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
                   <span className="flex items-center">
-                    Vendor ID
+                    Vendor Tax ID
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.vendor_tax_id_snapshot} isEditMode={isEditing} />
                   </span>
                 </label>
@@ -1114,7 +1124,7 @@ export function DetailsTab({
                     onBlur={handleFieldBlur}
                   />
                 ) : (
-                  renderField('vendor_tax_id_snapshot', invoiceData.vendor_tax_id_snapshot, 'text', 'Vendor ID')
+                  renderField('vendor_tax_id_snapshot', invoiceData.vendor_tax_id_snapshot, 'text', 'Vendor Tax ID')
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['po_numbers_cached'] = el}>
@@ -1133,7 +1143,7 @@ export function DetailsTab({
                       confidence={invoiceData.close_match_po.confidence}
                       matchingFactors={invoiceData.close_match_po.matching_factors}
                       poSummary={invoiceData.close_match_po.po_summary}
-                      invoiceTotal={invoiceData.total}
+                      invoiceTotal={invoiceData.subtotal}
                       invoiceId={invoiceData.id}
                       invoiceNumber={invoiceData.invoice_number}
                       open={isCloseMatchPopoverOpen}
@@ -1210,6 +1220,15 @@ export function DetailsTab({
                           <span>Missing PO</span>
                         </div>
                       </div>
+                    ) : hasPONumber ? (
+                      <div className="flex items-center">
+                        <p className="text-sm font-medium text-gray-950">
+                          {displayPONumber}
+                        </p>
+                        {isReprocessingField === 'po_numbers_cached' && (
+                          <Loader2 className="h-3 w-3 ml-1.5 animate-spin text-purple-600" />
+                        )}
+                      </div>
                     ) : (
                       renderField(
                         'po_numbers_cached',
@@ -1221,12 +1240,12 @@ export function DetailsTab({
                   </>
                 )}
               </div>
-              {/* Customer Ref. No. - Hidden for Non-PO invoices and auto-reject invoices */}
+              {/* Customer ID - Hidden for Non-PO invoices and auto-reject invoices */}
               {!invoiceData.id?.startsWith('baseline-nonpo-') && !invoiceData.id?.startsWith('auto-reject-') && (
               <div ref={(el) => fieldRefs.current['job_number'] = el} className="relative">
                 <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
                   <span className="flex items-center">
-                    Customer Ref. No.
+                    Customer ID
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.job_number} isEditMode={isEditing} hasValue={!!invoiceData.job_number} />
                   </span>
                   {!invoiceData.job_number && !agentPendingFields['job_number'] && (
@@ -1252,7 +1271,7 @@ export function DetailsTab({
                     type="text"
                     required={false}
                     fieldName="job_number"
-                    placeholder="Enter Customer Ref. No."
+                    placeholder="Enter Customer ID"
                     onFocus={() => handleFieldFocus('job_number')}
                     onBlur={handleFieldBlur}
                   />
@@ -1261,7 +1280,11 @@ export function DetailsTab({
                     <p className="text-sm font-medium text-gray-950">
                       {agentPendingFields['job_number']}
                     </p>
-                    <PendingConfirmationIndicator />
+                    {isReprocessingField === 'job_number' ? (
+                      <Loader2 className="h-3 w-3 ml-1.5 animate-spin text-purple-600" />
+                    ) : (
+                      <PendingConfirmationIndicator />
+                    )}
                   </div>
                 ) : (
                   (() => {
@@ -1284,12 +1307,17 @@ export function DetailsTab({
                       );
                     }
 
-                    // Show value without purple dot (purple dot only shown when in agentPendingFields)
+                    // Show value with spinner if reprocessing
                     if (hasValue) {
                       return (
-                        <p className="text-sm font-medium text-gray-950">
-                          {invoiceData.job_number}
-                        </p>
+                        <div className="flex items-center">
+                          <p className="text-sm font-medium text-gray-950">
+                            {invoiceData.job_number}
+                          </p>
+                          {isReprocessingField === 'job_number' && (
+                            <Loader2 className="h-3 w-3 ml-1.5 animate-spin text-purple-600" />
+                          )}
+                        </div>
                       );
                     }
 
@@ -1311,13 +1339,13 @@ export function DetailsTab({
                 {!invoiceData.job_number && !agentPendingFields['job_number'] && (
                   <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
                     <AlertTriangle className="h-3 w-3" />
-                    <span>Custom field - value not found</span>
+                    <span>Value not found</span>
                   </div>
                 )}
                 {expandedSuggestion === 'job_number' && (
                   <div ref={suggestionCardRef} className="absolute top-full left-0 mt-2 z-50 w-full min-w-[320px] max-w-md">
                     <TeachingCard
-                      fieldLabel="Customer Ref. No."
+                      fieldLabel="Customer ID"
                       onPointToValue={() => {
                         // Close the popover
                         setExpandedSuggestion(null);

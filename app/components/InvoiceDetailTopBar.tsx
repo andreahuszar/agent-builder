@@ -1,8 +1,8 @@
 'use client';
 
-import React, { memo } from 'react';
+import React from 'react';
 import { ArrowLeft, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import { StatusBadge } from './invoices/StatusBadge';
+import { WorkflowBreadcrumb } from './invoices/WorkflowBreadcrumb';
 
 interface NavigationContext {
   current: number;
@@ -24,9 +24,13 @@ interface InvoiceDetailTopBarProps {
   assignedUserName?: string | null;
   onAssignUser?: (userName: string | null) => void;
   navigationContext?: NavigationContext;
+  invoiceStatus?: string;
+  poNumbersCached?: string[];
+  vendorRequiresPo?: boolean;
+  invoiceType?: string;
 }
 
-const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
+const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = ({
   invoiceNumber,
   vendorName,
   onBackClick,
@@ -37,6 +41,10 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
   assignedUserName,
   onAssignUser,
   navigationContext,
+  invoiceStatus,
+  poNumbersCached,
+  vendorRequiresPo,
+  invoiceType,
 }) => {
   const getTitle = () => {
     switch (documentType) {
@@ -50,47 +58,36 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
   return (
     <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/90 shadow-sm backdrop-blur-md">
       <div className="w-full px-3 sm:px-4 lg:px-6">
-        <div className="flex h-16 items-center">
-          {/* For needs info mode, show invoice title on left */}
-          {isNeedsInfo ? (
-            <div className="flex items-center gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-xl font-semibold text-gray-950">
-                    {getTitle()}
-                  </h1>
-                  {workflowStatus && (
-                    <StatusBadge status={workflowStatus} size="sm" />
-                  )}
-                </div>
-                {vendorName && (
-                  <p className="text-xs text-gray-700">{vendorName}</p>
-                )}
-              </div>
-            </div>
-          ) : (
-            /* Regular mode: Invoice Title Only (no Back button) */
-            <div className="flex items-center">
-              <div className="flex items-center gap-3">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h1 className="text-xl font-semibold text-gray-950">
-                      {getTitle()}
-                    </h1>
-                    {workflowStatus && (
-                      <StatusBadge status={workflowStatus} size="sm" />
-                    )}
-                  </div>
-                  {vendorName && (
-                    <p className="text-xs text-gray-700">{vendorName}</p>
-                  )}
-                </div>
-              </div>
+        <div className="flex h-16 items-center justify-between relative">
+          {/* Left: Invoice Title + Vendor Name (stacked) */}
+          <div className="flex-1">
+            <h1 className="text-xl font-semibold text-gray-950">
+              {getTitle()}
+            </h1>
+            {vendorName && (
+              <p className="text-xs text-gray-700">{vendorName}</p>
+            )}
+          </div>
+
+          {/* Center: Breadcrumb (absolute positioning for perfect centering) */}
+          {invoiceStatus && (
+            <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3">
+              <WorkflowBreadcrumb
+                currentStatus={invoiceStatus}
+                invoiceType={(poNumbersCached && poNumbersCached.length > 0) || vendorRequiresPo || invoiceType === 'PO' ? 'PO' : 'Non-PO'}
+                compact
+              />
+              {/* On Hold badge - separate from workflow */}
+              {invoiceStatus === 'on_hold' && (
+                <span className="inline-flex items-center px-2 py-1 text-xs font-medium text-purple-900 bg-purple-100 border border-purple-600 rounded-md">
+                  On Hold
+                </span>
+              )}
             </div>
           )}
 
-          {/* Navigation and Exit button */}
-          <div className="flex items-center gap-3 ml-auto">
+          {/* Right: Navigation + Exit */}
+          <div className="flex items-center gap-3 flex-1 justify-end">
             {/* Navigation arrows */}
             {navigationContext && (
               <div className="flex items-center gap-2">
@@ -133,7 +130,7 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = memo(({
       </div>
     </div>
   );
-});
+};
 
 InvoiceDetailTopBar.displayName = 'InvoiceDetailTopBar';
 

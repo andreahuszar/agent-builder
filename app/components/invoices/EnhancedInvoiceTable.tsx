@@ -362,6 +362,8 @@ export function EnhancedInvoiceTable({
   const [divisionSearchQuery, setDivisionSearchQuery] = useState('');
   const [quickViewInvoiceId, setQuickViewInvoiceId] = useState<string | null>(null);
   const [isQuickViewOpen, setIsQuickViewOpen] = useState(false);
+  const [quickViewInvoiceList, setQuickViewInvoiceList] = useState<string[]>([]);
+  const [quickViewCurrentIndex, setQuickViewCurrentIndex] = useState<number>(-1);
   const [isActionsColumnVisible, setIsActionsColumnVisible] = useState(true);
   const [isTableScrolled, setIsTableScrolled] = useState(false);
   const [sourceColumnWidth, setSourceColumnWidth] = useState(0);
@@ -1286,12 +1288,20 @@ export function EnhancedInvoiceTable({
                 <tr
                   key={invoice.id}
                   onClick={() => {
+                    // Build list context
+                    const invoiceIds = sortedInvoices.map(inv => inv.id);
+                    const currentIdx = invoiceIds.indexOf(invoice.id);
+
                     if (isQuickViewOpen) {
-                      // Drawer already open - just switch invoice
+                      // Drawer already open - update invoice and context
                       setQuickViewInvoiceId(invoice.id);
+                      setQuickViewInvoiceList(invoiceIds);
+                      setQuickViewCurrentIndex(currentIdx);
                     } else {
-                      // Drawer closed - open with this invoice
+                      // Drawer closed - open with this invoice and context
                       setQuickViewInvoiceId(invoice.id);
+                      setQuickViewInvoiceList(invoiceIds);
+                      setQuickViewCurrentIndex(currentIdx);
                       setIsQuickViewOpen(true);
                     }
                   }}
@@ -1801,10 +1811,14 @@ export function EnhancedInvoiceTable({
       {/* Invoice Quick View Drawer */}
       <InvoiceQuickViewDrawer
         invoiceId={quickViewInvoiceId}
+        invoiceList={quickViewInvoiceList}
+        currentIndex={quickViewCurrentIndex}
         isOpen={isQuickViewOpen}
         onClose={() => {
           setIsQuickViewOpen(false);
           setQuickViewInvoiceId(null);
+          setQuickViewInvoiceList([]);
+          setQuickViewCurrentIndex(-1);
         }}
       />
     </div>

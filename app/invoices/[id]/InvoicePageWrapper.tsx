@@ -158,6 +158,10 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
       assignedUserName={assignedUserName}
       onAssignUser={handleAssignUser}
       navigationContext={navigationContext}
+      invoiceStatus={reactiveStatus}
+      poNumbersCached={initialInvoice.po_numbers_cached}
+      vendorRequiresPo={initialInvoice.vendor_requires_po}
+      invoiceType={initialInvoice.type}
     >
       <InvoiceDetailClientWithViewMode
         invoiceId={invoiceId}

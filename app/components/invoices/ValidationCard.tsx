@@ -217,7 +217,7 @@ export function ValidationCard({
                               {issue.details}
                             </p>
                           )}
-                          {issue.field && (
+                          {issue.field && issue.field !== 'job_number' && (
                             <p className="text-xs text-gray-700 mt-1">
                               Field: {issue.field}
                               {issue.lineNumber && ` (Line ${issue.lineNumber})`}
