@@ -840,6 +840,9 @@ export const generateBaselineInvoices = (): Invoice[] => {
       account_name: 'Fleet Inc.',
       account_number: '13719713158835300',
       routing_number: '011002550',
+      iban: 'GB82 WEST 2014 5370 0123 87',
+      swift_bic: 'EASTUSX1',
+      sort_code: '20-14-53',
       bank_currency: 'USD',
       bank_address: '195 MARKET STREET, LYNN, MASSACHUSETTS MA, 01901'
     },
@@ -855,6 +858,9 @@ export const generateBaselineInvoices = (): Invoice[] => {
         account_name: 'Fleet Inc.',
         account_number: '98765432101',
         routing_number: '011002551',
+        iban: 'GB29 NWBK 6016 1331 9268 19',
+        swift_bic: 'NWBKGB2L',
+        sort_code: '60-16-13',
         bank_currency: 'USD',
         bank_address: '195 MARKET STREET, LYNN, MASSACHUSETTS MA, 01901'
       },
@@ -863,6 +869,9 @@ export const generateBaselineInvoices = (): Invoice[] => {
         account_name: 'Fleet Inc.',
         account_number: '13719713158835300',
         routing_number: '011002550',
+        iban: 'GB82 WEST 2014 5370 0123 87',
+        swift_bic: 'EASTUSX1',
+        sort_code: '20-14-53',
         bank_currency: 'USD',
         bank_address: '195 MARKET STREET, LYNN, MASSACHUSETTS MA, 01901'
       },
@@ -1388,7 +1397,6 @@ export const generateBaselineInvoices = (): Invoice[] => {
     po_numbers_cached: ['BG8891_470'],
     gr_numbers: [],
     docType: 'Invoice',
-    issues: [], // UOM mismatch is resolved, so no issues
     created_at: baselinePOLegal1Date.toISOString(),
     updated_at: baselinePOLegal1Date.toISOString(),
     data_ingestion_date: baselinePOLegal1Date.toISOString().split('T')[0],
