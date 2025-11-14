@@ -434,7 +434,7 @@ export const generateMockPOs = (): Record<string, POHeader> => {
           sku: null,
           qty_ordered: 14,
           uom: 'HOUR',
-          unit_price: 2160.00,
+          unit_price: 1800.00,
           qty_received_to_date: 14,
           qty_invoiced_to_date: 14,
           qty_remaining_to_receive: 0,
@@ -449,16 +449,16 @@ export const generateMockPOs = (): Record<string, POHeader> => {
           sku: null,
           qty_ordered: 1,
           uom: 'UNIT',
-          unit_price: 35000.00,
+          unit_price: 36000.00,
           qty_received_to_date: 1,
           qty_invoiced_to_date: 1,
           qty_remaining_to_receive: 0,
           qty_remaining_to_invoice: 0,
-          status: 'variance'
+          status: 'matched'
         }
       ],
-      subtotal: 89240.00,
-      total: 107088.00
+      subtotal: 85200.00,
+      total: 102240.00
     },
     'PO-2025-7755': {
       id: 'mock-po-7755',
