@@ -85,6 +85,9 @@ interface LineItemsPreviewPanelProps {
   showComparison?: boolean;
   startExpanded?: boolean;
   useDetailedVarianceColumns?: boolean; // Use separate Qty Var and Price Var columns instead of Delta
+  // Suggestion acceptance state (from parent for persistence across tab switches)
+  acceptedSuggestions?: Set<string>;
+  onAcceptSuggestion?: (lineId: string) => void;
 }
 
 // Draggable and Droppable Row Component for drag-and-drop functionality
@@ -248,6 +251,8 @@ export function LineItemsPreviewPanel({
   showComparison = false,
   startExpanded = false,
   useDetailedVarianceColumns = false,
+  acceptedSuggestions: externalAcceptedSuggestions,
+  onAcceptSuggestion: externalOnAcceptSuggestion,
 }: LineItemsPreviewPanelProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(!startExpanded); // Start expanded if startExpanded is true
@@ -259,7 +264,11 @@ export function LineItemsPreviewPanel({
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
   const [openPopoverId, setOpenPopoverId] = useState<string | null>(null);
   const [unmatchedLines, setUnmatchedLines] = useState<Set<string>>(new Set());
-  const [acceptedSuggestions, setAcceptedSuggestions] = useState<Set<string>>(new Set());
+  // Use external state if provided (for tab persistence), otherwise use local state
+  const [internalAcceptedSuggestions, setInternalAcceptedSuggestions] = useState<Set<string>>(new Set());
+  const acceptedSuggestions = externalAcceptedSuggestions !== undefined
+    ? externalAcceptedSuggestions
+    : internalAcceptedSuggestions;
   const [rejectedSuggestions, setRejectedSuggestions] = useState<Set<string>>(new Set());
   const [openSuggestionId, setOpenSuggestionId] = useState<string | null>(null);
   const [customRules, setCustomRules] = useState<Map<string, UnitConversionRule>>(new Map());
@@ -441,7 +450,12 @@ export function LineItemsPreviewPanel({
 
   // Handle accepting substitution suggestion
   const handleAcceptSuggestion = (lineId: string, suggestion: any) => {
-    setAcceptedSuggestions(prev => new Set(prev).add(lineId));
+    // Update state: use external handler if provided, otherwise update local state
+    if (externalOnAcceptSuggestion) {
+      externalOnAcceptSuggestion(lineId);
+    } else {
+      setInternalAcceptedSuggestions(prev => new Set(prev).add(lineId));
+    }
 
     // Update editable lines to match with suggested PO line
     const updatedLines = editableLines.map(line => {

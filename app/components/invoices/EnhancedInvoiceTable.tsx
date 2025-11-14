@@ -1440,8 +1440,8 @@ export function EnhancedInvoiceTable({
                         );
                       }
 
-                      // Check for validation errors - these should show "Exception" even if matched
-                      const hasValidationErrors = invoice.status === 'needs_info' || !invoice.invoice_number;
+                      // Check for validation errors or issues - these should show "Exception" even if matched
+                      const hasValidationErrors = invoice.status === 'needs_info' || !invoice.invoice_number || (invoice.issues && invoice.issues.length > 0);
 
                       const s = (invoice.match_status || '').toLowerCase();
                       const isNonPO = invoice.type === 'Non-PO';

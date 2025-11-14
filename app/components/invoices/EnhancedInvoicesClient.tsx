@@ -94,6 +94,7 @@ interface Invoice {
   invoice_lines?: any[];
   requisitioner?: string;
   source?: 'db' | 'mock'; // Track invoice origin
+  issues?: string[];
 }
 
 interface EnhancedInvoicesClientProps {

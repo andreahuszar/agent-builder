@@ -38,13 +38,15 @@ export interface ExceptionResult {
  * @param matchResults - Array of match results from matching service
  * @param poComparisonData - PO comparison data including unmatchedPoLines
  * @param approvalLimit - Approval limit threshold (default 2500)
+ * @param acceptedSuggestions - Set of line IDs with accepted AI suggestions (to exclude from variance count)
  * @returns ExceptionResult with categorized exceptions and counts
  */
 export function calculateInvoiceExceptions(
   invoiceData: any,
   matchResults: any[] = [],
   poComparisonData: any = null,
-  approvalLimit: number = 2500
+  approvalLimit: number = 2500,
+  acceptedSuggestions: Set<string> = new Set()
 ): ExceptionResult {
   const exceptions: Exception[] = [];
 
@@ -54,7 +56,18 @@ export function calculateInvoiceExceptions(
   const qtyVariances: string[] = [];
 
   matchResults?.forEach((mr: any) => {
-    if (!mr.within_tolerance && mr.explanation_code !== 'PERFECT_MATCH' && mr.invoice_line_id) {
+    // Skip variances for lines with accepted AI suggestions
+    const lineId = mr.invoice_line_id;
+    if (acceptedSuggestions.has(lineId)) {
+      return; // Variance resolved by accepting AI suggestion
+    }
+
+    // Only count actual variances (mismatches), not unmatched lines
+    // Exclude 'NO_PO_LINE' which indicates line hasn't been matched yet (not a variance)
+    if (!mr.within_tolerance &&
+        mr.explanation_code !== 'PERFECT_MATCH' &&
+        mr.explanation_code !== 'NO_PO_LINE' &&
+        mr.invoice_line_id) {
       if (!lineVariances.has(mr.invoice_line_id)) {
         lineVariances.set(mr.invoice_line_id, mr);
 

@@ -99,7 +99,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_rate_percent: 20,
     total: baselinePOTotal,
     status: 'verification', // Verification stage (AI suggestions need review)
-    match_status: 'exception', // Has missing field exception
+    match_status: 'matched', // Line items match PO perfectly, no financial variances
     type: 'PO',
     vendor_requires_po: true,
     vendor_is_verified: true,
@@ -674,28 +674,6 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po2-6',
       line_no: 6,
-      description: 'Legal Billing',
-      qty: 840,
-      uom: 'Minutes',
-      unit_price: 3.67,
-      net_amount: 3080.00,
-      line_total: 3080.00,
-      po_line_id: 'po-line-9011-6', // Matched by system despite UOM difference
-      gr_line_id: null,
-      ses_line_id: null,
-      // UOM conversion metadata for smart match
-      uom_conversion: {
-        invoice_qty: 840,
-        invoice_uom: 'Minutes',
-        po_qty: 14,
-        po_uom: 'Hours',
-        conversion_factor: 60,
-        explanation: '60 minutes per hour'
-      }
-    },
-    {
-      id: 'line-baseline-po2-7',
-      line_no: 7,
       sku: 'MA-145784',
       description: 'Landscaping Sand',
       qty: 2700,
@@ -703,15 +681,15 @@ export const generateBaselineInvoices = (): Invoice[] => {
       unit_price: 1.00,
       net_amount: 2700.00,
       line_total: 2700.00,
-      po_line_id: null,
+      po_line_id: 'po-line-9011-6',
       gr_line_id: null,
       ses_line_id: null
     }
   ];
 
-  const baselinePO2Subtotal = 15230.00; // Updated: 2000 + 1900 + 900 + 2400 + 2250 + 3080 + 2700
-  const baselinePO2Tax = 3046.00; // 20% VAT
-  const baselinePO2Total = 18276.00; // Updated: 15230 + 3046
+  const baselinePO2Subtotal = 12150.00; // Updated: 2000 + 1900 + 900 + 2400 + 2250 + 2700
+  const baselinePO2Tax = 2430.00; // 20% VAT
+  const baselinePO2Total = 14580.00; // Updated: 12150 + 2430
 
   mockInvoices.push({
     id: 'baseline-po-2',
@@ -1108,6 +1086,10 @@ export const generateBaselineInvoices = (): Invoice[] => {
         vendor_name: 'Premier Office Supplies',
         line_count: 4                 // Perfect match - 4 items
       }
+    },
+    // Extraction field confidences
+    extraction_field_confidences: {
+      po_numbers_cached: 0,  // 0% confidence - PO not found on document
     },
     // Display configuration for green Premier Office Supplies template
     display_config: {
@@ -2137,13 +2119,18 @@ export const getMockInvoiceById = (id: string): Invoice | null => {
 
 /**
  * Generate mock PO comparison data for mock invoices with POs
+ *
+ * @param invoiceId - Invoice ID
+ * @param invoiceData - Optional invoice data to use instead of fetching from static mock data
+ *                      This allows calculating match results for edited/updated invoice data
  */
-export const getMockPoComparisonData = (invoiceId: string): any | null => {
+export const getMockPoComparisonData = (invoiceId: string, invoiceData?: any): any | null => {
   if (!isMockInvoice(invoiceId)) {
     return null;
   }
 
-  const invoice = getMockInvoiceById(invoiceId);
+  // Use provided invoice data if available, otherwise fetch from static mock data
+  const invoice = invoiceData || getMockInvoiceById(invoiceId);
   if (!invoice || !invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0) {
     return null;
   }
@@ -2210,8 +2197,18 @@ export const getMockPoComparisonData = (invoiceId: string): any | null => {
       poLine = poLines.find(pl => pl.line_no === invLine.line_no);
     }
 
-    const qtyVariance = poLine ? invLine.qty - poLine.qty_ordered : 0;
-    const priceVariance = poLine ? invLine.unit_price - poLine.unit_price : 0;
+    // Handle UOM conversions: if line has uom_conversion, use converted quantity for comparison
+    let invoiceQtyForComparison = invLine.qty;
+    let invoicePriceForComparison = invLine.unit_price;
+    if (invLine.uom_conversion && poLine) {
+      // Convert invoice quantity to PO UOM for comparison
+      invoiceQtyForComparison = invLine.uom_conversion.po_qty;
+      // Adjust unit price to match converted quantity (total should remain same)
+      invoicePriceForComparison = (invLine.qty * invLine.unit_price) / invLine.uom_conversion.po_qty;
+    }
+
+    const qtyVariance = poLine ? invoiceQtyForComparison - poLine.qty_ordered : 0;
+    const priceVariance = poLine ? invoicePriceForComparison - poLine.unit_price : 0;
     // Use net_amount (before tax) for comparison with PO, not line_total (includes tax)
     const invoiceNetAmount = invLine.net_amount || (invLine.qty * invLine.unit_price);
     const poNetAmount = poLine ? (poLine.qty_ordered * poLine.unit_price) : 0;

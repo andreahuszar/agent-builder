@@ -27,6 +27,7 @@ interface Invoice {
   assigned_to_email?: string;
   po_numbers_cached?: string[];
   gr_numbers?: string[];
+  issues?: string[];
 }
 
 interface InvoiceTableProps {
@@ -243,15 +244,21 @@ export function InvoiceTable({ invoices, onDelete, onPOClick }: InvoiceTableProp
   };
 
   const getMatchStatusBadge = (invoice: Invoice) => {
-    // Determine the actual display status based on vendor configuration
+    // Determine the actual display status based on vendor configuration and issues
     const hasPO = invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0;
     const isVerifiedNonPOVendor = invoice.vendor_requires_po === false && invoice.vendor_is_verified === true;
-    
+    const hasIssues = invoice.issues && invoice.issues.length > 0;
+
     let displayStatus: string;
     let colorClass: string;
     let displayText: string;
-    
-    if (!hasPO) {
+
+    // If there are any issues, always show as Exception
+    if (hasIssues) {
+      displayStatus = 'exception';
+      displayText = 'Exception';
+      colorClass = 'bg-red-100 text-red-800';
+    } else if (!hasPO) {
       if (isVerifiedNonPOVendor) {
         // Legitimate Non-PO vendor
         displayStatus = 'non_po';
@@ -264,7 +271,7 @@ export function InvoiceTable({ invoices, onDelete, onPOClick }: InvoiceTableProp
         colorClass = 'bg-red-100 text-red-800';
       }
     } else {
-      // Has PO, use the match_status from database
+      // Has PO and no issues, use the match_status from database
       displayStatus = invoice.match_status;
       const matchStatusColors = {
         'not_matched': 'bg-gray-100 text-gray-800',
@@ -274,13 +281,13 @@ export function InvoiceTable({ invoices, onDelete, onPOClick }: InvoiceTableProp
         'non_po': 'bg-purple-100 text-purple-800',
       };
       colorClass = matchStatusColors[displayStatus as keyof typeof matchStatusColors] || 'bg-gray-100 text-gray-800';
-      displayText = displayStatus === 'non_po' 
+      displayText = displayStatus === 'non_po'
         ? 'Non-PO'
-        : displayStatus.split('_').map(word => 
+        : displayStatus.split('_').map(word =>
             word.charAt(0).toUpperCase() + word.slice(1)
           ).join(' ');
     }
-    
+
     return (
       <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${colorClass}`}>
         {displayText}

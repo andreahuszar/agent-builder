@@ -387,21 +387,6 @@ export const generateMockPOs = (): Record<string, POHeader> => {
         {
           id: 'po-line-9011-6',
           line_no: 6,
-          description: 'Legal Billing',
-          item_description: 'Legal Services',
-          sku: null,
-          qty_ordered: 14,
-          uom: 'Hours',
-          unit_price: 220.00,
-          qty_received_to_date: 14,
-          qty_invoiced_to_date: 14,
-          qty_remaining_to_receive: 0,
-          qty_remaining_to_invoice: 0,
-          status: 'matched'
-        },
-        {
-          id: 'po-line-9011-7',
-          line_no: 7,
           description: 'Landscaping Sand',
           item_description: 'Ground Sand - MA-145784',
           sku: 'MA-145784',
@@ -464,12 +449,12 @@ export const generateMockPOs = (): Record<string, POHeader> => {
           sku: null,
           qty_ordered: 1,
           uom: 'UNIT',
-          unit_price: 36000.00,
+          unit_price: 35000.00,
           qty_received_to_date: 1,
           qty_invoiced_to_date: 1,
           qty_remaining_to_receive: 0,
           qty_remaining_to_invoice: 0,
-          status: 'matched'
+          status: 'variance'
         }
       ],
       subtotal: 85200.00,

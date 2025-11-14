@@ -36,6 +36,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const { showToast } = useToast();
   // Track agent-accepted fields that are pending confirmation (not yet saved)
   const [agentPendingFields, setAgentPendingFields] = useState<{[key: string]: any}>({});
+  // Track accepted line item suggestions (persists across tab switches)
+  const [acceptedLineSuggestions, setAcceptedLineSuggestions] = useState<Set<string>>(new Set());
 
   // Check if this is a needs info status invoice
   const isNeedsInfoMode = invoice?.status === 'needs_info' || invoice?.status === 'needs-info';
@@ -100,10 +102,46 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     }
   };
 
-  const handleInvoiceUpdate = (updatedData: any) => {
+  const handleInvoiceUpdate = async (updatedData: any) => {
+    console.log('[InvoiceDetailClient] Updating invoice data', updatedData);
+
+    // Detect if PO was just assigned (changed from empty to populated)
+    const hadNoPO = !invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0;
+    const nowHasPO = updatedData.po_numbers_cached && updatedData.po_numbers_cached.length > 0;
+    const poWasJustAssigned = hadNoPO && nowHasPO;
+
+    // Detect if line items were updated (user accepted suggestion, edited line, etc.)
+    const linesChanged = JSON.stringify(invoice.lines) !== JSON.stringify(updatedData.lines);
+
     setInvoice(updatedData);
     // Keep agent-pending fields to show purple dot indicator in read-only mode
     // They indicate values that came from agent suggestions
+
+    // If PO was just assigned, fetch PO comparison data to enable line matching
+    if (poWasJustAssigned) {
+      console.log('[InvoiceDetailClient] PO was just assigned, fetching PO comparison data...');
+      await fetchPoComparisonData();
+    }
+
+    // If line items changed, recalculate match results to reflect updated matches
+    // This ensures AI suggestion acceptances are immediately reflected in variance counts
+    if (linesChanged && updatedData.po_numbers_cached && updatedData.po_numbers_cached.length > 0) {
+      console.log('[InvoiceDetailClient] Line items changed, recalculating match results...');
+
+      // For mock invoices, calculate match results directly using updated invoice data
+      const { getMockPoComparisonData, isMockInvoice } = await import('@/app/services/mockInvoiceService');
+      if (isMockInvoice(invoiceId)) {
+        const comparisonData = getMockPoComparisonData(invoiceId, updatedData);
+        if (comparisonData) {
+          setMatchResults(comparisonData.matchResults || []);
+          setPoComparisonData(comparisonData);
+          console.log('[InvoiceDetailClient] Match results recalculated with updated line data');
+        }
+      } else {
+        // For real invoices, refetch from API
+        await fetchMatchResults();
+      }
+    }
   };
 
   // Field candidate accept handler
@@ -163,6 +201,15 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         updated.ocr_extractions = newExtractions;
       }
 
+      return updated;
+    });
+  };
+
+  // Line item suggestion accept handler
+  const handleAcceptLineSuggestion = (lineId: string) => {
+    setAcceptedLineSuggestions(prev => {
+      const updated = new Set(prev);
+      updated.add(lineId);
       return updated;
     });
   };
@@ -524,6 +571,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
               onFieldFocus={setFocusedFieldName}
               agentPendingFields={agentPendingFields}
               lineItemsErrorCount={lineItemsErrorCount}
+              acceptedLineSuggestions={acceptedLineSuggestions}
+              onAcceptLineSuggestion={handleAcceptLineSuggestion}
             />
           </div>
         </div>
@@ -586,6 +635,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           lineItemsErrorCount={lineItemsErrorCount}
           isReprocessingField={isReprocessingField}
           onFieldAutoReprocess={handleAutoReprocess}
+          acceptedLineSuggestions={acceptedLineSuggestions}
+          onAcceptLineSuggestion={handleAcceptLineSuggestion}
         />
       </ResizablePanel>
     );

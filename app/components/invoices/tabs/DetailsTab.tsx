@@ -681,10 +681,27 @@ export function DetailsTab({
 
   // Helper function to accept a PO number and update state
   const acceptPONumber = (poNumber: string) => {
+    // Extract PO ID from PO number (e.g., 'PO-2025-8901' -> '8901')
+    const poId = poNumber.split('-').pop() || '';
+
+    // Update line items to include po_line_id references
+    const updatedLines = invoiceData.lines?.map((line: any, index: number) => ({
+      ...line,
+      po_line_id: `po-line-${poId}-${line.line_no || index + 1}`
+    })) || [];
+
     // Update invoice data with the accepted PO
     const updatedData = {
       ...invoiceData,
       po_numbers_cached: [poNumber],
+      po_id: `po-${poId}`,
+      // Update match_status to 'matched' when PO is accepted
+      match_status: 'matched',
+      // Clear issues array since PO is now matched
+      issues: [],
+      // Update line items with PO references
+      lines: updatedLines,
+      invoice_lines: updatedLines,
       // Remove the close_match_po suggestion since it's been accepted
       close_match_po: undefined,
       // Remove validation warnings for this field
@@ -1133,7 +1150,11 @@ export function DetailsTab({
                     PO Number
                     {/* Hide confidence pill for Non-PO invoices */}
                     {!invoiceData.id?.startsWith('baseline-nonpo-') && (
-                      <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.po_numbers_cached} isEditMode={isEditing} />
+                      <FieldConfidencePill
+                        confidence={invoiceData.extraction_field_confidences?.po_numbers_cached}
+                        isEditMode={isEditing}
+                        hasValue={!!(invoiceData.po_numbers_cached && invoiceData.po_numbers_cached.length > 0)}
+                      />
                     )}
                   </span>
                   {/* Close Match link on opposite side */}
@@ -1225,6 +1246,23 @@ export function DetailsTab({
                         <p className="text-sm font-medium text-gray-950">
                           {displayPONumber}
                         </p>
+                        {/* Add auto-correction indicator if field was auto-corrected */}
+                        {(() => {
+                          const autoCorrection = getAutoCorrection('po_numbers_cached');
+                          return autoCorrection && (
+                            <AutoCorrectionIndicator
+                              fieldLabel="PO Number"
+                              originalValue={autoCorrection.original_value}
+                              correctedValue={autoCorrection.corrected_value}
+                              reason={autoCorrection.reason}
+                              vendorName={autoCorrection.vendor_name}
+                              recentDocuments={autoCorrection.recent_documents}
+                              documentType={autoCorrection.document_type}
+                              fieldName="po_numbers_cached"
+                              onFieldFocus={onFieldFocus}
+                            />
+                          );
+                        })()}
                         {isReprocessingField === 'po_numbers_cached' && (
                           <Loader2 className="h-3 w-3 ml-1.5 animate-spin text-purple-600" />
                         )}

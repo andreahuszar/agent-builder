@@ -56,6 +56,9 @@ interface InvoiceTabsProps {
   // Auto-reprocess state for Customer ID field
   isReprocessingField?: string | null;
   onFieldAutoReprocess?: (field: string) => void;
+  // Line item suggestion acceptance (persists across tab switches)
+  acceptedLineSuggestions?: Set<string>;
+  onAcceptLineSuggestion?: (lineId: string) => void;
 }
 
 export function InvoiceTabs({
@@ -89,6 +92,8 @@ export function InvoiceTabs({
   lineItemsErrorCount = 0,
   isReprocessingField = null,
   onFieldAutoReprocess,
+  acceptedLineSuggestions = new Set(),
+  onAcceptLineSuggestion,
 }: InvoiceTabsProps) {
   // Determine initial tab based on invoice status
   const getInitialTab = (): TabId => {
@@ -165,10 +170,10 @@ export function InvoiceTabs({
     };
   }, []);
 
-  // Use shared exception counter
+  // Use shared exception counter (with accepted suggestions to filter resolved variances)
   const exceptionResult = React.useMemo(() =>
-    calculateInvoiceExceptions(invoiceData, matchResults, poComparisonData, 2500),
-    [matchResults, invoiceData, poComparisonData]
+    calculateInvoiceExceptions(invoiceData, matchResults, poComparisonData, 2500, acceptedLineSuggestions),
+    [matchResults, invoiceData, poComparisonData, acceptedLineSuggestions]
   );
 
   // Count ALL exceptions for badge (errors + warnings + info)
@@ -224,7 +229,7 @@ export function InvoiceTabs({
     },
     {
       id: 'line-items' as TabId,
-      label: 'Items',
+      label: 'Line Items',
       icon: Package,
       count: invoiceData?.lines?.length,
       hasLineItemsError: lineItemsErrorCount > 0,
@@ -274,7 +279,7 @@ export function InvoiceTabs({
         key={tab.id}
         onClick={() => setActiveTab(tab.id)}
         className={`
-          group relative flex-1 h-full px-3 text-center text-sm font-medium flex items-center justify-center
+          group relative flex-1 h-full px-3 text-center text-xs font-medium flex items-center justify-center
           transition-colors focus:z-10
           ${tab.id === 'matching' && tab.hasIssues
             ? 'text-red-700 hover:text-red-700'
@@ -439,6 +444,8 @@ export function InvoiceTabs({
             showComparison={!hideComparison && poComparisonData?.poData?.po_lines?.length > 0}
             startExpanded={true}
             useDetailedVarianceColumns={true}
+            acceptedSuggestions={acceptedLineSuggestions}
+            onAcceptSuggestion={onAcceptLineSuggestion}
           />
         )}
         {activeTab === 'matching' && (
