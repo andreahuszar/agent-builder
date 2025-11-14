@@ -1059,7 +1059,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_rate_percent: 20,
     total: missingPOTotal,
     status: 'verification', // Verification stage (close match PO needs user confirmation)
-    match_status: null, // No PO assigned yet, awaiting user decision on close_match_po suggestion
+    match_status: 'exception', // Missing PO - no PO assigned yet
     type: 'PO',
     vendor_requires_po: true, // This vendor requires PO
     vendor_is_verified: true,
@@ -1070,7 +1070,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     po_id: null, // No PO ID until user accepts the close_match_po suggestion
     gr_numbers: [],
     docType: 'Invoice',
-    issues: [],
+    issues: ['Missing PO'],
     created_at: missingPODate.toISOString(),
     updated_at: missingPODate.toISOString(),
     data_ingestion_date: missingPODate.toISOString().split('T')[0],
