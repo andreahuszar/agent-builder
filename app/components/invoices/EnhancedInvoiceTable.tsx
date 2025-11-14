@@ -1728,7 +1728,10 @@ export function EnhancedInvoiceTable({
                             ) : (
                               <button
                                 key={poNumber}
-                                onClick={() => onPOClick?.(poNumber)}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onPOClick?.(poNumber);
+                                }}
                                 className="text-purple-600 hover:text-purple-700 text-left text-sm font-medium"
                               >
                                 {poNumber}
