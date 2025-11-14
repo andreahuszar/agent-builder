@@ -216,7 +216,7 @@ export function SpectreProfessionalTemplate({
               </SelectableText>
             </FieldWithOCR>
           </div>
-          <div className="bg-red-700 text-white px-4 py-3 mt-2 rounded">
+          <div className="bg-red-800 text-white px-4 py-3 mt-2 rounded">
             <div className="flex justify-between items-center">
               <span className="text-sm font-semibold">Total ({invoice.currency})</span>
               <FieldWithOCR fieldName="total">
