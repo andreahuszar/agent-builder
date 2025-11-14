@@ -660,7 +660,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
       suggested_po_match: {
         po_line_id: 'po-line-9011-5',
         po_line_no: 5,
-        po_description: 'Premium pleated air filters with MERV 9 rating',
+        po_description: 'Air Filters MERV 9 - EQ-800111',
         po_qty: 50,
         po_unit_price: 45.00,
         po_uom: 'EA',
