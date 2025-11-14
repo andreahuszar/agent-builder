@@ -594,6 +594,23 @@ export function LineItemsPreviewPanel({
     return errorCount;
   };
 
+  // Count missing (not matched) lines
+  const countMissingLines = () => {
+    if (!showComparison || poLines.length === 0) {
+      return 0;
+    }
+
+    let missingCount = 0;
+    invoiceLines.forEach((invoiceLine, index) => {
+      const poLine = getMatchedPOLine(invoiceLine, index);
+      const status = getLineStatus(invoiceLine, poLine);
+      if (status === 'missing') {
+        missingCount++;
+      }
+    });
+    return missingCount;
+  };
+
   // Check if there's a mismatch (kept for PO comparison mode)
   const hasMismatch = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null) => {
     if (!poLine) return false;
@@ -763,6 +780,19 @@ export function LineItemsPreviewPanel({
     showComparison,
     poLines,
     matchResults,
+    invoiceLines,
+    acceptedSuggestions,
+    rejectedSuggestions,
+    unmatchedLines,
+    customRules,
+    manuallyMatchedLines
+  ]);
+
+  const missingCount = useMemo(() => {
+    return countMissingLines();
+  }, [
+    showComparison,
+    poLines,
     invoiceLines,
     acceptedSuggestions,
     rejectedSuggestions,
@@ -1043,12 +1073,12 @@ export function LineItemsPreviewPanel({
               <AlertCircle className="h-3 w-3" />
               {errorCount} {errorCount === 1 ? 'variance' : 'variances'}
             </span>
-          ) : (
+          ) : errorCount === 0 && missingCount === 0 ? (
             <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
               <CheckCircle className="h-3 w-3" />
-              Valid
+              {showComparison && poLines.length > 0 ? 'Fully Matched' : 'Valid'}
             </span>
-          )}
+          ) : null}
         </div>
         <div className="flex items-center gap-2">
           <button

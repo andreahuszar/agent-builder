@@ -777,48 +777,80 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po-legal-1-1',
       line_no: 1,
-      description: 'Legal Billing - Contract Review & Advisory',
-      qty: 840,
-      uom: 'Minutes',
-      unit_price: 3.67,
-      net_amount: 3080.00,
-      tax_amount: 616.00,
-      line_total: 3696.00,
+      description: 'M&A Contract Preparation',
+      qty: 1.00,
+      uom: 'UNIT',
+      unit_price: 24000.00,
+      net_amount: 24000.00,
+      tax_rate: 20,
+      tax_amount: 4800.00,
+      line_total: 28800.00,
       po_line_id: 'po-line-9012-1',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-baseline-po-legal-1-2',
+      line_no: 2,
+      description: 'Advisory - M&A, Financial Services',
+      qty: 840.00,
+      uom: 'MIN',
+      unit_price: 30.00,
+      net_amount: 25200.00,
+      tax_rate: 20,
+      tax_amount: 5040.00,
+      line_total: 30240.00,
+      po_line_id: 'po-line-9012-2',
       gr_line_id: null,
       ses_line_id: null,
       // UOM conversion metadata for smart match
       uom_conversion: {
         invoice_qty: 840,
-        invoice_uom: 'Minutes',
+        invoice_uom: 'MIN',
         po_qty: 14,
-        po_uom: 'Hours',
+        po_uom: 'HOUR',
         conversion_factor: 60,
         explanation: '60 minutes per hour'
       }
+    },
+    {
+      id: 'line-baseline-po-legal-1-3',
+      line_no: 3,
+      description: 'Board Transition Strategy',
+      qty: 1.00,
+      uom: 'UNIT',
+      unit_price: 36000.00,
+      net_amount: 36000.00,
+      tax_rate: 20,
+      tax_amount: 7200.00,
+      line_total: 43200.00,
+      po_line_id: 'po-line-9012-3',
+      gr_line_id: null,
+      ses_line_id: null
     }
   ];
 
   mockInvoices.push({
     id: 'baseline-po-legal-1',
-    invoice_number: 'INV-GL-2025-0089',
-    vendor_name_snapshot: 'Green Lawn Services Ltd',
-    vendor_id: 'VND0001621',
-    vendor_tax_id_snapshot: '329-87-4521',
-    vendor_address_snapshot: '15 Meadowbrook Lane, Bristol, England, BS8 2TN, United Kingdom',
-    vendor_email: 'accounts@greenlawn.co.uk',
-    vendor_phone: '+44 117 928 4521',
-    customer_no: 'GL-4521',
-    job_number: 'PROJ-2025-089',
-    invoice_date: '2025-10-31',
-    due_date: '2025-12-01',
+    invoice_number: 'INV1881222',
+    vendor_name_snapshot: 'Spectre Associates LLC',
+    vendor_id: 'VND0047782',
+    vendor_tax_id_snapshot: '145 631 10',
+    vendor_address_snapshot: 'Office 7, Radance Plaze, Orpinton Avenue, London EC1 7AH',
+    vendor_email: 'receiveables@spectrellc.com',
+    vendor_phone: '+44 208 768 1256',
+    customer_no: 'Y9222-12',
+    job_number: 'BG8891_470',
+    invoice_date: '2025-11-11',
+    due_date: '2025-11-12',
+    payment_terms: '30',
     currency: 'GBP',
-    subtotal: 3080.00,
-    tax_total: 616.00,
+    subtotal: 85200.00,
+    tax_total: 17040.00,
     tax_rate_percent: 20,
-    total: 3696.00,
+    total: 102240.00,
     status: 'verification',
-    match_status: 'matched', // Changed from 'variance' to 'matched' since UOM is resolved
+    match_status: 'matched',
     type: 'PO',
     vendor_requires_po: true,
     vendor_is_verified: true,
@@ -826,7 +858,11 @@ export const generateBaselineInvoices = (): Invoice[] => {
     assigned_to_name: 'Emily Roberts',
     assigned_to_user_id: 'user-3',
     assigned_to_email: 'emily.roberts@company.com',
-    po_numbers_cached: ['PO-2025-9012'],
+    cost_center: 'CC-6606',
+    cost_center_name: 'Legal',
+    gl_code: 'GL-1002',
+    department: 'Manufacturing',
+    po_numbers_cached: ['BG8891_470'],
     gr_numbers: [],
     docType: 'Invoice',
     issues: [], // UOM mismatch is resolved, so no issues
@@ -835,20 +871,35 @@ export const generateBaselineInvoices = (): Invoice[] => {
     data_ingestion_date: baselinePOLegal1Date.toISOString().split('T')[0],
     lines: baselinePOLegal1Lines,
     invoice_lines: baselinePOLegal1Lines,
+    // Bill-to customer information
+    bill_to_snapshot: {
+      legal_name: 'GSPV Ltd',
+      tax_id: '927 8131 1',
+      address: 'Senna Building, Gorsuch Pl, London, E2 8JF',
+      email: null,
+      phone: null
+    },
     // Payment bank details
     payment_bank_details: {
-      bank_name: 'HSBC UK',
-      account_name: 'Green Lawn Services Ltd',
-      account_number: '12458796',
-      sort_code: '40-47-84',
-      iban: 'GB29HBUK40478412458796',
-      swift: 'HBUKGB4B',
+      bank_name: 'BARCLAYS',
+      account_name: 'Spectre Associates LLC',
+      account_number: '31926819',
+      sort_code: '60-16-13',
+      iban: 'GB 13 BUKB 601613 31926819',
+      swift: 'BARCGB22',
       bank_currency: 'GBP',
-      bank_address: 'Churchill House, Bristol, BS1 5AN, United Kingdom'
+      bank_address: 'BARCLAYS BANK PLC WHOLESALE, 1 CHURCHILL PLACE, LONDON'
     },
-    // Display configuration for blue header template
+    // Display configuration for blue header template with Spectre logo
     display_config: {
-      template: 'blue-header'
+      template: 'blue-header',
+      config: {
+        logo: {
+          url: '/spectre-logo.png',
+          width: 150,
+          height: 75
+        }
+      }
     }
   } as Invoice);
 

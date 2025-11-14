@@ -418,10 +418,10 @@ export const generateMockPOs = (): Record<string, POHeader> => {
       subtotal: 15230.00,
       total: 18276.00
     },
-    'PO-2025-9012': {
+    'BG8891_470': {
       id: 'mock-po-9012',
-      po_number: 'PO-2025-9012',
-      vendor_name: 'Green Lawn Services Ltd',
+      po_number: 'BG8891_470',
+      vendor_name: 'Spectre Associates LLC',
       order_date: '2025-10-25',
       currency: 'GBP',
       status: 'open',
@@ -429,21 +429,51 @@ export const generateMockPOs = (): Record<string, POHeader> => {
         {
           id: 'po-line-9012-1',
           line_no: 1,
-          description: 'Legal Services - Contract Review',
+          description: 'M&A Contract Preparation',
+          item_description: 'M&A Contract Preparation',
+          sku: null,
+          qty_ordered: 1,
+          uom: 'UNIT',
+          unit_price: 24000.00,
+          qty_received_to_date: 1,
+          qty_invoiced_to_date: 1,
+          qty_remaining_to_receive: 0,
+          qty_remaining_to_invoice: 0,
+          status: 'matched'
+        },
+        {
+          id: 'po-line-9012-2',
+          line_no: 2,
+          description: 'Advisory - M&A, Financial Services',
           item_description: 'Legal Advisory Services',
           sku: null,
           qty_ordered: 14,
-          uom: 'Hours',
-          unit_price: 220.00,
+          uom: 'HOUR',
+          unit_price: 1800.00,
           qty_received_to_date: 14,
           qty_invoiced_to_date: 14,
           qty_remaining_to_receive: 0,
           qty_remaining_to_invoice: 0,
           status: 'matched'
+        },
+        {
+          id: 'po-line-9012-3',
+          line_no: 3,
+          description: 'Board Transition Strategy',
+          item_description: 'Board Transition Strategy',
+          sku: null,
+          qty_ordered: 1,
+          uom: 'UNIT',
+          unit_price: 36000.00,
+          qty_received_to_date: 1,
+          qty_invoiced_to_date: 1,
+          qty_remaining_to_receive: 0,
+          qty_remaining_to_invoice: 0,
+          status: 'matched'
         }
       ],
-      subtotal: 3080.00,
-      total: 3696.00
+      subtotal: 85200.00,
+      total: 102240.00
     },
     'PO-2025-7755': {
       id: 'mock-po-7755',
