@@ -99,7 +99,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_rate_percent: 20,
     total: baselinePOTotal,
     status: 'verification', // Verification stage (AI suggestions need review)
-    match_status: 'matched', // Perfect 2-way PO match
+    match_status: 'exception', // Has missing field exception
     type: 'PO',
     vendor_requires_po: true,
     vendor_is_verified: true,
