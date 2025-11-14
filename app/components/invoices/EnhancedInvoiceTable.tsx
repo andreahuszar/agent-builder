@@ -1712,7 +1712,10 @@ export function EnhancedInvoiceTable({
 
                   {/* 18. PO No. (conditional) */}
                   {(activeView === 'all' || activeView === 'po') && (
-                    <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium">
+                    <td
+                      onClick={(e) => e.stopPropagation()}
+                      className="px-6 py-2.5 whitespace-nowrap text-sm font-medium"
+                    >
                       {invoice.type === 'Non-PO' ? (
                         <span className="text-sm font-medium text-gray-950">-</span>
                       ) : invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? (
@@ -1729,10 +1732,20 @@ export function EnhancedInvoiceTable({
                               <button
                                 key={poNumber}
                                 onClick={(e) => {
+                                  console.log('[PO Click Debug]', {
+                                    poNumber,
+                                    invoiceId: invoice.id,
+                                    onPOClickExists: !!onPOClick
+                                  });
                                   e.stopPropagation();
-                                  onPOClick?.(poNumber);
+                                  if (onPOClick) {
+                                    console.log('[PO Click] Calling onPOClick with:', poNumber);
+                                    onPOClick(poNumber);
+                                  } else {
+                                    console.error('[PO Click] onPOClick is undefined!');
+                                  }
                                 }}
-                                className="text-purple-600 hover:text-purple-700 text-left text-sm font-medium"
+                                className="text-purple-600 hover:text-purple-700 text-left text-sm font-medium cursor-pointer"
                               >
                                 {poNumber}
                               </button>
