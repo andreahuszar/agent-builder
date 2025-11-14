@@ -89,7 +89,7 @@ interface EnhancedInvoiceTableProps {
   activeTab?: string;
 }
 
-type SortField = 'status' | 'docType' | 'invoice_number' | 'vendor_name_snapshot' | 'invoice_date' | 'due_date' | 'dueStatus' | 'data_ingestion_date' | 'ingestion_source' | 'total' | 'currency' | 'match_status' | 'division' | 'type' | 'assignedTo' | 'requisitioner' | 'costCentre' | 'accountCode' | 'approver' | 'daysWithApprover' | 'vendorId' | 'aging' | 'agingBracket' | 'netAmount' | 'customer_no' | 'poNumbers' | 'grNumbers' | 'reason';
+type SortField = 'status' | 'docType' | 'invoice_number' | 'vendor_name_snapshot' | 'invoice_date' | 'due_date' | 'dueStatus' | 'data_ingestion_date' | 'email_received_date' | 'ingestion_source' | 'total' | 'currency' | 'match_status' | 'division' | 'type' | 'assignedTo' | 'requisitioner' | 'costCentre' | 'accountCode' | 'approver' | 'daysWithApprover' | 'vendorId' | 'aging' | 'agingBracket' | 'netAmount' | 'customer_no' | 'poNumbers' | 'grNumbers' | 'reason';
 type SortDirection = 'asc' | 'desc';
 
 // Helper function to format exception names (removed code prefixes)
@@ -923,6 +923,7 @@ export function EnhancedInvoiceTable({
         <table className="min-w-full divide-y divide-gray-200">
           <thead className="bg-white border-b border-gray-200">
             <tr>
+              {/* 1. Checkbox */}
               <th scope="col" className="sticky left-0 z-10 bg-white px-6 py-2 text-left shadow-[2px_0_5px_-2px_rgba(0,0,0,0.1)]">
                 <button
                   onClick={onToggleAll}
@@ -937,6 +938,8 @@ export function EnhancedInvoiceTable({
                   )}
                 </button>
               </th>
+
+              {/* 2. Source */}
               <th scope="col"
                 ref={sourceHeaderRef}
                 className="px-2 py-2.5 text-center text-sm font-semibold text-gray-800">
@@ -948,6 +951,20 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('ingestion_source')}
                 </button>
               </th>
+
+              {/* 3. Received Date */}
+              <th scope="col"
+                className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800">
+                <button
+                  onClick={() => handleSort('email_received_date')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  <span className="truncate">Received Date</span>
+                  {getSortIcon('email_received_date')}
+                </button>
+              </th>
+
+              {/* 4. Processed Date */}
               <th scope="col"
                 ref={ingestionDateHeaderRef}
                 className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800">
@@ -955,32 +972,12 @@ export function EnhancedInvoiceTable({
                   onClick={() => handleSort('data_ingestion_date')}
                   className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                 >
-                  <span className="truncate">Ingestion Date</span>
+                  <span className="truncate">Processed Date</span>
                   {getSortIcon('data_ingestion_date')}
                 </button>
               </th>
-              <th scope="col"
-                ref={vendorHeaderRef}
-                className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800 max-w-[200px]">
-                <button
-                  onClick={() => handleSort('vendor_name_snapshot')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  Vendor
-                  {getSortIcon('vendor_name_snapshot')}
-                </button>
-              </th>
-              <th scope="col"
-                ref={vendorIdHeaderRef}
-                className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800">
-                <button
-                  onClick={() => handleSort('vendorId')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  <span className="truncate">Vendor ID</span>
-                  {getSortIcon('vendorId')}
-                </button>
-              </th>
+
+              {/* 5. Invoice No. */}
               <th scope="col"
                 ref={invoiceHeaderRef}
                 className={cn(
@@ -995,6 +992,122 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('invoice_number')}
                 </button>
               </th>
+
+              {/* 6. Invoice Date */}
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
+                <button
+                  onClick={() => handleSort('invoice_date')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  <span className="truncate">Invoice Date</span>
+                  {getSortIcon('invoice_date')}
+                </button>
+              </th>
+
+              {/* 7. Vendor ID */}
+              <th scope="col"
+                ref={vendorIdHeaderRef}
+                className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800">
+                <button
+                  onClick={() => handleSort('vendorId')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  <span className="truncate">Vendor ID</span>
+                  {getSortIcon('vendorId')}
+                </button>
+              </th>
+
+              {/* 8. Vendor */}
+              <th scope="col"
+                ref={vendorHeaderRef}
+                className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800 max-w-[200px]">
+                <button
+                  onClick={() => handleSort('vendor_name_snapshot')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  Vendor
+                  {getSortIcon('vendor_name_snapshot')}
+                </button>
+              </th>
+
+              {/* 9. Currency */}
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
+                <button
+                  onClick={() => handleSort('currency')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  Currency
+                  {getSortIcon('currency')}
+                </button>
+              </th>
+
+              {/* 10. Net Amount */}
+              <th scope="col" className="px-3 py-2.5 text-right text-sm font-semibold text-gray-800">
+                <button
+                  onClick={() => handleSort('netAmount')}
+                  className="flex items-end gap-1 hover:text-gray-900 justify-end w-full text-right"
+                >
+                  <span className="truncate text-right">Net Amount</span>
+                  {getSortIcon('netAmount')}
+                </button>
+              </th>
+
+              {/* 11. Total Amount */}
+              <th scope="col" className="px-3 py-2.5 text-right text-sm font-semibold text-gray-800">
+                <button
+                  onClick={() => handleSort('total')}
+                  className="flex items-end gap-1 hover:text-gray-900 justify-end w-full text-right"
+                >
+                  <span className="truncate text-right">Total Amount</span>
+                  {getSortIcon('total')}
+                </button>
+              </th>
+
+              {/* 12. Due Date */}
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
+                <button
+                  onClick={() => handleSort('due_date')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  <span className="truncate">Due Date</span>
+                  {getSortIcon('due_date')}
+                </button>
+              </th>
+
+              {/* 13. Aging (from due date) */}
+              <th scope="col" className="px-3 py-2.5 text-right text-sm font-semibold text-gray-800">
+                <button
+                  onClick={() => handleSort('aging')}
+                  className="flex items-end gap-1 hover:text-gray-900 justify-end w-full text-right"
+                >
+                  Aging (from due date)
+                  {getSortIcon('aging')}
+                </button>
+              </th>
+
+              {/* 14. Doc. Type */}
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
+                <button
+                  onClick={() => handleSort('docType')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  <span className="truncate">Doc. Type</span>
+                  {getSortIcon('docType')}
+                </button>
+              </th>
+
+              {/* 15. Workflow Status */}
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
+                <button
+                  onClick={() => handleSort('status')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  <span className="truncate">Workflow Status</span>
+                  {getSortIcon('status')}
+                </button>
+              </th>
+
+              {/* 16. Processed Status */}
               <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('match_status')}
@@ -1004,6 +1117,8 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('match_status')}
                 </button>
               </th>
+
+              {/* 17. Status Reason */}
               {activeTab !== 'needs-info' && (
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
@@ -1015,105 +1130,8 @@ export function EnhancedInvoiceTable({
                   </button>
                 </th>
               )}
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                <button
-                  onClick={() => handleSort('currency')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  Currency
-                  {getSortIcon('currency')}
-                </button>
-              </th>
-              <th scope="col" className="px-3 py-2.5 text-right text-sm font-semibold text-gray-800">
-                <button
-                  onClick={() => handleSort('total')}
-                  className="flex items-end gap-1 hover:text-gray-900 justify-end w-full text-right"
-                >
-                  <span className="truncate text-right">Total Amount</span>
-                  {getSortIcon('total')}
-                </button>
-              </th>
-              <th scope="col" className="px-3 py-2.5 text-right text-sm font-semibold text-gray-800">
-                <button
-                  onClick={() => handleSort('netAmount')}
-                  className="flex items-end gap-1 hover:text-gray-900 justify-end w-full text-right"
-                >
-                  <span className="truncate text-right">Net Amount</span>
-                  {getSortIcon('netAmount')}
-                </button>
-              </th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                <button
-                  onClick={() => handleSort('customer_no')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  <span className="truncate">Customer No.</span>
-                  {getSortIcon('customer_no')}
-                </button>
-              </th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                <button
-                  onClick={() => handleSort('docType')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  <span className="truncate">Doc. Type</span>
-                  {getSortIcon('docType')}
-                </button>
-              </th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                <button
-                  onClick={() => handleSort('invoice_date')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  <span className="truncate">Invoice Date</span>
-                  {getSortIcon('invoice_date')}
-                </button>
-              </th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                <button
-                  onClick={() => handleSort('due_date')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  <span className="truncate">Due Date</span>
-                  {getSortIcon('due_date')}
-                </button>
-              </th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                <button
-                  onClick={() => handleSort('dueStatus')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  <span className="truncate">Due Status</span>
-                  {getSortIcon('dueStatus')}
-                </button>
-              </th>
-              <th scope="col" className="px-3 py-2.5 text-right text-sm font-semibold text-gray-800">
-                <button
-                  onClick={() => handleSort('aging')}
-                  className="flex items-end gap-1 hover:text-gray-900 justify-end w-full text-right"
-                >
-                  Aging (days)
-                  {getSortIcon('aging')}
-                </button>
-              </th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                <button
-                  onClick={() => handleSort('agingBracket')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  <span className="truncate">Aging Bracket</span>
-                  {getSortIcon('agingBracket')}
-                </button>
-              </th>
-              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
-                <button
-                  onClick={() => handleSort('status')}
-                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
-                >
-                  <span className="truncate">Workflow Status</span>
-                  {getSortIcon('status')}
-                </button>
-              </th>
+
+              {/* 18. PO No. */}
               {(activeView === 'all' || activeView === 'po') && (
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
@@ -1125,17 +1143,21 @@ export function EnhancedInvoiceTable({
                   </button>
                 </th>
               )}
+
+              {/* 19. Receipt No. */}
               {(activeView === 'all' || activeView === 'po') && (
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
                     onClick={() => handleSort('grNumbers')}
                     className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
                   >
-                    GR No.
+                    Receipt No.
                     {getSortIcon('grNumbers')}
                   </button>
                 </th>
               )}
+
+              {/* 20. Division */}
               {activeTab !== 'needs-info' && (
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <div className="flex items-center gap-1">
@@ -1223,6 +1245,19 @@ export function EnhancedInvoiceTable({
                   </div>
                 </th>
               )}
+
+              {/* 21. Customer No. */}
+              <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
+                <button
+                  onClick={() => handleSort('customer_no')}
+                  className="flex items-start gap-1 hover:text-gray-900 w-full text-left"
+                >
+                  <span className="truncate">Customer No.</span>
+                  {getSortIcon('customer_no')}
+                </button>
+              </th>
+
+              {/* 22. Cost Centre */}
               {activeTab !== 'needs-info' && (
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
@@ -1234,6 +1269,8 @@ export function EnhancedInvoiceTable({
                   </button>
                 </th>
               )}
+
+              {/* 23. Account Code */}
               {activeTab !== 'needs-info' && (
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
@@ -1245,6 +1282,8 @@ export function EnhancedInvoiceTable({
                   </button>
                 </th>
               )}
+
+              {/* 24. Approver */}
               {activeTab !== 'needs-info' && (
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
@@ -1256,6 +1295,8 @@ export function EnhancedInvoiceTable({
                   </button>
                 </th>
               )}
+
+              {/* 25. Days with Approver */}
               {activeTab !== 'needs-info' && (
                 <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                   <button
@@ -1267,6 +1308,8 @@ export function EnhancedInvoiceTable({
                   </button>
                 </th>
               )}
+
+              {/* 26. Owner */}
               <th scope="col" className="px-3 py-3.5 text-left text-sm font-semibold text-gray-800">
                 <button
                   onClick={() => handleSort('assignedTo')}
@@ -1276,6 +1319,8 @@ export function EnhancedInvoiceTable({
                   {getSortIcon('assignedTo')}
                 </button>
               </th>
+
+              {/* 27. Actions */}
               <th ref={actionsHeaderRef} scope="col" className="px-6 py-1.5 text-right text-sm font-semibold text-gray-800">
                 Actions
               </th>
@@ -1346,24 +1391,17 @@ export function EnhancedInvoiceTable({
                     </TooltipProvider>
                   </td>
 
-                  {/* 3. Ingestion Date */}
+                  {/* 3. Received Date */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {invoice.email_received_date ? formatDate(invoice.email_received_date) : '-'}
+                  </td>
+
+                  {/* 4. Processed Date */}
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.data_ingestion_date ? formatDate(invoice.data_ingestion_date) : formatDate(new Date().toISOString())}
                   </td>
 
-                  {/* 4. Vendor */}
-                  <td className="px-6 py-2.5 text-sm font-medium text-gray-950 max-w-[200px]">
-                    <div className="truncate" title={invoice.vendor_name_snapshot || ''}>
-                      {invoice.vendor_name_snapshot || ''}
-                    </div>
-                  </td>
-
-                  {/* 5. Vendor ID */}
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {invoice.vendor_name_snapshot ? getVendorId(invoice.vendor_name_snapshot) : ''}
-                  </td>
-
-                  {/* 6. Invoice No. (sticky left-[64px] when table has invoices) */}
+                  {/* 5. Invoice No. (sticky left-[64px] when table has invoices) */}
                   <td className={cn(
                     "px-6 py-2.5 whitespace-nowrap",
                     hasInvoices && "sticky left-[64px] z-10",
@@ -1405,7 +1443,116 @@ export function EnhancedInvoiceTable({
                     </div>
                   </td>
 
-                  {/* 7. Processed Status */}
+                  {/* 6. Invoice Date */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {invoice.invoice_date ? formatDate(invoice.invoice_date) : ''}
+                  </td>
+
+                  {/* 7. Vendor ID */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {invoice.vendor_name_snapshot ? getVendorId(invoice.vendor_name_snapshot) : ''}
+                  </td>
+
+                  {/* 8. Vendor */}
+                  <td className="px-6 py-2.5 text-sm font-medium text-gray-950 max-w-[200px]">
+                    <div className="truncate" title={invoice.vendor_name_snapshot || ''}>
+                      {invoice.vendor_name_snapshot || ''}
+                    </div>
+                  </td>
+
+                  {/* 9. Currency */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {invoice.currency || ''}
+                  </td>
+
+                  {/* 10. Net Amount */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
+                    {invoice.total !== undefined && invoice.total !== null ? (() => {
+                      // Mock net amount as 90% of total for demonstration
+                      const netAmount = invoice.total * 0.9;
+                      return formatCurrency(netAmount, invoice.currency || 'USD');
+                    })() :
+                      <span className="text-red-600 font-semibold">-</span>
+                    }
+                  </td>
+
+                  {/* 11. Total Amount */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-bold text-gray-950 text-right">
+                    {invoice.total !== undefined && invoice.total !== null ?
+                      formatCurrency(invoice.total, invoice.currency || 'USD') : ''
+                    }
+                  </td>
+
+                  {/* 12. Due Date */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {formatDate(invoice.due_date)}
+                  </td>
+
+                  {/* 13. Aging (from due date) */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
+                    {typeof window !== 'undefined' ? (() => {
+                      const aging = calculateAging(invoice.due_date);
+                      if (aging > 0) {
+                        return <span className="text-red-600">{aging}</span>;
+                      } else if (aging === 0) {
+                        return <span className="text-orange-600">Due today</span>;
+                      } else {
+                        return <span className="text-green-600">{Math.abs(aging)}</span>;
+                      }
+                    })() : '-'}
+                  </td>
+
+                  {/* 14. Doc. Type */}
+                  <td className="px-6 py-2.5 whitespace-nowrap">
+                    <span className={cn(
+                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                      getDocTypeColor(invoice.docType || 'Invoice')
+                    )}>
+                      {invoice.docType || 'Invoice'}
+                    </span>
+                  </td>
+
+                  {/* 15. Workflow Status */}
+                  <td className="px-6 py-2.5 whitespace-nowrap">
+                    {(() => {
+                      const forceReady = activeTab === 'ready-to-post';
+                      const chipClass = forceReady
+                        ? 'bg-green-50 text-green-700 ring-1 ring-green-200'
+                        : getStatusColor(invoice.status, !!invoice.approver);
+
+                      // Format status labels for the 10 new workflow statuses
+                      const formatStatusLabel = (status: string) => {
+                        switch(status) {
+                          case 'received_new': return 'Received';
+                          case 'data_capture': return 'Data Capture';
+                          case 'matching': return 'Matching';
+                          case 'verification': return 'Verification';
+                          case 'approval': return 'Approval';
+                          case 'posted': return 'Posted';
+                          case 'disputed': return 'Disputed';
+                          case 'rejected': return 'Rejected';
+                          case 'on_hold': return 'On Hold';
+                          case 'archived_closed': return 'Archived';
+                          default: return status?.charAt(0).toUpperCase() + status?.slice(1).replace(/_/g, ' ') || 'Unknown';
+                        }
+                      };
+
+                      const label = forceReady
+                        ? 'Ready for posting'
+                        : formatStatusLabel(invoice.status);
+
+                      return (
+                        <span className={cn(
+                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
+                          chipClass
+                        )}>
+                          {label}
+                        </span>
+                      );
+                    })()}
+                  </td>
+
+                  {/* 16. Processed Status */}
                   <td className="px-6 py-2.5 whitespace-nowrap">
                     {(() => {
                       // Check for auto_rejected status first (for Auto Rejected status)
@@ -1489,7 +1636,7 @@ export function EnhancedInvoiceTable({
                     })()}
                   </td>
 
-                  {/* 8. Exception Reason (conditional - not shown in needs-info tab) */}
+                  {/* 17. Status Reason (conditional - not shown in needs-info tab) */}
                   {activeTab !== 'needs-info' && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {(() => {
@@ -1563,133 +1710,7 @@ export function EnhancedInvoiceTable({
                     </td>
                   )}
 
-                  {/* 9. Currency */}
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {invoice.currency || ''}
-                  </td>
-
-                  {/* 14. Total Amount */}
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-bold text-gray-950 text-right">
-                    {invoice.total !== undefined && invoice.total !== null ?
-                      formatCurrency(invoice.total, invoice.currency || 'USD') : ''
-                    }
-                  </td>
-
-                  {/* 15. Net Amount */}
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
-                    {invoice.total !== undefined && invoice.total !== null ? (() => {
-                      // Mock net amount as 90% of total for demonstration
-                      const netAmount = invoice.total * 0.9;
-                      return formatCurrency(netAmount, invoice.currency || 'USD');
-                    })() :
-                      <span className="text-red-600 font-semibold">-</span>
-                    }
-                  </td>
-
-                  {/* 16. Customer No. */}
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {invoice.customer_no || '-'}
-                  </td>
-
-                  {/* 17. Doc. Type */}
-                  <td className="px-6 py-2.5 whitespace-nowrap">
-                    <span className={cn(
-                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                      getDocTypeColor(invoice.docType || 'Invoice')
-                    )}>
-                      {invoice.docType || 'Invoice'}
-                    </span>
-                  </td>
-
-                  {/* 17. Invoice Date */}
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {invoice.invoice_date ? formatDate(invoice.invoice_date) : ''}
-                  </td>
-
-                  {/* 18. Due Date */}
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
-                    {formatDate(invoice.due_date)}
-                  </td>
-
-                  {/* 19. Due Status */}
-                  <td className="px-6 py-2.5 whitespace-nowrap">
-                    {invoice.dueStatus ? (
-                      <span className={cn(
-                        "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                        getDueStatusColor(invoice.dueStatus)
-                      )}>
-                        {invoice.dueStatus}
-                      </span>
-                    ) : (
-                      <span className="text-sm font-medium text-gray-950">-</span>
-                    )}
-                  </td>
-
-                  {/* 20. Aging (days) */}
-                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950 text-right">
-                    {typeof window !== 'undefined' ? (() => {
-                      const aging = calculateAging(invoice.due_date);
-                      if (aging > 0) {
-                        return <span className="text-red-600">{aging}</span>;
-                      } else if (aging === 0) {
-                        return <span className="text-orange-600">Due today</span>;
-                      } else {
-                        return <span className="text-green-600">{Math.abs(aging)}</span>;
-                      }
-                    })() : '-'}
-                  </td>
-
-                  {/* 21. Aging Bracket */}
-                  <td className="px-6 py-2.5 whitespace-nowrap">
-                    <span className={cn(
-                      "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                      getAgingBracketColor(calculateAgingBracket(invoice.due_date))
-                    )}>
-                      {calculateAgingBracket(invoice.due_date)}
-                    </span>
-                  </td>
-
-                  {/* 22. Workflow Status */}
-                  <td className="px-6 py-2.5 whitespace-nowrap">
-                    {(() => {
-                      const forceReady = activeTab === 'ready-to-post';
-                      const chipClass = forceReady
-                        ? 'bg-green-50 text-green-700 ring-1 ring-green-200'
-                        : getStatusColor(invoice.status, !!invoice.approver);
-
-                      // Format status labels for the 10 new workflow statuses
-                      const formatStatusLabel = (status: string) => {
-                        switch(status) {
-                          case 'received_new': return 'Received';
-                          case 'data_capture': return 'Data Capture';
-                          case 'matching': return 'Matching';
-                          case 'verification': return 'Verification';
-                          case 'approval': return 'Approval';
-                          case 'posted': return 'Posted';
-                          case 'disputed': return 'Disputed';
-                          case 'rejected': return 'Rejected';
-                          case 'on_hold': return 'On Hold';
-                          case 'archived_closed': return 'Archived';
-                          default: return status?.charAt(0).toUpperCase() + status?.slice(1).replace(/_/g, ' ') || 'Unknown';
-                        }
-                      };
-
-                      const label = forceReady
-                        ? 'Ready for posting'
-                        : formatStatusLabel(invoice.status);
-
-                      return (
-                        <span className={cn(
-                          "inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium",
-                          chipClass
-                        )}>
-                          {label}
-                        </span>
-                      );
-                    })()}
-                  </td>
-
-                  {/* 23. PO No. (conditional) */}
+                  {/* 18. PO No. (conditional) */}
                   {(activeView === 'all' || activeView === 'po') && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium">
                       {invoice.type === 'Non-PO' ? (
@@ -1721,7 +1742,7 @@ export function EnhancedInvoiceTable({
                     </td>
                   )}
 
-                  {/* 24. GR No. (conditional) */}
+                  {/* 19. Receipt No. (conditional) */}
                   {(activeView === 'all' || activeView === 'po') && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {invoice.gr_numbers && invoice.gr_numbers.length > 0 ? (
@@ -1738,28 +1759,40 @@ export function EnhancedInvoiceTable({
                     </td>
                   )}
 
-                  {/* 25. Division (conditional) */}
+                  {/* 20. Division (conditional) */}
                   {activeTab !== 'needs-info' && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {invoice.division || getDivision(invoice.vendor_name_snapshot)}
                     </td>
                   )}
 
+                  {/* 21. Customer No. */}
+                  <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
+                    {invoice.customer_no || '-'}
+                  </td>
+
+                  {/* 22. Cost Centre (conditional) */}
                   {activeTab !== 'needs-info' && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {invoice.costCentre || '-'}
                     </td>
                   )}
+
+                  {/* 23. Account Code (conditional) */}
                   {activeTab !== 'needs-info' && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {invoice.accountCode || '-'}
                     </td>
                   )}
+
+                  {/* 24. Approver (conditional) */}
                   {activeTab !== 'needs-info' && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {invoice.approver || '-'}
                     </td>
                   )}
+
+                  {/* 25. Days with Approver (conditional) */}
                   {activeTab !== 'needs-info' && (
                     <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                       {(() => {
@@ -1772,9 +1805,13 @@ export function EnhancedInvoiceTable({
                       })()}
                     </td>
                   )}
+
+                  {/* 26. Owner */}
                   <td className="px-6 py-2.5 whitespace-nowrap text-sm font-medium text-gray-950">
                     {invoice.assignedTo || '-'}
                   </td>
+
+                  {/* 27. Actions */}
                   <td
                     onClick={(e) => e.stopPropagation()}
                     className="px-6 py-2.5 whitespace-nowrap"
