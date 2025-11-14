@@ -1308,6 +1308,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po-legal-1-1',
       line_no: 1,
+      sku: '-',
       description: 'M&A Contract Preparation',
       qty: 2400.00,
       uom: 'UNIT',
@@ -1323,6 +1324,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po-legal-1-2',
       line_no: 2,
+      sku: '-',
       description: 'Advisory - M&A, Financial Services',
       qty: 840.00,
       uom: 'MIN',
@@ -1347,6 +1349,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     {
       id: 'line-baseline-po-legal-1-3',
       line_no: 3,
+      sku: '-',
       description: 'Board Transition Strategy',
       qty: 1.00,
       uom: 'UNIT',
