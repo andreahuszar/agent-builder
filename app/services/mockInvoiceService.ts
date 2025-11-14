@@ -1077,6 +1077,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
       account_name: 'Premier Office Supplies',
       account_number: '55667789876',
       routing_number: '987654321',
+      bank_address: 'Commerce Bank, 1000 Walnut Street, Kansas City, MO 64106',
     },
     // Validation warnings (empty - missing PO is handled by InvoiceValidator)
     validation_warnings: [],

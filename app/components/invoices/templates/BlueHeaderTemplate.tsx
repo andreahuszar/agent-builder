@@ -66,7 +66,9 @@ export function BlueHeaderTemplate({
   };
 
   return (
-    <div className="max-w-5xl mx-auto bg-white">
+    <div className="bg-gray-100 pt-8">
+      {/* Page 1 */}
+      <div className="max-w-5xl mx-auto bg-white shadow-md mb-2">
       {/* Blue Header Section - Extends to cover entire header */}
       <div className="bg-blue-600 px-12 pb-6">
         {/* INVOICE Title */}
@@ -399,6 +401,77 @@ export function BlueHeaderTemplate({
             </div>
             <div className="font-semibold">
               Page 1 of 2
+            </div>
+          </div>
+          <div className="text-center text-xs text-gray-600 italic mt-4">
+            This is an electronically generated document, no signature is required.
+          </div>
+        </div>
+      </div>
+      </div>
+
+      {/* Page 2 */}
+      <div className="max-w-5xl mx-auto bg-white shadow-md px-12 py-8 min-h-[1100px] flex flex-col">
+        {/* Bank Details */}
+        <div className="mb-6">
+          <h3 className="text-sm font-bold text-blue-600 mb-3 tracking-wider">BANK DETAILS</h3>
+          <div className="text-sm text-gray-950 space-y-1">
+            <div>
+              <span className="font-medium">Account Name</span>
+              <span className="ml-20">{invoice.payment_bank_details?.account_name || invoice.vendor_name_snapshot}</span>
+            </div>
+            <div>
+              <span className="font-medium">Account Number</span>
+              <span className="ml-16">{invoice.payment_bank_details?.account_number || 'N/A'}</span>
+            </div>
+            <div>
+              <span className="font-medium">Sort Code</span>
+              <span className="ml-28">{invoice.payment_bank_details?.sort_code || 'N/A'}</span>
+            </div>
+            <div>
+              <span className="font-medium">IBAN</span>
+              <span className="ml-36">{invoice.payment_bank_details?.iban || 'N/A'}</span>
+            </div>
+            <div>
+              <span className="font-medium">SWIFT Code</span>
+              <span className="ml-24">{invoice.payment_bank_details?.swift || 'N/A'}</span>
+            </div>
+            <div>
+              <span className="font-medium">Bank</span>
+              <span className="ml-36">{invoice.payment_bank_details?.bank_name || 'N/A'}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Terms and Conditions */}
+        <div className="mb-auto">
+          <h3 className="text-sm font-bold text-blue-600 mb-3 tracking-wider">TERMS AND CONDITIONS</h3>
+          <div className="text-sm text-gray-950 space-y-2">
+            <p>Please pay within 30 days from the date of invoice, overdue interest @ 5% will be charged on delayed payments.</p>
+            <p>Please quote invoice number when remitting funds.</p>
+            <p>A copy of our Terms and Conditions is available on request</p>
+          </div>
+        </div>
+
+        {/* Page 2 Footer */}
+        <div className="border-t border-gray-300 pt-6 mt-auto">
+          <div className="flex justify-between items-center text-xs text-gray-700">
+            <div className="space-x-4">
+              <span className="font-medium">Invoice No</span>
+              <span className="font-bold">
+                {getDocumentDisplayValue('invoice_number', invoice.invoice_number)}
+              </span>
+              <span className="font-medium">Invoice Date</span>
+              <span>
+                {formatDate(invoice.invoice_date)}
+              </span>
+              <span className="font-medium">Billed To</span>
+              <span>
+                {invoice.bill_to_snapshot?.legal_name || 'GSPV Ltd'}
+              </span>
+            </div>
+            <div className="font-semibold">
+              Page 2 of 2
             </div>
           </div>
           <div className="text-center text-xs text-gray-600 italic mt-4">

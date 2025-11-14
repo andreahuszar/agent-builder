@@ -61,7 +61,9 @@ export function GreenPremierTemplate({
   const customerId = invoice.customer_no || 'CUST661000';
 
   return (
-    <div className="max-w-[900px] mx-auto bg-white min-h-[1100px] flex flex-col">
+    <div className="bg-gray-100 pt-8">
+      {/* Page 1 */}
+      <div className="max-w-[900px] mx-auto bg-white min-h-[1100px] flex flex-col shadow-md mb-2">
       {/* Header Section with light green background */}
       <div className="bg-green-50 px-8 py-6 border-b border-gray-300">
         <div className="flex justify-between items-start">
@@ -317,6 +319,112 @@ export function GreenPremierTemplate({
             <span className="font-medium">Page 1 of 2</span>
             <br />
             <span className="text-xs italic">This is an electronically generated document, no signature is required.</span>
+          </div>
+        </div>
+      </div>
+      </div>
+
+      {/* Page 2 */}
+      <div className="max-w-[900px] mx-auto bg-white shadow-md min-h-[1100px] flex flex-col">
+        {/* Totals Section */}
+        <div className="px-8 py-6">
+          <div className="flex justify-end">
+            <div className="w-80 space-y-2 text-sm">
+              <div className="flex justify-between py-2">
+                <span className="text-gray-950">Amount</span>
+                <span className="text-gray-950 font-medium">
+                  {formatCurrency(subtotal, invoice.currency)}
+                </span>
+              </div>
+              <div className="flex justify-between py-2 border-b border-gray-300">
+                <span className="text-gray-950">TAX</span>
+                <span className="text-gray-950 font-medium">
+                  {formatCurrency(taxTotal, invoice.currency)}
+                </span>
+              </div>
+              <div className="flex justify-between py-2">
+                <span className="text-gray-950 font-semibold">Total ({invoice.currency})</span>
+                <span className="text-green-600 font-bold text-lg">
+                  {formatCurrency(total, invoice.currency)}
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Light Green Background Section with Terms and Bank Details */}
+        <div className="bg-green-50 px-8 py-8 mb-auto">
+          <div className="grid grid-cols-2 gap-12">
+            {/* Left Column: Terms and Conditions */}
+            <div>
+              <h2 className="text-base font-bold text-gray-950 mb-4">Terms and Conditions</h2>
+              <div className="text-sm text-gray-700 space-y-3">
+                <div>
+                  <span className="font-semibold">1.</span> Please pay within 15 days from the date of invoice, overdue interest @ 14% will be charged on delayed payments.
+                </div>
+                <div>
+                  <span className="font-semibold">2.</span> Please quote invoice number when remitting funds.
+                </div>
+                <div>
+                  <span className="font-semibold">3.</span> A copy of o ur Terms and Condi t ions is avai lable on requ est
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column: Bank Details */}
+            <div>
+              <h2 className="text-base font-bold text-gray-950 mb-4">Bank Details</h2>
+              <div className="text-sm text-gray-950 space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <span className="font-medium">Account Name</span>
+                  <span>{invoice.payment_bank_details?.account_name || invoice.vendor_name_snapshot}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <span className="font-medium">Account Number</span>
+                  <span>{invoice.payment_bank_details?.account_number || 'N/A'}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <span className="font-medium">Bank</span>
+                  <span>{invoice.payment_bank_details?.bank_name || 'N/A'}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <span className="font-medium">ABA Routing</span>
+                  <span>{invoice.payment_bank_details?.routing_number || invoice.payment_bank_details?.sort_code || 'N/A'}</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <span className="font-medium">Bank Address</span>
+                  <span>{invoice.payment_bank_details?.bank_address || 'N/A'}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Page 2 Footer */}
+        <div className="px-8 py-4 border-t-2 border-dotted border-gray-400 mt-auto">
+          <div className="flex justify-between items-center text-xs text-gray-950">
+            <div className="flex gap-8">
+              <div>
+                <span className="font-medium">Invoice No</span>
+                <br />
+                <span>{invoice.invoice_number}</span>
+              </div>
+              <div>
+                <span className="font-medium">Invoice Date</span>
+                <br />
+                <span>{formatDate(invoice.invoice_date)}</span>
+              </div>
+              <div>
+                <span className="font-medium">For</span>
+                <br />
+                <span>{billToName}</span>
+              </div>
+            </div>
+            <div className="text-right">
+              <span className="font-medium">Page 2 of 2</span>
+              <br />
+              <span className="text-xs italic">This is an electronically generated document, no signature is required.</span>
+            </div>
           </div>
         </div>
       </div>

@@ -41,7 +41,9 @@ export function SimpleTableInvoiceTemplate({
   const labels = templateConfig.labels || {};
 
   return (
-    <div className="max-w-[1000px] mx-auto bg-white p-6">
+    <div className="bg-gray-100 pt-8">
+      {/* Page 1 */}
+      <div className="max-w-[1000px] mx-auto bg-white p-6 shadow-md mb-2">
       {/* Top Header: Logo and Invoice Title */}
       <div className="flex justify-between items-start mb-6">
         {/* Fleet Logo */}
@@ -350,6 +352,81 @@ export function SimpleTableInvoiceTemplate({
         <p className="text-center text-xs text-gray-500 mt-4 italic">
           This is an electronically generated document, no signature is required.
         </p>
+      </div>
+      </div>
+
+      {/* Page 2 */}
+      <div className="max-w-[1000px] mx-auto bg-white p-6 shadow-md min-h-[1100px] flex flex-col">
+        {/* Two-Column Layout with Border */}
+        <div className="grid grid-cols-2 border border-gray-950 mb-auto">
+          {/* Left Column: Terms and Conditions */}
+          <div className="p-6 border-r border-gray-950">
+            <h2 className="font-bold text-gray-950 mb-4">Terms and Conditions</h2>
+            <div className="text-sm text-gray-950 space-y-3">
+              <div>
+                <span className="font-semibold">1.</span> Please pay within 30 days from the date of invoice, overdue interest @ 14% will be charged on delayed payments.
+              </div>
+              <div>
+                <span className="font-semibold">2.</span> Please quote invoice number when remitting funds.
+              </div>
+              <div>
+                <span className="font-semibold">3.</span> Traffic violations will be billed separately once Fleet Inc. is notified
+              </div>
+            </div>
+          </div>
+
+          {/* Right Column: Bank Details */}
+          <div className="p-6">
+            <h2 className="font-bold text-gray-950 mb-4">Bank Details</h2>
+            <div className="text-sm text-gray-950 space-y-2">
+              <div className="flex">
+                <span className="font-semibold w-40">Account Name</span>
+                <span>{invoice.payment_bank_details?.account_name || invoice.vendor_name_snapshot}</span>
+              </div>
+              <div className="flex">
+                <span className="font-semibold w-40">Account Number</span>
+                <span>{invoice.payment_bank_details?.account_number || 'N/A'}</span>
+              </div>
+              <div className="flex">
+                <span className="font-semibold w-40">Bank</span>
+                <span>{invoice.payment_bank_details?.bank_name || 'N/A'}</span>
+              </div>
+              <div className="flex">
+                <span className="font-semibold w-40">ABA Routing</span>
+                <span>{invoice.payment_bank_details?.routing_number || invoice.payment_bank_details?.sort_code || 'N/A'}</span>
+              </div>
+              {invoice.payment_bank_details?.bank_address && (
+                <div className="flex">
+                  <span className="font-semibold w-40">Address</span>
+                  <span>{invoice.payment_bank_details.bank_address}</span>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* Page 2 Footer */}
+        <div className="border-t-2 border-gray-950 pt-4 mt-auto">
+          <div className="flex justify-between items-center text-xs text-gray-600">
+            <div>
+              <p>
+                <span className="font-semibold">Invoice No:</span> {getDocumentDisplayValue('invoice_number', invoice.invoice_number)}
+              </p>
+              <p>
+                <span className="font-semibold">Invoice Date:</span> {formatDate(invoice.invoice_date)}
+              </p>
+              <p>
+                <span className="font-semibold">For:</span> {invoice.bill_to_snapshot?.legal_name || 'GSPV Ltd'}
+              </p>
+            </div>
+            <div className="text-right">
+              <p className="font-semibold">Page 2 of 2</p>
+            </div>
+          </div>
+          <p className="text-center text-xs text-gray-500 mt-4 italic">
+            This is an electronically generated document, no signature is required.
+          </p>
+        </div>
       </div>
     </div>
   );
