@@ -66,8 +66,10 @@ export function PurpleModernTemplate({
   const taxRate = invoice.lines?.[0]?.tax_rate || 20; // Default to 20% VAT
 
   return (
-    <div className="max-w-5xl mx-auto bg-white p-12">
-      {/* Header Section */}
+    <div className="bg-gray-100 py-8">
+      {/* Page 1 */}
+      <div className="max-w-5xl mx-auto bg-white p-12 shadow-lg mb-12">
+        {/* Header Section */}
       <div className="flex justify-between items-start mb-8">
         {/* Left: Invoice heading and details */}
         <div>
@@ -358,12 +360,10 @@ export function PurpleModernTemplate({
           This is an electronically generated document, no signature is required.
         </div>
       </div>
+      </div>
 
-      {/* Page Break - Visual Separation */}
-      <div className="mt-8" />
-
-      {/* Second Page */}
-      <div className="max-w-5xl mx-auto bg-white p-12 min-h-[1100px] flex flex-col">
+      {/* Page 2 */}
+      <div className="max-w-5xl mx-auto bg-white p-12 shadow-lg min-h-[1100px] flex flex-col">
         {/* Additional Notes Header */}
         <h2 className="text-lg font-bold text-purple-600 mb-4">Additional Notes</h2>
 
