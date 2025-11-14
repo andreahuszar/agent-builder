@@ -780,11 +780,16 @@ export function LineItemsPreviewPanel({
     return hasSmartMatch;
   };
 
-  // Generate random SKU for display purposes
-  const generateSKU = (lineNo: number) => {
+  // Get SKU from line data, or generate for display purposes
+  const getSKU = (line: any) => {
+    // Use actual SKU from line data if available
+    if (line.sku !== undefined && line.sku !== null) {
+      return line.sku;
+    }
+    // Fallback to generated SKU for display purposes
     const prefixes = ['CH', 'DK', 'TV', 'SF', 'LT', 'BK', 'DS', 'CB'];
-    const prefix = prefixes[lineNo % prefixes.length];
-    const number = String(lineNo).padStart(4, '0');
+    const prefix = prefixes[line.line_no % prefixes.length];
+    const number = String(line.line_no).padStart(4, '0');
     return `${prefix}-${number}`;
   };
 
@@ -1423,7 +1428,7 @@ export function LineItemsPreviewPanel({
                             )}
                           </td>
                           <td className="px-1.5 py-2 text-xs text-gray-950">
-                            {generateSKU(line.line_no)}
+                            {getSKU(line)}
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
                             matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !isSmartMatched(line, matchedPO)
@@ -2196,7 +2201,7 @@ export function LineItemsPreviewPanel({
                           )}
                         </td>
                         <td className="px-1.5 py-2 text-xs text-gray-950">
-                          {generateSKU(line.line_no)}
+                          {getSKU(line)}
                         </td>
                         <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
                           matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !isSmartMatched(line, matchedPO)
@@ -2588,7 +2593,7 @@ export function LineItemsPreviewPanel({
                               )}
                             </td>
                             <td className="px-1.5 py-2 text-xs text-gray-950">
-                              {generateSKU(line.line_no)}
+                              {getSKU(line)}
                             </td>
                             <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
                               matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !isSmartMatched(line, matchedPO)
@@ -2809,7 +2814,7 @@ export function LineItemsPreviewPanel({
                                 </div>
                               )}
                             </td>
-                            <td className="px-1.5 py-2 text-xs text-gray-950">{generateSKU(line.line_no)}</td>
+                            <td className="px-1.5 py-2 text-xs text-gray-950">{getSKU(line)}</td>
                             <td className="px-1.5 py-2 text-xs text-right text-gray-950">
                               {isEditMode ? (
                                 <input
