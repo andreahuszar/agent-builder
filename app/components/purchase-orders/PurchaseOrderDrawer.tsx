@@ -43,8 +43,10 @@ interface PurchaseOrderLine {
 }
 
 interface PurchaseOrderDrawerProps {
-  purchaseOrderId: string;
+  purchaseOrderId?: string;
   purchaseOrder?: PurchaseOrder;
+  isOpen?: boolean;
+  isLoading?: boolean;
   onClose: () => void;
   onApprove?: (id: string) => void;
   onCancel?: (id: string, reason: string) => void;
@@ -53,6 +55,8 @@ interface PurchaseOrderDrawerProps {
 export function PurchaseOrderDrawer({
   purchaseOrderId,
   purchaseOrder,
+  isOpen = false,
+  isLoading = false,
   onClose,
   onApprove,
   onCancel,
@@ -204,12 +208,13 @@ export function PurchaseOrderDrawer({
     }
   };
 
-  if (!purchaseOrder) return null;
+  // Don't render if drawer is not open
+  if (!isOpen) return null;
 
-  const subtotal = purchaseOrder.subtotal || lineItems.reduce((sum, item) => sum + item.total_price, 0);
-  const tax = purchaseOrder.tax_amount || (subtotal * 0.1);
-  const shipping = purchaseOrder.shipping_cost || 0;
-  const total = purchaseOrder.total_amount || (subtotal + tax + shipping);
+  const subtotal = purchaseOrder?.subtotal || lineItems.reduce((sum, item) => sum + item.total_price, 0);
+  const tax = purchaseOrder?.tax_amount || (subtotal * 0.1);
+  const shipping = purchaseOrder?.shipping_cost || 0;
+  const total = purchaseOrder?.total_amount || (subtotal + tax + shipping);
 
   // Use portal to render at body level
   if (typeof window === 'undefined') return null;
@@ -233,12 +238,14 @@ export function PurchaseOrderDrawer({
               <div className="flex items-center gap-3">
                 <FileText className="h-5 w-5 text-purple-600" />
                 <h2 className="text-lg font-semibold text-gray-900">
-                  PO #{purchaseOrder.po_number}
+                  {isLoading ? 'Loading...' : purchaseOrder ? `PO #${purchaseOrder.po_number}` : 'Purchase Order'}
                 </h2>
-                <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(purchaseOrder.status)}`}>
-                  {getStatusIcon(purchaseOrder.status)}
-                  {purchaseOrder.status.charAt(0).toUpperCase() + purchaseOrder.status.slice(1)}
-                </span>
+                {!isLoading && purchaseOrder && (
+                  <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor(purchaseOrder.status)}`}>
+                    {getStatusIcon(purchaseOrder.status)}
+                    {purchaseOrder.status.charAt(0).toUpperCase() + purchaseOrder.status.slice(1)}
+                  </span>
+                )}
               </div>
               <button
                 onClick={handleClose}
@@ -287,7 +294,23 @@ export function PurchaseOrderDrawer({
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto p-6">
-            {activeTab === 'details' && (
+            {isLoading ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600 mb-3"></div>
+                  <p className="text-sm text-gray-600">Loading purchase order details...</p>
+                </div>
+              </div>
+            ) : !purchaseOrder ? (
+              <div className="flex items-center justify-center h-full">
+                <div className="text-center">
+                  <AlertTriangle className="h-12 w-12 text-gray-400 mx-auto mb-3" />
+                  <p className="text-sm text-gray-600">Purchase order not found</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                {activeTab === 'details' && (
               <div className="space-y-6">
                 {/* Vendor Information */}
                 <div>
@@ -492,12 +515,14 @@ export function PurchaseOrderDrawer({
                 </div>
               </div>
             )}
+              </>
+            )}
           </div>
 
           {/* Footer Actions */}
           <div className="border-t border-gray-200 p-4">
             <div className="flex gap-3">
-              {purchaseOrder.status === 'draft' && onApprove && (
+              {purchaseOrder?.status === 'draft' && onApprove && purchaseOrder && (
                 <button
                   onClick={() => onApprove(purchaseOrder.id)}
                   className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
@@ -506,11 +531,11 @@ export function PurchaseOrderDrawer({
                   Approve Order
                 </button>
               )}
-              {['draft', 'approved', 'sent'].includes(purchaseOrder.status) && onCancel && (
+              {purchaseOrder && ['draft', 'approved', 'sent'].includes(purchaseOrder.status) && onCancel && (
                 <button
                   onClick={() => {
                     const reason = prompt('Please provide a reason for cancellation:');
-                    if (reason) {
+                    if (reason && purchaseOrder) {
                       onCancel(purchaseOrder.id, reason);
                     }
                   }}
