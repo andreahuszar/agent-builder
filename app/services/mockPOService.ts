@@ -860,6 +860,9 @@ export const isMockPO = (poNumber: string): boolean => {
   const useMockData = process.env.USE_MOCK_DATA === 'true' || process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
   if (!useMockData) return false;
 
-  // Check if PO number matches mock pattern (PO-2025-9xxx or PO-2025-8xxx)
-  return poNumber.startsWith('PO-2025-9') || poNumber.startsWith('PO-2025-8');
+  // Check if PO number matches mock pattern (PO-2025-9xxx, PO-2025-8xxx, PO-2025-7xxx, or BG prefix)
+  return poNumber.startsWith('PO-2025-9') ||
+         poNumber.startsWith('PO-2025-8') ||
+         poNumber.startsWith('PO-2025-7') ||
+         poNumber.startsWith('BG');
 };
