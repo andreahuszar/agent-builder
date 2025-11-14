@@ -75,7 +75,6 @@ export function calculateInvoiceExceptions(
     exceptions.push({
       severity: 'error',
       message: `${priceVariances.length} Line item ${priceVariances.length === 1 ? 'variance' : 'variances'}`,
-      context: `(${priceVariances.join(', ')})`,
       type: 'line_variance',
     });
   }
@@ -84,7 +83,6 @@ export function calculateInvoiceExceptions(
     exceptions.push({
       severity: 'error',
       message: `${qtyVariances.length} Quantity ${qtyVariances.length === 1 ? 'mismatch' : 'mismatches'}`,
-      context: `(${qtyVariances.join(', ')})`,
       type: 'qty_variance',
     });
   }
