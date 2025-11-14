@@ -766,6 +766,93 @@ export const generateBaselineInvoices = (): Invoice[] => {
   } as Invoice);
 
   // ========================================================================
+  // BASELINE PO INVOICE - LEGAL BILLING WITH UOM CONVERSION
+  // ========================================================================
+  const baselinePOLegal1Date = new Date(now);
+  baselinePOLegal1Date.setDate(baselinePOLegal1Date.getDate() - 14); // Created 14 days ago
+  const baselinePOLegal1DueDate = new Date(baselinePOLegal1Date);
+  baselinePOLegal1DueDate.setDate(baselinePOLegal1DueDate.getDate() + 31); // Due in 17 days
+
+  const baselinePOLegal1Lines = [
+    {
+      id: 'line-baseline-po-legal-1-1',
+      line_no: 1,
+      description: 'Legal Billing - Contract Review & Advisory',
+      qty: 840,
+      uom: 'Minutes',
+      unit_price: 3.67,
+      net_amount: 3080.00,
+      tax_amount: 616.00,
+      line_total: 3696.00,
+      po_line_id: 'po-line-9012-1',
+      gr_line_id: null,
+      ses_line_id: null,
+      // UOM conversion metadata for smart match
+      uom_conversion: {
+        invoice_qty: 840,
+        invoice_uom: 'Minutes',
+        po_qty: 14,
+        po_uom: 'Hours',
+        conversion_factor: 60,
+        explanation: '60 minutes per hour'
+      }
+    }
+  ];
+
+  mockInvoices.push({
+    id: 'baseline-po-legal-1',
+    invoice_number: 'INV-GL-2025-0089',
+    vendor_name_snapshot: 'Green Lawn Services Ltd',
+    vendor_id: 'VND0001621',
+    vendor_tax_id_snapshot: '329-87-4521',
+    vendor_address_snapshot: '15 Meadowbrook Lane, Bristol, England, BS8 2TN, United Kingdom',
+    vendor_email: 'accounts@greenlawn.co.uk',
+    vendor_phone: '+44 117 928 4521',
+    customer_no: 'GL-4521',
+    job_number: 'PROJ-2025-089',
+    invoice_date: '2025-10-31',
+    due_date: '2025-12-01',
+    currency: 'GBP',
+    subtotal: 3080.00,
+    tax_total: 616.00,
+    tax_rate_percent: 20,
+    total: 3696.00,
+    status: 'verification',
+    match_status: 'matched', // Changed from 'variance' to 'matched' since UOM is resolved
+    type: 'PO',
+    vendor_requires_po: true,
+    vendor_is_verified: true,
+    approval_status: 'pending',
+    assigned_to_name: 'Emily Roberts',
+    assigned_to_user_id: 'user-3',
+    assigned_to_email: 'emily.roberts@company.com',
+    po_numbers_cached: ['PO-2025-9012'],
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: [], // UOM mismatch is resolved, so no issues
+    created_at: baselinePOLegal1Date.toISOString(),
+    updated_at: baselinePOLegal1Date.toISOString(),
+    data_ingestion_date: baselinePOLegal1Date.toISOString().split('T')[0],
+    lines: baselinePOLegal1Lines,
+    invoice_lines: baselinePOLegal1Lines,
+    // Payment bank details
+    payment_bank_details: {
+      bank_name: 'HSBC UK',
+      account_name: 'Green Lawn Services Ltd',
+      account_number: '12458796',
+      sort_code: '40-47-84',
+      iban: 'GB29HBUK40478412458796',
+      swift: 'HBUKGB4B',
+      bank_currency: 'GBP',
+      bank_address: 'Churchill House, Bristol, BS1 5AN, United Kingdom'
+    },
+    // Display configuration for blue header template
+    display_config: {
+      template: 'blue-header'
+    }
+  } as Invoice);
+
+  // ========================================================================
   // BASELINE PO INVOICE #3 - PERFECT MATCH BUT BANK DETAILS EXCEPTION
   // ========================================================================
   const baselinePOBankDate = new Date(now);

@@ -418,6 +418,33 @@ export const generateMockPOs = (): Record<string, POHeader> => {
       subtotal: 15230.00,
       total: 18276.00
     },
+    'PO-2025-9012': {
+      id: 'mock-po-9012',
+      po_number: 'PO-2025-9012',
+      vendor_name: 'Green Lawn Services Ltd',
+      order_date: '2025-10-25',
+      currency: 'GBP',
+      status: 'open',
+      lines: [
+        {
+          id: 'po-line-9012-1',
+          line_no: 1,
+          description: 'Legal Services - Contract Review',
+          item_description: 'Legal Advisory Services',
+          sku: null,
+          qty_ordered: 14,
+          uom: 'Hours',
+          unit_price: 220.00,
+          qty_received_to_date: 14,
+          qty_invoiced_to_date: 14,
+          qty_remaining_to_receive: 0,
+          qty_remaining_to_invoice: 0,
+          status: 'matched'
+        }
+      ],
+      subtotal: 3080.00,
+      total: 3696.00
+    },
     'PO-2025-7755': {
       id: 'mock-po-7755',
       po_number: 'PO-2025-7755',

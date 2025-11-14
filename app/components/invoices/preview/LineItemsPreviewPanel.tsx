@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { Maximize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical, Zap, Sparkles, List, ArrowDownWideNarrow } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, useDroppable, DragOverlay, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -582,11 +582,12 @@ export function LineItemsPreviewPanel({
       return matchResults.filter(mr => !mr.within_tolerance).length;
     }
 
-    // If showing comparison, count mismatches
+    // If showing comparison, count lines with 'variance' status
     let errorCount = 0;
     invoiceLines.forEach((invoiceLine, index) => {
       const poLine = getMatchedPOLine(invoiceLine, index);
-      if (poLine && hasMismatch(invoiceLine, poLine)) {
+      const status = getLineStatus(invoiceLine, poLine);
+      if (status === 'variance') {
         errorCount++;
       }
     });
@@ -727,6 +728,27 @@ export function LineItemsPreviewPanel({
     return matchesFromPO || matchesFromInvoice;
   };
 
+  // Check if line is smart matched (has matched status with thunderbolt icon)
+  // Smart matched lines should suppress variance indicators
+  const isSmartMatched = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): boolean => {
+    if (!poLine) return false;
+
+    const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
+    const status = getLineStatus(invoiceLine, poLine);
+
+    // Must have "matched" status
+    if (status !== 'matched') return false;
+
+    // Must have thunderbolt icon (smart match indicator)
+    const hasSmartMatch = (
+      hasUomConversion(invoiceLine) ||
+      hasDescriptionDifference(invoiceLine, poLine) ||
+      hasCustomRule(invoiceLine)
+    ) && !unmatchedLines.has(lineId);
+
+    return hasSmartMatch;
+  };
+
   // Generate random SKU for display purposes
   const generateSKU = (lineNo: number) => {
     const prefixes = ['CH', 'DK', 'TV', 'SF', 'LT', 'BK', 'DS', 'CB'];
@@ -735,7 +757,19 @@ export function LineItemsPreviewPanel({
     return `${prefix}-${number}`;
   };
 
-  const errorCount = countErrors();
+  const errorCount = useMemo(() => {
+    return countErrors();
+  }, [
+    showComparison,
+    poLines,
+    matchResults,
+    invoiceLines,
+    acceptedSuggestions,
+    rejectedSuggestions,
+    unmatchedLines,
+    customRules,
+    manuallyMatchedLines
+  ]);
 
   // Categorize lines into variances and matched for grouped view
   const categorizeLines = () => {
@@ -1327,8 +1361,8 @@ export function LineItemsPreviewPanel({
                             )}
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-gray-950 ${
-                            (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
-                              ? 'bg-red-50 border border-red-300'
+                            ((matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)) && !isSmartMatched(line, matchedPO)
+                              ? (hoveredPosition === slot.position ? 'bg-red-100' : 'bg-red-50')
                               : ''
                           }`}>
                             {isEditMode ? (
@@ -1348,8 +1382,8 @@ export function LineItemsPreviewPanel({
                             {generateSKU(line.line_no)}
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                            matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
-                              ? 'bg-red-50 border border-red-300'
+                            matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !isSmartMatched(line, matchedPO)
+                              ? (hoveredPosition === slot.position ? 'bg-red-100' : 'bg-red-50')
                               : ''
                           }`}>
                             {isEditMode ? (
@@ -1380,8 +1414,8 @@ export function LineItemsPreviewPanel({
                             )}
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                            matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
-                              ? 'bg-red-50 border border-red-300'
+                            matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !isSmartMatched(line, matchedPO)
+                              ? (hoveredPosition === slot.position ? 'bg-red-100' : 'bg-red-50')
                               : ''
                           }`}>
                             {isEditMode ? (
@@ -1406,22 +1440,28 @@ export function LineItemsPreviewPanel({
                             <td className="px-1.5 py-2 text-xs">
                               {matchedPO && (
                                 <div className="flex flex-col items-center gap-0.5">
-                                  {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
-                                    <span className={`text-xs font-semibold ${
-                                      hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
-                                    }`}>
-                                      Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
-                                    </span>
-                                  )}
-                                  {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
-                                    <span className={`text-xs font-semibold ${
-                                      hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
-                                    }`}>
-                                      Price: {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
-                                    </span>
-                                  )}
-                                  {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
+                                  {isSmartMatched(line, matchedPO) ? (
                                     <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                                  ) : (
+                                    <>
+                                      {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
+                                        <span className={`text-xs font-semibold ${
+                                          hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
+                                        }`}>
+                                          Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
+                                        </span>
+                                      )}
+                                      {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
+                                        <span className={`text-xs font-semibold ${
+                                          hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
+                                        }`}>
+                                          Price: {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
+                                        </span>
+                                      )}
+                                      {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
+                                        <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                                      )}
+                                    </>
                                   )}
                                 </div>
                               )}
@@ -1585,8 +1625,8 @@ export function LineItemsPreviewPanel({
                         >
                           <td className="pl-4 pr-1.5 py-2 text-xs text-gray-950">{matchedPO.line_no}</td>
                           <td className={`px-1.5 py-2 text-xs text-gray-950 ${
-                            invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && hasDescriptionDifference(invLine, matchedPO)) || hasSuggestion(invLine))
-                              ? 'bg-red-50 border border-red-300'
+                            invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && hasDescriptionDifference(invLine, matchedPO)) || hasSuggestion(invLine)) && !isSmartMatched(invLine, matchedPO)
+                              ? (hoveredPosition === slot.position ? 'bg-red-100' : 'bg-red-50')
                               : ''
                           }`}>
                             <div className="truncate max-w-[250px]" title={matchedPO.description}>
@@ -1594,16 +1634,16 @@ export function LineItemsPreviewPanel({
                             </div>
                           </td>
                           <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                            invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01
-                              ? 'bg-red-50 border border-red-300'
+                            invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01 && !isSmartMatched(invLine, matchedPO)
+                              ? (hoveredPosition === slot.position ? 'bg-red-100' : 'bg-red-50')
                               : ''
                           }`}>
                             {matchedPO.qty_ordered}
                           </td>
                           <td className="px-1.5 py-2 text-xs text-center text-gray-950">{matchedPO.uom}</td>
                           <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                            invLine && Math.abs(matchedPO.unit_price - invLine.unit_price) > 0.01
-                              ? 'bg-red-50 border border-red-300'
+                            invLine && Math.abs(matchedPO.unit_price - invLine.unit_price) > 0.01 && !isSmartMatched(invLine, matchedPO)
+                              ? (hoveredPosition === slot.position ? 'bg-red-100' : 'bg-red-50')
                               : ''
                           }`}>
                             {formatCurrency(matchedPO.unit_price)}
@@ -1752,7 +1792,9 @@ export function LineItemsPreviewPanel({
                             {/* Qty Variance Column */}
                             <td className="px-1.5 py-2 text-xs text-right">
                               {matchedPO ? (
-                                Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 ? (
+                                isSmartMatched(line, matchedPO) ? (
+                                  <CheckCircle className="h-3.5 w-3.5 text-green-600 mx-auto" />
+                                ) : Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 ? (
                                   <span className="text-red-600 font-semibold">
                                     {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
                                   </span>
@@ -1767,7 +1809,9 @@ export function LineItemsPreviewPanel({
                             {/* Price Variance Column */}
                             <td className="px-1.5 py-2 text-xs text-right">
                               {matchedPO ? (
-                                Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 ? (
+                                isSmartMatched(line, matchedPO) ? (
+                                  <CheckCircle className="h-3.5 w-3.5 text-green-600 mx-auto" />
+                                ) : Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 ? (
                                   <span className="text-red-600 font-semibold">
                                     {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
                                   </span>
@@ -2012,8 +2056,8 @@ export function LineItemsPreviewPanel({
                           )}
                         </td>
                         <td className={`px-1.5 py-2 text-xs text-gray-950 ${
-                          (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
-                            ? 'bg-red-50 border border-red-300'
+                          ((matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)) && !isSmartMatched(line, matchedPO)
+                            ? (hoveredPosition === slot.position ? 'bg-red-100' : 'bg-red-50')
                             : ''
                         }`}>
                           {isEditMode ? (
@@ -2111,8 +2155,8 @@ export function LineItemsPreviewPanel({
                           {generateSKU(line.line_no)}
                         </td>
                         <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                          matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
-                            ? 'bg-red-50 border border-red-300'
+                          matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !isSmartMatched(line, matchedPO)
+                            ? (hoveredPosition === slot.position ? 'bg-red-100' : 'bg-red-50')
                             : ''
                         }`}>
                           {isEditMode ? (
@@ -2143,8 +2187,8 @@ export function LineItemsPreviewPanel({
                           )}
                         </td>
                         <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                          matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
-                            ? 'bg-red-50 border border-red-300'
+                          matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !isSmartMatched(line, matchedPO)
+                            ? (hoveredPosition === slot.position ? 'bg-red-100' : 'bg-red-50')
                             : ''
                         }`}>
                           {isEditMode ? (
@@ -2170,22 +2214,28 @@ export function LineItemsPreviewPanel({
                           <td className="px-1.5 py-2 text-xs">
                             {matchedPO && (
                               <div className="flex flex-col items-center gap-0.5">
-                                {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
-                                  <span className={`text-xs font-semibold ${
-                                    hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
-                                  }`}>
-                                    Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
-                                  </span>
-                                )}
-                                {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
-                                  <span className={`text-xs font-semibold ${
-                                    hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
-                                  }`}>
-                                    Price: {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
-                                  </span>
-                                )}
-                                {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
+                                {isSmartMatched(line, matchedPO) ? (
                                   <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                                ) : (
+                                  <>
+                                    {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
+                                      <span className={`text-xs font-semibold ${
+                                        hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
+                                      }`}>
+                                        Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
+                                      </span>
+                                    )}
+                                    {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
+                                      <span className={`text-xs font-semibold ${
+                                        hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
+                                      }`}>
+                                        Price: {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
+                                      </span>
+                                    )}
+                                    {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
+                                      <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                                    )}
+                                  </>
                                 )}
                               </div>
                             )}
@@ -2394,8 +2444,8 @@ export function LineItemsPreviewPanel({
                               )}
                             </td>
                             <td className={`px-1.5 py-2 text-xs text-gray-950 ${
-                              (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
-                                ? 'bg-red-50 border border-red-300'
+                              ((matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)) && !isSmartMatched(line, matchedPO)
+                                ? (hoveredPosition === slot.position ? 'bg-red-100' : 'bg-red-50')
                                 : ''
                             }`}>
                               {isEditMode ? (
@@ -2497,8 +2547,8 @@ export function LineItemsPreviewPanel({
                               {generateSKU(line.line_no)}
                             </td>
                             <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                              matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
-                                ? 'bg-red-50 border border-red-300'
+                              matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !isSmartMatched(line, matchedPO)
+                                ? (hoveredPosition === slot.position ? 'bg-red-100' : 'bg-red-50')
                                 : ''
                             }`}>
                               {isEditMode ? (
@@ -2529,8 +2579,8 @@ export function LineItemsPreviewPanel({
                               )}
                             </td>
                             <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                              matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
-                                ? 'bg-red-50 border border-red-300'
+                              matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !isSmartMatched(line, matchedPO)
+                                ? (hoveredPosition === slot.position ? 'bg-red-100' : 'bg-red-50')
                                 : ''
                             }`}>
                               {isEditMode ? (
@@ -2556,7 +2606,9 @@ export function LineItemsPreviewPanel({
                               <td className="px-1.5 py-2 text-xs text-center">
                                 {matchedPO && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) ? (
                                   <>
-                                    {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 ||
+                                    {isSmartMatched(line, matchedPO) ? (
+                                      <CheckCircle className="h-3.5 w-3.5 text-green-600 mx-auto" />
+                                    ) : Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 ||
                                      Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 ? (
                                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                         {((line.line_total - (matchedPO.qty_ordered * matchedPO.unit_price)) >= 0 ? '+' : '') +
