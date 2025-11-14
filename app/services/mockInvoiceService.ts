@@ -2108,6 +2108,16 @@ export const getMockInvoiceById = (id: string): Invoice | null => {
       return null;
     }
 
+    // For demo invoices with teaching workflows, clear cache on page load
+    // This allows refreshing to restart the teaching workflow
+    const demoInvoicesWithTeaching = ['missing-po-1', 'baseline-po-1'];
+    if (demoInvoicesWithTeaching.includes(id)) {
+      mockInvoiceCache.delete(id);
+      if (DEBUG_MOCK) {
+        console.log('[MockService] Cleared cache for demo invoice (teaching workflow):', id);
+      }
+    }
+
     // Check cache first - return cached version if it exists
     if (mockInvoiceCache.has(id)) {
       if (DEBUG_MOCK) {
