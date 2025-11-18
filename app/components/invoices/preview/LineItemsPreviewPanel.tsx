@@ -5,6 +5,7 @@ import { Maximize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, useDroppable, DragOverlay, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import * as Tooltip from '@radix-ui/react-tooltip';
+import * as Switch from '@radix-ui/react-switch';
 import { SmartMatchPopover } from '../SmartMatchPopover';
 import { SubstitutionSuggestionPopover } from '../SubstitutionSuggestionPopover';
 import { UomMatchPopover } from '../UomMatchPopover';
@@ -85,6 +86,10 @@ interface LineItemsPreviewPanelProps {
   showComparison?: boolean;
   startExpanded?: boolean;
   useDetailedVarianceColumns?: boolean; // Use separate Qty Var and Price Var columns instead of Delta
+  hideInternalHeader?: boolean; // Hide the internal LINE ITEMS header bar (for accordion integration)
+  hideEditButton?: boolean; // Hide the Edit button in the Invoice table header
+  externalEditMode?: boolean; // External control for edit mode
+  onEditModeChange?: (isEditing: boolean) => void; // Callback when edit mode changes
 }
 
 // Draggable and Droppable Row Component for drag-and-drop functionality
@@ -248,6 +253,10 @@ export function LineItemsPreviewPanel({
   showComparison = false,
   startExpanded = false,
   useDetailedVarianceColumns = false,
+  hideInternalHeader = false,
+  hideEditButton = false,
+  externalEditMode,
+  onEditModeChange,
 }: LineItemsPreviewPanelProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(!startExpanded); // Start expanded if startExpanded is true
@@ -272,6 +281,10 @@ export function LineItemsPreviewPanel({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [hasEnoughSpace, setHasEnoughSpace] = useState(false);
   const { showToast} = useToast();
+
+  // Toggle states for showing PO and Receipt data
+  const [showPO, setShowPO] = useState(showComparison && poLines.length > 0);
+  const [showReceipt, setShowReceipt] = useState(false);
 
   // Update editable lines when invoice lines change
   // Always initialize display_position to ensure lines are visible in read-only mode
@@ -394,7 +407,7 @@ export function LineItemsPreviewPanel({
       resizeObserver.disconnect();
       window.removeEventListener('resize', handleResize);
     };
-  }, [useDetailedVarianceColumns, showComparison, poLines.length]);
+  }, [useDetailedVarianceColumns, showPO, poLines.length]);
 
   const formatCurrency = (amount: number) => {
     const formatter = new Intl.NumberFormat('en-US', {
@@ -577,7 +590,7 @@ export function LineItemsPreviewPanel({
   // Count errors in invoice lines (for needs info mode)
   const countErrors = () => {
     // If not showing comparison, don't count comparison errors
-    if (!showComparison || poLines.length === 0) {
+    if (!showPO || poLines.length === 0) {
       // Count validation errors from match results if any
       return matchResults.filter(mr => !mr.within_tolerance).length;
     }
@@ -909,15 +922,23 @@ export function LineItemsPreviewPanel({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [openDropdownId]);
 
+  // Sync internal edit mode with external control
+  useEffect(() => {
+    if (externalEditMode !== undefined && externalEditMode !== isEditMode) {
+      setIsEditMode(externalEditMode);
+    }
+  }, [externalEditMode]);
+
   // Toggle edit mode
   const toggleEditMode = () => {
-    if (!isEditMode) {
-      // Entering edit mode - positions are already initialized in useEffect
-    } else {
+    const newEditMode = !isEditMode;
+    if (!newEditMode) {
       // Exiting edit mode - ensure we save changes
       onLinesUpdate?.(editableLines);
     }
-    setIsEditMode(!isEditMode);
+    setIsEditMode(newEditMode);
+    // Notify parent of edit mode change
+    onEditModeChange?.(newEditMode);
   };
 
   // Set up sensors for drag interaction
@@ -996,6 +1017,7 @@ export function LineItemsPreviewPanel({
       }`}
     >
       {/* Header */}
+      {!hideInternalHeader && (
       <div className="flex items-center justify-between px-4 py-1.5 bg-gray-50 border-b border-gray-200">
         <div className="flex items-center gap-2">
           <Package className="h-4 w-4 text-purple-600" />
@@ -1040,6 +1062,7 @@ export function LineItemsPreviewPanel({
           </button>
         </div>
       </div>
+      )}
 
       {/* Content */}
       <div ref={scrollContainerRef} className="flex-1 overflow-auto transition-all duration-200">
@@ -1050,7 +1073,7 @@ export function LineItemsPreviewPanel({
             onDragStart={handleDragStart}
             onDragEnd={handleDragEnd}
           >
-            {showComparison && poLines.length > 0 ? (
+            {showPO && poLines.length > 0 ? (
             // Horizontal scrollable layout when PO lines exist - Invoice table first, then PO table
             <div ref={flexContainerRef} className={`flex min-h-full ${hasEnoughSpace ? 'w-fit' : 'w-full'}`}>
               {/* Invoice Lines */}
@@ -1068,19 +1091,46 @@ export function LineItemsPreviewPanel({
                 <table className="min-w-max">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                      <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 12 : 10) : (10 + (isEditMode ? 2 : 0))} className="px-4 bg-white border-b h-[42px]">
+                      <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 12 : 10) : (10 + (isEditMode ? 2 : 0))} className="px-4 bg-white h-[42px]">
                         <div className="flex items-center justify-between h-full">
-                          <span className="text-sm font-semibold text-gray-950">Invoice</span>
-                          <button
-                            onClick={toggleEditMode}
-                            className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
-                              isEditMode
-                                ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
-                                : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
-                            }`}
-                          >
-                            {isEditMode ? 'Done' : 'Edit'}
-                          </button>
+                          <div className="flex items-center gap-4 pl-6">
+                            {/* Show PO Toggle */}
+                            <label className="flex items-center gap-1.5">
+                              <Switch.Root
+                                checked={showPO}
+                                onCheckedChange={setShowPO}
+                                disabled={!poLines || poLines.length === 0}
+                                className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                              </Switch.Root>
+                              <span className="text-xs font-medium text-gray-950">Show PO</span>
+                            </label>
+
+                            {/* Show Receipt Toggle */}
+                            <label className="flex items-center gap-1.5">
+                              <Switch.Root
+                                checked={showReceipt}
+                                onCheckedChange={setShowReceipt}
+                                className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors"
+                              >
+                                <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                              </Switch.Root>
+                              <span className="text-xs font-medium text-gray-950">Show Receipt</span>
+                            </label>
+                          </div>
+                          {!hideEditButton && (
+                            <button
+                              onClick={toggleEditMode}
+                              className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                                isEditMode
+                                  ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                                  : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
+                              }`}
+                            >
+                              {isEditMode ? 'Done' : 'Edit'}
+                            </button>
+                          )}
                         </div>
                       </th>
                     </tr>
@@ -1088,9 +1138,9 @@ export function LineItemsPreviewPanel({
                       {isEditMode && (
                         <th className="px-2 text-center text-xs font-medium text-gray-800 uppercase w-8"></th>
                       )}
-                      <th className="pl-4 pr-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
+                      <th className="pl-5 pr-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
                       <th className="w-8"></th>
-                      <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">
+                      <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">
                         Status
                       </th>
                       <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
@@ -1161,7 +1211,7 @@ export function LineItemsPreviewPanel({
                                 <GripVertical className="h-4 w-4 text-gray-400" />
                               </td>
                             )}
-                            <td className="pl-4 pr-1.5 py-2 text-xs text-gray-950">{line.line_no}</td>
+                            <td className="pl-5 pr-1.5 py-2 text-xs text-gray-950">{line.line_no}</td>
                             {/* Icon column for smart match indicators and AI suggestions */}
                             <td className="px-1 py-2 text-center relative">
                               {hasSuggestion(line) ? (
@@ -1308,7 +1358,7 @@ export function LineItemsPreviewPanel({
                                 </Tooltip.Provider>
                               )}
                             </td>
-                          <td className="px-1.5 py-2 text-xs text-center">
+                          <td className="px-1.5 py-2 text-xs text-left">
                             {status === 'variance' && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                                 Variance
@@ -1478,7 +1528,7 @@ export function LineItemsPreviewPanel({
                         ) : (
                           <tr
                             key={line.id || line.line_no}
-                            className={`h-[48px] group ${hoveredPosition === slot.position ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
+                            className={`h-[48px] group ${hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'}`}
                             onMouseEnter={() => handleRowHover(slot.position)}
                             onMouseLeave={handleRowLeave}
                           >
@@ -1501,34 +1551,13 @@ export function LineItemsPreviewPanel({
                     )}
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
-                    <tr className="h-[52px]">
+                    <tr className="h-[42px]">
                       <td colSpan={isEditMode ? 9 : 8} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950">
                         Invoice Total:
                       </td>
-                      <td className="pl-1.5 pr-4 py-2 text-right text-sm font-bold text-gray-950">
+                      <td colSpan={1 + (!useDetailedVarianceColumns ? 1 : 0) + (isEditMode ? 1 : 0)} className="pl-1.5 pr-4 py-2 text-right text-sm font-bold text-gray-950">
                         {formatCurrency(invoiceLines.reduce((sum, line) => sum + line.line_total, 0))}
                       </td>
-                      {!useDetailedVarianceColumns && (
-                        <td className="px-1.5 py-2 text-center">
-                          {(() => {
-                            const invoiceTotal = invoiceLines.reduce((sum, line) => sum + line.line_total, 0);
-                            const poTotal = poLines.reduce((sum, line) => sum + (line.qty_ordered * line.unit_price), 0);
-                            const delta = invoiceTotal - poTotal;
-                            if (Math.abs(delta) > 0.01) {
-                              return (
-                                <span className={`text-xs font-bold ${delta > 0 ? 'text-red-600' : 'text-green-600'}`}>
-                                  {delta > 0 ? '+' : ''}{formatCurrency(delta)}
-                                </span>
-                              );
-                            }
-                            return <CheckCircle className="h-4 w-4 text-green-600 mx-auto" />;
-                          })()}
-                        </td>
-                      )}
-                      {/* Empty cell for Actions column in edit mode */}
-                      {isEditMode && (
-                        <td className="px-1.5 py-2"></td>
-                      )}
                     </tr>
                   </tfoot>
                 </table>
@@ -1546,7 +1575,7 @@ export function LineItemsPreviewPanel({
                       </th>
                     </tr>
                     <tr className="h-[40px]">
-                      <th className="pl-4 pr-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
+                      <th className="pl-5 pr-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
                       <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
                       <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
                       <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
@@ -1564,7 +1593,7 @@ export function LineItemsPreviewPanel({
                         return (
                           <tr
                             key={`po-empty-${slot.position}`}
-                            className={`h-[48px] ${hoveredPosition === slot.position ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
+                            className={`h-[48px] ${hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'}`}
                             onMouseEnter={() => handleRowHover(slot.position)}
                             onMouseLeave={handleRowLeave}
                           >
@@ -1578,7 +1607,7 @@ export function LineItemsPreviewPanel({
                       return (
                         <tr
                           key={matchedPO.id}
-                          className={`h-[48px] ${hoveredPosition === slot.position ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
+                          className={`h-[48px] ${hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'}`}
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
                         >
@@ -1668,7 +1697,7 @@ export function LineItemsPreviewPanel({
                         <tr
                           key={`continuation-${slot.position}`}
                           className={`h-[48px] border-r border-gray-200 ${
-                            hoveredPosition === slot.position ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'
+                            hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'
                           }`}
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
@@ -1744,7 +1773,7 @@ export function LineItemsPreviewPanel({
                         return (
                           <tr
                             key={line.id || line.line_no}
-                            className={`h-[48px] ${hoveredPosition === slot.position ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
+                            className={`h-[48px] ${hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'}`}
                             onMouseEnter={() => handleRowHover(slot.position)}
                             onMouseLeave={handleRowLeave}
                           >
@@ -1804,19 +1833,46 @@ export function LineItemsPreviewPanel({
               <table className="w-full">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <th colSpan={poLines.length > 0 ? (isEditMode ? 12 : 11) : (isEditMode ? 11 : 10)} className="px-4 bg-white border-b h-[42px]">
+                    <th colSpan={poLines.length > 0 ? (isEditMode ? 12 : 11) : (isEditMode ? 11 : 10)} className="px-4 bg-white h-[42px]">
                       <div className="flex items-center justify-between h-full">
-                        <span className="text-sm font-semibold text-gray-950">Invoice</span>
-                        <button
-                          onClick={toggleEditMode}
-                          className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
-                            isEditMode
-                              ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
-                              : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
-                          }`}
-                        >
-                          {isEditMode ? 'Done' : 'Edit'}
-                        </button>
+                        <div className="flex items-center gap-4 pl-6">
+                          {/* Show PO Toggle */}
+                          <label className="flex items-center gap-1.5">
+                            <Switch.Root
+                              checked={showPO}
+                              onCheckedChange={setShowPO}
+                              disabled={!poLines || poLines.length === 0}
+                              className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                            </Switch.Root>
+                            <span className="text-xs font-medium text-gray-950">Show PO</span>
+                          </label>
+
+                          {/* Show Receipt Toggle */}
+                          <label className="flex items-center gap-1.5">
+                            <Switch.Root
+                              checked={showReceipt}
+                              onCheckedChange={setShowReceipt}
+                              className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors"
+                            >
+                              <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                            </Switch.Root>
+                            <span className="text-xs font-medium text-gray-950">Show Receipt</span>
+                          </label>
+                        </div>
+                        {!hideEditButton && (
+                          <button
+                            onClick={toggleEditMode}
+                            className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                              isEditMode
+                                ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                                : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
+                            }`}
+                          >
+                            {isEditMode ? 'Done' : 'Edit'}
+                          </button>
+                        )}
                       </div>
                     </th>
                   </tr>
@@ -1824,9 +1880,9 @@ export function LineItemsPreviewPanel({
                     {isEditMode && (
                       <th className="px-2 text-center text-xs font-medium text-gray-800 uppercase w-8"></th>
                     )}
-                    <th className="pl-4 pr-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
+                    <th className="pl-5 pr-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
                     <th className="w-8"></th>
-                    <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">
+                    <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">
                       Status
                     </th>
                     <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
@@ -1993,7 +2049,7 @@ export function LineItemsPreviewPanel({
                               </Tooltip.Provider>
                             )}
                           </td>
-                        <td className="px-1.5 py-2 text-xs text-center">
+                        <td className="px-1.5 py-2 text-xs text-left">
                           {status === 'variance' && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                               Variance
@@ -2242,7 +2298,7 @@ export function LineItemsPreviewPanel({
                       ) : (
                         <tr
                           key={line.id || line.line_no}
-                          className={`group ${hoveredPosition === slot.position ? 'bg-gray-50' : 'bg-white hover:bg-gray-50'}`}
+                          className={`group ${hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'}`}
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
                         >
@@ -2266,15 +2322,13 @@ export function LineItemsPreviewPanel({
                   )}
                 </tbody>
                 <tfoot className="bg-gray-50 sticky bottom-0">
-                  <tr className="h-[52px]">
+                  <tr className="h-[42px]">
                     <td colSpan={isEditMode ? 8 : 7} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950">
                       Invoice Total:
                     </td>
-                    <td className="pl-1.5 pr-4 py-2 text-right text-sm font-bold text-gray-950">
+                    <td colSpan={2 + (poLines.length > 0 ? 1 : 0)} className="pl-1.5 pr-4 py-2 text-right text-sm font-bold text-gray-950">
                       {formatCurrency(editableLines.reduce((sum, line) => sum + line.line_total, 0))}
                     </td>
-                    {poLines.length > 0 && <td></td>}
-                    <td></td>
                   </tr>
                 </tfoot>
               </table>
@@ -2323,7 +2377,7 @@ export function LineItemsPreviewPanel({
         ) : (
           // Grouped View (variances first, then matched items)
           <>
-            {showComparison && poLines.length > 0 && !Array.isArray(displaySlots) && 'varianceSlots' in displaySlots ? (
+            {showPO && poLines.length > 0 && !Array.isArray(displaySlots) && 'varianceSlots' in displaySlots ? (
               // Horizontal scrollable layout - Invoice table first, then PO table
               <div className="flex min-h-full w-full">
                 {/* Invoice Lines - Grouped */}
@@ -2373,9 +2427,9 @@ export function LineItemsPreviewPanel({
                         const status = getLineStatus(line, matchedPO);
 
                         return (
-                          <tr key={`variance-${line.id || line.line_no}`} className="h-[48px] bg-white hover:bg-gray-50 transition-colors">
+                          <tr key={`variance-${line.id || line.line_no}`} className="h-[48px] bg-white hover:bg-purple-50 transition-colors">
                             <td className="px-1.5 py-2 text-xs text-gray-950 font-medium">{line.line_no}</td>
-                            <td className="px-1.5 py-2 text-xs text-center">
+                            <td className="px-1.5 py-2 text-xs text-left">
                               {status === 'matched' && (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                   Matched
@@ -2614,7 +2668,7 @@ export function LineItemsPreviewPanel({
                         const status = getLineStatus(line, matchedPO);
 
                         return (
-                          <tr key={`matched-${line.id || line.line_no}`} className="h-[48px] bg-white hover:bg-gray-50 transition-colors">
+                          <tr key={`matched-${line.id || line.line_no}`} className="h-[48px] bg-white hover:bg-purple-50 transition-colors">
                             {/* Same cell structure as variance lines */}
                             <td className="px-1.5 py-2 text-xs text-gray-950 font-medium">{line.line_no}</td>
                             <td className="px-1.5 py-2 text-xs text-center">

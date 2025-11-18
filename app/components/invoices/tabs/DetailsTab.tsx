@@ -29,7 +29,8 @@ import {
   AlertCircle,
   Shield,
   Zap,
-  Loader2
+  Loader2,
+  Maximize2
 } from 'lucide-react';
 import { EditableField } from '../editing/EditableField';
 import { ValidatedEditableField } from '../editing/ValidatedEditableField';
@@ -57,6 +58,7 @@ import { AccountingAutoCodingPopover } from '../AccountingAutoCodingPopover';
 import { FraudRiskBanner } from '../FraudRiskBanner';
 import { AutoRejectBanner } from '../AutoRejectBanner';
 import { PolicyDocumentDrawer } from '../PolicyDocumentDrawer';
+import { LineItemsPreviewPanel } from '../preview/LineItemsPreviewPanel';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -157,8 +159,12 @@ export function DetailsTab({
   const [localFocusedField, setLocalFocusedField] = useState<string | null>(null);
 
   // Accordion collapse state
+  const [isInvoiceInfoExpanded, setIsInvoiceInfoExpanded] = useState(true); // Start expanded
   const [isPaymentInfoExpanded, setIsPaymentInfoExpanded] = useState(false);
   const [isAccountingExpanded, setIsAccountingExpanded] = useState(false);
+  const [isLineItemsExpanded, setIsLineItemsExpanded] = useState(true); // Start expanded
+  const [isLineItemsFullscreen, setIsLineItemsFullscreen] = useState(false);
+  const [isLineItemsEditMode, setIsLineItemsEditMode] = useState(false);
 
   // Notify parent when edit mode changes
   useEffect(() => {
@@ -839,22 +845,34 @@ export function DetailsTab({
             />
           )}
 
-        {/* Invoice Information Section */}
+        {/* Invoice Header Section */}
         <div>
-          <div className="relative px-4 py-3 border-b border-gray-200 bg-gray-50">
+          <div
+            className="relative px-4 py-3 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+            onClick={() => setIsInvoiceInfoExpanded(!isInvoiceInfoExpanded)}
+          >
             <div className="flex items-center gap-2">
+              {isInvoiceInfoExpanded ? (
+                <ChevronUp className="h-4 w-4 text-gray-500" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-gray-500" />
+              )}
               <File className="h-4 w-4 text-purple-600" />
-              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Invoice Information</h3>
+              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Invoice Header</h3>
             </div>
             {!forceReadOnly && !isEditing && (
               <button
-                onClick={() => setIsEditing(true)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditing(true);
+                }}
                 className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
               >
                 Edit
               </button>
             )}
           </div>
+          {isInvoiceInfoExpanded && (
           <div className="px-10 py-3 bg-white">
             <div className={`grid ${getGridCols()} gap-x-4 gap-y-2`}>
               <div ref={(el) => fieldRefs.current['invoice_number'] = el} className="relative">
@@ -1730,22 +1748,23 @@ export function DetailsTab({
               </div>
             </div>
           </div>
+          )}
         </div>
-        {/* Payment Information Section */}
+        {/* Payment Section */}
         {!hidePaymentSection && (
         <div>
           <div
-            className="relative px-4 py-3 border-t border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+            className="relative px-4 py-3 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
             onClick={() => setIsPaymentInfoExpanded(!isPaymentInfoExpanded)}
           >
             <div className="flex items-center gap-2">
-              <CreditCard className="h-4 w-4 text-purple-600" />
-              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Payment Information</h3>
               {isPaymentInfoExpanded ? (
-                <ChevronUp className="h-4 w-4 text-gray-500 ml-auto" />
+                <ChevronUp className="h-4 w-4 text-gray-500" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-gray-500 ml-auto" />
+                <ChevronDown className="h-4 w-4 text-gray-500" />
               )}
+              <CreditCard className="h-4 w-4 text-purple-600" />
+              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Payment</h3>
             </div>
             {!forceReadOnly && !isEditing && (
               <button
@@ -1753,7 +1772,7 @@ export function DetailsTab({
                   e.stopPropagation();
                   setIsEditing(true);
                 }}
-                className="absolute right-10 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
               >
                 Edit
               </button>
@@ -1969,21 +1988,21 @@ export function DetailsTab({
         </div>
         )}
 
-        {/* Accounting Classification Section */}
+        {/* Coding Section */}
         {!hideAccountingSection && (
         <div>
           <div
-            className="relative px-4 py-3 border-t border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+            className="relative px-4 py-3 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
             onClick={() => setIsAccountingExpanded(!isAccountingExpanded)}
           >
             <div className="flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-purple-600" />
-              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Accounting Classification</h3>
               {isAccountingExpanded ? (
-                <ChevronUp className="h-4 w-4 text-gray-500 ml-auto" />
+                <ChevronUp className="h-4 w-4 text-gray-500" />
               ) : (
-                <ChevronDown className="h-4 w-4 text-gray-500 ml-auto" />
+                <ChevronDown className="h-4 w-4 text-gray-500" />
               )}
+              <BookOpen className="h-4 w-4 text-purple-600" />
+              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Coding</h3>
             </div>
             {!forceReadOnly && !isEditing && (
               <button
@@ -1991,7 +2010,7 @@ export function DetailsTab({
                   e.stopPropagation();
                   setIsEditing(true);
                 }}
-                className="absolute right-10 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
               >
                 Edit
               </button>
@@ -2169,6 +2188,94 @@ export function DetailsTab({
           )}
         </div>
         )}
+
+        {/* Line Items Section */}
+        <div>
+          <div
+            className="relative px-4 py-2.5 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+            onClick={() => setIsLineItemsExpanded(!isLineItemsExpanded)}
+          >
+            <div className="flex items-center gap-2">
+              {isLineItemsExpanded ? (
+                <ChevronUp className="h-4 w-4 text-gray-500" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-gray-500" />
+              )}
+              <Package className="h-4 w-4 text-purple-600" />
+              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Line Items</h3>
+
+              {/* Item count pill */}
+              <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                {invoiceData.lines?.length || 0} {(invoiceData.lines?.length || 0) === 1 ? 'item' : 'items'}
+              </span>
+
+              {/* Validation status pill */}
+              {(() => {
+                const errorCount = (invoiceData.match_results || []).filter((mr: any) => !mr.within_tolerance).length;
+                return errorCount > 0 ? (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                    <AlertCircle className="h-3 w-3" />
+                    {errorCount} {errorCount === 1 ? 'variance' : 'variances'}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                    <CheckCircle className="h-3 w-3" />
+                    Valid
+                  </span>
+                );
+              })()}
+            </div>
+
+            {/* Expand button - positioned absolutely before the Edit button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsLineItemsFullscreen(!isLineItemsFullscreen);
+              }}
+              className="absolute right-16 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50 flex items-center gap-1"
+            >
+              <Maximize2 className="h-3.5 w-3.5 text-purple-600" />
+              <span>Expand</span>
+            </button>
+
+            {/* Edit button - positioned absolutely on the right */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsLineItemsEditMode(!isLineItemsEditMode);
+              }}
+              className={`absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                isLineItemsEditMode
+                  ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                  : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
+              }`}
+            >
+              {isLineItemsEditMode ? 'Done' : 'Edit'}
+            </button>
+          </div>
+          {isLineItemsExpanded && (
+          <div className="bg-white">
+            <LineItemsPreviewPanel
+              invoiceLines={invoiceData.lines || []}
+              poLines={invoiceData.po_lines}
+              matchResults={invoiceData.match_results}
+              currency={invoiceData.currency || 'USD'}
+              invoiceId={invoiceData.id}
+              externallyControlled={true}
+              externalCollapsed={!isLineItemsExpanded}
+              onToggleCollapsed={() => setIsLineItemsExpanded(!isLineItemsExpanded)}
+              showComparison={true}
+              useDetailedVarianceColumns={true}
+              hideInternalHeader={true}
+              onMaximize={() => setIsLineItemsFullscreen(!isLineItemsFullscreen)}
+              isMaximized={isLineItemsFullscreen}
+              hideEditButton={true}
+              externalEditMode={isLineItemsEditMode}
+              onEditModeChange={setIsLineItemsEditMode}
+            />
+          </div>
+          )}
+        </div>
 
         {/* Document Links Section */}
         {!hideDocumentLinksSection && (
