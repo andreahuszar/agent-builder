@@ -579,10 +579,10 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       );
     }
 
-    // Unified layout for ALL invoices: PDF on left (33%), Fields on right (67%)
+    // Unified layout for ALL invoices: PDF on left (50%), Fields on right (50%)
     return (
       <ResizablePanel
-        defaultSizes={[33, 67]}
+        defaultSizes={[50, 50]}
         minSizes={[20, 30]}
         storageKey={`invoice-unified-v2-${invoiceId}`}
         className="h-full"
@@ -596,7 +596,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           poComparisonData={poComparisonData}
           hideLineComparison={false}
           hideLineItems={true}
-          initialZoom={0.5}
+          initialZoom={0.75}
           onCollapseToggle={handlePdfCollapseToggle}
           isCollapsed={false}
           isEditing={isEditing}
