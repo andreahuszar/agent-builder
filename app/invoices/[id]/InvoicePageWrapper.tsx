@@ -21,7 +21,7 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
   const [hasSES, setHasSES] = useState(false);
   const [hasPO, setHasPO] = useState(false);
   const [assignedUserName, setAssignedUserName] = useState<string | null>(
-    initialInvoice.assigned_to_name || null
+    initialInvoice.assigned_to_name || 'Sarah Johnson'
   );
 
   // Reactive invoice number state (updates when teaching accepts new value)

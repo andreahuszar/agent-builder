@@ -158,7 +158,7 @@ export function DiagnosticBanner({
           ) : poNumber ? (
             <>
               <Check className="h-3 w-3" />
-              <span>{poNumber}</span>
+              <span>PO: {poNumber}</span>
             </>
           ) : (
             <>
@@ -207,22 +207,12 @@ export function DiagnosticBanner({
           </div>
         )}
 
-        {/* Red Error Banner - Missing fields only */}
-        {missingFieldsCount > 0 && (
+        {/* Consolidated Exceptions Banner */}
+        {exceptionsCount > 0 && (
           <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
             <AlertTriangle className="h-3 w-3" />
             <span>
-              {missingFieldsCount} field{missingFieldsCount !== 1 ? 's' : ''} need{missingFieldsCount === 1 ? 's' : ''} attention
-            </span>
-          </div>
-        )}
-
-        {/* Red Variance Banner - Line item variances */}
-        {lineItemsErrorCount > 0 && (
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
-            <AlertTriangle className="h-3 w-3" />
-            <span>
-              {lineItemsErrorCount} line item{lineItemsErrorCount !== 1 ? 's' : ''} variance
+              {exceptionsCount} exception{exceptionsCount !== 1 ? 's' : ''}
             </span>
           </div>
         )}

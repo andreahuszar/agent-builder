@@ -137,7 +137,7 @@ export function DetailsTab({
         return 'sm:col-span-2';
       case 'large':
       default:
-        return 'sm:col-span-2 lg:col-span-3';
+        return 'sm:col-span-2 lg:col-span-4';
     }
   };
 
@@ -155,6 +155,10 @@ export function DetailsTab({
   const [lastScrollY, setLastScrollY] = useState(0);
   const [showAIReasoning, setShowAIReasoning] = useState(false);
   const [localFocusedField, setLocalFocusedField] = useState<string | null>(null);
+
+  // Accordion collapse state
+  const [isPaymentInfoExpanded, setIsPaymentInfoExpanded] = useState(false);
+  const [isAccountingExpanded, setIsAccountingExpanded] = useState(false);
 
   // Notify parent when edit mode changes
   useEffect(() => {
@@ -851,10 +855,10 @@ export function DetailsTab({
               </button>
             )}
           </div>
-          <div className="px-10 py-4 bg-white">
-            <div className={`grid ${getGridCols()} gap-4`}>
+          <div className="px-10 py-3 bg-white">
+            <div className={`grid ${getGridCols()} gap-x-4 gap-y-2`}>
               <div ref={(el) => fieldRefs.current['invoice_number'] = el} className="relative">
-                <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Invoice Number
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.invoice_number} isEditMode={isEditing} hasValue={!!invoiceData.invoice_number} />
@@ -974,7 +978,7 @@ export function DetailsTab({
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['invoice_date'] = el}>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Invoice Date
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.invoice_date} isEditMode={isEditing} />
@@ -996,7 +1000,7 @@ export function DetailsTab({
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Due Date
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.due_date} isEditMode={isEditing} />
@@ -1123,7 +1127,7 @@ export function DetailsTab({
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['vendor_tax_id_snapshot'] = el}>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Vendor Tax ID
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.vendor_tax_id_snapshot} isEditMode={isEditing} />
@@ -1145,7 +1149,7 @@ export function DetailsTab({
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['po_numbers_cached'] = el}>
-                <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     PO Number
                     {/* Hide confidence pill for Non-PO invoices */}
@@ -1281,7 +1285,7 @@ export function DetailsTab({
               {/* Customer ID - Hidden for Non-PO invoices and auto-reject invoices */}
               {!invoiceData.id?.startsWith('baseline-nonpo-') && !invoiceData.id?.startsWith('auto-reject-') && (
               <div ref={(el) => fieldRefs.current['job_number'] = el} className="relative">
-                <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Customer ID
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.job_number} isEditMode={isEditing} hasValue={!!invoiceData.job_number} />
@@ -1406,68 +1410,10 @@ export function DetailsTab({
                 )}
               </div>
               )}
-              {/* Vehicle Registration No. - Only for baseline-po-bank-1 */}
-              {invoiceData.id === 'baseline-po-bank-1' && (
-                <div ref={(el) => fieldRefs.current['vehicle_registration_no'] = el} className="relative">
-                  <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
-                    <span className="flex items-center">
-                      Vehicle Registration No.
-                      <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.vehicle_registration_no} isEditMode={isEditing} hasValue={!!invoiceData.vehicle_registration_no} />
-                    </span>
-                  </label>
-                  {isEditing ? (
-                    <ValidatedEditableField
-                      value={agentPendingFields['vehicle_registration_no'] || editedData.vehicle_registration_no || ''}
-                      onChange={(value) => handleFieldChange('vehicle_registration_no', value)}
-                      type="text"
-                      required={false}
-                      fieldName="vehicle_registration_no"
-                      placeholder="Enter Vehicle Registration No."
-                      onFocus={() => handleFieldFocus('vehicle_registration_no')}
-                      onBlur={handleFieldBlur}
-                    />
-                  ) : agentPendingFields['vehicle_registration_no'] ? (
-                    <div className="flex items-center">
-                      <p className="text-sm font-medium text-gray-950">
-                        {agentPendingFields['vehicle_registration_no']}
-                      </p>
-                      <PendingConfirmationIndicator />
-                    </div>
-                  ) : (
-                    (() => {
-                      const hasValue = invoiceData.vehicle_registration_no;
-
-                      if (hasValue) {
-                        return (
-                          <div className="flex items-center">
-                            <p className="text-sm font-medium text-gray-950">
-                              {invoiceData.vehicle_registration_no}
-                            </p>
-                            <CustomFieldIndicator
-                              fieldLabel="Vehicle Registration No."
-                              fieldValue={invoiceData.vehicle_registration_no}
-                              vendorName={invoiceData.vendor_name_snapshot}
-                              fieldName="vehicle_registration_no"
-                              onFieldFocus={onFieldFocus}
-                            />
-                          </div>
-                        );
-                      }
-
-                      // Show placeholder with red border if empty
-                      return (
-                        <p className="text-sm font-medium text-gray-950">
-                          {invoiceData.vehicle_registration_no || '--'}
-                        </p>
-                      );
-                    })()
-                  )}
-                </div>
-              )}
               {/* Approver - Only for Non-PO invoices */}
               {invoiceData.type === 'Non-PO' && (
                 <div ref={(el) => fieldRefs.current['assigned_to_name'] = el} className="relative">
-                  <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                  <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                     <span className="flex items-center">
                       Approver
                       <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.assigned_to_name} isEditMode={isEditing} hasValue={!!invoiceData.assigned_to_name} />
@@ -1565,55 +1511,9 @@ export function DetailsTab({
                   )}
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-
-        {/* Financial Details Section */}
-        <div>
-          <div className="relative px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
-            <div className="flex items-center gap-2">
-              <Coins className="h-4 w-4 text-purple-600" />
-              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Financial Details</h3>
-            </div>
-            {!forceReadOnly && !isEditing && (
-              <button
-                onClick={() => setIsEditing(true)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
-              >
-                Edit
-              </button>
-            )}
-          </div>
-          <div className="px-10 py-4 bg-white">
-            {/* First Row: Subtotal, Currency, Tax Rate */}
-            <div className={`grid ${getGridCols()} gap-4`}>
-              <div ref={(el) => fieldRefs.current['subtotal'] = el}>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
-                  <span className="flex items-center">
-                    Subtotal
-                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.subtotal} isEditMode={isEditing} />
-                  </span>
-                </label>
-                {isEditing ? (
-                  <ValidatedEditableField
-                    value={editedData.subtotal || calculatedSubtotal}
-                    onChange={(value) => handleFieldChange('subtotal', value)}
-                    type="currency"
-                    required={true}
-                    fieldName="subtotal"
-                    currency={editedData.currency}
-                    onFocus={() => handleFieldFocus('subtotal')}
-                    onBlur={handleFieldBlur}
-                  />
-                ) : (
-                  <p className={getReadOnlyFieldClass('subtotal')}>
-                    {formatCurrency(invoiceData.subtotal || calculatedSubtotal, invoiceData.currency)}
-                  </p>
-                )}
-              </div>
+              {/* Currency - appears in second column after Customer ID */}
               <div ref={(el) => fieldRefs.current['currency'] = el}>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Currency
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.currency} isEditMode={isEditing} />
@@ -1644,8 +1544,118 @@ export function DetailsTab({
                   ])
                 )}
               </div>
+              {/* Vehicle Registration No. - Only for baseline-po-bank-1 */}
+              {invoiceData.id === 'baseline-po-bank-1' ? (
+                <div ref={(el) => fieldRefs.current['vehicle_registration_no'] = el} className="relative">
+                  <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
+                    <span className="flex items-center">
+                      Vehicle Registration No.
+                      <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.vehicle_registration_no} isEditMode={isEditing} hasValue={!!invoiceData.vehicle_registration_no} />
+                    </span>
+                  </label>
+                  {isEditing ? (
+                    <ValidatedEditableField
+                      value={agentPendingFields['vehicle_registration_no'] || editedData.vehicle_registration_no || ''}
+                      onChange={(value) => handleFieldChange('vehicle_registration_no', value)}
+                      type="text"
+                      required={false}
+                      fieldName="vehicle_registration_no"
+                      placeholder="Enter Vehicle Registration No."
+                      onFocus={() => handleFieldFocus('vehicle_registration_no')}
+                      onBlur={handleFieldBlur}
+                    />
+                  ) : agentPendingFields['vehicle_registration_no'] ? (
+                    <div className="flex items-center">
+                      <p className="text-sm font-medium text-gray-950">
+                        {agentPendingFields['vehicle_registration_no']}
+                      </p>
+                      <PendingConfirmationIndicator />
+                    </div>
+                  ) : (
+                    (() => {
+                      const hasValue = invoiceData.vehicle_registration_no;
+
+                      if (hasValue) {
+                        return (
+                          <div className="flex items-center">
+                            <p className="text-sm font-medium text-gray-950">
+                              {invoiceData.vehicle_registration_no}
+                            </p>
+                            <CustomFieldIndicator
+                              fieldLabel="Vehicle Registration No."
+                              fieldValue={invoiceData.vehicle_registration_no}
+                              vendorName={invoiceData.vendor_name_snapshot}
+                              fieldName="vehicle_registration_no"
+                              onFieldFocus={onFieldFocus}
+                            />
+                          </div>
+                        );
+                      }
+
+                      // Show placeholder with red border if empty
+                      return (
+                        <p className="text-sm font-medium text-gray-950">
+                          {invoiceData.vehicle_registration_no || '--'}
+                        </p>
+                      );
+                    })()
+                  )}
+                </div>
+              ) : (
+                <div></div>
+              )}
+
+              {/* Financial Row 1: Subtotal, Tax Amount, Tax Rate */}
+              <div ref={(el) => fieldRefs.current['subtotal'] = el}>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
+                  <span className="flex items-center">
+                    Subtotal
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.subtotal} isEditMode={isEditing} />
+                  </span>
+                </label>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={editedData.subtotal || calculatedSubtotal}
+                    onChange={(value) => handleFieldChange('subtotal', value)}
+                    type="currency"
+                    required={true}
+                    fieldName="subtotal"
+                    currency={editedData.currency}
+                    onFocus={() => handleFieldFocus('subtotal')}
+                    onBlur={handleFieldBlur}
+                  />
+                ) : (
+                  <p className={getReadOnlyFieldClass('subtotal')}>
+                    {formatCurrency(invoiceData.subtotal || calculatedSubtotal, invoiceData.currency)}
+                  </p>
+                )}
+              </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
+                  <span className="flex items-center">
+                    Tax Amount
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.tax_total} isEditMode={isEditing} />
+                  </span>
+                </label>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={editedData.tax_total || calculatedTaxTotal}
+                    onChange={(value) => handleFieldChange('tax_total', value)}
+                    type="currency"
+                    required={false}
+                    fieldName="tax_total"
+                    currency={editedData.currency}
+                    onFocus={() => handleFieldFocus('tax_total')}
+                    onBlur={handleFieldBlur}
+                  />
+                ) : (
+                  <p className="text-sm font-medium text-gray-950">
+                    {formatCurrency(invoiceData.tax_total || calculatedTaxTotal, invoiceData.currency)}
+                  </p>
+                )}
+              </div>
+              <div>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Tax Rate (%)
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.tax_rate_percent} isEditMode={isEditing} />
@@ -1670,152 +1680,90 @@ export function DetailsTab({
                   </p>
                 )}
               </div>
-            </div>
-            
-            {/* Second Row: Tax Amount, Shipping/Freight, Discount */}
-            <div className={`grid ${getGridCols()} gap-4 mt-4`}>
-              <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+
+              {/* Financial Row 2: Total, Shipping, Discount */}
+              <div ref={(el) => fieldRefs.current['total'] = el} className="bg-purple-50 py-2 -ml-4 pl-4 pr-4 rounded-md">
+                <label className="flex items-center text-xs font-bold text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
-                    Tax Amount
-                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.tax_total} isEditMode={isEditing} />
+                    Total
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.total} isEditMode={isEditing} />
                   </span>
                 </label>
                 {isEditing ? (
                   <ValidatedEditableField
-                    value={editedData.tax_total || calculatedTaxTotal}
-                    onChange={(value) => handleFieldChange('tax_total', value)}
+                    value={editedData.total || calculatedTotal}
+                    onChange={(value) => handleFieldChange('total', value)}
                     type="currency"
-                    required={false}
-                    fieldName="tax_total"
+                    required={true}
+                    fieldName="total"
                     currency={editedData.currency}
-                    onFocus={() => handleFieldFocus('tax_total')}
+                    onFocus={() => handleFieldFocus('total')}
                     onBlur={handleFieldBlur}
                   />
                 ) : (
-                  <p className="text-sm font-medium text-gray-950">
-                    {formatCurrency(invoiceData.tax_total || calculatedTaxTotal, invoiceData.currency)}
+                  <p className="text-sm font-bold text-gray-950">
+                    {formatCurrency(invoiceData.total || calculatedTotal, invoiceData.currency)}
                   </p>
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   Shipping/Freight
                 </label>
                 <p className="text-sm font-medium text-gray-950">
-                  {invoiceData.shipping_total > 0 
+                  {invoiceData.shipping_total > 0
                     ? formatCurrency(invoiceData.shipping_total, invoiceData.currency)
                     : '-'
                   }
                 </p>
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   Discount
                 </label>
-                <p className={`text-sm font-medium ${invoiceData.discount_total > 0 ? 'text-green-600' : 'text-gray-950'}`}>
-                  {invoiceData.discount_total > 0 
+                <p className="text-sm font-medium text-gray-950">
+                  {invoiceData.discount_total > 0
                     ? `-${formatCurrency(invoiceData.discount_total, invoiceData.currency)}`
                     : '-'
                   }
                 </p>
               </div>
             </div>
-            
-            {/* Third Row: Other charges if present */}
-            {invoiceData.other_charges_total > 0 && (
-              <div className={`grid ${getGridCols()} gap-4 mt-4`}>
-                <div>
-                  <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
-                    Other Charges
-                  </label>
-                  <p className="text-sm font-medium text-gray-950">
-                    {formatCurrency(invoiceData.other_charges_total, invoiceData.currency)}
-                  </p>
-                </div>
-                <div></div>
-                <div></div>
-              </div>
-            )}
-            {/* Invoice Total Row */}
-            <div className="mt-4 pt-4 border-t border-gray-100">
-              <div className={`grid ${getGridCols()} gap-4`}>
-                <div ref={(el) => fieldRefs.current['total'] = el}>
-                  <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
-                    <span className="flex items-center">
-                      Invoice Total
-                      <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.total} isEditMode={isEditing} />
-                    </span>
-                  </label>
-                  {isEditing ? (
-                    <ValidatedEditableField
-                      value={editedData.total || calculatedTotal}
-                      onChange={(value) => handleFieldChange('total', value)}
-                      type="currency"
-                      required={true}
-                      fieldName="total"
-                      currency={editedData.currency}
-                      onFocus={() => handleFieldFocus('total')}
-                      onBlur={handleFieldBlur}
-                    />
-                  ) : (
-                    <p className={`${getReadOnlyFieldClass('total')} font-bold`}>
-                      {formatCurrency(invoiceData.total || calculatedTotal, invoiceData.currency)}
-                    </p>
-                  )}
-                  {/* Show discrepancy warning if extracted total differs from current total */}
-                  {invoiceData.total_discrepancy && Number(invoiceData.total_discrepancy) > 1 && (
-                    <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded-md">
-                      <div className="flex items-start gap-2">
-                        <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                        <div className="text-xs">
-                          <p className="font-medium text-amber-800">
-                            Total Discrepancy Detected
-                          </p>
-                          <p className="text-amber-700 mt-1">
-                            The AI extracted total ({formatCurrency(invoiceData.extracted_total || 0, invoiceData.currency)}) 
-                            differs from the calculated total. This may indicate missing charges (freight, fees) in the extraction.
-                          </p>
-                          <p className="text-amber-700 mt-1">
-                            Components: Subtotal ({formatCurrency(invoiceData.subtotal || 0, invoiceData.currency)})
-                            {invoiceData.tax_total > 0 && ` + Tax (${formatCurrency(invoiceData.tax_total, invoiceData.currency)})`}
-                            {invoiceData.shipping_total > 0 && ` + Shipping (${formatCurrency(invoiceData.shipping_total, invoiceData.currency)})`}
-                            {invoiceData.other_charges_total > 0 && ` + Other (${formatCurrency(invoiceData.other_charges_total, invoiceData.currency)})`}
-                            {invoiceData.discount_total > 0 && ` - Discount (${formatCurrency(invoiceData.discount_total, invoiceData.currency)})`}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div></div>
-                <div></div>
-              </div>
-            </div>
           </div>
         </div>
-
         {/* Payment Information Section */}
         {!hidePaymentSection && (
         <div>
-          <div className="relative px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
+          <div
+            className="relative px-4 py-3 border-t border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+            onClick={() => setIsPaymentInfoExpanded(!isPaymentInfoExpanded)}
+          >
             <div className="flex items-center gap-2">
               <CreditCard className="h-4 w-4 text-purple-600" />
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Payment Information</h3>
+              {isPaymentInfoExpanded ? (
+                <ChevronUp className="h-4 w-4 text-gray-500 ml-auto" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-gray-500 ml-auto" />
+              )}
             </div>
             {!forceReadOnly && !isEditing && (
               <button
-                onClick={() => setIsEditing(true)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditing(true);
+                }}
+                className="absolute right-10 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
               >
                 Edit
               </button>
             )}
           </div>
+          {isPaymentInfoExpanded && (
           <div className="px-10 py-4 bg-white">
             <div className={`grid ${getGridCols()} gap-4`}>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Payment Method
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.payment_method} isEditMode={isEditing} />
@@ -1849,7 +1797,7 @@ export function DetailsTab({
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Payment Terms
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.terms_text} isEditMode={isEditing} />
@@ -1869,7 +1817,7 @@ export function DetailsTab({
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Due Date
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.due_date} isEditMode={isEditing} />
@@ -1902,7 +1850,7 @@ export function DetailsTab({
               </div>
               {invoiceData.vendor_address_snapshot && (
                 <div className={getFullSpan()}>
-                  <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">Billing Address</label>
+                  <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">Billing Address</label>
                   <p className="text-sm font-medium text-gray-950 whitespace-pre-line">
                     {formatVendorAddress(invoiceData.vendor_address_snapshot)}
                   </p>
@@ -2017,30 +1965,43 @@ export function DetailsTab({
               )}
             </div>
           </div>
+          )}
         </div>
         )}
 
         {/* Accounting Classification Section */}
         {!hideAccountingSection && (
         <div>
-          <div className="relative px-4 py-3 border-t border-b border-gray-200 bg-gray-50">
+          <div
+            className="relative px-4 py-3 border-t border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+            onClick={() => setIsAccountingExpanded(!isAccountingExpanded)}
+          >
             <div className="flex items-center gap-2">
               <BookOpen className="h-4 w-4 text-purple-600" />
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Accounting Classification</h3>
+              {isAccountingExpanded ? (
+                <ChevronUp className="h-4 w-4 text-gray-500 ml-auto" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-gray-500 ml-auto" />
+              )}
             </div>
             {!forceReadOnly && !isEditing && (
               <button
-                onClick={() => setIsEditing(true)}
-                className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsEditing(true);
+                }}
+                className="absolute right-10 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
               >
                 Edit
               </button>
             )}
           </div>
+          {isAccountingExpanded && (
           <div className="px-10 py-4 bg-white">
             <div className={`grid ${getGridCols()} gap-4`}>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Ledger Account
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.ledger} isEditMode={isEditing} />
@@ -2063,7 +2024,7 @@ export function DetailsTab({
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Cost Center
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.cost_center} isEditMode={isEditing} />
@@ -2090,7 +2051,7 @@ export function DetailsTab({
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     GL Code
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.gl_code} isEditMode={isEditing} />
@@ -2114,7 +2075,7 @@ export function DetailsTab({
                 )}
               </div>
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Department
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.department} isEditMode={isEditing} />
@@ -2141,7 +2102,7 @@ export function DetailsTab({
               </div>
               {invoiceData.accounting_notes && (
                 <div className={getFullSpan()}>
-                  <label className="flex items-center text-xs font-medium text-gray-700 mb-px min-h-[20px]">Accounting Notes</label>
+                  <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">Accounting Notes</label>
                   {isEditing ? (
                     <EditableField
                       value={editedData.accounting_notes || ''}
@@ -2205,6 +2166,7 @@ export function DetailsTab({
               )}
             </div>
           </div>
+          )}
         </div>
         )}
 

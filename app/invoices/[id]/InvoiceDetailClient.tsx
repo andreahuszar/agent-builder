@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { ChevronRight, File } from 'lucide-react';
 import { DocumentPreview } from '@/app/components/invoices/DocumentPreview';
 import { ResizablePanel, MultiResizablePanel } from '@/app/components/invoices/ResizablePanel';
@@ -13,6 +13,7 @@ import { GRDocumentPreview } from '@/app/components/invoices/comparison/GRDocume
 import { TeachingConfirmationModal } from '@/app/components/invoices/TeachingConfirmationModal';
 import { useSelection } from '@/app/context/SelectionContext';
 import { useToast } from '@/app/components/ui/Toast';
+import { calculateInvoiceExceptions } from '@/app/utils/exceptionCounter';
 
 interface InvoiceDetailClientProps {
   invoiceId: string;
@@ -664,34 +665,6 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
   const poNumber = getPOStatus();
 
-  // Calculate exceptions count - should match what InvoiceTabs shows
-  const calculateExceptionsCount = () => {
-    let count = 0;
-
-    // Check match results for variances that are not within tolerance
-    matchResults?.forEach((r: any) => {
-      if (!r.within_tolerance && r.explanation_code !== 'PERFECT_MATCH') {
-        count++;
-      }
-    });
-
-    // Add database validation warnings/errors
-    if (invoice.validation_warnings && Array.isArray(invoice.validation_warnings)) {
-      invoice.validation_warnings.forEach((warning: any) => {
-        if (warning.severity === 'error') {
-          count++;
-        }
-      });
-    }
-
-    // Check for other validation issues (vendor not verified, etc)
-    if (invoice.vendor_is_verified === false) {
-      count++;
-    }
-
-    return count;
-  };
-
   // Calculate missing fields count
   // This MUST match the exact logic in InvoiceTabs fieldErrorsCount
   const calculateMissingFieldsCount = (invoiceData?: any) => {
@@ -753,7 +726,16 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     return count;
   };
 
-  const exceptionsCount = calculateExceptionsCount();
+  // Use the shared exception counter (same as InvoiceTabs)
+  const exceptionResult = useMemo(() =>
+    calculateInvoiceExceptions(invoice, matchResults, poComparisonData, 2500, acceptedLineSuggestions),
+    [matchResults, invoice, poComparisonData, acceptedLineSuggestions]
+  );
+
+  // Total exceptions count for the status bar
+  const totalExceptionsCount = exceptionResult.counts.total;
+
+  // Keep these for backward compatibility with save logic
   const missingFieldsCount = calculateMissingFieldsCount();
   const lineItemsErrorCount = calculateLineItemsErrorCount();
 
@@ -774,9 +756,9 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         varianceAmount={varianceAmount}
         poTotal={poTotal || null}
         helpdeskTicketRef={invoice.helpdesk_ticket_ref || 'TICKET-389688'}
-        exceptionsCount={exceptionsCount}
-        missingFieldsCount={missingFieldsCount}
-        lineItemsErrorCount={lineItemsErrorCount}
+        exceptionsCount={totalExceptionsCount}
+        missingFieldsCount={0}  // No longer showing separate field count
+        lineItemsErrorCount={0}  // No longer showing separate line items count
         validationWarnings={invoice.validation_warnings}
         showSaveButton={true}
         onSaveClick={handleSave}
