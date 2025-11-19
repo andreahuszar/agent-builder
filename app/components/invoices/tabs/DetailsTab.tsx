@@ -873,7 +873,7 @@ export function DetailsTab({
             )}
           </div>
           {isInvoiceInfoExpanded && (
-          <div className="px-10 py-3 bg-white">
+          <div className="px-10 py-3 bg-white border-b border-gray-200">
             <div className={`grid ${getGridCols()} gap-x-4 gap-y-2`}>
               <div ref={(el) => fieldRefs.current['invoice_number'] = el} className="relative">
                 <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
@@ -1700,8 +1700,8 @@ export function DetailsTab({
               </div>
 
               {/* Financial Row 2: Total, Shipping, Discount */}
-              <div ref={(el) => fieldRefs.current['total'] = el} className="bg-purple-50 py-2 -ml-4 pl-4 pr-4 rounded-md">
-                <label className="flex items-center text-xs font-bold text-gray-700 mb-0 min-h-[16px]">
+              <div ref={(el) => fieldRefs.current['total'] = el} className="bg-purple-50 py-2 -ml-3 pl-3 pr-3">
+                <label className="flex items-center text-xs font-bold text-purple-600 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Total
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.total} isEditMode={isEditing} />
@@ -1719,7 +1719,7 @@ export function DetailsTab({
                     onBlur={handleFieldBlur}
                   />
                 ) : (
-                  <p className="text-sm font-bold text-gray-950">
+                  <p className="text-sm font-bold text-purple-900">
                     {formatCurrency(invoiceData.total || calculatedTotal, invoiceData.currency)}
                   </p>
                 )}
@@ -1779,7 +1779,7 @@ export function DetailsTab({
             )}
           </div>
           {isPaymentInfoExpanded && (
-          <div className="px-10 py-4 bg-white">
+          <div className="px-10 py-4 bg-white border-b border-gray-200">
             <div className={`grid ${getGridCols()} gap-4`}>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
@@ -2017,7 +2017,7 @@ export function DetailsTab({
             )}
           </div>
           {isAccountingExpanded && (
-          <div className="px-10 py-4 bg-white">
+          <div className="px-10 py-4 bg-white border-b border-gray-200">
             <div className={`grid ${getGridCols()} gap-4`}>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
@@ -2254,7 +2254,7 @@ export function DetailsTab({
             </button>
           </div>
           {isLineItemsExpanded && (
-          <div className="bg-white">
+          <div className="bg-white border-b border-gray-200">
             <LineItemsPreviewPanel
               invoiceLines={invoiceData.lines || []}
               poLines={invoiceData.po_lines}

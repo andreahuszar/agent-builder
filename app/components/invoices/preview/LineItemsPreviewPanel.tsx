@@ -1091,34 +1091,33 @@ export function LineItemsPreviewPanel({
                 <table className="min-w-max">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                      <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 12 : 10) : (10 + (isEditMode ? 2 : 0))} className="px-4 bg-white h-[42px]">
-                        <div className="flex items-center justify-between h-full">
-                          <div className="flex items-center gap-4 pl-6">
-                            {/* Show PO Toggle */}
-                            <label className="flex items-center gap-1.5">
-                              <Switch.Root
-                                checked={showPO}
-                                onCheckedChange={setShowPO}
-                                disabled={!poLines || poLines.length === 0}
-                                className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
-                              </Switch.Root>
-                              <span className="text-xs font-medium text-gray-950">Show PO</span>
-                            </label>
+                      <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 12 : 10) : (10 + (isEditMode ? 2 : 0))} className="px-4 bg-white h-[36px]">
+                        <div className="flex items-center justify-end gap-3 h-full">
+                          {/* Show PO Toggle */}
+                          <label className="flex items-center gap-1.5">
+                            <Switch.Root
+                              checked={showPO}
+                              onCheckedChange={setShowPO}
+                              disabled={!poLines || poLines.length === 0}
+                              className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                            </Switch.Root>
+                            <span className="text-xs font-medium text-gray-950">Show PO</span>
+                          </label>
 
-                            {/* Show Receipt Toggle */}
-                            <label className="flex items-center gap-1.5">
-                              <Switch.Root
-                                checked={showReceipt}
-                                onCheckedChange={setShowReceipt}
-                                className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors"
-                              >
-                                <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
-                              </Switch.Root>
-                              <span className="text-xs font-medium text-gray-950">Show Receipt</span>
-                            </label>
-                          </div>
+                          {/* Show Receipt Toggle */}
+                          <label className="flex items-center gap-1.5">
+                            <Switch.Root
+                              checked={showReceipt}
+                              onCheckedChange={setShowReceipt}
+                              className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors"
+                            >
+                              <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                            </Switch.Root>
+                            <span className="text-xs font-medium text-gray-950">Show Receipt</span>
+                          </label>
+
                           {!hideEditButton && (
                             <button
                               onClick={toggleEditMode}
@@ -1833,34 +1832,33 @@ export function LineItemsPreviewPanel({
               <table className="w-full">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <th colSpan={poLines.length > 0 ? (isEditMode ? 12 : 11) : (isEditMode ? 11 : 10)} className="px-4 bg-white h-[42px]">
-                      <div className="flex items-center justify-between h-full">
-                        <div className="flex items-center gap-4 pl-6">
-                          {/* Show PO Toggle */}
-                          <label className="flex items-center gap-1.5">
-                            <Switch.Root
-                              checked={showPO}
-                              onCheckedChange={setShowPO}
-                              disabled={!poLines || poLines.length === 0}
-                              className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
-                            </Switch.Root>
-                            <span className="text-xs font-medium text-gray-950">Show PO</span>
-                          </label>
+                    <th colSpan={poLines.length > 0 ? (isEditMode ? 12 : 11) : (isEditMode ? 11 : 10)} className="px-4 bg-white h-[36px]">
+                      <div className="flex items-center justify-end gap-3 h-full">
+                        {/* Show PO Toggle */}
+                        <label className="flex items-center gap-1.5">
+                          <Switch.Root
+                            checked={showPO}
+                            onCheckedChange={setShowPO}
+                            disabled={!poLines || poLines.length === 0}
+                            className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                          </Switch.Root>
+                          <span className="text-xs font-medium text-gray-950">Show PO</span>
+                        </label>
 
-                          {/* Show Receipt Toggle */}
-                          <label className="flex items-center gap-1.5">
-                            <Switch.Root
-                              checked={showReceipt}
-                              onCheckedChange={setShowReceipt}
-                              className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors"
-                            >
-                              <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
-                            </Switch.Root>
-                            <span className="text-xs font-medium text-gray-950">Show Receipt</span>
-                          </label>
-                        </div>
+                        {/* Show Receipt Toggle */}
+                        <label className="flex items-center gap-1.5">
+                          <Switch.Root
+                            checked={showReceipt}
+                            onCheckedChange={setShowReceipt}
+                            className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors"
+                          >
+                            <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                          </Switch.Root>
+                          <span className="text-xs font-medium text-gray-950">Show Receipt</span>
+                        </label>
+
                         {!hideEditButton && (
                           <button
                             onClick={toggleEditMode}
