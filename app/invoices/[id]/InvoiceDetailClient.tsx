@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { ChevronRight, File } from 'lucide-react';
 import { DocumentPreview } from '@/app/components/invoices/DocumentPreview';
 import { ResizablePanel, MultiResizablePanel } from '@/app/components/invoices/ResizablePanel';
@@ -245,6 +245,11 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const handlePdfCollapseToggle = () => {
     setIsPdfCollapsed(!isPdfCollapsed);
   };
+
+  // Handle ResizablePanel size changes for auto-zoom
+  const handlePanelSizeChange = useCallback((sizes: number[]) => {
+    setPdfPanelSize(sizes[0]);
+  }, []);
 
   const handleTabChange = (tab: TabId) => {
     setActiveTab(tab);
@@ -588,7 +593,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         minSizes={[20, 30]}
         storageKey={`invoice-unified-v2-${invoiceId}`}
         className="h-full"
-        onSizeChange={(sizes) => setPdfPanelSize(sizes[0])}
+        onSizeChange={handlePanelSizeChange}
       >
         {/* Document Preview - LEFT PANEL */}
         <DocumentPreview

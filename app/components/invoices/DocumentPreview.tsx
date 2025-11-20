@@ -262,9 +262,6 @@ export function DocumentPreview({
     const resizeObserver = new ResizeObserver((entries) => {
       const width = entries[0].contentRect.width;
 
-      // Reset manual override immediately when resize detected (allow auto-zoom)
-      setManualZoomOverride(false);
-
       // Debounce: wait 50ms after resize stops before updating width
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
