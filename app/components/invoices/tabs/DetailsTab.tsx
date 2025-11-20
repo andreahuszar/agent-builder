@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
+import Cookies from 'js-cookie';
 import { formatVendorAddress } from '@/app/lib/addressFormatter';
 import {
   Save,
@@ -174,7 +175,11 @@ export function DetailsTab({
   const [localFocusedField, setLocalFocusedField] = useState<string | null>(null);
 
   // Accordion collapse state
-  const [isValidationExpanded, setIsValidationExpanded] = useState(false); // Collapsed by default
+  const [isValidationExpanded, setIsValidationExpanded] = useState(() => {
+    // Read from cookie, default to false (collapsed)
+    const saved = Cookies.get('validationResultsExpanded');
+    return saved === 'true';
+  });
   const [isInvoiceInfoExpanded, setIsInvoiceInfoExpanded] = useState(true); // Start expanded
   const [isAdditionalDetailsExpanded, setIsAdditionalDetailsExpanded] = useState(false);
   const [isLineItemsExpanded, setIsLineItemsExpanded] = useState(true); // Start expanded
@@ -200,6 +205,11 @@ export function DetailsTab({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isLineItemsFullscreen]);
+
+  // Save Validation Results expanded state to cookie
+  useEffect(() => {
+    Cookies.set('validationResultsExpanded', String(isValidationExpanded), { expires: 365 });
+  }, [isValidationExpanded]);
 
   // Notify parent when edit mode changes
   useEffect(() => {
