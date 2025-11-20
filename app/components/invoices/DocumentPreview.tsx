@@ -260,11 +260,14 @@ export function DocumentPreview({
     const resizeObserver = new ResizeObserver((entries) => {
       const width = entries[0].contentRect.width;
 
-      // Debounce: wait 150ms after resize stops before updating
+      // Reset manual override immediately when resize detected (allow auto-zoom)
+      setManualZoomOverride(false);
+
+      // Debounce: wait 50ms after resize stops before updating width
       clearTimeout(resizeTimeout);
       resizeTimeout = setTimeout(() => {
         setContainerWidth(width);
-      }, 150);
+      }, 50);
     });
 
     resizeObserver.observe(containerRef.current);
@@ -292,13 +295,6 @@ export function DocumentPreview({
       setZoom(optimalZoom);
     }
   }, [containerWidth, pdfNaturalWidth, manualZoomOverride, isPdf, calculateOptimalZoom, zoom]);
-
-  // Reset manual override when container width changes (allow auto-zoom on resize)
-  useEffect(() => {
-    if (containerWidth > 0) {
-      setManualZoomOverride(false);
-    }
-  }, [containerWidth]);
 
   // Show line items preview panel if we have invoice data and lines
   // Check both invoice_lines and lines properties for compatibility
