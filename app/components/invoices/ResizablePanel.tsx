@@ -34,15 +34,10 @@ export function ResizablePanel({
   const dragStartPos = useRef<number>(0);
   const dragStartSizes = useRef<number[]>([]);
 
-  // Update sizes when defaultSizes prop changes
-  useEffect(() => {
-    setSizes(defaultSizes);
-  }, [defaultSizes]);
-
   // Call onSizeChange callback when sizes change
   useEffect(() => {
     onSizeChange?.(sizes);
-  }, [sizes, onSizeChange]);
+  }, [sizes]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (disabled) return; // Don't allow resizing when disabled
