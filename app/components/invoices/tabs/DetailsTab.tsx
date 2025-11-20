@@ -2469,31 +2469,31 @@ export function DetailsTab({
                 })()}
               </div>
 
-              {/* Expand button */}
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  toggleLineItemsFullscreen();
-                }}
-                className="absolute right-16 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors flex items-center gap-1 bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
-              >
-                <Maximize2 className="h-3.5 w-3.5 text-purple-600" />
-                <span>Expand</span>
-              </button>
-
               {/* Edit button */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
                   setIsLineItemsEditMode(!isLineItemsEditMode);
                 }}
-                className={`absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                className={`absolute right-[100px] top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors ${
                   isLineItemsEditMode
                     ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
                     : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
                 }`}
               >
                 {isLineItemsEditMode ? 'Done' : 'Edit'}
+              </button>
+
+              {/* Expand button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleLineItemsFullscreen();
+                }}
+                className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors flex items-center gap-1 bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+              >
+                <Maximize2 className="h-3.5 w-3.5 text-purple-900" />
+                <span>Expand</span>
               </button>
             </div>
           )}
@@ -2532,25 +2532,25 @@ export function DetailsTab({
                   })()}
                 </div>
 
-                {/* Collapse button */}
-                <button
-                  onClick={toggleLineItemsFullscreen}
-                  className="absolute right-16 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors flex items-center gap-1 bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800"
-                >
-                  <Minimize2 className="h-3.5 w-3.5" />
-                  <span>Collapse</span>
-                </button>
-
                 {/* Edit button */}
                 <button
                   onClick={() => setIsLineItemsEditMode(!isLineItemsEditMode)}
-                  className={`absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                  className={`absolute right-[110px] top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors ${
                     isLineItemsEditMode
                       ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
                       : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
                   }`}
                 >
                   {isLineItemsEditMode ? 'Done' : 'Edit'}
+                </button>
+
+                {/* Collapse button */}
+                <button
+                  onClick={toggleLineItemsFullscreen}
+                  className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors flex items-center gap-1 bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800"
+                >
+                  <Minimize2 className="h-3.5 w-3.5" />
+                  <span>Collapse</span>
                 </button>
               </div>
             )}

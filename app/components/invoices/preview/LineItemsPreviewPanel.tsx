@@ -1064,6 +1064,7 @@ export function LineItemsPreviewPanel({
             </button>
           )}
 
+          {/* Expand/Collapse button - moved to last position */}
           <button
             onClick={toggleFullscreen}
             className={`px-2 py-1 text-xs font-medium rounded border transition-colors flex items-center gap-1 ${
