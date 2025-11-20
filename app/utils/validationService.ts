@@ -66,7 +66,8 @@ export class InvoiceValidator {
     // Process validations
     this.validatePORequirement();
     this.validateMatchStatus();
-    
+    this.validateLineItemVariances();
+
     // Risk validations
     this.validateVendorInfo();
     this.detectPotentialFraud();
@@ -277,18 +278,23 @@ export class InvoiceValidator {
   private validateMatchStatus() {
     const { match_status, total, po_numbers_cached } = this.invoice;
 
-    // Only show variance warning if match_status is 'exception' AND we don't have other validation warnings
-    // This prevents duplicate warnings when the exception is due to other issues like bank details
-    if (match_status === 'exception' && !(this.invoice as any).validation_warnings?.length) {
+    // Show validation warning for both 'exception' and 'variance' match status
+    // Only show if we don't have other validation warnings to prevent duplicates
+    if ((match_status === 'exception' || match_status === 'variance') && !(this.invoice as any).validation_warnings?.length) {
       // Try to calculate the actual variance if we have PO data
       // In a real system, we'd fetch the PO total, but for now we'll just show the general message
-      // Since we don't have direct access to PO total here, we'll make it clear it's an exception
+      // Since we don't have direct access to PO total here, we'll make it clear it's an exception/variance
       const TOLERANCE_LIMIT = 5; // Default 5% tolerance
+
+      const severity = match_status === 'exception' ? 'error' : 'warning';
+      const message = match_status === 'exception'
+        ? `Invoice has variances exceeding ${TOLERANCE_LIMIT}% tolerance limit`
+        : 'Invoice has line item variances';
 
       this.warnings.push({
         field: 'match_status',
-        message: `Invoice has variances exceeding ${TOLERANCE_LIMIT}% tolerance limit`,
-        severity: 'warning',
+        message,
+        severity,
         category: 'financial',
         value: match_status,
       });
@@ -301,6 +307,92 @@ export class InvoiceValidator {
         value: match_status,
       });
     }
+  }
+
+  // Line item variance validation (for detailed variance reporting)
+  private validateLineItemVariances() {
+    const { match_status, lines } = this.invoice;
+
+    // Only validate line items if status is 'variance' or 'exception'
+    if (match_status !== 'variance' && match_status !== 'exception') return;
+    if (!lines || lines.length === 0) return;
+
+    // Find lines with variances
+    const varianceLines = lines.filter((line: any) => {
+      // Include lines with explicit variance status
+      if (line.status === 'variance') return true;
+
+      // Include lines with pending substitution suggestions
+      if (line.suggested_po_match) return true;
+
+      // Include lines with match results that are out of tolerance
+      if (line.match_result && !line.match_result.within_tolerance) return true;
+
+      return false;
+    });
+
+    // Create detailed warnings for each variance line
+    varianceLines.forEach((line: any) => {
+      const lineNumber = line.line_no || line.line_number;
+      const description = line.description || 'Unknown item';
+
+      // Determine variance type and create appropriate message
+      if (line.suggested_po_match) {
+        // Substitution suggestion variance
+        const suggestion = line.suggested_po_match;
+        const differences = suggestion.differences || [];
+        const diffText = differences.length > 0
+          ? differences.map((d: any) => `${d.field}: ${d.invoice_value} vs ${d.po_value}`).join(', ')
+          : 'specification differences';
+
+        this.warnings.push({
+          field: `line_${lineNumber}`,
+          message: `Line ${lineNumber}: Substitution suggestion detected - ${description}`,
+          severity: 'warning',
+          category: 'financial',
+          details: `${diffText}`,
+        });
+      } else if (line.match_result || line.variance_qty !== undefined || line.variance_price !== undefined) {
+        // Quantity or price variance
+        const variances: string[] = [];
+
+        if (line.variance_qty !== undefined && line.variance_qty !== 0) {
+          const qtyVariance = line.variance_qty > 0 ? `+${line.variance_qty}` : line.variance_qty;
+          variances.push(`Qty: ${qtyVariance}`);
+        }
+
+        if (line.variance_price !== undefined && line.variance_price !== 0) {
+          const priceVariance = line.variance_price > 0 ? `+${line.variance_price}` : line.variance_price;
+          variances.push(`Price: ${priceVariance}`);
+        }
+
+        // Calculate percentage variance if we have totals
+        let variancePercentage = '';
+        if (line.line_total && line.po_line_total) {
+          const variance = ((line.line_total - line.po_line_total) / line.po_line_total) * 100;
+          variancePercentage = ` (${variance > 0 ? '+' : ''}${variance.toFixed(1)}% variance)`;
+        }
+
+        const varianceText = variances.length > 0 ? variances.join(', ') : 'variance detected';
+
+        this.warnings.push({
+          field: `line_${lineNumber}`,
+          message: `Line ${lineNumber}: ${varianceText}${variancePercentage}`,
+          severity: 'warning',
+          category: 'financial',
+          details: description,
+        });
+      } else {
+        // Generic variance
+        this.warnings.push({
+          field: `line_${lineNumber}`,
+          message: `Line ${lineNumber}: Variance detected`,
+          severity: 'warning',
+          category: 'financial',
+          details: description,
+        });
+      }
+    });
   }
 
   // Vendor information validation

@@ -586,17 +586,49 @@ export function LineItemsPreviewPanel({
 
   // Count errors in invoice lines (for needs info mode)
   const countErrors = () => {
-    // If not showing comparison, don't count comparison errors
+    // If not showing comparison, count variances from line status
     if (!showPO || poLines.length === 0) {
-      // Count validation errors from match results if any
-      return matchResults.filter(mr => !mr.within_tolerance).length;
+      // Count lines with variance status or substitution suggestions
+      let varianceCount = 0;
+
+      // Use match results if available
+      if (matchResults && matchResults.length > 0) {
+        varianceCount = matchResults.filter(mr => !mr.within_tolerance).length;
+      }
+
+      // Also count lines with explicit variance status or substitution suggestions
+      invoiceLines.forEach(line => {
+        const alreadyCounted = matchResults?.some(mr =>
+          mr.invoice_line_id === line.id && !mr.within_tolerance
+        );
+
+        if (!alreadyCounted) {
+          // Count lines with variance status
+          if (line.status === 'variance') {
+            varianceCount++;
+          }
+          // Count lines with pending substitution suggestions
+          else if (line.suggested_po_match) {
+            varianceCount++;
+          }
+        }
+      });
+
+      return varianceCount;
     }
 
     // If showing comparison, count mismatches
     let errorCount = 0;
     invoiceLines.forEach((invoiceLine, index) => {
       const poLine = getMatchedPOLine(invoiceLine, index);
+
+      // Count mismatches with matched PO lines
       if (poLine && hasMismatch(invoiceLine, poLine)) {
+        errorCount++;
+      }
+
+      // Also count lines with pending substitution suggestions as variances
+      if (!poLine && invoiceLine.suggested_po_match) {
         errorCount++;
       }
     });
@@ -1177,7 +1209,7 @@ export function LineItemsPreviewPanel({
                       <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
                       <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
                       <th className="pl-1.5 pr-4 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
-                      {!useDetailedVarianceColumns && (
+                      {!useDetailedVarianceColumns && showPO && (
                         <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Variance</th>
                       )}
                       {isEditMode && (
@@ -1479,7 +1511,7 @@ export function LineItemsPreviewPanel({
                           <td className="pl-1.5 pr-4 py-2 text-xs text-right font-medium text-gray-950">
                             {formatCurrency(line.line_total)}
                           </td>
-                          {!useDetailedVarianceColumns && (
+                          {!useDetailedVarianceColumns && showPO && (
                             <td className="px-1.5 py-2 text-xs">
                               {matchedPO && (
                                 <div className="flex flex-col items-center gap-0.5">
@@ -1924,7 +1956,7 @@ export function LineItemsPreviewPanel({
                     <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
                     <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
                     <th className="pl-1.5 pr-4 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
-                    {poLines.length > 0 && (
+                    {poLines.length > 0 && showPO && (
                       <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Variance</th>
                     )}
                     <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase w-16"></th>
@@ -1981,8 +2013,47 @@ export function LineItemsPreviewPanel({
                             {line.line_no}
                           </td>
                           {/* Icon column for smart match indicators */}
-                          <td className="px-1 py-2 text-center relative">
-                            {matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) ? (
+                          <td className="px-1 py-2 text-center relative group">
+                            {hasSuggestion(line) ? (
+                              // PRIORITY 1: Show gradient Sparkles for AI substitution suggestions
+                              <Tooltip.Provider>
+                                <Tooltip.Root delayDuration={200} open={openSuggestionId === (line.id || `line-${line.line_no}`) ? false : undefined}>
+                                  <SubstitutionSuggestionPopover
+                                    invoiceDescription={line.description}
+                                    poDescription={line.suggested_po_match!.po_description}
+                                    invoiceSku={line.sku}
+                                    poSku={line.suggested_po_match!.po_line_id}
+                                    differences={line.suggested_po_match!.differences || []}
+                                    confidence={line.suggested_po_match!.confidence || 0}
+                                    reason={line.suggested_po_match!.reason || ''}
+                                    onAccept={() => {
+                                      console.log('Accept substitution');
+                                    }}
+                                    onReject={() => {
+                                      console.log('Reject substitution');
+                                    }}
+                                    open={openSuggestionId === (line.id || `line-${line.line_no}`)}
+                                    onOpenChange={(open) => setOpenSuggestionId(open ? (line.id || `line-${line.line_no}`) : null)}
+                                  >
+                                    <Tooltip.Trigger asChild>
+                                      <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                        <Sparkles
+                                          className="h-4 w-4"
+                                          fill="currentColor"
+                                          style={{ fill: 'url(#sparkle-gradient)', stroke: 'url(#sparkle-gradient)' }}
+                                        />
+                                      </span>
+                                    </Tooltip.Trigger>
+                                  </SubstitutionSuggestionPopover>
+                                  <Tooltip.Portal>
+                                    <Tooltip.Content className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg">
+                                      AI suggests possible substitution - Click to review
+                                      <Tooltip.Arrow className="fill-gray-900" />
+                                    </Tooltip.Content>
+                                  </Tooltip.Portal>
+                                </Tooltip.Root>
+                              </Tooltip.Provider>
+                            ) : matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) ? (
                               <Tooltip.Provider>
                                 <Tooltip.Root delayDuration={200} open={openPopoverId === `invoice-detailed-${line.id || `line-${line.line_no}`}` ? false : undefined}>
                                   {hasCustomRule(line) ? (
@@ -2112,86 +2183,8 @@ export function LineItemsPreviewPanel({
                               className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                             />
                           ) : (
-                            <div className="flex items-center gap-1.5">
-                              {matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
-                                <Tooltip.Provider>
-                                  <Tooltip.Root delayDuration={200} open={openPopoverId === `invoice-detailed-${line.id || `line-${line.line_no}`}` ? false : undefined}>
-                                    {hasCustomRule(line) ? (
-                                      <CustomRulePopover
-                                        rule={getCustomRule(line)!}
-                                        invoiceQty={line.qty}
-                                        invoiceUom={line.uom}
-                                        poQty={matchedPO.qty_ordered}
-                                        poUom={matchedPO.uom}
-                                        lineTotal={line.line_total}
-                                        onEdit={() => handleEditRule(line)}
-                                        onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)}
-                                        open={openPopoverId === `invoice-detailed-${line.id || `line-${line.line_no}`}`}
-                                        onOpenChange={(open) => setOpenPopoverId(open ? `invoice-detailed-${line.id || `line-${line.line_no}`}` : null)}
-                                      >
-                                        <Tooltip.Trigger asChild>
-                                          <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
-                                          </span>
-                                        </Tooltip.Trigger>
-                                      </CustomRulePopover>
-                                    ) : hasUomConversion(line) && hasUomDifference(line, matchedPO) ? (
-                                      <UomMatchPopover
-                                        invoiceQty={line.uom_conversion!.invoice_qty}
-                                        invoiceUom={line.uom_conversion!.invoice_uom}
-                                        invoiceUnitPrice={line.unit_price}
-                                        poQty={line.uom_conversion!.po_qty}
-                                        poUom={line.uom_conversion!.po_uom}
-                                        poUnitPrice={matchedPO.unit_price}
-                                        conversionFactor={line.uom_conversion!.conversion_factor}
-                                        conversionExplanation={line.uom_conversion!.explanation}
-                                        lineTotal={line.line_total}
-                                        onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
-                                        open={openPopoverId === `invoice-detailed-${line.id || `line-${line.line_no}`}`}
-                                        onOpenChange={(open) => setOpenPopoverId(open ? `invoice-detailed-${line.id || `line-${line.line_no}`}` : null)}
-                                      >
-                                        <Tooltip.Trigger asChild>
-                                          <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
-                                          </span>
-                                        </Tooltip.Trigger>
-                                      </UomMatchPopover>
-                                    ) : (
-                                      <SmartMatchPopover
-                                        invoiceDescription={line.description}
-                                        poDescription={matchedPO.item_description || matchedPO.description}
-                                        invoiceLine={line}
-                                        poLine={matchedPO}
-                                        onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
-                                        open={openPopoverId === `invoice-detailed-${line.id || `line-${line.line_no}`}`}
-                                        onOpenChange={(open) => setOpenPopoverId(open ? `invoice-detailed-${line.id || `line-${line.line_no}`}` : null)}
-                                      >
-                                        <Tooltip.Trigger asChild>
-                                          <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
-                                          </span>
-                                        </Tooltip.Trigger>
-                                      </SmartMatchPopover>
-                                    )}
-                                    <Tooltip.Portal>
-                                      <Tooltip.Content
-                                        style={{ zIndex: 9999 }}
-                                        className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
-                                        sideOffset={5}
-                                      >
-                                        <div className="space-y-1">
-                                          <p className="font-semibold">Smart Match Applied</p>
-                                          <p>Click to review or unmatch</p>
-                                        </div>
-                                        <Tooltip.Arrow className="fill-gray-900" />
-                                      </Tooltip.Content>
-                                    </Tooltip.Portal>
-                                  </Tooltip.Root>
-                                </Tooltip.Provider>
-                              )}
-                              <div className="truncate max-w-[400px]" title={line.description}>
-                                {line.description}
-                              </div>
+                            <div className="truncate max-w-[400px]" title={line.description}>
+                              {line.description}
                             </div>
                           )}
                         </td>
@@ -2254,7 +2247,7 @@ export function LineItemsPreviewPanel({
                         <td className="pl-1.5 pr-4 py-2 text-xs text-right font-medium text-gray-950">
                           {formatCurrency(line.line_total)}
                         </td>
-                        {poLines.length > 0 && (
+                        {poLines.length > 0 && showPO && (
                           <td className="px-1.5 py-2 text-xs">
                             {matchedPO && (
                               <div className="flex flex-col items-center gap-0.5">
@@ -2419,7 +2412,7 @@ export function LineItemsPreviewPanel({
                     {/* Same header as default view */}
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
-                        <th colSpan={useDetailedVarianceColumns ? 9 : 9} className="px-4 bg-white border-b h-[36px]">
+                        <th colSpan={useDetailedVarianceColumns ? 9 : (showPO ? 10 : 9)} className="px-4 bg-white border-b h-[36px]">
                           <div className="flex items-center justify-between h-full">
                             <span className="text-sm font-semibold text-gray-950">Invoice</span>
                             <button
@@ -2437,6 +2430,7 @@ export function LineItemsPreviewPanel({
                       </tr>
                       <tr className="h-[40px]">
                         <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
+                        <th className="w-8"></th>
                         <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Status</th>
                         <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
                         <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
@@ -2444,7 +2438,7 @@ export function LineItemsPreviewPanel({
                         <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
                         <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
                         <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
-                        {!useDetailedVarianceColumns && (
+                        {!useDetailedVarianceColumns && showPO && (
                           <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Variance</th>
                         )}
                       </tr>
@@ -2460,8 +2454,136 @@ export function LineItemsPreviewPanel({
                         const status = getLineStatus(line, matchedPO);
 
                         return (
-                          <tr key={`variance-${line.id || line.line_no}`} className="h-[48px] bg-white hover:bg-purple-50 transition-colors">
+                          <tr key={`variance-${line.id || line.line_no}`} className="h-[48px] bg-white hover:bg-purple-50 transition-colors group">
                             <td className="px-1.5 py-2 text-xs text-gray-950 font-medium">{line.line_no}</td>
+                            {/* Icon column for smart match indicators */}
+                            <td className="px-1 py-2 text-center relative">
+                              {hasSuggestion(line) ? (
+                                // PRIORITY 1: Show gradient Sparkles for AI substitution suggestions
+                                <Tooltip.Provider>
+                                  <Tooltip.Root delayDuration={200} open={openSuggestionId === (line.id || `line-${line.line_no}`) ? false : undefined}>
+                                    <SubstitutionSuggestionPopover
+                                      invoiceDescription={line.description}
+                                      poDescription={line.suggested_po_match!.po_description}
+                                      invoiceSku={line.sku}
+                                      poSku={line.suggested_po_match!.po_line_id}
+                                      differences={line.suggested_po_match!.differences || []}
+                                      confidence={line.suggested_po_match!.confidence || 0}
+                                      reason={line.suggested_po_match!.reason || ''}
+                                      onAccept={() => console.log('Accept substitution')}
+                                      onReject={() => console.log('Reject substitution')}
+                                      open={openSuggestionId === (line.id || `line-${line.line_no}`)}
+                                      onOpenChange={(open) => setOpenSuggestionId(open ? (line.id || `line-${line.line_no}`) : null)}
+                                    >
+                                      <Tooltip.Trigger asChild>
+                                        <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                          <Sparkles
+                                            className="h-4 w-4"
+                                            fill="currentColor"
+                                            style={{ fill: 'url(#sparkle-gradient)', stroke: 'url(#sparkle-gradient)' }}
+                                          />
+                                        </span>
+                                      </Tooltip.Trigger>
+                                    </SubstitutionSuggestionPopover>
+                                    <Tooltip.Portal>
+                                      <Tooltip.Content className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg">
+                                        AI suggests possible substitution - Click to review
+                                        <Tooltip.Arrow className="fill-gray-900" />
+                                      </Tooltip.Content>
+                                    </Tooltip.Portal>
+                                  </Tooltip.Root>
+                                </Tooltip.Provider>
+                              ) : matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) ? (
+                                // PRIORITY 2: Show purple Zap for smart matches
+                                <Tooltip.Provider>
+                                  <Tooltip.Root delayDuration={200} open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}` ? false : undefined}>
+                                    {hasCustomRule(line) ? (
+                                      <CustomRulePopover
+                                        rule={getCustomRule(line)!}
+                                        invoiceQty={line.qty}
+                                        invoiceUom={line.uom}
+                                        poQty={matchedPO.qty_ordered}
+                                        poUom={matchedPO.uom}
+                                        lineTotal={line.line_total}
+                                        onEdit={() => handleEditRule(line)}
+                                        onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)}
+                                        open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}`}
+                                        onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-${line.id || `line-${line.line_no}`}` : null)}
+                                      >
+                                        <Tooltip.Trigger asChild>
+                                          <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                          </span>
+                                        </Tooltip.Trigger>
+                                      </CustomRulePopover>
+                                    ) : hasUomConversion(line) && hasUomDifference(line, matchedPO) ? (
+                                      <UomMatchPopover
+                                        invoiceQty={line.uom_conversion!.invoice_qty}
+                                        invoiceUom={line.uom_conversion!.invoice_uom}
+                                        invoiceUnitPrice={line.unit_price}
+                                        poQty={line.uom_conversion!.po_qty}
+                                        poUom={line.uom_conversion!.po_uom}
+                                        poUnitPrice={matchedPO.unit_price}
+                                        conversionFactor={line.uom_conversion!.conversion_factor}
+                                        conversionExplanation={line.uom_conversion!.explanation}
+                                        lineTotal={line.line_total}
+                                        onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
+                                        open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}`}
+                                        onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-${line.id || `line-${line.line_no}`}` : null)}
+                                      >
+                                        <Tooltip.Trigger asChild>
+                                          <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                          </span>
+                                        </Tooltip.Trigger>
+                                      </UomMatchPopover>
+                                    ) : (
+                                      <SmartMatchPopover
+                                        invoiceDescription={line.description}
+                                        poDescription={matchedPO.item_description || matchedPO.description}
+                                        invoiceLine={line}
+                                        poLine={matchedPO}
+                                        onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
+                                        open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}`}
+                                        onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-${line.id || `line-${line.line_no}`}` : null)}
+                                      >
+                                        <Tooltip.Trigger asChild>
+                                          <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                          </span>
+                                        </Tooltip.Trigger>
+                                      </SmartMatchPopover>
+                                    )}
+                                    <Tooltip.Portal>
+                                      <Tooltip.Content style={{zIndex: 9999}} className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]" sideOffset={5}>
+                                        <div className="space-y-1">
+                                          <p className="font-semibold">Smart Match Applied</p>
+                                          <p>Click to review or unmatch</p>
+                                        </div>
+                                        <Tooltip.Arrow className="fill-gray-900" />
+                                      </Tooltip.Content>
+                                    </Tooltip.Portal>
+                                  </Tooltip.Root>
+                                </Tooltip.Provider>
+                              ) : (
+                                // PRIORITY 3: Show purple + icon on hover
+                                <Tooltip.Provider>
+                                  <Tooltip.Root delayDuration={200}>
+                                    <Tooltip.Trigger asChild>
+                                      <button onClick={() => handleOpenTeachRuleDrawer(line)} className="inline-flex items-center justify-center cursor-pointer flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Plus className="h-4 w-4 text-purple-600" />
+                                      </button>
+                                    </Tooltip.Trigger>
+                                    <Tooltip.Portal>
+                                      <Tooltip.Content style={{zIndex: 9999}} className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg">
+                                        Add custom rule
+                                        <Tooltip.Arrow className="fill-gray-900" />
+                                      </Tooltip.Content>
+                                    </Tooltip.Portal>
+                                  </Tooltip.Root>
+                                </Tooltip.Provider>
+                              )}
+                            </td>
                             <td className="px-1.5 py-2 text-xs text-left">
                               {status === 'matched' && (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 whitespace-nowrap">
@@ -2492,91 +2614,7 @@ export function LineItemsPreviewPanel({
                                   className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                                 />
                               ) : (
-                                <div className="flex items-center gap-1.5">
-                                  {matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
-                                    <Tooltip.Provider>
-                                      <Tooltip.Root delayDuration={200}>
-                                        {hasCustomRule(line) ? (
-                                          <CustomRulePopover
-                                            rule={getCustomRule(line)!}
-                                            invoiceQty={line.qty}
-                                            invoiceUom={line.uom}
-                                            poQty={matchedPO.qty_ordered}
-                                            poUom={matchedPO.uom}
-                                            lineTotal={line.line_total}
-                                            onEdit={() => handleEditRule(line)}
-                                            onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)}
-                                            open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}`}
-                                            onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-${line.id || `line-${line.line_no}`}` : null)}
-                                          >
-                                            <Tooltip.Trigger asChild>
-                                              <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                                <Zap className="h-3.5 w-3.5 text-purple-600" />
-                                              </span>
-                                            </Tooltip.Trigger>
-                                          </CustomRulePopover>
-                                        ) : hasUomConversion(line) && hasUomDifference(line, matchedPO) ? (
-                                          <UomMatchPopover
-                                            invoiceQty={line.uom_conversion!.invoice_qty}
-                                            invoiceUom={line.uom_conversion!.invoice_uom}
-                                            invoiceUnitPrice={line.unit_price}
-                                            poQty={line.uom_conversion!.po_qty}
-                                            poUom={line.uom_conversion!.po_uom}
-                                            poUnitPrice={matchedPO.unit_price}
-                                            conversionFactor={line.uom_conversion!.conversion_factor}
-                                            conversionExplanation={line.uom_conversion!.explanation}
-                                            lineTotal={line.line_total}
-                                            onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
-                                            open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}`}
-                                            onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-${line.id || `line-${line.line_no}`}` : null)}
-                                          >
-                                            <Tooltip.Trigger asChild>
-                                              <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                                <Zap className="h-3.5 w-3.5 text-purple-600" />
-                                              </span>
-                                            </Tooltip.Trigger>
-                                          </UomMatchPopover>
-                                        ) : (
-                                          <SmartMatchPopover
-                                            invoiceDescription={line.description}
-                                            poDescription={matchedPO.item_description || matchedPO.description}
-                                            invoiceLine={line}
-                                            poLine={matchedPO}
-                                            onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
-                                            open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}`}
-                                            onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-${line.id || `line-${line.line_no}`}` : null)}
-                                          >
-                                            <Tooltip.Trigger asChild>
-                                              <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                                <Zap className="h-3.5 w-3.5 text-purple-600" />
-                                              </span>
-                                            </Tooltip.Trigger>
-                                          </SmartMatchPopover>
-                                        )}
-                                        <Tooltip.Portal>
-                                          <Tooltip.Content
-                                            style={{ zIndex: 9999 }}
-                                        className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
-                                            sideOffset={5}
-                                          >
-                                            <div className="space-y-1">
-                                              <p className="font-semibold">Smart Match Applied</p>
-                                              <p className="text-gray-300">Click for details</p>
-                                            </div>
-                                            <Tooltip.Arrow className="fill-gray-900" />
-                                          </Tooltip.Content>
-                                        </Tooltip.Portal>
-                                      </Tooltip.Root>
-                                    </Tooltip.Provider>
-                                  )}
-                                  {matchedPO && hasUomDifference(line, matchedPO) && !hasUomConversion(line) && !hasCustomRule(line) && (
-                                    <SparkleButton
-                                      onClick={() => handleOpenTeachRuleDrawer(line)}
-                                      hasRule={hasCustomRule(line)}
-                                    />
-                                  )}
-                                  <span className="flex-1">{line.description}</span>
-                                </div>
+                                <span>{line.description}</span>
                               )}
                             </td>
                             <td className="px-1.5 py-2 text-xs text-gray-950">
@@ -2638,7 +2676,7 @@ export function LineItemsPreviewPanel({
                             <td className="px-1.5 py-2 text-xs text-right font-medium text-gray-950">
                               {formatCurrency(line.line_total)}
                             </td>
-                            {!useDetailedVarianceColumns && (
+                            {!useDetailedVarianceColumns && showPO && (
                               <td className="px-1.5 py-2 text-xs text-center">
                                 {matchedPO && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) ? (
                                   <>
@@ -2688,7 +2726,7 @@ export function LineItemsPreviewPanel({
                         isExpanded={matchedItemsExpanded}
                         onToggle={() => setMatchedItemsExpanded(!matchedItemsExpanded)}
                         matchedCount={matchedLines.length}
-                        colSpan={useDetailedVarianceColumns ? 9 : 9}
+                        colSpan={useDetailedVarianceColumns ? 9 : (showPO ? 10 : 9)}
                       />
 
                       {/* Render matched lines if expanded - Similar structure to variance lines but without drag handles */}
@@ -2701,9 +2739,102 @@ export function LineItemsPreviewPanel({
                         const status = getLineStatus(line, matchedPO);
 
                         return (
-                          <tr key={`matched-${line.id || line.line_no}`} className="h-[48px] bg-white hover:bg-purple-50 transition-colors">
+                          <tr key={`matched-${line.id || line.line_no}`} className="h-[48px] bg-white hover:bg-purple-50 transition-colors group">
                             {/* Same cell structure as variance lines */}
                             <td className="px-1.5 py-2 text-xs text-gray-950 font-medium">{line.line_no}</td>
+                            {/* Icon column - same 3-priority logic as variance section */}
+                            <td className="px-1 py-2 text-center relative">
+                              {hasSuggestion(line) ? (
+                                <Tooltip.Provider>
+                                  <Tooltip.Root delayDuration={200} open={openSuggestionId === (line.id || `line-${line.line_no}`) ? false : undefined}>
+                                    <SubstitutionSuggestionPopover
+                                      invoiceDescription={line.description}
+                                      poDescription={line.suggested_po_match!.po_description}
+                                      invoiceSku={line.sku}
+                                      poSku={line.suggested_po_match!.po_line_id}
+                                      differences={line.suggested_po_match!.differences || []}
+                                      confidence={line.suggested_po_match!.confidence || 0}
+                                      reason={line.suggested_po_match!.reason || ''}
+                                      onAccept={() => console.log('Accept substitution')}
+                                      onReject={() => console.log('Reject substitution')}
+                                      open={openSuggestionId === (line.id || `line-${line.line_no}`)}
+                                      onOpenChange={(open) => setOpenSuggestionId(open ? (line.id || `line-${line.line_no}`) : null)}
+                                    >
+                                      <Tooltip.Trigger asChild>
+                                        <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                          <Sparkles
+                                            className="h-4 w-4"
+                                            fill="currentColor"
+                                            style={{ fill: 'url(#sparkle-gradient)', stroke: 'url(#sparkle-gradient)' }}
+                                          />
+                                        </span>
+                                      </Tooltip.Trigger>
+                                    </SubstitutionSuggestionPopover>
+                                    <Tooltip.Portal>
+                                      <Tooltip.Content className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg">
+                                        AI suggests possible substitution - Click to review
+                                        <Tooltip.Arrow className="fill-gray-900" />
+                                      </Tooltip.Content>
+                                    </Tooltip.Portal>
+                                  </Tooltip.Root>
+                                </Tooltip.Provider>
+                              ) : matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) ? (
+                                <Tooltip.Provider>
+                                  <Tooltip.Root delayDuration={200}>
+                                    {hasCustomRule(line) ? (
+                                      <CustomRulePopover rule={getCustomRule(line)!} invoiceQty={line.qty} invoiceUom={line.uom} poQty={matchedPO.qty_ordered} poUom={matchedPO.uom} lineTotal={line.line_total} onEdit={() => handleEditRule(line)} onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
+                                        <Tooltip.Trigger asChild>
+                                          <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                          </span>
+                                        </Tooltip.Trigger>
+                                      </CustomRulePopover>
+                                    ) : hasUomConversion(line) && hasUomDifference(line, matchedPO) ? (
+                                      <UomMatchPopover invoiceQty={line.uom_conversion!.invoice_qty} invoiceUom={line.uom_conversion!.invoice_uom} invoiceUnitPrice={line.unit_price} poQty={line.uom_conversion!.po_qty} poUom={line.uom_conversion!.po_uom} poUnitPrice={matchedPO.unit_price} conversionFactor={line.uom_conversion!.conversion_factor} conversionExplanation={line.uom_conversion!.explanation} lineTotal={line.line_total} onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
+                                        <Tooltip.Trigger asChild>
+                                          <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                          </span>
+                                        </Tooltip.Trigger>
+                                      </UomMatchPopover>
+                                    ) : (
+                                      <SmartMatchPopover invoiceDescription={line.description} poDescription={matchedPO.item_description || matchedPO.description} invoiceLine={line} poLine={matchedPO} onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
+                                        <Tooltip.Trigger asChild>
+                                          <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                          </span>
+                                        </Tooltip.Trigger>
+                                      </SmartMatchPopover>
+                                    )}
+                                    <Tooltip.Portal>
+                                      <Tooltip.Content style={{zIndex: 9999}} className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]" sideOffset={5}>
+                                        <div className="space-y-1">
+                                          <p className="font-semibold">Smart Match Applied</p>
+                                          <p>Click to review or unmatch</p>
+                                        </div>
+                                        <Tooltip.Arrow className="fill-gray-900" />
+                                      </Tooltip.Content>
+                                    </Tooltip.Portal>
+                                  </Tooltip.Root>
+                                </Tooltip.Provider>
+                              ) : (
+                                <Tooltip.Provider>
+                                  <Tooltip.Root delayDuration={200}>
+                                    <Tooltip.Trigger asChild>
+                                      <button onClick={() => handleOpenTeachRuleDrawer(line)} className="inline-flex items-center justify-center cursor-pointer flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                                        <Plus className="h-4 w-4 text-purple-600" />
+                                      </button>
+                                    </Tooltip.Trigger>
+                                    <Tooltip.Portal>
+                                      <Tooltip.Content style={{zIndex: 9999}} className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg">
+                                        Add custom rule
+                                        <Tooltip.Arrow className="fill-gray-900" />
+                                      </Tooltip.Content>
+                                    </Tooltip.Portal>
+                                  </Tooltip.Root>
+                                </Tooltip.Provider>
+                              )}
+                            </td>
                             <td className="px-1.5 py-2 text-xs text-center">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                 Matched
@@ -2718,85 +2849,7 @@ export function LineItemsPreviewPanel({
                                   className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                                 />
                               ) : (
-                                <div className="flex items-center gap-1.5">
-                                  {matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) && (
-                                    <Tooltip.Provider>
-                                      <Tooltip.Root delayDuration={200}>
-                                        {hasCustomRule(line) ? (
-                                          <CustomRulePopover
-                                            rule={getCustomRule(line)!}
-                                            invoiceQty={line.qty}
-                                            invoiceUom={line.uom}
-                                            poQty={matchedPO.qty_ordered}
-                                            poUom={matchedPO.uom}
-                                            lineTotal={line.line_total}
-                                            onEdit={() => handleEditRule(line)}
-                                            onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)}
-                                            open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`}
-                                            onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}
-                                          >
-                                            <Tooltip.Trigger asChild>
-                                              <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                                <Zap className="h-3.5 w-3.5 text-purple-600" />
-                                              </span>
-                                            </Tooltip.Trigger>
-                                          </CustomRulePopover>
-                                        ) : hasUomConversion(line) && hasUomDifference(line, matchedPO) ? (
-                                          <UomMatchPopover
-                                            invoiceQty={line.uom_conversion!.invoice_qty}
-                                            invoiceUom={line.uom_conversion!.invoice_uom}
-                                            invoiceUnitPrice={line.unit_price}
-                                            poQty={line.uom_conversion!.po_qty}
-                                            poUom={line.uom_conversion!.po_uom}
-                                            poUnitPrice={matchedPO.unit_price}
-                                            conversionFactor={line.uom_conversion!.conversion_factor}
-                                            conversionExplanation={line.uom_conversion!.explanation}
-                                            lineTotal={line.line_total}
-                                            onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
-                                            open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`}
-                                            onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}
-                                          >
-                                            <Tooltip.Trigger asChild>
-                                              <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                                <Zap className="h-3.5 w-3.5 text-purple-600" />
-                                              </span>
-                                            </Tooltip.Trigger>
-                                          </UomMatchPopover>
-                                        ) : (
-                                          <SmartMatchPopover
-                                            invoiceDescription={line.description}
-                                            poDescription={matchedPO.item_description || matchedPO.description}
-                                            invoiceLine={line}
-                                            poLine={matchedPO}
-                                            onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
-                                            open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`}
-                                            onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}
-                                          >
-                                            <Tooltip.Trigger asChild>
-                                              <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                                <Zap className="h-3.5 w-3.5 text-purple-600" />
-                                              </span>
-                                            </Tooltip.Trigger>
-                                          </SmartMatchPopover>
-                                        )}
-                                        <Tooltip.Portal>
-                                          <Tooltip.Content
-                                            style={{ zIndex: 9999 }}
-                                        className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
-                                            sideOffset={5}
-                                          >
-                                            <div className="space-y-1">
-                                              <p className="font-semibold">Smart Match Applied</p>
-                                              <p className="text-gray-300">Click for details</p>
-                                            </div>
-                                            <Tooltip.Arrow className="fill-gray-900" />
-                                          </Tooltip.Content>
-                                        </Tooltip.Portal>
-                                      </Tooltip.Root>
-                                    </Tooltip.Provider>
-                                  )}
-                                  <span className="flex-1">{line.description}</span>
-                                </div>
+                                <span>{line.description}</span>
                               )}
                             </td>
                             <td className="px-1.5 py-2 text-xs text-gray-950">{getSKU(line)}</td>
@@ -2840,7 +2893,7 @@ export function LineItemsPreviewPanel({
                             <td className="px-1.5 py-2 text-xs text-right font-medium text-gray-950">
                               {formatCurrency(line.line_total)}
                             </td>
-                            {!useDetailedVarianceColumns && (
+                            {!useDetailedVarianceColumns && showPO && (
                               <td className="px-1.5 py-2 text-xs text-center">
                                 <span className="text-gray-400">—</span>
                               </td>
