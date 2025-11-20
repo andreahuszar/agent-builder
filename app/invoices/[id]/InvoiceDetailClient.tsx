@@ -217,6 +217,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
   const [isSaving, setIsSaving] = useState(false);
   const [isPdfCollapsed, setIsPdfCollapsed] = useState(false);
+  const [pdfPanelSize, setPdfPanelSize] = useState(50); // Track PDF panel size for auto-zoom
   const [activeTab, setActiveTab] = useState<TabId>('details');
   const [isEditing, setIsEditing] = useState(false);
   const [focusedFieldName, setFocusedFieldName] = useState<string | null>(null);
@@ -587,6 +588,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         minSizes={[20, 30]}
         storageKey={`invoice-unified-v2-${invoiceId}`}
         className="h-full"
+        onSizeChange={(sizes) => setPdfPanelSize(sizes[0])}
       >
         {/* Document Preview - LEFT PANEL */}
         <DocumentPreview
@@ -598,6 +600,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           hideLineComparison={false}
           hideLineItems={true}
           initialZoom={0.75}
+          panelSizePercent={pdfPanelSize}
           onCollapseToggle={handlePdfCollapseToggle}
           isCollapsed={false}
           isEditing={isEditing}

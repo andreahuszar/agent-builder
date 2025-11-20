@@ -16,6 +16,7 @@ interface DocumentPreviewProps {
   hideLineComparison?: boolean;
   hideLineItems?: boolean;
   initialZoom?: number; // Allow customizing initial zoom level (default 0.75)
+  panelSizePercent?: number; // Panel size percentage for triggering auto-zoom (from ResizablePanel)
   onCollapseToggle?: () => void; // Callback when collapse button clicked
   isCollapsed?: boolean; // Current collapsed state
   isEditing?: boolean; // Whether details tab is in edit mode (for OCR highlights)
@@ -150,6 +151,7 @@ export function DocumentPreview({
   hideLineComparison = false,
   hideLineItems = false,
   initialZoom = 0.75, // Default to 75% zoom
+  panelSizePercent,
   onCollapseToggle,
   isCollapsed = false,
   isEditing = false,
@@ -278,6 +280,13 @@ export function DocumentPreview({
     };
   }, []);
 
+  // Reset manual override when panel size changes (from ResizablePanel divider drag)
+  useEffect(() => {
+    if (panelSizePercent !== undefined) {
+      setManualZoomOverride(false); // Allow auto-zoom when panel resizes
+    }
+  }, [panelSizePercent]);
+
   // Auto-adjust zoom when container or PDF dimensions change
   useEffect(() => {
     // Only auto-adjust if:
@@ -294,7 +303,7 @@ export function DocumentPreview({
     if (Math.abs(optimalZoom - zoom) > 0.01) {
       setZoom(optimalZoom);
     }
-  }, [containerWidth, pdfNaturalWidth, manualZoomOverride, isPdf, calculateOptimalZoom, zoom]);
+  }, [containerWidth, pdfNaturalWidth, manualZoomOverride, isPdf, calculateOptimalZoom, zoom, panelSizePercent]);
 
   // Show line items preview panel if we have invoice data and lines
   // Check both invoice_lines and lines properties for compatibility
