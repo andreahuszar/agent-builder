@@ -15,9 +15,10 @@ interface PDFViewerProps {
   rotation: number;
   onLoad?: () => void;
   onError?: () => void;
+  onDimensionsAvailable?: (width: number, height: number) => void;
 }
 
-export function PDFViewer({ url, zoom, rotation, onLoad, onError }: PDFViewerProps) {
+export function PDFViewer({ url, zoom, rotation, onLoad, onError, onDimensionsAvailable }: PDFViewerProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [pdfDoc, setPdfDoc] = useState<any>(null);
   const [pageNum, setPageNum] = useState(1);
@@ -159,6 +160,12 @@ export function PDFViewer({ url, zoom, rotation, onLoad, onError }: PDFViewerPro
       renderTaskRef.current = page.render(renderContext);
       await renderTaskRef.current.promise;
       renderTaskRef.current = null;
+
+      // Calculate and report natural dimensions (at 100% zoom, no rotation)
+      if (onDimensionsAvailable) {
+        const naturalViewport = page.getViewport({ scale: 1.0, rotation: 0 });
+        onDimensionsAvailable(naturalViewport.width, naturalViewport.height);
+      }
 
       isRenderingRef.current = false;
       setPageRendering(false);

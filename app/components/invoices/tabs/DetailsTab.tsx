@@ -31,7 +31,8 @@ import {
   Zap,
   Loader2,
   Maximize2,
-  Minimize2
+  Minimize2,
+  ClipboardList
 } from 'lucide-react';
 import { EditableField } from '../editing/EditableField';
 import { ValidatedEditableField } from '../editing/ValidatedEditableField';
@@ -175,8 +176,7 @@ export function DetailsTab({
   // Accordion collapse state
   const [isValidationExpanded, setIsValidationExpanded] = useState(false); // Collapsed by default
   const [isInvoiceInfoExpanded, setIsInvoiceInfoExpanded] = useState(true); // Start expanded
-  const [isPaymentInfoExpanded, setIsPaymentInfoExpanded] = useState(false);
-  const [isAccountingExpanded, setIsAccountingExpanded] = useState(false);
+  const [isAdditionalDetailsExpanded, setIsAdditionalDetailsExpanded] = useState(false);
   const [isLineItemsExpanded, setIsLineItemsExpanded] = useState(true); // Start expanded
   const [isLineItemsFullscreen, setIsLineItemsFullscreen] = useState(false);
   const [isLineItemsEditMode, setIsLineItemsEditMode] = useState(false);
@@ -977,6 +977,7 @@ export function DetailsTab({
               readOnly={forceReadOnly || showFieldErrors}
               hasPendingAgentChanges={Object.keys(agentPendingFields).length > 0}
               isEditing={isEditing}
+              hasFraudRisk={invoiceData.fraud_risk?.triggered || false}
             />
           )}
 
@@ -1992,20 +1993,20 @@ export function DetailsTab({
           )}
         </div>
         {/* Payment Section */}
-        {!hidePaymentSection && (
+        {!hidePaymentSection && !hideAccountingSection && (
         <div>
           <div
             className="relative px-4 py-3 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
-            onClick={() => setIsPaymentInfoExpanded(!isPaymentInfoExpanded)}
+            onClick={() => setIsAdditionalDetailsExpanded(!isAdditionalDetailsExpanded)}
           >
             <div className="flex items-center gap-2">
-              {isPaymentInfoExpanded ? (
+              {isAdditionalDetailsExpanded ? (
                 <ChevronUp className="h-4 w-4 text-gray-500" />
               ) : (
                 <ChevronDown className="h-4 w-4 text-gray-500" />
               )}
-              <CreditCard className="h-4 w-4 text-purple-600" />
-              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Payment</h3>
+              <ClipboardList className="h-4 w-4 text-purple-600" />
+              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Additional Details</h3>
             </div>
             {!forceReadOnly && !isEditing && (
               <button
@@ -2019,9 +2020,14 @@ export function DetailsTab({
               </button>
             )}
           </div>
-          {isPaymentInfoExpanded && (
+          {isAdditionalDetailsExpanded && (
           <div className="px-10 py-4 bg-white border-b border-gray-200">
-            <div className={`grid ${getGridCols()} gap-4`}>
+            {/* Payment Subsection */}
+            <div className="mb-6">
+              <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-200">
+                Payment
+              </h4>
+              <div className={`grid ${getGridCols()} gap-4`}>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
@@ -2223,43 +2229,15 @@ export function DetailsTab({
                   </div>
                 </div>
               )}
+              </div>
             </div>
-          </div>
-          )}
-        </div>
-        )}
 
-        {/* Coding Section */}
-        {!hideAccountingSection && (
-        <div>
-          <div
-            className="relative px-4 py-3 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
-            onClick={() => setIsAccountingExpanded(!isAccountingExpanded)}
-          >
-            <div className="flex items-center gap-2">
-              {isAccountingExpanded ? (
-                <ChevronUp className="h-4 w-4 text-gray-500" />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-gray-500" />
-              )}
-              <BookOpen className="h-4 w-4 text-purple-600" />
-              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Coding</h3>
-            </div>
-            {!forceReadOnly && !isEditing && (
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setIsEditing(true);
-                }}
-                className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
-              >
-                Edit
-              </button>
-            )}
-          </div>
-          {isAccountingExpanded && (
-          <div className="px-10 py-4 bg-white border-b border-gray-200">
-            <div className={`grid ${getGridCols()} gap-4`}>
+            {/* Coding Subsection */}
+            <div>
+              <h4 className="text-xs font-semibold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-200">
+                Coding
+              </h4>
+              <div className={`grid ${getGridCols()} gap-4`}>
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
@@ -2424,6 +2402,7 @@ export function DetailsTab({
                   )}
                 </div>
               )}
+              </div>
             </div>
           </div>
           )}

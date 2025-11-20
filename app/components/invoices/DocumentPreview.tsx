@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { ZoomIn, ZoomOut, RotateCw, Maximize2, Download, FileText, ChevronLeft } from 'lucide-react';
 import { FakeInvoiceDocument } from './FakeInvoiceDocument';
 import { PDFViewer } from './PDFViewer';
@@ -170,17 +170,44 @@ export function DocumentPreview({
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
 
-  // Zoom constraints
-  const MIN_ZOOM = 0.5;
+  // Zoom constraints and available zoom levels
+  const MIN_ZOOM = 0.35;
   const MAX_ZOOM = 3;
   const ZOOM_STEP = 0.25;
+  const ZOOM_LEVELS = [0.35, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0, 2.25, 2.5, 2.75, 3.0];
+
+  // Auto-zoom state
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [pdfNaturalWidth, setPdfNaturalWidth] = useState(0);
+  const [manualZoomOverride, setManualZoomOverride] = useState(false);
+
+  // Calculate optimal zoom level to fit PDF width in container
+  const calculateOptimalZoom = useCallback((availableWidth: number, pdfWidth: number) => {
+    if (!pdfWidth || !availableWidth) return initialZoom;
+
+    const padding = 40; // 20px each side
+    const usableWidth = availableWidth - padding;
+    const idealZoom = usableWidth / pdfWidth;
+
+    // Find largest zoom level that doesn't cause overflow
+    for (let i = ZOOM_LEVELS.length - 1; i >= 0; i--) {
+      if (ZOOM_LEVELS[i] <= idealZoom) {
+        return ZOOM_LEVELS[i];
+      }
+    }
+
+    // If even 35% is too large, return 35% anyway (edge case)
+    return MIN_ZOOM;
+  }, [ZOOM_LEVELS, MIN_ZOOM, initialZoom]);
 
   const handleZoomIn = () => {
     setZoom(prev => Math.min(prev + ZOOM_STEP, MAX_ZOOM));
+    setManualZoomOverride(true); // User manually changed zoom
   };
 
   const handleZoomOut = () => {
     setZoom(prev => Math.max(prev - ZOOM_STEP, MIN_ZOOM));
+    setManualZoomOverride(true); // User manually changed zoom
   };
 
   const handleRotate = () => {
@@ -224,6 +251,55 @@ export function DocumentPreview({
     }
   }, [hasAttachment, invoiceData]);
 
+  // Monitor container width with ResizeObserver (debounced for smooth resizing)
+  useEffect(() => {
+    if (!containerRef.current) return;
+
+    let resizeTimeout: NodeJS.Timeout;
+
+    const resizeObserver = new ResizeObserver((entries) => {
+      const width = entries[0].contentRect.width;
+
+      // Debounce: wait 150ms after resize stops before updating
+      clearTimeout(resizeTimeout);
+      resizeTimeout = setTimeout(() => {
+        setContainerWidth(width);
+      }, 150);
+    });
+
+    resizeObserver.observe(containerRef.current);
+
+    return () => {
+      clearTimeout(resizeTimeout);
+      resizeObserver.disconnect();
+    };
+  }, []);
+
+  // Auto-adjust zoom when container or PDF dimensions change
+  useEffect(() => {
+    // Only auto-adjust if:
+    // 1. We have valid dimensions
+    // 2. User hasn't manually overridden zoom
+    // 3. PDF is loaded
+    if (!containerWidth || !pdfNaturalWidth || manualZoomOverride || !isPdf) {
+      return;
+    }
+
+    const optimalZoom = calculateOptimalZoom(containerWidth, pdfNaturalWidth);
+
+    // Only update if different (avoid unnecessary re-renders)
+    if (Math.abs(optimalZoom - zoom) > 0.01) {
+      setZoom(optimalZoom);
+    }
+  }, [containerWidth, pdfNaturalWidth, manualZoomOverride, isPdf, calculateOptimalZoom, zoom]);
+
+  // Reset manual override when container width changes (allow auto-zoom on resize)
+  useEffect(() => {
+    if (containerWidth > 0) {
+      setManualZoomOverride(false);
+    }
+  }, [containerWidth]);
+
   // Show line items preview panel if we have invoice data and lines
   // Check both invoice_lines and lines properties for compatibility
   const invoiceLines = invoiceData?.invoice_lines || invoiceData?.lines || [];
@@ -251,11 +327,23 @@ export function DocumentPreview({
           >
             <ZoomOut className="h-4 w-4" />
           </button>
-          
-          <span className="text-sm font-medium min-w-[60px] text-center text-gray-950">
-            {Math.round(zoom * 100)}%
-          </span>
-          
+
+          <select
+            value={zoom}
+            onChange={(e) => {
+              setZoom(Number(e.target.value));
+              setManualZoomOverride(true); // User manually selected zoom
+            }}
+            className="text-sm font-medium px-2 py-1 rounded border border-gray-300 bg-white text-gray-950 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent cursor-pointer"
+            title="Select Zoom Level"
+          >
+            {ZOOM_LEVELS.map(level => (
+              <option key={level} value={level}>
+                {Math.round(level * 100)}%
+              </option>
+            ))}
+          </select>
+
           <button
             onClick={handleZoomIn}
             disabled={zoom >= MAX_ZOOM}
@@ -350,6 +438,9 @@ export function DocumentPreview({
                   onError={() => {
                     setIsLoading(false);
                     setImageError(true);
+                  }}
+                  onDimensionsAvailable={(width, height) => {
+                    setPdfNaturalWidth(width);
                   }}
                 />
               </div>

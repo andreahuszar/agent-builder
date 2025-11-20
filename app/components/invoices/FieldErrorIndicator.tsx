@@ -15,9 +15,10 @@ interface FieldErrorIndicatorProps {
   readOnly?: boolean;
   hasPendingAgentChanges?: boolean;
   isEditing?: boolean;
+  hasFraudRisk?: boolean;
 }
 
-export function FieldErrorIndicator({ errors, onDismiss, readOnly = false, hasPendingAgentChanges = false, isEditing = false }: FieldErrorIndicatorProps) {
+export function FieldErrorIndicator({ errors, onDismiss, readOnly = false, hasPendingAgentChanges = false, isEditing = false, hasFraudRisk = false }: FieldErrorIndicatorProps) {
   const [currentErrorIndex, setCurrentErrorIndex] = useState(0);
   const [isVisible, setIsVisible] = useState(true);
 
@@ -96,7 +97,11 @@ export function FieldErrorIndicator({ errors, onDismiss, readOnly = false, hasPe
   const currentError = errors[currentErrorIndex];
 
   // Simplified red banner for read-only mode with errors
+  // Only show if there's a fraud risk (high-risk jurisdiction warning)
   if (readOnly) {
+    if (!hasFraudRisk) {
+      return null;
+    }
     return (
       <div className="bg-red-50 border-b border-red-200 px-4 py-2 flex items-center gap-2 sticky top-0 z-20">
         <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0" />
