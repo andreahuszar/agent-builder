@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { Maximize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical, Zap, Sparkles, List, ArrowDownWideNarrow } from 'lucide-react';
+import { Maximize2, Minimize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical, Zap, Sparkles, List, ArrowDownWideNarrow } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, useDroppable, DragOverlay, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -296,6 +296,20 @@ export function LineItemsPreviewPanel({
     setEditableLines(linesWithPositions);
   }, [invoiceLines]);
 
+  // Handle ESC key to exit fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isFullscreen) {
+        setIsFullscreen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFullscreen]);
+
   // ResizeObserver to detect when there's enough horizontal space for variance column
   useEffect(() => {
     if (!useDetailedVarianceColumns || !flexContainerRef.current) {
@@ -420,11 +434,6 @@ export function LineItemsPreviewPanel({
   };
 
   const toggleFullscreen = () => {
-    if (!isFullscreen && containerRef.current) {
-      containerRef.current.requestFullscreen?.();
-    } else if (document.fullscreenElement) {
-      document.exitFullscreen?.();
-    }
     setIsFullscreen(!isFullscreen);
   };
 
@@ -552,18 +561,6 @@ export function LineItemsPreviewPanel({
            !acceptedSuggestions.has(lineId) &&
            !rejectedSuggestions.has(lineId);
   };
-
-  // Handle fullscreen change events
-  useEffect(() => {
-    const handleFullscreenChange = () => {
-      setIsFullscreen(!!document.fullscreenElement);
-    };
-
-    document.addEventListener('fullscreenchange', handleFullscreenChange);
-    return () => {
-      document.removeEventListener('fullscreenchange', handleFullscreenChange);
-    };
-  }, []);
 
   // Get match result for a specific invoice line
   const getMatchResultForLine = (lineId?: string) => {
@@ -1038,24 +1035,49 @@ export function LineItemsPreviewPanel({
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => setViewMode(viewMode === 'default' ? 'grouped' : 'default')}
-            className="p-1.5 rounded hover:bg-gray-200 transition-colors text-gray-950"
-            title={viewMode === 'default' ? 'Group by Status' : 'Show All Items'}
-          >
-            {viewMode === 'default' ? (
-              <ArrowDownWideNarrow className="h-4 w-4" />
-            ) : (
-              <List className="h-4 w-4" />
-            )}
-          </button>
+          {/* View mode toggle - hide in fullscreen */}
+          {!isFullscreen && (
+            <button
+              onClick={() => setViewMode(viewMode === 'default' ? 'grouped' : 'default')}
+              className="p-1.5 rounded hover:bg-gray-200 transition-colors text-gray-950"
+              title={viewMode === 'default' ? 'Group by Status' : 'Show All Items'}
+            >
+              {viewMode === 'default' ? (
+                <ArrowDownWideNarrow className="h-4 w-4" />
+              ) : (
+                <List className="h-4 w-4" />
+              )}
+            </button>
+          )}
+
+          {/* Edit button - only show in fullscreen mode */}
+          {isFullscreen && !hideEditButton && (
+            <button
+              onClick={toggleEditMode}
+              className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                isEditMode
+                  ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                  : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
+              }`}
+            >
+              {isEditMode ? 'Done' : 'Edit'}
+            </button>
+          )}
+
           <button
             onClick={toggleFullscreen}
-            className="p-1.5 rounded hover:bg-gray-200 transition-colors text-gray-950"
+            className={`px-2 py-1 text-xs font-medium rounded border transition-colors flex items-center gap-1 ${
+              isFullscreen
+                ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                : 'p-1.5 hover:bg-gray-200 text-gray-950 border-transparent'
+            }`}
             title={isFullscreen ? 'Exit Fullscreen' : 'Maximize'}
           >
             {isFullscreen ? (
-              <X className="h-4 w-4" />
+              <>
+                <Minimize2 className="h-3.5 w-3.5" />
+                <span>Collapse</span>
+              </>
             ) : (
               <Maximize2 className="h-4 w-4" />
             )}
@@ -1091,33 +1113,39 @@ export function LineItemsPreviewPanel({
                 <table className="min-w-max">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                      <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 12 : 10) : (10 + (isEditMode ? 2 : 0))} className="px-4 bg-white h-[36px]">
-                        <div className="flex items-center justify-end gap-3 h-full">
-                          {/* Show PO Toggle */}
-                          <label className="flex items-center gap-1.5">
-                            <Switch.Root
-                              checked={showPO}
-                              onCheckedChange={setShowPO}
-                              disabled={!poLines || poLines.length === 0}
-                              className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
-                            </Switch.Root>
-                            <span className="text-xs font-medium text-gray-950">Show PO</span>
-                          </label>
+                      <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 12 : 10) : (10 + (isEditMode ? 2 : 0))} className="px-4 bg-white border-b h-[36px]">
+                        <div className="flex items-center justify-between h-full">
+                          {/* Left side: Compare to toggles */}
+                          <div className="flex items-center gap-3">
+                            <span className="text-xs font-medium text-gray-600">Compare to:</span>
 
-                          {/* Show Receipt Toggle */}
-                          <label className="flex items-center gap-1.5">
-                            <Switch.Root
-                              checked={showReceipt}
-                              onCheckedChange={setShowReceipt}
-                              className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors"
-                            >
-                              <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
-                            </Switch.Root>
-                            <span className="text-xs font-medium text-gray-950">Show Receipt</span>
-                          </label>
+                            {/* PO Toggle */}
+                            <label className="flex items-center gap-1.5">
+                              <Switch.Root
+                                checked={showPO}
+                                onCheckedChange={setShowPO}
+                                disabled={!poLines || poLines.length === 0}
+                                className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                              </Switch.Root>
+                              <span className="text-xs font-medium text-gray-950">PO</span>
+                            </label>
 
+                            {/* Receipt Toggle - Hidden for now */}
+                            <label className="hidden flex items-center gap-1.5">
+                              <Switch.Root
+                                checked={showReceipt}
+                                onCheckedChange={setShowReceipt}
+                                className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors"
+                              >
+                                <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                              </Switch.Root>
+                              <span className="text-xs font-medium text-gray-950">Receipt</span>
+                            </label>
+                          </div>
+
+                          {/* Right side: Edit button */}
                           {!hideEditButton && (
                             <button
                               onClick={toggleEditMode}
@@ -1137,7 +1165,7 @@ export function LineItemsPreviewPanel({
                       {isEditMode && (
                         <th className="px-2 text-center text-xs font-medium text-gray-800 uppercase w-8"></th>
                       )}
-                      <th className="pl-5 pr-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
+                      <th className="pl-5 pr-1.5 text-right text-xs font-medium text-gray-800 uppercase">#</th>
                       <th className="w-8"></th>
                       <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">
                         Status
@@ -1210,7 +1238,7 @@ export function LineItemsPreviewPanel({
                                 <GripVertical className="h-4 w-4 text-gray-400" />
                               </td>
                             )}
-                            <td className="pl-5 pr-1.5 py-2 text-xs text-gray-950">{line.line_no}</td>
+                            <td className="pl-5 pr-1.5 py-2 text-xs text-right text-gray-950">{line.line_no}</td>
                             {/* Icon column for smart match indicators and AI suggestions */}
                             <td className="px-1 py-2 text-center relative">
                               {hasSuggestion(line) ? (
@@ -1359,17 +1387,17 @@ export function LineItemsPreviewPanel({
                             </td>
                           <td className="px-1.5 py-2 text-xs text-left">
                             {status === 'variance' && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap">
                                 Variance
                               </span>
                             )}
                             {status === 'matched' && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 whitespace-nowrap">
                                 Matched
                               </span>
                             )}
                             {status === 'missing' && (
-                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 whitespace-nowrap">
                                 Not Matched
                               </span>
                             )}
@@ -1567,14 +1595,14 @@ export function LineItemsPreviewPanel({
                 <table className="min-w-max">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                      <th colSpan={6} className="px-4 bg-white border-b h-[42px]">
+                      <th colSpan={6} className="px-4 bg-white border-b h-[36px]">
                         <div className="flex items-center h-full">
                           <span className="text-sm font-semibold text-gray-950">Purchase Order</span>
                         </div>
                       </th>
                     </tr>
                     <tr className="h-[40px]">
-                      <th className="pl-5 pr-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
+                      <th className="pl-5 pr-1.5 text-right text-xs font-medium text-gray-800 uppercase">#</th>
                       <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
                       <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
                       <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
@@ -1610,7 +1638,7 @@ export function LineItemsPreviewPanel({
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
                         >
-                          <td className="pl-4 pr-1.5 py-2 text-xs text-gray-950">{matchedPO.line_no}</td>
+                          <td className="pl-4 pr-1.5 py-2 text-xs text-right text-gray-950">{matchedPO.line_no}</td>
                           <td className={`px-1.5 py-2 text-xs text-gray-950 ${
                             invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && hasDescriptionDifference(invLine, matchedPO)) || hasSuggestion(invLine))
                               ? 'bg-red-50'
@@ -1674,7 +1702,7 @@ export function LineItemsPreviewPanel({
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     {/* Two-row header to match Invoice/PO/Variance structure */}
                     <tr>
-                      <th className="px-4 bg-white border-b border-r border-gray-200 h-[42px]">
+                      <th className="px-4 bg-white border-b border-r border-gray-200 h-[36px]">
                         <div className="h-full"></div>
                       </th>
                     </tr>
@@ -1737,7 +1765,7 @@ export function LineItemsPreviewPanel({
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       {/* Two-row header to match Invoice/PO structure */}
                       <tr>
-                        <th colSpan={2} className="px-4 bg-white border-b h-[42px]">
+                        <th colSpan={2} className="px-4 bg-white border-b h-[36px]">
                           <div className="flex items-center h-full">
                             <span className="text-sm font-semibold text-gray-950">Variance</span>
                           </div>
@@ -1833,32 +1861,38 @@ export function LineItemsPreviewPanel({
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
                     <th colSpan={poLines.length > 0 ? (isEditMode ? 12 : 11) : (isEditMode ? 11 : 10)} className="px-4 bg-white h-[36px]">
-                      <div className="flex items-center justify-end gap-3 h-full">
-                        {/* Show PO Toggle */}
-                        <label className="flex items-center gap-1.5">
-                          <Switch.Root
-                            checked={showPO}
-                            onCheckedChange={setShowPO}
-                            disabled={!poLines || poLines.length === 0}
-                            className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                          >
-                            <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
-                          </Switch.Root>
-                          <span className="text-xs font-medium text-gray-950">Show PO</span>
-                        </label>
+                      <div className="flex items-center justify-between h-full">
+                        {/* Left side: Compare to toggles */}
+                        <div className="flex items-center gap-3">
+                          <span className="text-xs font-medium text-gray-600">Compare to:</span>
 
-                        {/* Show Receipt Toggle */}
-                        <label className="flex items-center gap-1.5">
-                          <Switch.Root
-                            checked={showReceipt}
-                            onCheckedChange={setShowReceipt}
-                            className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors"
-                          >
-                            <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
-                          </Switch.Root>
-                          <span className="text-xs font-medium text-gray-950">Show Receipt</span>
-                        </label>
+                          {/* PO Toggle */}
+                          <label className="flex items-center gap-1.5">
+                            <Switch.Root
+                              checked={showPO}
+                              onCheckedChange={setShowPO}
+                              disabled={!poLines || poLines.length === 0}
+                              className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                            </Switch.Root>
+                            <span className="text-xs font-medium text-gray-950">PO</span>
+                          </label>
 
+                          {/* Receipt Toggle - Hidden for now */}
+                          <label className="hidden flex items-center gap-1.5">
+                            <Switch.Root
+                              checked={showReceipt}
+                              onCheckedChange={setShowReceipt}
+                              className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors"
+                            >
+                              <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                            </Switch.Root>
+                            <span className="text-xs font-medium text-gray-950">Receipt</span>
+                          </label>
+                        </div>
+
+                        {/* Right side: Edit button */}
                         {!hideEditButton && (
                           <button
                             onClick={toggleEditMode}
@@ -1942,7 +1976,7 @@ export function LineItemsPreviewPanel({
                               <GripVertical className="h-4 w-4 text-gray-400" />
                             </td>
                           )}
-                          <td className="pl-4 pr-1.5 py-2 text-xs text-gray-950">
+                          <td className="pl-4 pr-1.5 py-2 text-xs text-right text-gray-950">
                             {line.line_no}
                           </td>
                           {/* Icon column for smart match indicators */}
@@ -2049,17 +2083,17 @@ export function LineItemsPreviewPanel({
                           </td>
                         <td className="px-1.5 py-2 text-xs text-left">
                           {status === 'variance' && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700 whitespace-nowrap">
                               Variance
                             </span>
                           )}
                           {status === 'matched' && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 whitespace-nowrap">
                               Matched
                             </span>
                           )}
                           {status === 'missing' && (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 whitespace-nowrap">
                               Not Matched
                             </span>
                           )}
@@ -2384,7 +2418,7 @@ export function LineItemsPreviewPanel({
                     {/* Same header as default view */}
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
-                        <th colSpan={useDetailedVarianceColumns ? 9 : 9} className="px-4 bg-white border-b h-[42px]">
+                        <th colSpan={useDetailedVarianceColumns ? 9 : 9} className="px-4 bg-white border-b h-[36px]">
                           <div className="flex items-center justify-between h-full">
                             <span className="text-sm font-semibold text-gray-950">Invoice</span>
                             <button
@@ -2429,17 +2463,17 @@ export function LineItemsPreviewPanel({
                             <td className="px-1.5 py-2 text-xs text-gray-950 font-medium">{line.line_no}</td>
                             <td className="px-1.5 py-2 text-xs text-left">
                               {status === 'matched' && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800 whitespace-nowrap">
                                   Matched
                                 </span>
                               )}
                               {status === 'variance' && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800 whitespace-nowrap">
                                   Variance
                                 </span>
                               )}
                               {status === 'missing' && (
-                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 whitespace-nowrap">
                                   Not Matched
                                 </span>
                               )}

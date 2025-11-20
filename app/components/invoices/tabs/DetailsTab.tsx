@@ -30,7 +30,8 @@ import {
   Shield,
   Zap,
   Loader2,
-  Maximize2
+  Maximize2,
+  Minimize2
 } from 'lucide-react';
 import { EditableField } from '../editing/EditableField';
 import { ValidatedEditableField } from '../editing/ValidatedEditableField';
@@ -59,6 +60,13 @@ import { FraudRiskBanner } from '../FraudRiskBanner';
 import { AutoRejectBanner } from '../AutoRejectBanner';
 import { PolicyDocumentDrawer } from '../PolicyDocumentDrawer';
 import { LineItemsPreviewPanel } from '../preview/LineItemsPreviewPanel';
+import {
+  ValidationCard,
+  ValidationCardContainer,
+  ValidationSuccessCard,
+  ValidationIssue,
+  ValidationCategory
+} from '../ValidationCard';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -79,6 +87,9 @@ interface DetailsTabProps {
   agentPendingFields?: {[key: string]: any}; // Agent-accepted fields pending confirmation
   isReprocessingField?: string | null; // Track which field is currently reprocessing
   onFieldAutoReprocess?: (field: string) => void; // Trigger auto-reprocess after field save
+  matchResults?: any[]; // Match results for validation
+  approvalLimit?: number; // Approval limit for validation
+  poComparisonData?: any; // PO comparison data for validation
 }
 
 export function DetailsTab({
@@ -99,7 +110,10 @@ export function DetailsTab({
   onStartTeaching,
   agentPendingFields = {},
   isReprocessingField = null,
-  onFieldAutoReprocess
+  onFieldAutoReprocess,
+  matchResults = [],
+  approvalLimit = 2500,
+  poComparisonData
 }: DetailsTabProps) {
   // Track which field's AI suggestion is expanded
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
@@ -159,12 +173,33 @@ export function DetailsTab({
   const [localFocusedField, setLocalFocusedField] = useState<string | null>(null);
 
   // Accordion collapse state
+  const [isValidationExpanded, setIsValidationExpanded] = useState(false); // Collapsed by default
   const [isInvoiceInfoExpanded, setIsInvoiceInfoExpanded] = useState(true); // Start expanded
   const [isPaymentInfoExpanded, setIsPaymentInfoExpanded] = useState(false);
   const [isAccountingExpanded, setIsAccountingExpanded] = useState(false);
   const [isLineItemsExpanded, setIsLineItemsExpanded] = useState(true); // Start expanded
   const [isLineItemsFullscreen, setIsLineItemsFullscreen] = useState(false);
   const [isLineItemsEditMode, setIsLineItemsEditMode] = useState(false);
+  const lineItemsContainerRef = useRef<HTMLDivElement>(null);
+
+  // Toggle fullscreen for line items
+  const toggleLineItemsFullscreen = () => {
+    setIsLineItemsFullscreen(!isLineItemsFullscreen);
+  };
+
+  // Handle ESC key to exit fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isLineItemsFullscreen) {
+        setIsLineItemsFullscreen(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isLineItemsFullscreen]);
 
   // Notify parent when edit mode changes
   useEffect(() => {
@@ -383,6 +418,106 @@ export function DetailsTab({
   }, [invoiceData]);
 
   const { errors, warnings, info } = validationResults;
+
+  // Transform validation results into validation issues grouped by category (for accordion)
+  const validationIssues = useMemo(() => {
+    const issues: Record<ValidationCategory, ValidationIssue[]> = {
+      financial: [],
+      process: [],
+      compliance: [],
+      risk: [],
+      data_quality: [],
+      delivery: [],
+    };
+
+    // Add database validation warnings if they exist
+    if (invoiceData?.validation_warnings && Array.isArray(invoiceData.validation_warnings)) {
+      invoiceData.validation_warnings.forEach((warning: any, idx: number) => {
+        const category = warning.category || 'risk';
+        let detailsText = warning.details;
+
+        // Format details if it's an object
+        if (warning.details && typeof warning.details === 'object') {
+          const parts = [];
+          if (warning.details.expected_bank) {
+            parts.push(`Expected: ${warning.details.expected_bank}`);
+          }
+          if (warning.details.received_bank) {
+            parts.push(`Received: ${warning.details.received_bank}`);
+          }
+          if (warning.details.action) {
+            parts.push(warning.details.action);
+          }
+          detailsText = parts.join('. ');
+        }
+
+        // Ensure severity is a valid value
+        const validSeverities = ['error', 'warning', 'info', 'success'];
+        const severity = validSeverities.includes(warning.severity) ? warning.severity : 'warning';
+
+        issues[category as ValidationCategory].push({
+          id: `db-warning-${idx}`,
+          field: warning.field,
+          message: warning.message,
+          details: detailsText,
+          severity,
+          category: category as ValidationCategory,
+        });
+      });
+    }
+
+    // Add invoice validation errors/warnings
+    if (validationResults) {
+      [...validationResults.errors, ...validationResults.warnings].forEach((validation, idx) => {
+        let category: ValidationCategory = 'data_quality';
+
+        // Categorize based on field or message
+        if (validation.field === 'due_date' || validation.field === 'invoice_date') {
+          category = 'compliance';
+        } else if (validation.field === 'total' || validation.field === 'subtotal' || validation.field === 'tax_total') {
+          category = 'financial';
+        } else if (validation.field === 'vendor_name_snapshot' || validation.field === 'po_numbers' || validation.field === 'po_numbers_cached') {
+          category = 'process';
+        } else if (validation.field === 'vendor_approval_status') {
+          category = 'compliance';
+        } else if ((validation as any).category) {
+          // Use the category from the validation itself if provided
+          category = (validation as any).category as ValidationCategory;
+        }
+
+        issues[category].push({
+          id: `validation-${idx}`,
+          field: validation.field,
+          message: validation.message,
+          details: (validation as any).details,
+          expectedValue: (validation as any).expectedValue,
+          actualValue: (validation as any).actualValue,
+          severity: validation.severity,
+          category,
+        });
+      });
+    }
+
+    return issues;
+  }, [invoiceData, validationResults]);
+
+  // Check if all validations passed (no errors or warnings)
+  const allValidationsPassed = Object.values(validationIssues).every(
+    categoryIssues => categoryIssues.length === 0
+  );
+
+  // Count total errors and warnings
+  const validationCounts = useMemo(() => {
+    let errorCount = 0;
+    let warningCount = 0;
+    Object.values(validationIssues).forEach(categoryIssues => {
+      categoryIssues.forEach(issue => {
+        if (issue.severity === 'error') errorCount++;
+        else if (issue.severity === 'warning') warningCount++;
+      });
+    });
+    return { errorCount, warningCount };
+  }, [validationIssues]);
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -845,6 +980,90 @@ export function DetailsTab({
             />
           )}
 
+        {/* Validation Results Accordion */}
+        {!allValidationsPassed && (
+          <div>
+            <div
+              className="relative px-4 py-3 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+              onClick={() => setIsValidationExpanded(!isValidationExpanded)}
+            >
+              <div className="flex items-center gap-2">
+                {isValidationExpanded ? (
+                  <ChevronUp className="h-4 w-4 text-gray-500" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                )}
+                <AlertTriangle className={`h-4 w-4 ${validationCounts.errorCount > 0 ? 'text-red-600' : 'text-purple-600'}`} />
+                <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Validation Results</h3>
+                {validationCounts.errorCount > 0 && (
+                  <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium leading-none rounded bg-red-100 text-red-700">
+                    {validationCounts.errorCount} exception{validationCounts.errorCount !== 1 ? 's' : ''}
+                  </span>
+                )}
+                {validationCounts.warningCount > 0 && (
+                  <span className="inline-flex items-center px-2 py-0.5 text-xs font-medium leading-none rounded bg-amber-100 text-amber-700">
+                    {validationCounts.warningCount} warning{validationCounts.warningCount !== 1 ? 's' : ''}
+                  </span>
+                )}
+              </div>
+            </div>
+            {isValidationExpanded && (
+              <div className="px-4 py-3 bg-white border-b border-gray-200">
+                <ValidationCardContainer>
+                  {validationIssues.financial.length > 0 && (
+                    <ValidationCard
+                      category="financial"
+                      issues={validationIssues.financial}
+                      defaultExpanded={true}
+                      compact={true}
+                    />
+                  )}
+                  {validationIssues.process.length > 0 && (
+                    <ValidationCard
+                      category="process"
+                      issues={validationIssues.process}
+                      defaultExpanded={true}
+                      compact={true}
+                    />
+                  )}
+                  {validationIssues.compliance.length > 0 && (
+                    <ValidationCard
+                      category="compliance"
+                      issues={validationIssues.compliance}
+                      defaultExpanded={true}
+                      compact={true}
+                    />
+                  )}
+                  {validationIssues.risk.length > 0 && (
+                    <ValidationCard
+                      category="risk"
+                      issues={validationIssues.risk}
+                      defaultExpanded={true}
+                      compact={true}
+                    />
+                  )}
+                  {validationIssues.data_quality.length > 0 && (
+                    <ValidationCard
+                      category="data_quality"
+                      issues={validationIssues.data_quality}
+                      defaultExpanded={true}
+                      compact={true}
+                    />
+                  )}
+                  {validationIssues.delivery.length > 0 && (
+                    <ValidationCard
+                      category="delivery"
+                      issues={validationIssues.delivery}
+                      defaultExpanded={true}
+                      compact={true}
+                    />
+                  )}
+                </ValidationCardContainer>
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Invoice Header Section */}
         <div>
           <div
@@ -1164,6 +1383,28 @@ export function DetailsTab({
                   />
                 ) : (
                   renderField('vendor_tax_id_snapshot', invoiceData.vendor_tax_id_snapshot, 'text', 'Vendor Tax ID')
+                )}
+              </div>
+              <div ref={(el) => fieldRefs.current['vendor_id'] = el}>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
+                  <span className="flex items-center">
+                    Vendor ID
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.vendor_id} isEditMode={isEditing} />
+                  </span>
+                </label>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={editedData.vendor_id || ''}
+                    onChange={(value) => handleFieldChange('vendor_id', value)}
+                    type="text"
+                    required={false}
+                    fieldName="vendor_id"
+                    placeholder="e.g., VND-2001"
+                    onFocus={() => handleFieldFocus('vendor_id')}
+                    onBlur={handleFieldBlur}
+                  />
+                ) : (
+                  renderField('vendor_id', invoiceData.vendor_id, 'text', 'Vendor ID')
                 )}
               </div>
               <div ref={(el) => fieldRefs.current['po_numbers_cached'] = el}>
@@ -2072,7 +2313,7 @@ export function DetailsTab({
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
-                    GL Code
+                    GL Account
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.gl_code} isEditMode={isEditing} />
                   </span>
                 </label>
@@ -2191,70 +2432,129 @@ export function DetailsTab({
 
         {/* Line Items Section */}
         <div>
-          <div
-            className="relative px-4 py-2.5 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
-            onClick={() => setIsLineItemsExpanded(!isLineItemsExpanded)}
-          >
-            <div className="flex items-center gap-2">
-              {isLineItemsExpanded ? (
-                <ChevronUp className="h-4 w-4 text-gray-500" />
-              ) : (
-                <ChevronDown className="h-4 w-4 text-gray-500" />
-              )}
-              <Package className="h-4 w-4 text-purple-600" />
-              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Line Items</h3>
-
-              {/* Item count pill */}
-              <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                {invoiceData.lines?.length || 0} {(invoiceData.lines?.length || 0) === 1 ? 'item' : 'items'}
-              </span>
-
-              {/* Validation status pill */}
-              {(() => {
-                const errorCount = (invoiceData.match_results || []).filter((mr: any) => !mr.within_tolerance).length;
-                return errorCount > 0 ? (
-                  <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-                    <AlertCircle className="h-3 w-3" />
-                    {errorCount} {errorCount === 1 ? 'variance' : 'variances'}
-                  </span>
+          {/* Header - shown only when NOT in fullscreen */}
+          {!isLineItemsFullscreen && (
+            <div
+              className="relative px-4 py-2.5 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+              onClick={() => setIsLineItemsExpanded(!isLineItemsExpanded)}
+            >
+              <div className="flex items-center gap-2">
+                {isLineItemsExpanded ? (
+                  <ChevronUp className="h-4 w-4 text-gray-500" />
                 ) : (
-                  <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-                    <CheckCircle className="h-3 w-3" />
-                    Valid
-                  </span>
-                );
-              })()}
+                  <ChevronDown className="h-4 w-4 text-gray-500" />
+                )}
+                <Package className="h-4 w-4 text-purple-600" />
+                <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Line Items</h3>
+
+                {/* Item count pill */}
+                <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                  {invoiceData.lines?.length || 0} {(invoiceData.lines?.length || 0) === 1 ? 'item' : 'items'}
+                </span>
+
+                {/* Validation status pill */}
+                {(() => {
+                  const errorCount = (invoiceData.match_results || []).filter((mr: any) => !mr.within_tolerance).length;
+                  return errorCount > 0 ? (
+                    <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                      <AlertCircle className="h-3 w-3" />
+                      {errorCount} {errorCount === 1 ? 'variance' : 'variances'}
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                      <CheckCircle className="h-3 w-3" />
+                      Valid
+                    </span>
+                  );
+                })()}
+              </div>
+
+              {/* Expand button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleLineItemsFullscreen();
+                }}
+                className="absolute right-16 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors flex items-center gap-1 bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+              >
+                <Maximize2 className="h-3.5 w-3.5 text-purple-600" />
+                <span>Expand</span>
+              </button>
+
+              {/* Edit button */}
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setIsLineItemsEditMode(!isLineItemsEditMode);
+                }}
+                className={`absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                  isLineItemsEditMode
+                    ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                    : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
+                }`}
+              >
+                {isLineItemsEditMode ? 'Done' : 'Edit'}
+              </button>
             </div>
+          )}
 
-            {/* Expand button - positioned absolutely before the Edit button */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsLineItemsFullscreen(!isLineItemsFullscreen);
-              }}
-              className="absolute right-16 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50 flex items-center gap-1"
-            >
-              <Maximize2 className="h-3.5 w-3.5 text-purple-600" />
-              <span>Expand</span>
-            </button>
-
-            {/* Edit button - positioned absolutely on the right */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsLineItemsEditMode(!isLineItemsEditMode);
-              }}
-              className={`absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors ${
-                isLineItemsEditMode
-                  ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
-                  : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
-              }`}
-            >
-              {isLineItemsEditMode ? 'Done' : 'Edit'}
-            </button>
-          </div>
           {isLineItemsExpanded && (
-          <div className="bg-white border-b border-gray-200">
+          <div
+            ref={lineItemsContainerRef}
+            className={`bg-white ${isLineItemsFullscreen ? 'fixed inset-0 z-50 overflow-auto' : 'border-b border-gray-200'}`}
+          >
+            {/* Header - shown only when IN fullscreen */}
+            {isLineItemsFullscreen && (
+              <div className="relative px-4 py-2.5 border-b border-gray-200 bg-gray-50 sticky top-0 z-10">
+                <div className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-purple-600" />
+                  <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Line Items</h3>
+
+                  {/* Item count pill */}
+                  <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                    {invoiceData.lines?.length || 0} {(invoiceData.lines?.length || 0) === 1 ? 'item' : 'items'}
+                  </span>
+
+                  {/* Validation status pill */}
+                  {(() => {
+                    const errorCount = (invoiceData.match_results || []).filter((mr: any) => !mr.within_tolerance).length;
+                    return errorCount > 0 ? (
+                      <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                        <AlertCircle className="h-3 w-3" />
+                        {errorCount} {errorCount === 1 ? 'variance' : 'variances'}
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                        <CheckCircle className="h-3 w-3" />
+                        Valid
+                      </span>
+                    );
+                  })()}
+                </div>
+
+                {/* Collapse button */}
+                <button
+                  onClick={toggleLineItemsFullscreen}
+                  className="absolute right-16 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors flex items-center gap-1 bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800"
+                >
+                  <Minimize2 className="h-3.5 w-3.5" />
+                  <span>Collapse</span>
+                </button>
+
+                {/* Edit button */}
+                <button
+                  onClick={() => setIsLineItemsEditMode(!isLineItemsEditMode)}
+                  className={`absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                    isLineItemsEditMode
+                      ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                      : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
+                  }`}
+                >
+                  {isLineItemsEditMode ? 'Done' : 'Edit'}
+                </button>
+              </div>
+            )}
+
             <LineItemsPreviewPanel
               invoiceLines={invoiceData.lines || []}
               poLines={invoiceData.po_lines}
@@ -2264,11 +2564,9 @@ export function DetailsTab({
               externallyControlled={true}
               externalCollapsed={!isLineItemsExpanded}
               onToggleCollapsed={() => setIsLineItemsExpanded(!isLineItemsExpanded)}
-              showComparison={true}
+              showComparison={!!(invoiceData.po_lines && invoiceData.po_lines.length > 0)}
               useDetailedVarianceColumns={true}
               hideInternalHeader={true}
-              onMaximize={() => setIsLineItemsFullscreen(!isLineItemsFullscreen)}
-              isMaximized={isLineItemsFullscreen}
               hideEditButton={true}
               externalEditMode={isLineItemsEditMode}
               onEditModeChange={setIsLineItemsEditMode}

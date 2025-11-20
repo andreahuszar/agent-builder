@@ -249,7 +249,7 @@ export function InvoiceTabs({
     },
     {
       id: 'comments' as TabId,
-      label: 'Comments',
+      label: 'Activity',
       icon: MessageSquare,
       count: commentsCount,
     },
@@ -261,10 +261,20 @@ export function InvoiceTabs({
     if (tab.id === 'preview' && hidePreview) {
       return false;
     }
-    // Hide exceptions tab if hideExceptions prop is true (for quick view)
-    if (tab.id === 'matching' && hideExceptions) {
+    // TEMPORARILY HIDDEN: Line Items tab (functionality moved to Details tab accordion)
+    // TODO: Re-enable when needed by removing this condition
+    if (tab.id === 'line-items') {
       return false;
     }
+    // TEMPORARILY HIDDEN: Exceptions tab (functionality moved to Details tab accordion)
+    // TODO: Re-enable when needed by removing this condition
+    if (tab.id === 'matching') {
+      return false;
+    }
+    // Hide exceptions tab if hideExceptions prop is true (for quick view)
+    // if (tab.id === 'matching' && hideExceptions) {
+    //   return false;
+    // }
     // Hide attachments if hideAttachments prop is true
     if (tab.id === 'attachments' && hideAttachments) {
       return false;
@@ -408,7 +418,11 @@ export function InvoiceTabs({
         )}
         {activeTab === 'details' && (
           <DetailsTab
-            invoiceData={invoiceData}
+            invoiceData={{
+              ...invoiceData,
+              po_lines: poComparisonData?.poData?.po_lines || [],
+              match_results: matchResults || []
+            }}
             onUpdate={onDataUpdate}
             layoutMode={layoutMode}
             forceEditMode={forceEditMode}
@@ -426,6 +440,9 @@ export function InvoiceTabs({
             agentPendingFields={agentPendingFields}
             isReprocessingField={isReprocessingField}
             onFieldAutoReprocess={onFieldAutoReprocess}
+            matchResults={matchResults}
+            approvalLimit={2500}
+            poComparisonData={poComparisonData}
           />
         )}
         {activeTab === 'line-items' && (

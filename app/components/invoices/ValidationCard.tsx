@@ -41,6 +41,7 @@ interface ValidationCardProps {
   issues: ValidationIssue[];
   title?: string;
   defaultExpanded?: boolean;
+  compact?: boolean;
 }
 
 const categoryConfig: Record<ValidationCategory, {
@@ -125,7 +126,8 @@ export function ValidationCard({
   category,
   issues,
   title,
-  defaultExpanded = true
+  defaultExpanded = true,
+  compact = false
 }: ValidationCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -158,12 +160,12 @@ export function ValidationCard({
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
-        className={`w-full px-4 py-2 flex items-center justify-between hover:bg-opacity-70 transition-colors`}
+        className={`w-full ${compact ? 'px-3 py-1.5' : 'px-4 py-2'} flex items-center justify-between hover:bg-opacity-70 transition-colors`}
       >
         <div className="flex items-center gap-3">
-          <Icon className={`h-5 w-5 ${useErrorStyling ? 'text-red-600' : displayConfig.color}`} />
+          <Icon className={`${compact ? 'h-4 w-4' : 'h-5 w-5'} ${useErrorStyling ? 'text-red-600' : displayConfig.color}`} />
           <div className="flex items-center gap-4">
-            <h3 className={`font-medium text-gray-950`}>
+            <h3 className={`${compact ? 'text-sm' : 'text-base'} font-medium text-gray-950`}>
               {title || config.title}
             </h3>
             <div className="flex items-center gap-3">
@@ -199,21 +201,21 @@ export function ValidationCard({
             {issues.map((issue) => {
               const severityConf = severityConfig[issue.severity];
               const SeverityIcon = severityConf.icon;
-              
+
               return (
-                <div key={issue.id} className="px-4 py-3 hover:bg-gray-50">
+                <div key={issue.id} className={`${compact ? 'px-3 py-2' : 'px-4 py-3'} hover:bg-gray-50`}>
                   <div className="flex items-start gap-3">
-                    <div className={`mt-0.5 ${severityConf.bgColor} rounded-full p-1`}>
-                      <SeverityIcon className={`h-4 w-4 ${severityConf.color}`} />
+                    <div className={`mt-0.5 ${severityConf.bgColor} rounded-full ${compact ? 'p-0.5' : 'p-1'}`}>
+                      <SeverityIcon className={`${compact ? 'h-3.5 w-3.5' : 'h-4 w-4'} ${severityConf.color}`} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1">
-                          <p className="text-sm font-medium text-gray-950">
+                          <p className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-950`}>
                             {issue.message}
                           </p>
                           {issue.details && (
-                            <p className="text-sm text-gray-950 mt-0.5">
+                            <p className={`${compact ? 'text-xs' : 'text-sm'} text-gray-950 mt-0.5`}>
                               {issue.details}
                             </p>
                           )}
