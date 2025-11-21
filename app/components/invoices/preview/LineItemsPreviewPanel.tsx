@@ -283,7 +283,7 @@ export function LineItemsPreviewPanel({
   const { showToast} = useToast();
 
   // Toggle states for showing PO and Receipt data
-  const [showPO, setShowPO] = useState(showComparison && poLines.length > 0);
+  const [showPO, setShowPO] = useState(poLines.length > 0); // Default to ON when PO lines available
   const [showReceipt, setShowReceipt] = useState(false);
 
   // Update editable lines when invoice lines change
@@ -1052,7 +1052,7 @@ export function LineItemsPreviewPanel({
           <Package className="h-4 w-4 text-purple-600" />
           <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wider">LINE ITEMS</h3>
           <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-            {invoiceLines.length} {invoiceLines.length === 1 ? 'item' : 'items'}
+            {invoiceLines.length} {invoiceLines.length === 1 ? 'line' : 'lines'}
           </span>
           {errorCount > 0 ? (
             <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
@@ -1062,7 +1062,7 @@ export function LineItemsPreviewPanel({
           ) : (
             <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
               <CheckCircle className="h-3 w-3" />
-              Valid
+              Fully Matched
             </span>
           )}
         </div>
@@ -1710,7 +1710,7 @@ export function LineItemsPreviewPanel({
                     )}
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
-                    <tr className="h-[52px]">
+                    <tr className="h-[42px]">
                       <td colSpan={5} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950">
                         PO Total:
                       </td>
@@ -1775,7 +1775,7 @@ export function LineItemsPreviewPanel({
                     )}
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
-                    <tr className="h-[52px] border-r border-gray-200">
+                    <tr className="h-[42px] border-r border-gray-200">
                       <td className="px-1.5 py-2">&nbsp;</td>
                     </tr>
                   </tfoot>
@@ -1878,7 +1878,7 @@ export function LineItemsPreviewPanel({
                       )}
                     </tbody>
                     <tfoot className="bg-gray-50 sticky bottom-0">
-                      <tr className="h-[52px]">
+                      <tr className="h-[42px]">
                         {/* Empty footer cells for visual continuity */}
                         <td colSpan={2} className="px-1.5 py-2"></td>
                       </tr>

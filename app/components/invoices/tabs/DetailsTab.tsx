@@ -175,11 +175,7 @@ export function DetailsTab({
   const [localFocusedField, setLocalFocusedField] = useState<string | null>(null);
 
   // Accordion collapse state
-  const [isValidationExpanded, setIsValidationExpanded] = useState(() => {
-    // Read from cookie, default to false (collapsed)
-    const saved = Cookies.get('validationResultsExpanded');
-    return saved === 'true';
-  });
+  const [isValidationExpanded, setIsValidationExpanded] = useState(false); // Start collapsed to avoid hydration mismatch
   const [isInvoiceInfoExpanded, setIsInvoiceInfoExpanded] = useState(true); // Start expanded
   const [isAdditionalDetailsExpanded, setIsAdditionalDetailsExpanded] = useState(false);
   const [isLineItemsExpanded, setIsLineItemsExpanded] = useState(true); // Start expanded
@@ -205,6 +201,14 @@ export function DetailsTab({
       document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isLineItemsFullscreen]);
+
+  // Read Validation Results expanded state from cookie after hydration
+  useEffect(() => {
+    const saved = Cookies.get('validationResultsExpanded');
+    if (saved === 'true') {
+      setIsValidationExpanded(true);
+    }
+  }, []);
 
   // Save Validation Results expanded state to cookie
   useEffect(() => {
@@ -2472,7 +2476,7 @@ export function DetailsTab({
 
                 {/* Item count pill */}
                 <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                  {invoiceData.lines?.length || 0} {(invoiceData.lines?.length || 0) === 1 ? 'item' : 'items'}
+                  {invoiceData.lines?.length || 0} {(invoiceData.lines?.length || 0) === 1 ? 'line' : 'lines'}
                 </span>
 
                 {/* Validation status pill */}
@@ -2486,7 +2490,7 @@ export function DetailsTab({
                   ) : (
                     <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
                       <CheckCircle className="h-3 w-3" />
-                      Valid
+                      Fully Matched
                     </span>
                   );
                 })()}
@@ -2535,7 +2539,7 @@ export function DetailsTab({
 
                   {/* Item count pill */}
                   <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                    {invoiceData.lines?.length || 0} {(invoiceData.lines?.length || 0) === 1 ? 'item' : 'items'}
+                    {invoiceData.lines?.length || 0} {(invoiceData.lines?.length || 0) === 1 ? 'line' : 'lines'}
                   </span>
 
                   {/* Validation status pill */}
@@ -2549,7 +2553,7 @@ export function DetailsTab({
                     ) : (
                       <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
                         <CheckCircle className="h-3 w-3" />
-                        Valid
+                        Fully Matched
                       </span>
                     );
                   })()}
