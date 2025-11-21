@@ -11,6 +11,7 @@ import { PODocumentTable } from '@/app/components/invoices/comparison/PODocument
 import { GRDocumentTable } from '@/app/components/invoices/comparison/GRDocumentTable';
 import { GRDocumentPreview } from '@/app/components/invoices/comparison/GRDocumentPreview';
 import { TeachingConfirmationModal } from '@/app/components/invoices/TeachingConfirmationModal';
+import { AIAgentPanel } from '@/app/components/invoices/AIAgentPanel';
 import { useSelection } from '@/app/context/SelectionContext';
 import { useToast } from '@/app/components/ui/Toast';
 import { calculateInvoiceExceptions } from '@/app/utils/exceptionCounter';
@@ -222,6 +223,9 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const [isEditing, setIsEditing] = useState(false);
   const [focusedFieldName, setFocusedFieldName] = useState<string | null>(null);
   const [isReprocessingField, setIsReprocessingField] = useState<string | null>(null);
+
+  // AI Agent panel state
+  const [isAgentPanelOpen, setIsAgentPanelOpen] = useState(false);
 
   // Teaching mode state
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -774,6 +778,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         assignedUserName={assignedUserName}
         onAssignUser={onAssignUser}
         workflowStatus={invoice.status}
+        onAgentToggle={() => setIsAgentPanelOpen(!isAgentPanelOpen)}
       />
 
       {/* Main Content Area */}
@@ -791,6 +796,14 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           onCancel={handleTeachingCancel}
         />
       )}
+
+      {/* AI Agent Panel */}
+      <AIAgentPanel
+        isOpen={isAgentPanelOpen}
+        onClose={() => setIsAgentPanelOpen(!isAgentPanelOpen)}
+        invoiceId={invoiceId}
+        invoiceNumber={invoice.invoice_number}
+      />
     </div>
   );
 }

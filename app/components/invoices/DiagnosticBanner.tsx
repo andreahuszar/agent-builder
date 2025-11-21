@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Check, AlertTriangle, X, ChevronDown, MessageSquare, FileCheck, FileText, Pause, Mail, Send, CheckCircle, Trash2, XCircle, MoreVertical, RefreshCw } from 'lucide-react';
+import { Check, AlertTriangle, X, ChevronDown, MessageSquare, FileCheck, FileText, Pause, Mail, Send, CheckCircle, Trash2, XCircle, MoreVertical, RefreshCw, Sparkles } from 'lucide-react';
 import { HelpdeskPill } from './HelpdeskPill';
 import { UserAssignmentDropdown } from './UserAssignmentDropdown';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
@@ -30,6 +30,7 @@ interface DiagnosticBannerProps {
   assignedUserName?: string | null;
   onAssignUser?: (userName: string | null) => void;
   workflowStatus?: string;
+  onAgentToggle?: () => void;
 }
 
 export function DiagnosticBanner({
@@ -56,6 +57,7 @@ export function DiagnosticBanner({
   assignedUserName,
   onAssignUser,
   workflowStatus,
+  onAgentToggle,
 }: DiagnosticBannerProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
@@ -264,6 +266,15 @@ export function DiagnosticBanner({
               Reprocess
             </>
           )}
+        </button>
+
+        {/* Ask Agent Button */}
+        <button
+          onClick={onAgentToggle}
+          className="px-3 py-1.5 text-sm bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
+        >
+          <Sparkles className="h-4 w-4" />
+          <span>Ask Agent</span>
         </button>
 
         {/* More Dropdown */}
