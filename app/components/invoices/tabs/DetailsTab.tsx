@@ -155,7 +155,7 @@ export function DetailsTab({
         return 'sm:col-span-2';
       case 'large':
       default:
-        return 'sm:col-span-2 lg:col-span-4';
+        return 'sm:col-span-2 md:col-span-3';
     }
   };
 
