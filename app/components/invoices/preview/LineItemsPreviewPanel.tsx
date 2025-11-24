@@ -1910,7 +1910,7 @@ export function LineItemsPreviewPanel({
               <table className="w-full">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
-                    <th colSpan={poLines.length > 0 ? (isEditMode ? 12 : 11) : (isEditMode ? 11 : 10)} className="px-4 bg-white h-[36px]">
+                    <th colSpan={poLines.length > 0 ? (isEditMode ? 12 : 11) : (isEditMode ? 11 : 10)} className="px-4 bg-white border-b h-[36px]">
                       <div className="flex items-center justify-between h-full">
                         {/* Left side: Invoice title and Compare to toggles */}
                         <div className="flex items-center gap-3">
