@@ -2197,6 +2197,7 @@ export const getMockPoComparisonData = (invoiceId: string, invoiceData?: any): a
         line_no: index + 1,
         description: line.description,
         item_description: line.description,
+        sku: line.sku || line.product_code || '-', // Copy SKU from invoice line
         qty_ordered: line.qty * 0.95, // Slightly different quantity for variance
         qty_received_to_date: 0,
         qty_invoiced_to_date: 0,

@@ -286,6 +286,13 @@ export function LineItemsPreviewPanel({
   const [showPO, setShowPO] = useState(poLines.length > 0); // Default to ON when PO lines available
   const [showReceipt, setShowReceipt] = useState(false);
 
+  // Keep showPO in sync when poLines changes - always ON when PO lines are available
+  useEffect(() => {
+    if (poLines.length > 0 && !showPO) {
+      setShowPO(true);
+    }
+  }, [poLines.length]);
+
   // Update editable lines when invoice lines change
   // Always initialize display_position to ensure lines are visible in read-only mode
   useEffect(() => {
@@ -1148,8 +1155,13 @@ export function LineItemsPreviewPanel({
                     <tr>
                       <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 12 : 10) : (10 + (isEditMode ? 2 : 0))} className="px-4 bg-white border-b h-[36px]">
                         <div className="flex items-center justify-between h-full">
-                          {/* Left side: Compare to toggles */}
+                          {/* Left side: Invoice title and Compare to toggles */}
                           <div className="flex items-center gap-3">
+                            <span className="text-sm font-semibold text-gray-950">Invoice</span>
+                            <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                              {invoiceLines.length} {invoiceLines.length === 1 ? 'line' : 'lines'}
+                            </span>
+                            <div className="h-5 w-px bg-gray-300"></div>
                             <span className="text-xs font-medium text-gray-600">Compare to:</span>
 
                             {/* PO Toggle */}
@@ -1628,15 +1640,19 @@ export function LineItemsPreviewPanel({
                 <table className="min-w-max">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                      <th colSpan={6} className="px-4 bg-white border-b h-[36px]">
-                        <div className="flex items-center h-full">
+                      <th colSpan={7} className="px-4 bg-white border-b h-[36px]">
+                        <div className="flex items-center gap-3 h-full">
                           <span className="text-sm font-semibold text-gray-950">Purchase Order</span>
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                            {poLines.length} {poLines.length === 1 ? 'line' : 'lines'}
+                          </span>
                         </div>
                       </th>
                     </tr>
                     <tr className="h-[40px]">
                       <th className="pl-5 pr-1.5 text-right text-xs font-medium text-gray-800 uppercase">#</th>
                       <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
+                      <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
                       <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
                       <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
                       <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
@@ -1657,7 +1673,7 @@ export function LineItemsPreviewPanel({
                             onMouseEnter={() => handleRowHover(slot.position)}
                             onMouseLeave={handleRowLeave}
                           >
-                            <td className="px-1.5 py-2 text-xs text-gray-400 italic text-center align-middle" colSpan={6}>
+                            <td className="px-1.5 py-2 text-xs text-gray-400 italic text-center align-middle" colSpan={7}>
                               No PO line
                             </td>
                           </tr>
@@ -1681,6 +1697,7 @@ export function LineItemsPreviewPanel({
                               {matchedPO.item_description || matchedPO.description}
                             </div>
                           </td>
+                          <td className="px-1.5 py-2 text-xs text-gray-950">{matchedPO.sku || '-'}</td>
                           <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
                             invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01
                               ? 'bg-red-50'
@@ -1705,13 +1722,13 @@ export function LineItemsPreviewPanel({
                     {/* Empty spacer row in edit mode to match Invoice table's "Add Line" row */}
                     {isEditMode && (
                       <tr className="h-[40px]">
-                        <td colSpan={6} className="px-1.5 py-2"></td>
+                        <td colSpan={7} className="px-1.5 py-2"></td>
                       </tr>
                     )}
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
                     <tr className="h-[42px]">
-                      <td colSpan={5} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950">
+                      <td colSpan={6} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950">
                         PO Total:
                       </td>
                       <td className="px-1.5 py-2 text-right text-sm font-bold text-gray-950">
@@ -1895,8 +1912,13 @@ export function LineItemsPreviewPanel({
                   <tr>
                     <th colSpan={poLines.length > 0 ? (isEditMode ? 12 : 11) : (isEditMode ? 11 : 10)} className="px-4 bg-white h-[36px]">
                       <div className="flex items-center justify-between h-full">
-                        {/* Left side: Compare to toggles */}
+                        {/* Left side: Invoice title and Compare to toggles */}
                         <div className="flex items-center gap-3">
+                          <span className="text-sm font-semibold text-gray-950">Invoice</span>
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                            {invoiceLines.length} {invoiceLines.length === 1 ? 'line' : 'lines'}
+                          </span>
+                          <div className="h-5 w-px bg-gray-300"></div>
                           <span className="text-xs font-medium text-gray-600">Compare to:</span>
 
                           {/* PO Toggle */}
@@ -2414,7 +2436,12 @@ export function LineItemsPreviewPanel({
                       <tr>
                         <th colSpan={useDetailedVarianceColumns ? 9 : (showPO ? 10 : 9)} className="px-4 bg-white border-b h-[36px]">
                           <div className="flex items-center justify-between h-full">
-                            <span className="text-sm font-semibold text-gray-950">Invoice</span>
+                            <div className="flex items-center gap-3">
+                              <span className="text-sm font-semibold text-gray-950">Invoice</span>
+                              <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                                {invoiceLines.length} {invoiceLines.length === 1 ? 'line' : 'lines'}
+                              </span>
+                            </div>
                             <button
                               onClick={toggleEditMode}
                               className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${

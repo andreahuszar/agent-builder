@@ -12,6 +12,7 @@ import { GRDocumentTable } from '@/app/components/invoices/comparison/GRDocument
 import { GRDocumentPreview } from '@/app/components/invoices/comparison/GRDocumentPreview';
 import { TeachingConfirmationModal } from '@/app/components/invoices/TeachingConfirmationModal';
 import { AIAgentPanel } from '@/app/components/invoices/AIAgentPanel';
+import { markAgentTrainingResolved } from '@/app/components/invoices/agent/useAgentState';
 import { useSelection } from '@/app/context/SelectionContext';
 import { useToast } from '@/app/components/ui/Toast';
 import { calculateInvoiceExceptions } from '@/app/utils/exceptionCounter';
@@ -226,6 +227,20 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
   // AI Agent panel state
   const [isAgentPanelOpen, setIsAgentPanelOpen] = useState(false);
+
+  // Track if viewport is wide enough for 3-column layout
+  const [isWideScreen, setIsWideScreen] = useState(false);
+
+  useEffect(() => {
+    const checkScreenSize = () => {
+      setIsWideScreen(window.innerWidth >= 1280);
+    };
+
+    checkScreenSize();
+    window.addEventListener('resize', checkScreenSize);
+
+    return () => window.removeEventListener('resize', checkScreenSize);
+  }, []);
 
   // Teaching mode state
   const [isSelectionMode, setIsSelectionMode] = useState(false);
@@ -493,6 +508,11 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       onInvoiceNumberUpdate(value);
     }
 
+    // Notify Agent panel that training is complete
+    if (teachingFieldName) {
+      markAgentTrainingResolved(invoiceId, teachingFieldName, value);
+    }
+
     // Close modal immediately
     setShowTeachingModal(false);
     setTeachingFieldName(null);
@@ -519,6 +539,24 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     setTeachingFieldName(null);
     setSelectedValue('');
     setSelectedContext('');
+  };
+
+  // Handle "View on invoice" from Agent panel
+  const handleViewField = (fieldId: string) => {
+    console.log('[InvoiceDetailClient] View field clicked:', fieldId);
+
+    // Switch to Details tab if not already there
+    if (activeTab !== 'details') {
+      setActiveTab('details');
+    }
+
+    // TODO: Scroll to field and highlight it
+    // For now, just switch to details tab
+    // In a full implementation, we would:
+    // 1. Find the field element by ID
+    // 2. Scroll it into view
+    // 3. Add a temporary highlight class
+    // 4. Remove highlight after animation completes
   };
 
   const hasPO = invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0;
@@ -590,17 +628,29 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       );
     }
 
-    // Unified layout for ALL invoices: PDF on left (50%), Fields on right (50%)
+    // Unified layout: 2-column or 3-column depending on agent state
+    const useThreeColumnLayout = isWideScreen && isAgentPanelOpen;
+
     return (
-      <ResizablePanel
-        defaultSizes={[50, 50]}
-        minSizes={[20, 30]}
-        storageKey={`invoice-unified-v2-${invoiceId}`}
-        className="h-full"
-        onSizeChange={handlePanelSizeChange}
-      >
-        {/* Document Preview - LEFT PANEL */}
-        <DocumentPreview
+      <div className="h-full flex">
+        {/* Main content area (PDF + Details) */}
+        <div
+          className={`flex-1 transition-all duration-200 ease-in-out ${
+            useThreeColumnLayout ? 'mr-0' : ''
+          }`}
+          style={{
+            maxWidth: useThreeColumnLayout ? 'calc(100% - 420px)' : '100%',
+          }}
+        >
+          <ResizablePanel
+            defaultSizes={[50, 50]}
+            minSizes={[20, 30]}
+            storageKey={`invoice-unified-v2-${invoiceId}`}
+            className="h-full"
+            onSizeChange={handlePanelSizeChange}
+          >
+            {/* Document Preview - LEFT PANEL */}
+            <DocumentPreview
           invoiceId={invoiceId}
           hasAttachment={invoice.attachments && invoice.attachments.length > 0}
           invoiceData={originalInvoice}
@@ -651,7 +701,46 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           acceptedLineSuggestions={acceptedLineSuggestions}
           onAcceptLineSuggestion={handleAcceptLineSuggestion}
         />
-      </ResizablePanel>
+          </ResizablePanel>
+        </div>
+
+        {/* Agent Panel Column - Only on wide screens when open */}
+        {useThreeColumnLayout && (
+          <div
+            className="border-l border-gray-200 bg-white transition-all duration-200 ease-in-out flex-shrink-0"
+            style={{
+              width: '420px',
+              maxWidth: '420px',
+            }}
+          >
+            <AIAgentPanel
+              isOpen={true}
+              onClose={() => setIsAgentPanelOpen(false)}
+              invoiceId={invoiceId}
+              invoiceNumber={invoice.invoice_number}
+              mode="inline"
+              exceptionCount={totalExceptionsCount}
+              exceptions={exceptionResult.exceptions.map((ex, idx) => ({
+                id: `ex-${idx}`,
+                type: ex.type,
+                severity: ex.severity,
+                message: ex.message,
+                fieldName: ex.field,
+                lineNumber: ex.lineNumber,
+              }))}
+              lineItemCount={invoice.lines?.length || 0}
+              matchedLineItemCount={matchResults.filter((mr: any) =>
+                mr.within_tolerance || mr.explanation_code === 'PERFECT_MATCH'
+              ).length}
+              teachableFields={['job_number']}
+              invoiceData={invoice}
+              isTeachingInProgress={isSelectionMode}
+              onStartTeaching={handleStartTeaching}
+              onViewField={handleViewField}
+            />
+          </div>
+        )}
+      </div>
     );
   };
 
@@ -797,13 +886,34 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         />
       )}
 
-      {/* AI Agent Panel */}
-      <AIAgentPanel
-        isOpen={isAgentPanelOpen}
-        onClose={() => setIsAgentPanelOpen(!isAgentPanelOpen)}
-        invoiceId={invoiceId}
-        invoiceNumber={invoice.invoice_number}
-      />
+      {/* AI Agent Panel - Overlay mode (mobile/narrow screens only) */}
+      {!isWideScreen && (
+        <AIAgentPanel
+          isOpen={isAgentPanelOpen}
+          onClose={() => setIsAgentPanelOpen(!isAgentPanelOpen)}
+          invoiceId={invoiceId}
+          invoiceNumber={invoice.invoice_number}
+          mode="overlay"
+          exceptionCount={totalExceptionsCount}
+          exceptions={exceptionResult.exceptions.map((ex, idx) => ({
+            id: `ex-${idx}`,
+            type: ex.type,
+            severity: ex.severity,
+            message: ex.message,
+            fieldName: ex.field,
+            lineNumber: ex.lineNumber,
+          }))}
+          lineItemCount={invoice.lines?.length || 0}
+          matchedLineItemCount={matchResults.filter((mr: any) =>
+            mr.within_tolerance || mr.explanation_code === 'PERFECT_MATCH'
+          ).length}
+          teachableFields={['job_number']}
+          invoiceData={invoice}
+          isTeachingInProgress={isSelectionMode}
+          onStartTeaching={handleStartTeaching}
+          onViewField={handleViewField}
+        />
+      )}
     </div>
   );
 }

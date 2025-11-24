@@ -1923,7 +1923,51 @@ export function DetailsTab({
                 )}
               </div>
 
-              {/* Financial Row 2: Total, Shipping, Discount */}
+              {/* Financial Row 2: Shipping, Discount, Miscellaneous */}
+              <div>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
+                  Shipping/Freight
+                </label>
+                <p className="text-sm font-medium text-gray-950">
+                  {invoiceData.shipping_total > 0
+                    ? formatCurrency(invoiceData.shipping_total, invoiceData.currency)
+                    : '-'
+                  }
+                </p>
+              </div>
+              <div>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
+                  Discount
+                </label>
+                <p className="text-sm font-medium text-gray-950">
+                  {invoiceData.discount_total > 0
+                    ? `-${formatCurrency(invoiceData.discount_total, invoiceData.currency)}`
+                    : '-'
+                  }
+                </p>
+              </div>
+              <div>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
+                  Miscellaneous
+                </label>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={editedData.miscellaneous || ''}
+                    onChange={(value) => handleFieldChange('miscellaneous', value)}
+                    type="text"
+                    required={false}
+                    fieldName="miscellaneous"
+                    onFocus={() => handleFieldFocus('miscellaneous')}
+                    onBlur={handleFieldBlur}
+                  />
+                ) : (
+                  <p className="text-sm font-medium text-gray-950">
+                    {invoiceData.miscellaneous || '-'}
+                  </p>
+                )}
+              </div>
+
+              {/* Financial Row 3: Total (full width on left) */}
               <div ref={(el) => fieldRefs.current['total'] = el} className="bg-purple-50 py-2 -ml-3 pl-3 pr-3">
                 <label className="flex items-center text-xs font-bold text-gray-900 mb-0 min-h-[16px]">
                   <span className="flex items-center">
@@ -1948,28 +1992,8 @@ export function DetailsTab({
                   </p>
                 )}
               </div>
-              <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
-                  Shipping/Freight
-                </label>
-                <p className="text-sm font-medium text-gray-950">
-                  {invoiceData.shipping_total > 0
-                    ? formatCurrency(invoiceData.shipping_total, invoiceData.currency)
-                    : '-'
-                  }
-                </p>
-              </div>
-              <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
-                  Discount
-                </label>
-                <p className="text-sm font-medium text-gray-950">
-                  {invoiceData.discount_total > 0
-                    ? `-${formatCurrency(invoiceData.discount_total, invoiceData.currency)}`
-                    : '-'
-                  }
-                </p>
-              </div>
+              <div></div>
+              <div></div>
 
               {/* Vehicle Registration No. - Only for baseline-po-bank-1 - appears after Discount */}
               {invoiceData.id === 'baseline-po-bank-1' ? (
@@ -2047,7 +2071,7 @@ export function DetailsTab({
                 <ChevronDown className="h-4 w-4 text-gray-500" />
               )}
               <ClipboardList className="h-4 w-4 text-purple-600" />
-              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Additional Details</h3>
+              <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Additional Invoice Details</h3>
               {additionalDetailsErrorCount > 0 && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
                   {additionalDetailsErrorCount} error field{additionalDetailsErrorCount !== 1 ? 's' : ''}
@@ -2070,11 +2094,11 @@ export function DetailsTab({
           <div className="px-10 py-4 bg-white border-b border-gray-200">
             {/* Payment Subsection */}
             <div className="mb-6">
-              <h4 className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-200">
-                <CreditCard className="h-4 w-4 text-gray-500" />
+              <h4 className="flex items-center gap-2 text-xs font-semibold text-gray-950 uppercase tracking-wide mb-4 pb-2 border-b border-gray-200">
+                <CreditCard className="h-4 w-4 text-gray-950" />
                 Payment
               </h4>
-              <div className={`grid ${getGridCols()} gap-4`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-4">
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
@@ -2281,11 +2305,11 @@ export function DetailsTab({
 
             {/* Coding Subsection */}
             <div>
-              <h4 className="flex items-center gap-2 text-xs font-semibold text-gray-700 uppercase tracking-wide mb-4 pb-2 border-b border-gray-200">
-                <BookOpen className="h-4 w-4 text-gray-500" />
+              <h4 className="flex items-center gap-2 text-xs font-semibold text-gray-950 uppercase tracking-wide mb-4 pb-2 border-b border-gray-200">
+                <BookOpen className="h-4 w-4 text-gray-950" />
                 Coding
               </h4>
-              <div className={`grid ${getGridCols()} gap-4`}>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-4">
               <div>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
@@ -2474,11 +2498,6 @@ export function DetailsTab({
                 <Package className="h-4 w-4 text-purple-600" />
                 <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Line Items</h3>
 
-                {/* Item count pill */}
-                <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                  {invoiceData.lines?.length || 0} {(invoiceData.lines?.length || 0) === 1 ? 'line' : 'lines'}
-                </span>
-
                 {/* Validation status pill */}
                 {(() => {
                   const errorCount = (invoiceData.match_results || []).filter((mr: any) => !mr.within_tolerance).length;
@@ -2536,11 +2555,6 @@ export function DetailsTab({
                 <div className="flex items-center gap-2">
                   <Package className="h-4 w-4 text-purple-600" />
                   <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Line Items</h3>
-
-                  {/* Item count pill */}
-                  <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                    {invoiceData.lines?.length || 0} {(invoiceData.lines?.length || 0) === 1 ? 'line' : 'lines'}
-                  </span>
 
                   {/* Validation status pill */}
                   {(() => {

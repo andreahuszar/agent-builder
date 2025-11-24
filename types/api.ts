@@ -115,6 +115,7 @@ export interface POLine {
   line_no: number;
   description: string;
   item_description: string | null;
+  sku?: string;
   qty_ordered: number;
   uom: string;
   unit_price: number;

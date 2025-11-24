@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Check, AlertTriangle, X, ChevronDown, MessageSquare, FileCheck, FileText, Pause, Mail, Send, CheckCircle, Trash2, XCircle, MoreVertical, RefreshCw, Sparkles } from 'lucide-react';
 import { HelpdeskPill } from './HelpdeskPill';
 import { UserAssignmentDropdown } from './UserAssignmentDropdown';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { getInvoiceAgentPreference } from '@/app/utils/cookies';
 
 interface DiagnosticBannerProps {
   total: number;
@@ -62,6 +63,13 @@ export function DiagnosticBanner({
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
   const [rejectMessage, setRejectMessage] = useState('');
+  const [isAgentEnabled, setIsAgentEnabled] = useState(false);
+
+  // Load Invoice Agent preference on mount
+  useEffect(() => {
+    const agentPreference = getInvoiceAgentPreference();
+    setIsAgentEnabled(agentPreference);
+  }, []);
 
   // Format currency in compact form
   const formatCompactCurrency = (amount: number) => {
@@ -268,14 +276,16 @@ export function DiagnosticBanner({
           )}
         </button>
 
-        {/* Ask Agent Button */}
-        <button
-          onClick={onAgentToggle}
-          className="px-3 py-1.5 text-sm bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
-        >
-          <Sparkles className="h-4 w-4" />
-          <span>Ask Agent</span>
-        </button>
+        {/* Ask Agent Button - Only shown if enabled in settings */}
+        {isAgentEnabled && (
+          <button
+            onClick={onAgentToggle}
+            className="px-3 py-1.5 text-sm bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
+          >
+            <Sparkles className="h-4 w-4" />
+            <span>Ask Agent</span>
+          </button>
+        )}
 
         {/* More Dropdown */}
         <div className="relative">

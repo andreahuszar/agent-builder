@@ -4,6 +4,7 @@ const COOKIE_NAME = 'chartsInDrawer';
 const PO_VISIBILITY_COOKIE = 'poGrEscalationsVisible';
 const LAUNCHPAD_VISIBILITY_COOKIE = 'launchpadVisible';
 const EXCEPTION_NAVIGATION_COOKIE = 'exceptionNavigation';
+const INVOICE_AGENT_COOKIE = 'invoiceAgentEnabled';
 const COOKIE_EXPIRY_DAYS = 365; // Store preference for 1 year
 
 export function setChartsInDrawerPreference(value: boolean): void {
@@ -148,4 +149,39 @@ export function getExceptionNavigationPreference(): boolean {
 
 export function deleteExceptionNavigationPreference(): void {
   document.cookie = `${EXCEPTION_NAVIGATION_COOKIE}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
+}
+
+// Invoice Agent preference functions (OFF by default)
+export function setInvoiceAgentPreference(value: boolean): void {
+  const date = new Date();
+  date.setTime(date.getTime() + (COOKIE_EXPIRY_DAYS * 24 * 60 * 60 * 1000));
+  const expires = `expires=${date.toUTCString()}`;
+  document.cookie = `${INVOICE_AGENT_COOKIE}=${value};${expires};path=/`;
+}
+
+export function getInvoiceAgentPreference(): boolean {
+  if (typeof window === 'undefined') {
+    return false; // Default value for SSR - OFF by default
+  }
+
+  const name = `${INVOICE_AGENT_COOKIE}=`;
+  const decodedCookie = decodeURIComponent(document.cookie);
+  const cookieArray = decodedCookie.split(';');
+
+  for (let i = 0; i < cookieArray.length; i++) {
+    let cookie = cookieArray[i];
+    while (cookie.charAt(0) === ' ') {
+      cookie = cookie.substring(1);
+    }
+    if (cookie.indexOf(name) === 0) {
+      const value = cookie.substring(name.length, cookie.length);
+      return value === 'true';
+    }
+  }
+
+  return false; // Default value if cookie doesn't exist - OFF by default
+}
+
+export function deleteInvoiceAgentPreference(): void {
+  document.cookie = `${INVOICE_AGENT_COOKIE}=;expires=Thu, 01 Jan 1970 00:00:00 UTC;path=/;`;
 }
