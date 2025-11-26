@@ -8,6 +8,7 @@
 // Documentation: MOCK_INVOICES_ARCHIVE.md
 
 import { UnifiedInvoice } from '@/types/invoice';
+import { POLineUsage, ResolvedPOLine } from '@/types/api';
 import { enrichInvoiceWithDemoData } from './invoiceDataService';
 import { getMockPOByNumber } from './mockPOService';
 
@@ -2576,6 +2577,46 @@ export const getMockPoComparisonDataMulti = (invoiceId: string, invoiceData?: an
       po_unit_price: poLine?.unit_price || null,
       po_uom: poLine?.uom || null,
       gr_qty_received: null
+    });
+  });
+
+  // Add usage metadata to each PO line
+  poDataList.forEach((poData) => {
+    poData.lines = poData.lines.map((poLine: any) => {
+      // Check if this PO line is matched to any invoice line on THIS invoice
+      const matchedToThisInvoice = allMatchResults.find(
+        (mr: any) => mr.matched_po_line_id === poLine.id
+      );
+
+      if (matchedToThisInvoice) {
+        // Used by this invoice
+        return {
+          ...poLine,
+          usage: {
+            state: 'usedByThisInvoice',
+            invoiceId: invoice.id,
+            invoiceLineId: matchedToThisInvoice.invoice_line_id
+          } as POLineUsage
+        };
+      }
+
+      // Check if mock data indicates this line is used by another invoice
+      if (poLine.usedByInvoiceId && poLine.usedByInvoiceId !== invoice.id) {
+        return {
+          ...poLine,
+          usage: {
+            state: 'usedByOtherInvoice',
+            invoiceId: poLine.usedByInvoiceId,
+            invoiceNumber: poLine.usedByInvoiceNumber
+          } as POLineUsage
+        };
+      }
+
+      // Otherwise unused
+      return {
+        ...poLine,
+        usage: { state: 'unused' } as POLineUsage
+      };
     });
   });
 

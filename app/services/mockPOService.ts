@@ -9,8 +9,12 @@ interface POHeader extends Omit<APIPOHeader, 'vendor_name' | 'order_date'> {
   lines: POLine[];
 }
 
-// Use API POLine type directly
-type POLine = APIPOLine;
+// Extend API POLine type to include optional usage tracking for mock data
+interface POLine extends APIPOLine {
+  // Optional fields for mock usage tracking
+  usedByInvoiceId?: string;
+  usedByInvoiceNumber?: string;
+}
 
 // Generate mock PO data
 export const generateMockPOs = (): Record<string, POHeader> => {
@@ -52,6 +56,40 @@ export const generateMockPOs = (): Record<string, POHeader> => {
           qty_remaining_to_receive: 4,
           qty_remaining_to_invoice: 4,
           status: 'open'
+        },
+        {
+          id: 'po-line-9001-3',
+          line_no: 3,
+          description: 'Extended Support Package - 12 Month Premium',
+          item_description: 'Extended Support Package',
+          sku: 'SUP-0003',
+          qty_ordered: 1,
+          uom: 'EA',
+          unit_price: 1500.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 1,
+          qty_remaining_to_invoice: 1,
+          status: 'open'
+          // No usedByInvoiceId = unused
+        },
+        {
+          id: 'po-line-9001-4',
+          line_no: 4,
+          description: 'Hardware Warranty Extension - 3 Year',
+          item_description: 'Hardware Warranty Extension',
+          sku: 'WAR-0004',
+          qty_ordered: 10,
+          uom: 'EA',
+          unit_price: 350.00,
+          qty_received_to_date: 10,
+          qty_invoiced_to_date: 10,
+          qty_remaining_to_receive: 0,
+          qty_remaining_to_invoice: 0,
+          status: 'closed',
+          // Marked as used by another invoice for demo
+          usedByInvoiceId: 'inv-2024-0099',
+          usedByInvoiceNumber: 'INV-2024-0099'
         }
       ],
       subtotal: 0,
@@ -109,6 +147,25 @@ export const generateMockPOs = (): Record<string, POHeader> => {
           qty_remaining_to_receive: 5,
           qty_remaining_to_invoice: 5,
           status: 'open'
+          // No usedByInvoiceId = unused
+        },
+        {
+          id: 'po-line-9002-4',
+          line_no: 4,
+          description: 'Installation Services - On-site Setup',
+          item_description: 'On-site Installation Services',
+          sku: 'SVC-9002',
+          qty_ordered: 2,
+          uom: 'Days',
+          unit_price: 1200.00,
+          qty_received_to_date: 2,
+          qty_invoiced_to_date: 2,
+          qty_remaining_to_receive: 0,
+          qty_remaining_to_invoice: 0,
+          status: 'closed',
+          // Marked as used by another invoice for demo
+          usedByInvoiceId: 'inv-2024-0100',
+          usedByInvoiceNumber: 'INV-2024-0100'
         }
       ],
       subtotal: 0,

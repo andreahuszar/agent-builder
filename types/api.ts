@@ -130,6 +130,27 @@ export interface POWithLines extends POHeader {
   lines: POLine[];
 }
 
+// PO Line Usage Types - Track which invoice is using each PO line
+export type POLineUsage =
+  | { state: 'usedByThisInvoice'; invoiceId: string; invoiceLineId: string }
+  | { state: 'usedByOtherInvoice'; invoiceId: string; invoiceNumber?: string }
+  | { state: 'unused' };
+
+export interface ResolvedPOLine extends POLine {
+  usage: POLineUsage;
+}
+
+export interface PODataWithUsage {
+  id: string;
+  po_number: string;
+  vendor_id?: string;
+  currency: string;
+  po_status?: string;
+  subtotal: number;
+  total: number;
+  lines: ResolvedPOLine[];
+}
+
 // Goods Receipt Types
 export interface GRHeader {
   id: string;

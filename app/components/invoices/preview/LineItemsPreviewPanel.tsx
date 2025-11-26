@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Maximize2, Minimize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical, Zap, Sparkles, List, ArrowDownWideNarrow } from 'lucide-react';
+import { Maximize2, Minimize2, X, AlertCircle, ChevronDown, CheckCircle, Check, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical, Zap, Sparkles, List, ArrowDownWideNarrow } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, useDroppable, DragOverlay, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import * as Tooltip from '@radix-ui/react-tooltip';
@@ -15,6 +15,7 @@ import { useToast } from '@/app/components/ui/Toast';
 import { SparkleButton } from '../SparkleButton';
 import { CustomRulePopover, UnitConversionRule } from '../CustomRulePopover';
 import { TeachRuleDrawer } from '../TeachRuleDrawer';
+import { POLineUsage, ResolvedPOLine } from '@/types/api';
 
 interface InvoiceLineItem {
   id?: string;
@@ -60,6 +61,7 @@ interface POLineItem {
   qty_ordered: number;
   uom: string;
   unit_price: number;
+  usage?: POLineUsage;  // PO line usage tracking
 }
 
 interface MatchResult {
@@ -303,6 +305,7 @@ export function LineItemsPreviewPanel({
   const [viewMode, setViewMode] = useState<'default' | 'grouped'>('default');
   const [matchedItemsExpanded, setMatchedItemsExpanded] = useState(true);
   const [poLineSearchQuery, setPoLineSearchQuery] = useState('');
+  const [otherPOLinesExpanded, setOtherPOLinesExpanded] = useState(false); // Collapsed by default
 
 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -334,10 +337,77 @@ export function LineItemsPreviewPanel({
     [invoiceLineId: string]: {
       oldPoLineId: string | null;
       oldPoNumber: string | null;
-      newPoLineId: string;
-      newPoNumber: string;
+      newPoLineId: string | null;  // null means clear/unassign
+      newPoNumber: string | null;  // null means clear/unassign
     }
   }>({});
+
+  // Compute effective usage for each PO line considering staged reassignments
+  // This is a derived state that updates when stagedReassignments changes
+  const getEffectiveUsage = (poLine: POLineItem, invoiceId?: string): POLineUsage => {
+    const poLineId = poLine.id;
+
+    // Check if any staged reassignment targets this PO line
+    const reassignedTo = Object.entries(stagedReassignments).find(
+      ([, reassignment]) => reassignment.newPoLineId === poLineId
+    );
+
+    if (reassignedTo) {
+      const [invoiceLineId] = reassignedTo;
+      return {
+        state: 'usedByThisInvoice',
+        invoiceId: invoiceId || '',
+        invoiceLineId
+      };
+    }
+
+    // Check if a staged reassignment moves away from this PO line
+    const reassignedFrom = Object.entries(stagedReassignments).find(
+      ([, reassignment]) => reassignment.oldPoLineId === poLineId
+    );
+
+    if (reassignedFrom) {
+      // This line is being freed up - check original usage
+      const originalUsage = poLine.usage;
+      if (originalUsage?.state === 'usedByThisInvoice') {
+        // Was used by this invoice, now becoming unused
+        return { state: 'unused' };
+      }
+    }
+
+    // Return the original usage from the PO line data
+    return poLine.usage || { state: 'unused' };
+  };
+
+  // Find the assigned PO line for an invoice line based on usage metadata
+  // This looks up the PO line where usage.state === 'usedByThisInvoice' and usage.invoiceLineId matches
+  const findAssignedPoLine = (invoiceLine: InvoiceLineItem): POLineItem | null => {
+    const invoiceLineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
+
+    // Check all PO lines across all POs
+    for (const poData of poDataList || []) {
+      for (const poLine of poData.lines) {
+        const effectiveUsage = getEffectiveUsage(poLine as POLineItem, invoiceId);
+
+        // Match if this PO line is used by THIS invoice line
+        if (effectiveUsage.state === 'usedByThisInvoice' &&
+            effectiveUsage.invoiceLineId === invoiceLineId) {
+          return {
+            id: poLine.id,
+            line_no: poLine.line_no,
+            description: poLine.description || poLine.item_description || '',
+            item_description: poLine.item_description,
+            qty_ordered: poLine.qty_ordered,
+            uom: poLine.uom,
+            unit_price: poLine.unit_price,
+            usage: effectiveUsage
+          } as POLineItem;
+        }
+      }
+    }
+
+    return null;
+  };
 
   // Reassignment dropdown state
   const [reassignmentDropdownOpen, setReassignmentDropdownOpen] = useState<string | null>(null);
@@ -865,11 +935,15 @@ export function LineItemsPreviewPanel({
       qty: number;
       price: number;
       uom: string;
+      usage: POLineUsage;
     }> = [];
 
     poDataList.forEach(poData => {
       const poLines = poData.lines || poData.po_lines || [];
       poLines.forEach((poLine: any) => {
+        // Get effective usage considering staged reassignments
+        const effectiveUsage = getEffectiveUsage(poLine, invoiceId);
+
         availableLines.push({
           poNumber: poData.po_number,
           poLineId: poLine.id,
@@ -877,12 +951,102 @@ export function LineItemsPreviewPanel({
           description: poLine.description || poLine.item_description || '',
           qty: parseFloat(poLine.qty_ordered?.toString() || '0'),
           price: parseFloat(poLine.unit_price?.toString() || '0'),
-          uom: poLine.uom || ''
+          uom: poLine.uom || '',
+          usage: effectiveUsage
         });
       });
     });
 
     return availableLines;
+  };
+
+  // Get PO lines that are not matched to any invoice line on this invoice
+  // These are "other" lines: unused ones available for assignment, plus ones used by other invoices
+  // Returns data grouped by PO, respecting the selectedPO filter
+  const getOtherPOLines = () => {
+    type LineInfo = {
+      poLineId: string;
+      lineNo: number;
+      description: string;
+      qty: number;
+      price: number;
+      uom: string;
+    };
+
+    type UsedByOtherLineInfo = LineInfo & {
+      usedByInvoice: string;
+    };
+
+    type POGroup = {
+      poNumber: string;
+      unused: LineInfo[];
+      usedByOther: UsedByOtherLineInfo[];
+    };
+
+    if (!poDataList || poDataList.length === 0) {
+      return { poGroups: [], totalUnused: 0, totalUsedByOther: 0 };
+    }
+
+    const poGroupsMap: Map<string, POGroup> = new Map();
+
+    // Filter poDataList based on selectedPO
+    const filteredPODataList = selectedPO === 'all'
+      ? poDataList
+      : poDataList.filter(po => po.po_number === selectedPO);
+
+    filteredPODataList.forEach(poData => {
+      const poLines = poData.lines || poData.po_lines || [];
+
+      poLines.forEach((poLine: any) => {
+        const effectiveUsage = getEffectiveUsage(poLine, invoiceId);
+
+        // Only include unused or usedByOtherInvoice lines
+        if (effectiveUsage.state === 'unused' || effectiveUsage.state === 'usedByOtherInvoice') {
+          // Get or create the PO group
+          if (!poGroupsMap.has(poData.po_number)) {
+            poGroupsMap.set(poData.po_number, {
+              poNumber: poData.po_number,
+              unused: [],
+              usedByOther: []
+            });
+          }
+          const group = poGroupsMap.get(poData.po_number)!;
+
+          const lineInfo: LineInfo = {
+            poLineId: poLine.id,
+            lineNo: poLine.line_no || 0,
+            description: poLine.description || poLine.item_description || '',
+            qty: parseFloat(poLine.qty_ordered?.toString() || '0'),
+            price: parseFloat(poLine.unit_price?.toString() || '0'),
+            uom: poLine.uom || ''
+          };
+
+          if (effectiveUsage.state === 'unused') {
+            group.unused.push(lineInfo);
+          } else if (effectiveUsage.state === 'usedByOtherInvoice') {
+            group.usedByOther.push({
+              ...lineInfo,
+              usedByInvoice: effectiveUsage.invoiceNumber || effectiveUsage.invoiceId || 'another invoice'
+            });
+          }
+        }
+        // Lines with state === 'usedByThisInvoice' are matched to this invoice, so not "other"
+      });
+    });
+
+    // Convert map to array and filter out POs with no leftover lines
+    const poGroups = Array.from(poGroupsMap.values()).filter(
+      group => group.unused.length > 0 || group.usedByOther.length > 0
+    );
+
+    // Sort by PO number for consistent ordering
+    poGroups.sort((a, b) => a.poNumber.localeCompare(b.poNumber));
+
+    // Calculate totals
+    const totalUnused = poGroups.reduce((sum, g) => sum + g.unused.length, 0);
+    const totalUsedByOther = poGroups.reduce((sum, g) => sum + g.usedByOther.length, 0);
+
+    return { poGroups, totalUnused, totalUsedByOther };
   };
 
   // Handle reassignment of invoice line to a different PO line
@@ -910,6 +1074,27 @@ export function LineItemsPreviewPanel({
       `Line reassignment staged: ${currentPoNumber || 'None'} → ${newPoNumber}`,
       'info'
     );
+  };
+
+  // Handle clearing PO line assignment
+  const handleClearAssignment = (invoiceLine: InvoiceLineItem) => {
+    const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
+    const currentPoNumber = getMatchedPONumber(invoiceLine);
+    const currentPoLineId = invoiceLine.po_line_id || null;
+
+    // Stage clearing the assignment (null values)
+    setStagedReassignments(prev => ({
+      ...prev,
+      [lineId]: {
+        oldPoLineId: currentPoLineId,
+        oldPoNumber: currentPoNumber,
+        newPoLineId: null,  // Clear
+        newPoNumber: null   // Clear
+      }
+    }));
+
+    setPoLineSearchQuery('');
+    showToast(`PO line assignment cleared for line ${invoiceLine.line_no}`, 'info');
   };
 
   // Commit all staged reassignments
@@ -1206,15 +1391,17 @@ export function LineItemsPreviewPanel({
 
   // Generate slots for position-based rendering
   // Each slot represents a row position and contains either an invoice line, PO line, or both
+  // IMPORTANT: Grid is driven by INVOICE LINES only - PO lines are matched via usage metadata
   const generateSlots = (): TableSlot[] => {
-    // Calculate max rows needed (max of invoice display positions and PO line count)
+    // Calculate max rows needed - driven by INVOICE lines only (not PO lines)
+    // Unassigned PO lines should only appear in "Other PO Lines" section
     const maxInvoicePosition = editableLines.reduce((max, line) =>
       Math.max(max, line.display_position ?? 0), -1
     );
     const maxRows = Math.max(
       maxInvoicePosition + 1,
-      editableLines.length, // Ensure at least as many slots as lines
-      poLines.length
+      editableLines.length // Ensure at least as many slots as lines
+      // REMOVED: poLines.length - grid should NOT create rows for unassigned PO lines
     );
 
     // Create slots array with positions 0 to maxRows-1
@@ -1229,11 +1416,18 @@ export function LineItemsPreviewPanel({
       const isDraggedPosition = activeDragId && lineAtPosition &&
         (lineAtPosition.id || `line-${lineAtPosition.line_no}`) === activeDragId;
 
+      // Get the invoice line for this slot
+      const invoiceLine = isDraggedPosition ? null : lineAtPosition || null;
+
+      // Find the assigned PO line based on usage (not by index)
+      // This ensures only PO lines with usage.state === 'usedByThisInvoice' appear in the grid
+      const assignedPoLine = invoiceLine ? findAssignedPoLine(invoiceLine) : null;
+
       return {
         position,
         // If this is the dragged position, treat it as empty (but keep the line reference for the placeholder)
-        invoiceLine: isDraggedPosition ? null : lineAtPosition || null,
-        poLine: poLines[position] || null
+        invoiceLine,
+        poLine: assignedPoLine
       };
     });
 
@@ -1357,16 +1551,55 @@ export function LineItemsPreviewPanel({
     }
   }, [externalEditMode]);
 
-  // Toggle edit mode
+  // Toggle edit mode (Save when exiting)
   const toggleEditMode = () => {
     const newEditMode = !isEditMode;
     if (!newEditMode) {
-      // Exiting edit mode - ensure we save changes
-      onLinesUpdate?.(editableLines);
+      // Exiting edit mode (Save) - commit staged reassignments first
+      let linesToSave = editableLines;
+
+      // Apply staged reassignments if any
+      if (Object.keys(stagedReassignments).length > 0) {
+        linesToSave = editableLines.map(line => {
+          const lineId = line.id || `line-${line.line_no}`;
+          const stagedChange = stagedReassignments[lineId];
+          if (stagedChange) {
+            return {
+              ...line,
+              po_line_id: stagedChange.newPoLineId
+            };
+          }
+          return line;
+        });
+        setEditableLines(linesToSave);
+        setStagedReassignments({});
+      }
+
+      // Save the changes
+      onLinesUpdate?.(linesToSave);
     }
     setIsEditMode(newEditMode);
     // Notify parent of edit mode change
     onEditModeChange?.(newEditMode);
+  };
+
+  // Cancel edit mode - discard all changes including staged reassignments
+  const cancelEditMode = () => {
+    // Reset editable lines to original invoice lines
+    const originalWithPositions = invoiceLines.map((line, index) => ({
+      ...line,
+      display_position: line.display_position ?? index
+    }));
+    setEditableLines(originalWithPositions);
+
+    // Clear staged reassignments
+    if (Object.keys(stagedReassignments).length > 0) {
+      setStagedReassignments({});
+      showToast('Changes cancelled', 'info');
+    }
+
+    setIsEditMode(false);
+    onEditModeChange?.(false);
   };
 
   // Set up sensors for drag interaction
@@ -1539,6 +1772,7 @@ export function LineItemsPreviewPanel({
           >
             {showPO && poLines.length > 0 ? (
             // Horizontal scrollable layout when PO lines exist - Invoice table first, then PO table
+            <>
             <div ref={flexContainerRef} className={`flex min-h-full ${hasEnoughSpace ? 'w-fit' : 'w-full'}`}>
               {/* Invoice Lines */}
               <div className="flex-shrink-0 border-r border-gray-200">
@@ -1578,23 +1812,13 @@ export function LineItemsPreviewPanel({
                             </label>
                           </div>
 
-                          {/* Right side: Edit button and Apply Changes button */}
+                          {/* Right side: Edit/Save/Cancel buttons */}
                           <div className="flex items-center gap-2">
-                            {/* Apply Changes button - only show when there are staged reassignments */}
-                            {Object.keys(stagedReassignments).length > 0 && (
-                              <button
-                                onClick={handleCommitReassignments}
-                                className="px-2 py-1 text-xs font-medium rounded bg-green-600 text-white border border-green-600 hover:bg-green-700 transition-colors"
-                              >
-                                Apply Changes ({Object.keys(stagedReassignments).length})
-                              </button>
-                            )}
-
                             {!hideEditButton && (
                               <div className="flex items-center gap-2">
                                 {isEditMode && (
                                   <button
-                                    onClick={toggleEditMode}
+                                    onClick={cancelEditMode}
                                     className="px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
                                   >
                                     Cancel
@@ -1608,7 +1832,7 @@ export function LineItemsPreviewPanel({
                                       : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
                                   }`}
                                 >
-                                  {isEditMode ? 'Save' : 'Edit'}
+                                  {isEditMode ? (Object.keys(stagedReassignments).length > 0 ? `Save (${Object.keys(stagedReassignments).length})` : 'Save') : 'Edit'}
                                 </button>
                               </div>
                             )}
@@ -2029,12 +2253,12 @@ export function LineItemsPreviewPanel({
                                     </Popover.Trigger>
                                     <Popover.Portal>
                                       <Popover.Content
-                                        className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 w-[400px]"
+                                        className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 w-[480px]"
                                         style={{ zIndex: 99999 }}
                                         sideOffset={5}
                                         align="start"
                                       >
-                                        {/* Sticky search field - works in Popover without typeahead issues */}
+                                        {/* Sticky search field */}
                                         <div className="sticky top-0 bg-white border-b border-gray-100 p-2 z-10">
                                           <input
                                             type="text"
@@ -2045,10 +2269,56 @@ export function LineItemsPreviewPanel({
                                             className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
                                           />
                                         </div>
-                                        <div className="p-1 max-h-[240px] overflow-y-auto">
+                                        <div className="p-1 max-h-[280px] overflow-y-auto">
+                                          {/* Clear Assignment Option */}
+                                          <Popover.Close asChild>
+                                            <button
+                                              onClick={() => handleClearAssignment(line)}
+                                              className="w-full flex items-center px-2 py-1.5 text-xs rounded hover:bg-red-50 text-gray-600 border-b border-gray-100 mb-1"
+                                            >
+                                              <X className="h-3 w-3 mr-2 text-gray-400" />
+                                              <span>No PO line / Clear assignment</span>
+                                            </button>
+                                          </Popover.Close>
                                           {filteredLines.map((poLine) => {
                                             const lineBadgeClasses = getPOBadgeClasses(poLine.poNumber);
                                             const isCurrentMatch = poLine.poLineId === matchedPoLine.id;
+                                            const isUsedByOther = poLine.usage.state === 'usedByOtherInvoice';
+                                            const isUsedByThis = poLine.usage.state === 'usedByThisInvoice' && !isCurrentMatch;
+                                            const invoiceNumber = isUsedByOther && poLine.usage.state === 'usedByOtherInvoice'
+                                              ? poLine.usage.invoiceNumber || 'other'
+                                              : undefined;
+
+                                            // Disabled row for lines used by other invoices
+                                            if (isUsedByOther) {
+                                              return (
+                                                <div
+                                                  key={poLine.poLineId}
+                                                  className="w-full flex items-center px-2 py-1.5 text-xs rounded bg-amber-50/50 cursor-not-allowed border-l-2 border-gray-300"
+                                                >
+                                                  {/* PO Badge - fixed width */}
+                                                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium w-24 shrink-0 justify-center ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
+                                                    {poLine.poNumber}
+                                                  </span>
+                                                  {/* Line number - fixed width */}
+                                                  <span className="text-gray-600 w-6 text-center shrink-0 ml-1">L{poLine.lineNo}</span>
+                                                  {/* Description - flex grows */}
+                                                  <span className="text-gray-600 truncate flex-1 mx-2 text-left">{poLine.description}</span>
+                                                  {/* Qty - fixed width */}
+                                                  <span className="text-gray-500 w-10 text-right shrink-0">×{poLine.qty}</span>
+                                                  {/* Price - fixed width */}
+                                                  <span className="text-gray-600 w-16 text-right shrink-0 ml-1">{formatCurrency(poLine.price)}</span>
+                                                  {/* Status chip - fixed width */}
+                                                  <span className="w-20 shrink-0 ml-2 flex justify-end">
+                                                    <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-600 truncate max-w-full" title={`Used by ${invoiceNumber}`}>
+                                                      {invoiceNumber}
+                                                    </span>
+                                                  </span>
+                                                </div>
+                                              );
+                                            }
+
+                                            // Selectable row
                                             return (
                                               <Popover.Close asChild key={poLine.poLineId}>
                                                 <button
@@ -2056,16 +2326,42 @@ export function LineItemsPreviewPanel({
                                                     handleReassignLine(line, poLine.poLineId, poLine.poNumber);
                                                     setPoLineSearchQuery('');
                                                   }}
-                                                  className={`w-full flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${isCurrentMatch ? 'bg-purple-50' : ''}`}
+                                                  className={`w-full flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${
+                                                    isCurrentMatch ? 'bg-purple-50 border-l-2 border-purple-500' :
+                                                    isUsedByThis ? 'bg-blue-50/50 border-l-2 border-blue-300' : ''
+                                                  }`}
                                                 >
-                                                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium whitespace-nowrap shrink-0 ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
+                                                  {/* PO Badge - fixed width */}
+                                                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium w-24 shrink-0 justify-center ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
                                                     {poLine.poNumber}
                                                   </span>
-                                                  <span className="text-gray-900 w-6 text-center shrink-0 ml-2">L{poLine.lineNo}</span>
-                                                  <span className="text-gray-900 truncate flex-1 ml-2 text-left">{poLine.description}</span>
-                                                  <span className="text-gray-700 w-8 text-right shrink-0 ml-2">×{poLine.qty}</span>
-                                                  <span className="text-gray-950 w-16 text-right shrink-0 ml-2">{formatCurrency(poLine.price)}</span>
-                                                  {isCurrentMatch && <span className="text-purple-600 shrink-0 ml-2">✓</span>}
+                                                  {/* Line number - fixed width */}
+                                                  <span className="text-gray-900 w-6 text-center shrink-0 ml-1">L{poLine.lineNo}</span>
+                                                  {/* Description - flex grows */}
+                                                  <span className="text-gray-900 truncate flex-1 mx-2 text-left">{poLine.description}</span>
+                                                  {/* Qty - fixed width */}
+                                                  <span className="text-gray-700 w-10 text-right shrink-0">×{poLine.qty}</span>
+                                                  {/* Price - fixed width */}
+                                                  <span className="text-gray-950 w-16 text-right shrink-0 ml-1">{formatCurrency(poLine.price)}</span>
+                                                  {/* Status chip - fixed width */}
+                                                  <span className="w-20 shrink-0 ml-2 flex justify-end">
+                                                    {isCurrentMatch && (
+                                                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-700">
+                                                        <Check className="h-2.5 w-2.5" />
+                                                        Selected
+                                                      </span>
+                                                    )}
+                                                    {isUsedByThis && (
+                                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700">
+                                                        In use
+                                                      </span>
+                                                    )}
+                                                    {!isCurrentMatch && !isUsedByThis && (
+                                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-green-50 text-green-700">
+                                                        Available
+                                                      </span>
+                                                    )}
+                                                  </span>
                                                 </button>
                                               </Popover.Close>
                                             );
@@ -2321,6 +2617,101 @@ export function LineItemsPreviewPanel({
                     </tr>
                   </tfoot>
                 </table>
+
+                {/* Other PO Lines - Collapsible section grouped by PO */}
+                {(() => {
+                  const { poGroups, totalUnused, totalUsedByOther } = getOtherPOLines();
+                  const totalOther = totalUnused + totalUsedByOther;
+
+                  if (poGroups.length === 0) return null;
+
+                  return (
+                    <div className="mt-2 border border-gray-200 rounded-lg bg-gray-50">
+                      {/* Collapsible Header */}
+                      <button
+                        onClick={() => setOtherPOLinesExpanded(!otherPOLinesExpanded)}
+                        className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-gray-100 transition-colors rounded-t-lg"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ChevronDown
+                            className={`h-4 w-4 text-gray-500 transition-transform ${otherPOLinesExpanded ? 'rotate-0' : '-rotate-90'}`}
+                          />
+                          <span className="text-sm font-medium text-gray-950">Other PO Lines</span>
+                          <span className="text-xs text-gray-600">
+                            ({totalUnused} available{totalUsedByOther > 0 ? `, ${totalUsedByOther} used by other invoices` : ''})
+                          </span>
+                        </div>
+                        {!otherPOLinesExpanded && (
+                          <span className="text-xs text-gray-500 italic">Click to expand</span>
+                        )}
+                      </button>
+
+                      {/* Expanded Content - Grouped by PO */}
+                      {otherPOLinesExpanded && (
+                        <div className="border-t border-gray-200 p-3 space-y-3">
+                          {poGroups.map((poGroup) => {
+                            const badgeClasses = getPOBadgeClasses(poGroup.poNumber);
+                            return (
+                              <div key={poGroup.poNumber} className="bg-white border border-gray-200 rounded-lg p-3">
+                                {/* PO Header */}
+                                <div className="flex items-center gap-2 mb-2">
+                                  <span className={`inline-flex items-center px-2 py-0.5 rounded font-medium text-xs ${badgeClasses.bg} ${badgeClasses.text}`}>
+                                    {poGroup.poNumber}
+                                  </span>
+                                </div>
+
+                                {/* Available for Assignment */}
+                                {poGroup.unused.length > 0 && (
+                                  <div className="mb-2">
+                                    <div className="text-xs font-medium text-green-700 mb-1.5 flex items-center gap-1">
+                                      <Package className="h-3 w-3" />
+                                      Available for assignment ({poGroup.unused.length})
+                                    </div>
+                                    <div className="space-y-1 pl-1">
+                                      {poGroup.unused.map((line) => (
+                                        <div
+                                          key={line.poLineId}
+                                          className="flex items-center gap-2 px-2 py-1 bg-gray-50 border border-gray-100 rounded text-xs"
+                                        >
+                                          <span className="text-gray-950 w-5 text-center shrink-0">L{line.lineNo}</span>
+                                          <span className="text-gray-950 truncate flex-1">{line.description}</span>
+                                          <span className="text-gray-700 shrink-0">×{line.qty}</span>
+                                          <span className="text-gray-950 shrink-0 w-16 text-right">{formatCurrency(line.price)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Used by Other Invoices */}
+                                {poGroup.usedByOther.length > 0 && (
+                                  <div>
+                                    <div className="text-xs font-medium text-gray-500 mb-1.5 flex items-center gap-1">
+                                      <Link2 className="h-3 w-3" />
+                                      Used by other invoices ({poGroup.usedByOther.length})
+                                    </div>
+                                    <div className="space-y-1 pl-1">
+                                      {poGroup.usedByOther.map((line) => (
+                                        <div
+                                          key={line.poLineId}
+                                          className="flex items-center gap-2 px-2 py-1 bg-gray-100 border border-gray-200 rounded text-xs opacity-70"
+                                        >
+                                          <span className="text-gray-500 w-5 text-center shrink-0">L{line.lineNo}</span>
+                                          <span className="text-gray-500 truncate flex-1">{line.description}</span>
+                                          <span className="text-gray-400 italic shrink-0">Used by {line.usedByInvoice}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Variance Panel - adaptive positioning */}
@@ -2429,6 +2820,7 @@ export function LineItemsPreviewPanel({
                 </div>
               )}
             </div>
+            </>
           ) : (
             // Full width layout when no PO lines (needs info mode)
             <div className="h-full">
@@ -2982,19 +3374,9 @@ export function LineItemsPreviewPanel({
                               </span>
                             </div>
                             <div className="flex items-center gap-2">
-                              {/* Apply Changes button - only show when there are staged reassignments */}
-                              {Object.keys(stagedReassignments).length > 0 && (
-                                <button
-                                  onClick={handleCommitReassignments}
-                                  className="px-2 py-1 text-xs font-medium rounded bg-green-600 text-white border border-green-600 hover:bg-green-700 transition-colors"
-                                >
-                                  Apply Changes ({Object.keys(stagedReassignments).length})
-                                </button>
-                              )}
-
                               {isEditMode && (
                                 <button
-                                  onClick={toggleEditMode}
+                                  onClick={cancelEditMode}
                                   className="px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
                                 >
                                   Cancel
@@ -3008,7 +3390,7 @@ export function LineItemsPreviewPanel({
                                     : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
                                 }`}
                               >
-                                {isEditMode ? 'Save' : 'Edit'}
+                                {isEditMode ? (Object.keys(stagedReassignments).length > 0 ? `Save (${Object.keys(stagedReassignments).length})` : 'Save') : 'Edit'}
                               </button>
                             </div>
                           </div>
@@ -3342,12 +3724,12 @@ export function LineItemsPreviewPanel({
                                       </Popover.Trigger>
                                       <Popover.Portal>
                                         <Popover.Content
-                                          className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 w-[400px]"
+                                          className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 w-[480px]"
                                           style={{ zIndex: 99999 }}
                                           sideOffset={5}
                                           align="start"
                                         >
-                                          {/* Sticky search field - works in Popover without typeahead issues */}
+                                          {/* Sticky search field */}
                                           <div className="sticky top-0 bg-white border-b border-gray-100 p-2 z-10">
                                             <input
                                               type="text"
@@ -3358,10 +3740,56 @@ export function LineItemsPreviewPanel({
                                               className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
                                             />
                                           </div>
-                                          <div className="p-1 max-h-[240px] overflow-y-auto">
+                                          <div className="p-1 max-h-[280px] overflow-y-auto">
+                                            {/* Clear Assignment Option */}
+                                            <Popover.Close asChild>
+                                              <button
+                                                onClick={() => handleClearAssignment(line)}
+                                                className="w-full flex items-center px-2 py-1.5 text-xs rounded hover:bg-red-50 text-gray-600 border-b border-gray-100 mb-1"
+                                              >
+                                                <X className="h-3 w-3 mr-2 text-gray-400" />
+                                                <span>No PO line / Clear assignment</span>
+                                              </button>
+                                            </Popover.Close>
                                             {filteredLines.map((poLine) => {
                                               const lineBadgeClasses = getPOBadgeClasses(poLine.poNumber);
                                               const isCurrentMatch = poLine.poLineId === matchedPoLine.id;
+                                              const isUsedByOther = poLine.usage.state === 'usedByOtherInvoice';
+                                              const isUsedByThis = poLine.usage.state === 'usedByThisInvoice' && !isCurrentMatch;
+                                              const invoiceNumber = isUsedByOther && poLine.usage.state === 'usedByOtherInvoice'
+                                                ? poLine.usage.invoiceNumber || 'other'
+                                                : undefined;
+
+                                              // Disabled row for lines used by other invoices
+                                              if (isUsedByOther) {
+                                                return (
+                                                  <div
+                                                    key={poLine.poLineId}
+                                                    className="w-full flex items-center px-2 py-1.5 text-xs rounded bg-amber-50/50 cursor-not-allowed border-l-2 border-gray-300"
+                                                  >
+                                                    {/* PO Badge - fixed width */}
+                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium w-24 shrink-0 justify-center ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
+                                                      {poLine.poNumber}
+                                                    </span>
+                                                    {/* Line number - fixed width */}
+                                                    <span className="text-gray-600 w-6 text-center shrink-0 ml-1">L{poLine.lineNo}</span>
+                                                    {/* Description - flex grows */}
+                                                    <span className="text-gray-600 truncate flex-1 mx-2 text-left">{poLine.description}</span>
+                                                    {/* Qty - fixed width */}
+                                                    <span className="text-gray-500 w-10 text-right shrink-0">×{poLine.qty}</span>
+                                                    {/* Price - fixed width */}
+                                                    <span className="text-gray-600 w-16 text-right shrink-0 ml-1">{formatCurrency(poLine.price)}</span>
+                                                    {/* Status chip - fixed width */}
+                                                    <span className="w-20 shrink-0 ml-2 flex justify-end">
+                                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-600 truncate max-w-full" title={`Used by ${invoiceNumber}`}>
+                                                        {invoiceNumber}
+                                                      </span>
+                                                    </span>
+                                                  </div>
+                                                );
+                                              }
+
+                                              // Selectable row
                                               return (
                                                 <Popover.Close asChild key={poLine.poLineId}>
                                                   <button
@@ -3369,16 +3797,42 @@ export function LineItemsPreviewPanel({
                                                       handleReassignLine(line, poLine.poLineId, poLine.poNumber);
                                                       setPoLineSearchQuery('');
                                                     }}
-                                                    className={`w-full flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${isCurrentMatch ? 'bg-purple-50' : ''}`}
+                                                    className={`w-full flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${
+                                                      isCurrentMatch ? 'bg-purple-50 border-l-2 border-purple-500' :
+                                                      isUsedByThis ? 'bg-blue-50/50 border-l-2 border-blue-300' : ''
+                                                    }`}
                                                   >
-                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium whitespace-nowrap shrink-0 ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
+                                                    {/* PO Badge - fixed width */}
+                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium w-24 shrink-0 justify-center ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
                                                       {poLine.poNumber}
                                                     </span>
-                                                    <span className="text-gray-900 w-6 text-center shrink-0 ml-2">L{poLine.lineNo}</span>
-                                                    <span className="text-gray-900 truncate flex-1 ml-2 text-left">{poLine.description}</span>
-                                                    <span className="text-gray-700 w-8 text-right shrink-0 ml-2">×{poLine.qty}</span>
-                                                    <span className="text-gray-950 w-16 text-right shrink-0 ml-2">{formatCurrency(poLine.price)}</span>
-                                                    {isCurrentMatch && <span className="text-purple-600 shrink-0 ml-2">✓</span>}
+                                                    {/* Line number - fixed width */}
+                                                    <span className="text-gray-900 w-6 text-center shrink-0 ml-1">L{poLine.lineNo}</span>
+                                                    {/* Description - flex grows */}
+                                                    <span className="text-gray-900 truncate flex-1 mx-2 text-left">{poLine.description}</span>
+                                                    {/* Qty - fixed width */}
+                                                    <span className="text-gray-700 w-10 text-right shrink-0">×{poLine.qty}</span>
+                                                    {/* Price - fixed width */}
+                                                    <span className="text-gray-950 w-16 text-right shrink-0 ml-1">{formatCurrency(poLine.price)}</span>
+                                                    {/* Status chip - fixed width */}
+                                                    <span className="w-20 shrink-0 ml-2 flex justify-end">
+                                                      {isCurrentMatch && (
+                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-700">
+                                                          <Check className="h-2.5 w-2.5" />
+                                                          Selected
+                                                        </span>
+                                                      )}
+                                                      {isUsedByThis && (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700">
+                                                          In use
+                                                        </span>
+                                                      )}
+                                                      {!isCurrentMatch && !isUsedByThis && (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-green-50 text-green-700">
+                                                          Available
+                                                        </span>
+                                                      )}
+                                                    </span>
                                                   </button>
                                                 </Popover.Close>
                                               );
@@ -3614,12 +4068,12 @@ export function LineItemsPreviewPanel({
                                       </Popover.Trigger>
                                       <Popover.Portal>
                                         <Popover.Content
-                                          className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 w-[400px]"
+                                          className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 w-[480px]"
                                           style={{ zIndex: 99999 }}
                                           sideOffset={5}
                                           align="start"
                                         >
-                                          {/* Sticky search field - works in Popover without typeahead issues */}
+                                          {/* Sticky search field */}
                                           <div className="sticky top-0 bg-white border-b border-gray-100 p-2 z-10">
                                             <input
                                               type="text"
@@ -3630,10 +4084,56 @@ export function LineItemsPreviewPanel({
                                               className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
                                             />
                                           </div>
-                                          <div className="p-1 max-h-[240px] overflow-y-auto">
+                                          <div className="p-1 max-h-[280px] overflow-y-auto">
+                                            {/* Clear Assignment Option */}
+                                            <Popover.Close asChild>
+                                              <button
+                                                onClick={() => handleClearAssignment(line)}
+                                                className="w-full flex items-center px-2 py-1.5 text-xs rounded hover:bg-red-50 text-gray-600 border-b border-gray-100 mb-1"
+                                              >
+                                                <X className="h-3 w-3 mr-2 text-gray-400" />
+                                                <span>No PO line / Clear assignment</span>
+                                              </button>
+                                            </Popover.Close>
                                             {filteredLines.map((poLine) => {
                                               const lineBadgeClasses = getPOBadgeClasses(poLine.poNumber);
                                               const isCurrentMatch = poLine.poLineId === matchedPoLine.id;
+                                              const isUsedByOther = poLine.usage.state === 'usedByOtherInvoice';
+                                              const isUsedByThis = poLine.usage.state === 'usedByThisInvoice' && !isCurrentMatch;
+                                              const invoiceNumber = isUsedByOther && poLine.usage.state === 'usedByOtherInvoice'
+                                                ? poLine.usage.invoiceNumber || 'other'
+                                                : undefined;
+
+                                              // Disabled row for lines used by other invoices
+                                              if (isUsedByOther) {
+                                                return (
+                                                  <div
+                                                    key={poLine.poLineId}
+                                                    className="w-full flex items-center px-2 py-1.5 text-xs rounded bg-amber-50/50 cursor-not-allowed border-l-2 border-gray-300"
+                                                  >
+                                                    {/* PO Badge - fixed width */}
+                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium w-24 shrink-0 justify-center ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
+                                                      {poLine.poNumber}
+                                                    </span>
+                                                    {/* Line number - fixed width */}
+                                                    <span className="text-gray-600 w-6 text-center shrink-0 ml-1">L{poLine.lineNo}</span>
+                                                    {/* Description - flex grows */}
+                                                    <span className="text-gray-600 truncate flex-1 mx-2 text-left">{poLine.description}</span>
+                                                    {/* Qty - fixed width */}
+                                                    <span className="text-gray-500 w-10 text-right shrink-0">×{poLine.qty}</span>
+                                                    {/* Price - fixed width */}
+                                                    <span className="text-gray-600 w-16 text-right shrink-0 ml-1">{formatCurrency(poLine.price)}</span>
+                                                    {/* Status chip - fixed width */}
+                                                    <span className="w-20 shrink-0 ml-2 flex justify-end">
+                                                      <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-gray-100 text-gray-600 truncate max-w-full" title={`Used by ${invoiceNumber}`}>
+                                                        {invoiceNumber}
+                                                      </span>
+                                                    </span>
+                                                  </div>
+                                                );
+                                              }
+
+                                              // Selectable row
                                               return (
                                                 <Popover.Close asChild key={poLine.poLineId}>
                                                   <button
@@ -3641,16 +4141,42 @@ export function LineItemsPreviewPanel({
                                                       handleReassignLine(line, poLine.poLineId, poLine.poNumber);
                                                       setPoLineSearchQuery('');
                                                     }}
-                                                    className={`w-full flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${isCurrentMatch ? 'bg-purple-50' : ''}`}
+                                                    className={`w-full flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${
+                                                      isCurrentMatch ? 'bg-purple-50 border-l-2 border-purple-500' :
+                                                      isUsedByThis ? 'bg-blue-50/50 border-l-2 border-blue-300' : ''
+                                                    }`}
                                                   >
-                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium whitespace-nowrap shrink-0 ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
+                                                    {/* PO Badge - fixed width */}
+                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium w-24 shrink-0 justify-center ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
                                                       {poLine.poNumber}
                                                     </span>
-                                                    <span className="text-gray-900 w-6 text-center shrink-0 ml-2">L{poLine.lineNo}</span>
-                                                    <span className="text-gray-900 truncate flex-1 ml-2 text-left">{poLine.description}</span>
-                                                    <span className="text-gray-700 w-8 text-right shrink-0 ml-2">×{poLine.qty}</span>
-                                                    <span className="text-gray-950 w-16 text-right shrink-0 ml-2">{formatCurrency(poLine.price)}</span>
-                                                    {isCurrentMatch && <span className="text-purple-600 shrink-0 ml-2">✓</span>}
+                                                    {/* Line number - fixed width */}
+                                                    <span className="text-gray-900 w-6 text-center shrink-0 ml-1">L{poLine.lineNo}</span>
+                                                    {/* Description - flex grows */}
+                                                    <span className="text-gray-900 truncate flex-1 mx-2 text-left">{poLine.description}</span>
+                                                    {/* Qty - fixed width */}
+                                                    <span className="text-gray-700 w-10 text-right shrink-0">×{poLine.qty}</span>
+                                                    {/* Price - fixed width */}
+                                                    <span className="text-gray-950 w-16 text-right shrink-0 ml-1">{formatCurrency(poLine.price)}</span>
+                                                    {/* Status chip - fixed width */}
+                                                    <span className="w-20 shrink-0 ml-2 flex justify-end">
+                                                      {isCurrentMatch && (
+                                                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] bg-purple-100 text-purple-700">
+                                                          <Check className="h-2.5 w-2.5" />
+                                                          Selected
+                                                        </span>
+                                                      )}
+                                                      {isUsedByThis && (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700">
+                                                          In use
+                                                        </span>
+                                                      )}
+                                                      {!isCurrentMatch && !isUsedByThis && (
+                                                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-green-50 text-green-700">
+                                                          Available
+                                                        </span>
+                                                      )}
+                                                    </span>
                                                   </button>
                                                 </Popover.Close>
                                               );
