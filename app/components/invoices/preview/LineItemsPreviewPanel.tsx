@@ -6,6 +6,7 @@ import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, us
 import { CSS } from '@dnd-kit/utilities';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import * as Switch from '@radix-ui/react-switch';
+import * as Select from '@radix-ui/react-select';
 import { SmartMatchPopover } from '../SmartMatchPopover';
 import { SubstitutionSuggestionPopover } from '../SubstitutionSuggestionPopover';
 import { UomMatchPopover } from '../UomMatchPopover';
@@ -70,9 +71,31 @@ interface MatchResult {
   explanation_code?: string;
 }
 
+interface PODataWithLines {
+  id: string;
+  po_number: string;
+  vendor_id?: string;
+  currency: string;
+  po_status?: string;
+  subtotal: number;
+  total: number;
+  lines: POLineItem[];
+}
+
+interface POUtilization {
+  totalLines: number;
+  usedLines: number;
+  totalAmount: number;
+  usedAmount: number;
+  unusedLines: POLineItem[];
+  fullyUsedLines: POLineItem[];
+}
+
 interface LineItemsPreviewPanelProps {
   invoiceLines: InvoiceLineItem[];
-  poLines?: POLineItem[];
+  poLines?: POLineItem[];  // Keep for backward compatibility
+  poDataList?: PODataWithLines[];  // NEW: Multi-PO support
+  utilization?: { [poNumber: string]: POUtilization };  // NEW: PO utilization data
   matchResults?: MatchResult[];
   currency: string;
   onMaximize?: () => void;
@@ -241,6 +264,8 @@ function MatchedItemsRow({ isExpanded, onToggle, matchedCount, colSpan }: Matche
 export function LineItemsPreviewPanel({
   invoiceLines,
   poLines = [],
+  poDataList,
+  utilization,
   matchResults = [],
   currency,
   onMaximize,
@@ -281,6 +306,37 @@ export function LineItemsPreviewPanel({
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [hasEnoughSpace, setHasEnoughSpace] = useState(false);
   const { showToast} = useToast();
+
+  // Multi-PO support: determine if we're in multi-PO mode
+  const isMultiPO = Boolean(poDataList && poDataList.length > 1);
+  const allPONumbers = poDataList?.map(po => po.po_number) || [];
+
+  // PO selection state: 'all' or specific PO number
+  const [selectedPO, setSelectedPO] = useState<string>(isMultiPO ? 'all' : allPONumbers[0] || '');
+
+  // Sync selectedPO when isMultiPO changes (e.g., when poDataList loads)
+  useEffect(() => {
+    if (isMultiPO && selectedPO !== 'all' && !allPONumbers.includes(selectedPO)) {
+      // Reset to 'all' if current selection is invalid for multi-PO
+      setSelectedPO('all');
+    } else if (!isMultiPO && allPONumbers.length > 0 && selectedPO === 'all') {
+      // For single-PO, set to the only PO number
+      setSelectedPO(allPONumbers[0]);
+    }
+  }, [isMultiPO, allPONumbers.length]);
+
+  // Staged reassignments: track pending line reassignments
+  const [stagedReassignments, setStagedReassignments] = useState<{
+    [invoiceLineId: string]: {
+      oldPoLineId: string | null;
+      oldPoNumber: string | null;
+      newPoLineId: string;
+      newPoNumber: string;
+    }
+  }>({});
+
+  // Reassignment dropdown state
+  const [reassignmentDropdownOpen, setReassignmentDropdownOpen] = useState<string | null>(null);
 
   // Toggle states for showing PO and Receipt data
   const [showPO, setShowPO] = useState(poLines.length > 0); // Default to ON when PO lines available
@@ -568,6 +624,338 @@ export function LineItemsPreviewPanel({
            !acceptedSuggestions.has(lineId) &&
            !rejectedSuggestions.has(lineId);
   };
+
+  // ============================================================================
+  // MULTI-PO HELPER FUNCTIONS
+  // ============================================================================
+
+  // Get the PO number that an invoice line is matched to
+  const getMatchedPONumber = (invoiceLine: InvoiceLineItem): string | null => {
+    // Check for staged reassignment first
+    const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
+    if (stagedReassignments[lineId]) {
+      return stagedReassignments[lineId].newPoNumber;
+    }
+
+    // Find match result for this line
+    const matchResult = matchResults?.find(mr => mr.invoice_line_id === lineId);
+    if (!matchResult?.matched_po_line_id) return null;
+
+    // Find which PO contains this line
+    if (poDataList) {
+      for (const poData of poDataList) {
+        const poLine = poData.lines.find(pl => pl.id === matchResult.matched_po_line_id);
+        if (poLine) {
+          return poData.po_number;
+        }
+      }
+    }
+
+    // Fallback: if only one PO, return that
+    if (poDataList && poDataList.length === 1) {
+      return poDataList[0].po_number;
+    }
+
+    return null;
+  };
+
+  // Get formatted utilization summary for dropdown display
+  const getUtilizationSummary = (poNumber: string): string => {
+    if (!utilization || !utilization[poNumber]) return '';
+
+    const util = utilization[poNumber];
+    const linesText = `${util.usedLines}/${util.totalLines} lines`;
+    const amountText = `${currency}${(util.usedAmount / 1000).toFixed(1)}k/${(util.totalAmount / 1000).toFixed(1)}k`;
+
+    return `${linesText} • ${amountText}`;
+  };
+
+  // Get aggregated utilization for all POs
+  const getTotalUtilization = (): string => {
+    if (!utilization || !poDataList) return '';
+
+    const totalUsed = poDataList.reduce((sum, po) => {
+      const util = utilization[po.po_number];
+      return sum + (util?.usedLines || 0);
+    }, 0);
+
+    const totalLines = poDataList.reduce((sum, po) => {
+      const util = utilization[po.po_number];
+      return sum + (util?.totalLines || 0);
+    }, 0);
+
+    const totalUsedAmount = poDataList.reduce((sum, po) => {
+      const util = utilization[po.po_number];
+      return sum + (util?.usedAmount || 0);
+    }, 0);
+
+    const totalAmount = poDataList.reduce((sum, po) => {
+      const util = utilization[po.po_number];
+      return sum + (util?.totalAmount || 0);
+    }, 0);
+
+    return `${poDataList.length} POs • ${totalUsed}/${totalLines} lines • ${currency}${(totalUsedAmount / 1000).toFixed(1)}k/${(totalAmount / 1000).toFixed(1)}k`;
+  };
+
+  // Get badge text for PO table header (lines only, no amounts)
+  const getPOBadgeText = (): string => {
+    if (!poDataList || poDataList.length === 0) return '';
+
+    if (isMultiPO) {
+      // Multi-PO: show aggregate "N POs • X/Y lines"
+      const totalUsed = poDataList.reduce((sum, po) => {
+        const util = utilization?.[po.po_number];
+        return sum + (util?.usedLines || 0);
+      }, 0);
+
+      const totalLines = poDataList.reduce((sum, po) => {
+        const util = utilization?.[po.po_number];
+        return sum + (util?.totalLines || 0);
+      }, 0);
+
+      return `${poDataList.length} POs • ${totalUsed}/${totalLines} lines`;
+    } else {
+      // Single PO: show "PO-XXXX • X/Y lines"
+      const poNumber = poDataList[0].po_number;
+      const util = utilization?.[poNumber];
+      if (util) {
+        return `${poNumber} • ${util.usedLines}/${util.totalLines} lines`;
+      }
+      return poNumber;
+    }
+  };
+
+  // Determine row highlighting class based on selected PO (background only - border goes on first cell)
+  const getRowHighlightClass = (invoiceLine: InvoiceLineItem): string => {
+    if (!isMultiPO || selectedPO === 'all') return '';
+
+    const matchedPO = getMatchedPONumber(invoiceLine);
+    if (matchedPO === selectedPO) {
+      // Use dynamic colors matching the PO pill (background only)
+      return getHighlightBgClass(matchedPO);
+    }
+
+    return 'opacity-50'; // Dimmed
+  };
+
+  // Get border class for first cell of invoice table row
+  const getRowBorderClass = (invoiceLine: InvoiceLineItem): string => {
+    if (!isMultiPO || selectedPO === 'all') return '';
+
+    const matchedPO = getMatchedPONumber(invoiceLine);
+    if (matchedPO === selectedPO) {
+      return `border-l-2 ${getHighlightBorderClass(matchedPO)}`;
+    }
+    return '';
+  };
+
+  // Get slots for PO table display - spotlight mode (no filtering, just visual highlight/dim)
+  const getFilteredSlotsForPOTable = (slots: TableSlot[]): TableSlot[] => {
+    // Spotlight mode: always return all slots unchanged
+    // The dropdown is a focus/highlight tool, not a filter
+    return slots;
+  };
+
+  // Get row highlight class for PO table rows (spotlight mode - background only, border goes on first cell)
+  const getPORowHighlightClass = (poLine: POLineItem | null): string => {
+    if (!isMultiPO || selectedPO === 'all' || !poLine) return '';
+
+    // Determine which PO this line belongs to
+    const poNumber = poDataList?.find(po =>
+      (po.lines || po.po_lines)?.some((l: any) => l.id === poLine.id)
+    )?.po_number;
+
+    if (poNumber === selectedPO) {
+      // Use dynamic colors matching the PO pill (background only)
+      return getHighlightBgClass(poNumber);
+    }
+
+    return 'opacity-50'; // Dimmed
+  };
+
+  // Get border class for first cell of PO table row
+  const getPORowBorderClass = (poLine: POLineItem | null): string => {
+    if (!isMultiPO || selectedPO === 'all' || !poLine) return '';
+
+    const poNumber = poDataList?.find(po =>
+      (po.lines || po.po_lines)?.some((l: any) => l.id === poLine.id)
+    )?.po_number;
+
+    if (poNumber === selectedPO) {
+      return `border-l-2 ${getHighlightBorderClass(poNumber)}`;
+    }
+    return '';
+  };
+
+  // Check if an invoice line has a staged reassignment
+  const hasStagedReassignment = (invoiceLine: InvoiceLineItem): boolean => {
+    const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
+    return !!stagedReassignments[lineId];
+  };
+
+  // Get badge color classes for PO number
+  const getPOBadgeClasses = (poNumber: string): { bg: string; text: string } => {
+    const colorClasses = [
+      { bg: 'bg-purple-100', text: 'text-purple-700' },
+      { bg: 'bg-blue-100', text: 'text-blue-700' },
+      { bg: 'bg-green-100', text: 'text-green-700' },
+      { bg: 'bg-orange-100', text: 'text-orange-700' },
+      { bg: 'bg-pink-100', text: 'text-pink-700' },
+    ];
+    const index = allPONumbers.indexOf(poNumber);
+    // Handle case where PO is not found (index === -1) or allPONumbers is empty
+    const colorIndex = index === -1 ? 0 : index % colorClasses.length;
+    return colorClasses[colorIndex];
+  };
+
+  // Get border color class for PO number (matches badge colors)
+  const getHighlightBorderClass = (poNumber: string): string => {
+    const borderClasses = [
+      'border-purple-600',
+      'border-blue-600',
+      'border-green-600',
+      'border-orange-600',
+      'border-pink-600',
+    ];
+    const index = allPONumbers.indexOf(poNumber);
+    const colorIndex = index === -1 ? 0 : index % borderClasses.length;
+    return borderClasses[colorIndex];
+  };
+
+  // Get background color class for PO number (matches badge colors)
+  const getHighlightBgClass = (poNumber: string): string => {
+    const bgClasses = [
+      'bg-purple-50',
+      'bg-blue-50',
+      'bg-green-50',
+      'bg-orange-50',
+      'bg-pink-50',
+    ];
+    const index = allPONumbers.indexOf(poNumber);
+    const colorIndex = index === -1 ? 0 : index % bgClasses.length;
+    return bgClasses[colorIndex];
+  };
+
+  // Get display label for selected PO
+  const getSelectedPOLabel = (): React.ReactNode => {
+    if (!selectedPO || selectedPO === 'all') {
+      return <span className="font-medium">All POs</span>;
+    }
+    const badgeClasses = getPOBadgeClasses(selectedPO);
+    return (
+      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${badgeClasses.bg} ${badgeClasses.text}`}>
+        {selectedPO}
+      </span>
+    );
+  };
+
+  // Build list of available PO lines for reassignment dropdown
+  const buildAvailablePOLines = (currentInvoiceLine: InvoiceLineItem) => {
+    if (!poDataList || poDataList.length === 0) return [];
+
+    const availableLines: Array<{
+      poNumber: string;
+      poLineId: string;
+      lineNo: number;
+      description: string;
+      qty: number;
+      price: number;
+      uom: string;
+    }> = [];
+
+    poDataList.forEach(poData => {
+      const poLines = poData.lines || poData.po_lines || [];
+      poLines.forEach((poLine: any) => {
+        availableLines.push({
+          poNumber: poData.po_number,
+          poLineId: poLine.id,
+          lineNo: poLine.line_no || 0,
+          description: poLine.description || poLine.item_description || '',
+          qty: parseFloat(poLine.qty_ordered?.toString() || '0'),
+          price: parseFloat(poLine.unit_price?.toString() || '0'),
+          uom: poLine.uom || ''
+        });
+      });
+    });
+
+    return availableLines;
+  };
+
+  // Handle reassignment of invoice line to a different PO line
+  const handleReassignLine = (invoiceLine: InvoiceLineItem, newPoLineId: string, newPoNumber: string) => {
+    const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
+    const currentPoNumber = getMatchedPONumber(invoiceLine);
+    const currentPoLineId = invoiceLine.po_line_id || null;
+
+    // Stage the reassignment
+    setStagedReassignments(prev => ({
+      ...prev,
+      [lineId]: {
+        oldPoLineId: currentPoLineId,
+        oldPoNumber: currentPoNumber,
+        newPoLineId,
+        newPoNumber
+      }
+    }));
+
+    // Close the dropdown
+    setReassignmentDropdownOpen(null);
+
+    // Show toast notification
+    showToast(
+      `Line reassignment staged: ${currentPoNumber || 'None'} → ${newPoNumber}`,
+      'info'
+    );
+  };
+
+  // Commit all staged reassignments
+  const handleCommitReassignments = () => {
+    const count = Object.keys(stagedReassignments).length;
+    if (count === 0) return;
+
+    // Apply the staged reassignments by updating editableLines
+    const updatedLines = editableLines.map(line => {
+      const lineId = line.id || `line-${line.line_no}`;
+      const stagedChange = stagedReassignments[lineId];
+
+      if (stagedChange) {
+        return {
+          ...line,
+          po_line_id: stagedChange.newPoLineId
+        };
+      }
+
+      return line;
+    });
+
+    setEditableLines(updatedLines);
+
+    // Clear staged reassignments
+    setStagedReassignments({});
+
+    // Show success toast
+    showToast(
+      `${count} line reassignment${count > 1 ? 's' : ''} applied successfully`,
+      'success'
+    );
+  };
+
+  // Cancel all staged reassignments
+  const handleCancelReassignments = () => {
+    const count = Object.keys(stagedReassignments).length;
+    if (count === 0) return;
+
+    setStagedReassignments({});
+
+    showToast(
+      `${count} pending reassignment${count > 1 ? 's' : ''} cancelled`,
+      'info'
+    );
+  };
+
+  // ============================================================================
+  // END MULTI-PO HELPER FUNCTIONS
+  // ============================================================================
 
   // Get match result for a specific invoice line
   const getMatchResultForLine = (lineId?: string) => {
@@ -1091,16 +1479,26 @@ export function LineItemsPreviewPanel({
 
           {/* Edit button - only show in fullscreen mode */}
           {isFullscreen && !hideEditButton && (
-            <button
-              onClick={toggleEditMode}
-              className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
-                isEditMode
-                  ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
-                  : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
-              }`}
-            >
-              {isEditMode ? 'Done' : 'Edit'}
-            </button>
+            <div className="flex items-center gap-2">
+              {isEditMode && (
+                <button
+                  onClick={toggleEditMode}
+                  className="px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              )}
+              <button
+                onClick={toggleEditMode}
+                className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                  isEditMode
+                    ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                    : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
+                }`}
+              >
+                {isEditMode ? 'Save' : 'Edit'}
+              </button>
+            </div>
           )}
 
           {/* Expand/Collapse button - moved to last position */}
@@ -1153,9 +1551,9 @@ export function LineItemsPreviewPanel({
                 <table className="min-w-max">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
-                      <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 12 : 10) : (10 + (isEditMode ? 2 : 0))} className="px-4 bg-white border-b h-[36px]">
+                      <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 13 : 11) : (11 + (isEditMode ? 2 : 0))} className="px-4 bg-white border-b h-[36px]">
                         <div className="flex items-center justify-between h-full">
-                          {/* Left side: Invoice title and Compare to toggles */}
+                          {/* Left side: Invoice title and Compare toggle */}
                           <div className="flex items-center gap-3">
                             <span className="text-sm font-semibold text-gray-950">Invoice</span>
                             <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
@@ -1163,8 +1561,6 @@ export function LineItemsPreviewPanel({
                             </span>
                             <div className="h-5 w-px bg-gray-300"></div>
                             <span className="text-xs font-medium text-gray-600">Compare to:</span>
-
-                            {/* PO Toggle */}
                             <label className="flex items-center gap-1.5">
                               <Switch.Root
                                 checked={showPO}
@@ -1176,39 +1572,49 @@ export function LineItemsPreviewPanel({
                               </Switch.Root>
                               <span className="text-xs font-medium text-gray-950">PO</span>
                             </label>
-
-                            {/* Receipt Toggle - Hidden for now */}
-                            <label className="hidden flex items-center gap-1.5">
-                              <Switch.Root
-                                checked={showReceipt}
-                                onCheckedChange={setShowReceipt}
-                                className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors"
-                              >
-                                <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
-                              </Switch.Root>
-                              <span className="text-xs font-medium text-gray-950">Receipt</span>
-                            </label>
                           </div>
 
-                          {/* Right side: Edit button */}
-                          {!hideEditButton && (
-                            <button
-                              onClick={toggleEditMode}
-                              className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
-                                isEditMode
-                                  ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
-                                  : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
-                              }`}
-                            >
-                              {isEditMode ? 'Done' : 'Edit'}
-                            </button>
-                          )}
+                          {/* Right side: Edit button and Apply Changes button */}
+                          <div className="flex items-center gap-2">
+                            {/* Apply Changes button - only show when there are staged reassignments */}
+                            {Object.keys(stagedReassignments).length > 0 && (
+                              <button
+                                onClick={handleCommitReassignments}
+                                className="px-2 py-1 text-xs font-medium rounded bg-green-600 text-white border border-green-600 hover:bg-green-700 transition-colors"
+                              >
+                                Apply Changes ({Object.keys(stagedReassignments).length})
+                              </button>
+                            )}
+
+                            {!hideEditButton && (
+                              <div className="flex items-center gap-2">
+                                {isEditMode && (
+                                  <button
+                                    onClick={toggleEditMode}
+                                    className="px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                                  >
+                                    Cancel
+                                  </button>
+                                )}
+                                <button
+                                  onClick={toggleEditMode}
+                                  className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                                    isEditMode
+                                      ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                                      : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
+                                  }`}
+                                >
+                                  {isEditMode ? 'Save' : 'Edit'}
+                                </button>
+                              </div>
+                            )}
+                          </div>
                         </div>
                       </th>
                     </tr>
                     <tr className="h-[40px]">
                       {isEditMode && (
-                        <th className="px-2 text-center text-xs font-medium text-gray-800 uppercase w-8"></th>
+                        <th className="hidden px-2 text-center text-xs font-medium text-gray-800 uppercase w-8"></th>
                       )}
                       <th className="pl-5 pr-1.5 text-right text-xs font-medium text-gray-800 uppercase">#</th>
                       <th className="w-8"></th>
@@ -1225,8 +1631,9 @@ export function LineItemsPreviewPanel({
                         <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Variance</th>
                       )}
                       {isEditMode && (
-                        <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase w-32">Actions</th>
+                        <th className="px-1 text-center text-xs font-medium text-gray-800 uppercase w-14">Actions</th>
                       )}
+                      <th className="px-1 text-left text-xs font-medium text-gray-800 uppercase whitespace-nowrap">Assigned PO Line</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -1279,11 +1686,11 @@ export function LineItemsPreviewPanel({
                         const rowContent = (listeners?: any, isDragging?: boolean, isOver?: boolean) => (
                           <>
                             {isEditMode && (
-                              <td className="px-2 py-2 text-center cursor-grab active:cursor-grabbing" {...listeners}>
+                              <td className="hidden px-2 py-2 text-center cursor-grab active:cursor-grabbing" {...listeners}>
                                 <GripVertical className="h-4 w-4 text-gray-400" />
                               </td>
                             )}
-                            <td className="pl-5 pr-1.5 py-2 text-xs text-right text-gray-950">{line.line_no}</td>
+                            <td className={`pl-5 pr-1.5 py-2 text-xs text-right text-gray-950 ${getRowBorderClass(line)}`}>{line.line_no}</td>
                             {/* Icon column for smart match indicators and AI suggestions */}
                             <td className="px-1 py-2 text-center relative">
                               {hasSuggestion(line) ? (
@@ -1510,7 +1917,7 @@ export function LineItemsPreviewPanel({
                                 type="number"
                                 value={line.unit_price}
                                 onChange={(e) => handleLineChange(lineIndex, 'unit_price', parseFloat(e.target.value) || 0)}
-                                className={`w-24 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
+                                className={`w-16 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
                                   matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01
                                     ? ''
                                     : 'border border-gray-300'
@@ -1542,7 +1949,7 @@ export function LineItemsPreviewPanel({
                                     </span>
                                   )}
                                   {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
-                                    <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                                    <span className="text-green-600 font-bold text-xs">0 / {formatCurrency(0)}</span>
                                   )}
                                 </div>
                               )}
@@ -1583,6 +1990,83 @@ export function LineItemsPreviewPanel({
                               </div>
                             </td>
                           )}
+                          {/* PO / Line column - always visible */}
+                          <td className="px-1.5 py-2 text-xs text-left whitespace-nowrap">
+                            {(() => {
+                              const matchedPoNumber = getMatchedPONumber(line);
+                              const matchedPoLine = getMatchedPOLine(line, lineIndex);
+
+                              // If no match, show "Unmatched"
+                              if (!matchedPoNumber || !matchedPoLine) {
+                                return <span className="text-gray-400 text-xs">Unmatched</span>;
+                              }
+
+                              const badgeClasses = getPOBadgeClasses(matchedPoNumber);
+                              const pillText = `${matchedPoNumber} · L${matchedPoLine.line_no}`;
+
+                              // In edit mode: show clickable dropdown
+                              if (isEditMode && poDataList && poDataList.length > 0) {
+                                const availableLines = buildAvailablePOLines(line);
+
+                                return (
+                                  <Select.Root
+                                    value={matchedPoLine.id}
+                                    onValueChange={(newPoLineId) => {
+                                      const selectedLine = availableLines.find(l => l.poLineId === newPoLineId);
+                                      if (selectedLine) {
+                                        handleReassignLine(line, newPoLineId, selectedLine.poNumber);
+                                      }
+                                    }}
+                                  >
+                                    <Select.Trigger className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap ${badgeClasses.bg} ${badgeClasses.text}`}>
+                                      <Select.Value>{pillText}</Select.Value>
+                                      <Select.Icon><ChevronDown className="h-3 w-3" /></Select.Icon>
+                                    </Select.Trigger>
+                                    <Select.Portal>
+                                      <Select.Content
+                                        className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 max-h-60"
+                                        style={{ zIndex: 99999 }}
+                                        position="popper"
+                                        sideOffset={5}
+                                      >
+                                        <Select.Viewport className="p-1">
+                                          {availableLines.map((poLine) => {
+                                            const lineBadgeClasses = getPOBadgeClasses(poLine.poNumber);
+                                            const isCurrentMatch = poLine.poLineId === matchedPoLine.id;
+                                            return (
+                                              <Select.Item
+                                                key={poLine.poLineId}
+                                                value={poLine.poLineId}
+                                                className={`relative flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${isCurrentMatch ? 'bg-purple-50' : ''}`}
+                                              >
+                                                <Select.ItemText>
+                                                  <span className="flex items-center gap-2">
+                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
+                                                      {poLine.poNumber}
+                                                    </span>
+                                                    <span className="text-gray-600">L{poLine.lineNo}</span>
+                                                    <span className="text-gray-500 truncate max-w-[120px]">{poLine.description}</span>
+                                                    {isCurrentMatch && <span className="text-purple-600 ml-auto">✓</span>}
+                                                  </span>
+                                                </Select.ItemText>
+                                              </Select.Item>
+                                            );
+                                          })}
+                                        </Select.Viewport>
+                                      </Select.Content>
+                                    </Select.Portal>
+                                  </Select.Root>
+                                );
+                              }
+
+                              // View mode: static badge
+                              return (
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${badgeClasses.bg} ${badgeClasses.text}`}>
+                                  {pillText}
+                                </span>
+                              );
+                            })()}
+                          </td>
                           </>
                         );
 
@@ -1590,7 +2074,7 @@ export function LineItemsPreviewPanel({
                           <DraggableDroppableRow
                             key={line.id || line.line_no}
                             id={line.id || `line-${line.line_no}`}
-                            className="h-[48px] bg-white group"
+                            className={`h-[48px] group ${getRowHighlightClass(line) || 'bg-white'}`}
                             isHovered={hoveredPosition === slot.position}
                             onMouseEnter={() => handleRowHover(slot.position)}
                             onMouseLeave={handleRowLeave}
@@ -1600,7 +2084,7 @@ export function LineItemsPreviewPanel({
                         ) : (
                           <tr
                             key={line.id || line.line_no}
-                            className={`h-[48px] group ${hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'}`}
+                            className={`h-[48px] group ${getRowHighlightClass(line)} ${hoveredPosition === slot.position ? 'bg-purple-50' : (getRowHighlightClass(line) ? '' : 'bg-white hover:bg-purple-50')}`}
                             onMouseEnter={() => handleRowHover(slot.position)}
                             onMouseLeave={handleRowLeave}
                           >
@@ -1613,9 +2097,9 @@ export function LineItemsPreviewPanel({
                         <td colSpan={useDetailedVarianceColumns ? 12 : 12} className="px-1.5 py-2 align-middle">
                           <button
                             onClick={handleAddLine}
-                            className="flex items-center gap-1.5 text-sm text-purple-700 hover:text-purple-900 font-medium transition-colors"
+                            className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
                           >
-                            <Plus className="h-4 w-4" />
+                            <Plus className="h-3.5 w-3.5" />
                             Add Line
                           </button>
                         </td>
@@ -1623,13 +2107,19 @@ export function LineItemsPreviewPanel({
                     )}
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
-                    <tr className="h-[42px]">
-                      <td colSpan={isEditMode ? 9 : 8} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950">
+                    <tr className="h-[42px] bg-gray-50">
+                      <td colSpan={isEditMode ? 9 : 8} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950 bg-gray-50">
                         Invoice Total:
                       </td>
-                      <td colSpan={1 + (!useDetailedVarianceColumns ? 1 : 0) + (isEditMode ? 1 : 0)} className="pl-1.5 pr-4 py-2 text-right text-sm font-bold text-gray-950">
+                      <td className="pl-1.5 pr-4 py-2 text-right text-sm font-bold text-gray-950 bg-gray-50">
                         {formatCurrency(invoiceLines.reduce((sum, line) => sum + line.line_total, 0))}
                       </td>
+                      {/* Empty cell for Variance column when not using detailed variance */}
+                      {!useDetailedVarianceColumns && showPO && <td className="bg-gray-50"></td>}
+                      {/* Empty cell for Actions column in edit mode */}
+                      {isEditMode && <td className="bg-gray-50"></td>}
+                      {/* Empty cell to cover PO / Line column */}
+                      <td className="bg-gray-50"></td>
                     </tr>
                   </tfoot>
                 </table>
@@ -1642,10 +2132,79 @@ export function LineItemsPreviewPanel({
                     <tr>
                       <th colSpan={7} className="px-4 bg-white border-b h-[36px]">
                         <div className="flex items-center gap-3 h-full">
-                          <span className="text-sm font-semibold text-gray-950">Purchase Order</span>
-                          <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
-                            {poLines.length} {poLines.length === 1 ? 'line' : 'lines'}
+                          <span className="text-sm font-semibold text-gray-950">
+                            Purchase Order
                           </span>
+                          <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
+                            {getPOBadgeText()}
+                          </span>
+
+                          {/* PO dropdown - only for multi-PO */}
+                          {isMultiPO && (
+                            <Select.Root value={selectedPO} onValueChange={setSelectedPO}>
+                              <Select.Trigger className="inline-flex items-center gap-1.5 px-2 py-1 text-xs font-medium text-gray-950 bg-white border border-gray-300 rounded hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1 data-[state=open]:bg-gray-50">
+                                {getSelectedPOLabel() || 'Select PO'}
+                                <Select.Icon>
+                                  <ChevronDown className="h-3 w-3 text-gray-500" />
+                                </Select.Icon>
+                              </Select.Trigger>
+                              <Select.Portal>
+                                <Select.Content
+                                  className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200"
+                                  style={{ zIndex: 99999 }}
+                                  position="popper"
+                                  sideOffset={5}
+                                >
+                                  <Select.Viewport className="p-1">
+                                    {/* All POs option */}
+                                    <Select.Item
+                                      value="all"
+                                      className="relative flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 data-[state=checked]:bg-purple-50 data-[state=checked]:text-purple-900"
+                                    >
+                                      <Select.ItemText>
+                                        <span className="font-medium">All POs</span>
+                                        {utilization && (
+                                          <span className="ml-2 text-gray-600">
+                                            {getTotalUtilization()}
+                                          </span>
+                                        )}
+                                      </Select.ItemText>
+                                    </Select.Item>
+
+                                    {/* Individual PO options */}
+                                    {allPONumbers.map((poNumber) => {
+                                      const badgeClasses = getPOBadgeClasses(poNumber);
+                                      return (
+                                        <Select.Item
+                                          key={poNumber}
+                                          value={poNumber}
+                                          className="relative flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 data-[state=checked]:bg-purple-50 data-[state=checked]:text-purple-900"
+                                        >
+                                          <Select.ItemText>
+                                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${badgeClasses.bg} ${badgeClasses.text}`}>
+                                              {poNumber}
+                                            </span>
+                                            {utilization && utilization[poNumber] && (
+                                              <span className="ml-2 text-gray-600">
+                                                {getUtilizationSummary(poNumber)}
+                                              </span>
+                                            )}
+                                          </Select.ItemText>
+                                        </Select.Item>
+                                      );
+                                    })}
+                                  </Select.Viewport>
+                                </Select.Content>
+                              </Select.Portal>
+                            </Select.Root>
+                          )}
+
+                          {/* Inline utilization summary - only when specific PO is selected */}
+                          {isMultiPO && utilization && selectedPO !== 'all' && (
+                            <span className="text-xs text-gray-600 ml-2">
+                              {`${selectedPO} • ${getUtilizationSummary(selectedPO)}`}
+                            </span>
+                          )}
                         </div>
                       </th>
                     </tr>
@@ -1660,7 +2219,7 @@ export function LineItemsPreviewPanel({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {(Array.isArray(displaySlots) ? displaySlots : slots).map((slot) => {
+                    {getFilteredSlotsForPOTable(Array.isArray(displaySlots) ? displaySlots : slots).map((slot) => {
                       const matchedPO = slot.poLine;
                       const invLine = slot.invoiceLine;
 
@@ -1683,11 +2242,11 @@ export function LineItemsPreviewPanel({
                       return (
                         <tr
                           key={matchedPO.id}
-                          className={`h-[48px] ${hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'}`}
+                          className={`h-[48px] ${getPORowHighlightClass(matchedPO)} ${hoveredPosition === slot.position ? 'bg-purple-50' : (getPORowHighlightClass(matchedPO) ? '' : 'bg-white hover:bg-purple-50')}`}
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
                         >
-                          <td className="pl-4 pr-1.5 py-2 text-xs text-right text-gray-950">{matchedPO.line_no}</td>
+                          <td className={`pl-4 pr-1.5 py-2 text-xs text-right text-gray-950 ${getPORowBorderClass(matchedPO)}`}>{matchedPO.line_no}</td>
                           <td className={`px-1.5 py-2 text-xs text-gray-950 ${
                             invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && hasDescriptionDifference(invLine, matchedPO)) || hasSuggestion(invLine))
                               ? 'bg-red-50'
@@ -1727,19 +2286,19 @@ export function LineItemsPreviewPanel({
                     )}
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
-                    <tr className="h-[42px]">
-                      <td colSpan={6} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950">
+                    <tr className="h-[42px] bg-gray-50">
+                      <td colSpan={6} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950 bg-gray-50">
                         PO Total:
                       </td>
-                      <td className="px-1.5 py-2 text-right text-sm font-bold text-gray-950">
+                      <td className="px-1.5 py-2 text-right text-sm font-bold text-gray-950 bg-gray-50">
                         {formatCurrency(poLines.reduce((sum, line) => sum + (line.qty_ordered * line.unit_price), 0))}
                       </td>
                       {/* Empty cells for visual continuity with Invoice table columns */}
                       {!useDetailedVarianceColumns && (
-                        <td className="px-1.5 py-2"></td>
+                        <td className="px-1.5 py-2 bg-gray-50"></td>
                       )}
                       {isEditMode && (
-                        <td className="px-1.5 py-2"></td>
+                        <td className="px-1.5 py-2 bg-gray-50"></td>
                       )}
                     </tr>
                   </tfoot>
@@ -1792,8 +2351,8 @@ export function LineItemsPreviewPanel({
                     )}
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
-                    <tr className="h-[42px] border-r border-gray-200">
-                      <td className="px-1.5 py-2">&nbsp;</td>
+                    <tr className="h-[42px] border-r border-gray-200 bg-gray-50">
+                      <td className="px-1.5 py-2 bg-gray-50">&nbsp;</td>
                     </tr>
                   </tfoot>
                 </table>
@@ -1831,9 +2390,15 @@ export function LineItemsPreviewPanel({
                         const line = slot.invoiceLine;
                         const matchedPO = slot.poLine;
 
-                        // If no invoice line at this position, show empty row
+                        // If no invoice line at this position, show empty row for visual continuity
+                        // This ensures alignment with PO table rows
                         if (!line) {
-                          return isEditMode ? (
+                          // Only skip if there's no PO line either (nothing to show)
+                          if (!matchedPO) {
+                            return null;
+                          }
+                          // Show empty row for PO-only positions to maintain alignment
+                          return (
                             <tr
                               key={`variance-empty-${slot.position}`}
                               className={`h-[48px] ${hoveredPosition === slot.position ? 'bg-gray-100' : 'bg-gray-50 hover:bg-gray-100'}`}
@@ -1844,7 +2409,7 @@ export function LineItemsPreviewPanel({
                                 <span className="text-xs text-gray-400 italic">-</span>
                               </td>
                             </tr>
-                          ) : null;
+                          );
                         }
 
                         return (
@@ -1862,7 +2427,7 @@ export function LineItemsPreviewPanel({
                                     {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
                                   </span>
                                 ) : (
-                                  <CheckCircle className="h-3.5 w-3.5 text-green-600 mx-auto" />
+                                  <span className="text-green-600 font-bold">0</span>
                                 )
                               ) : (
                                 <span className="text-xs text-gray-400">-</span>
@@ -1877,7 +2442,7 @@ export function LineItemsPreviewPanel({
                                     {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
                                   </span>
                                 ) : (
-                                  <CheckCircle className="h-3.5 w-3.5 text-green-600 mx-auto" />
+                                  <span className="text-green-600 font-bold">{formatCurrency(0)}</span>
                                 )
                               ) : (
                                 <span className="text-xs text-gray-400">-</span>
@@ -1895,9 +2460,9 @@ export function LineItemsPreviewPanel({
                       )}
                     </tbody>
                     <tfoot className="bg-gray-50 sticky bottom-0">
-                      <tr className="h-[42px]">
+                      <tr className="h-[42px] bg-gray-50">
                         {/* Empty footer cells for visual continuity */}
-                        <td colSpan={2} className="px-1.5 py-2"></td>
+                        <td colSpan={2} className="px-1.5 py-2 bg-gray-50"></td>
                       </tr>
                     </tfoot>
                   </table>
@@ -1949,16 +2514,26 @@ export function LineItemsPreviewPanel({
 
                         {/* Right side: Edit button */}
                         {!hideEditButton && (
-                          <button
-                            onClick={toggleEditMode}
-                            className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
-                              isEditMode
-                                ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
-                                : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
-                            }`}
-                          >
-                            {isEditMode ? 'Done' : 'Edit'}
-                          </button>
+                          <div className="flex items-center gap-2">
+                            {isEditMode && (
+                              <button
+                                onClick={toggleEditMode}
+                                className="px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                              >
+                                Cancel
+                              </button>
+                            )}
+                            <button
+                              onClick={toggleEditMode}
+                              className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                                isEditMode
+                                  ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                                  : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
+                              }`}
+                            >
+                              {isEditMode ? 'Save' : 'Edit'}
+                            </button>
+                          </div>
                         )}
                       </div>
                     </th>
@@ -2027,7 +2602,7 @@ export function LineItemsPreviewPanel({
                       const rowContent = (listeners?: any, isDragging?: boolean, isOver?: boolean) => (
                         <>
                           {isEditMode && (
-                            <td className="px-2 py-2 text-center cursor-grab active:cursor-grabbing" {...listeners}>
+                            <td className="hidden px-2 py-2 text-center cursor-grab active:cursor-grabbing" {...listeners}>
                               <GripVertical className="h-4 w-4 text-gray-400" />
                             </td>
                           )}
@@ -2256,7 +2831,7 @@ export function LineItemsPreviewPanel({
                               value={line.unit_price}
                               onChange={(e) => handleLineChange(lineIndex, 'unit_price', parseFloat(e.target.value) || 0)}
                               step="0.01"
-                              className={`w-24 px-2 py-1 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
+                              className={`w-16 px-1 py-1 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
                                 matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01
                                   ? ''
                                   : 'border border-gray-300'
@@ -2288,7 +2863,7 @@ export function LineItemsPreviewPanel({
                                   </span>
                                 )}
                                 {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
-                                  <CheckCircle className="h-3.5 w-3.5 text-green-600" />
+                                  <span className="text-green-600 font-bold text-xs">0 / {formatCurrency(0)}</span>
                                 )}
                               </div>
                             )}
@@ -2370,13 +2945,17 @@ export function LineItemsPreviewPanel({
                   )}
                 </tbody>
                 <tfoot className="bg-gray-50 sticky bottom-0">
-                  <tr className="h-[42px]">
-                    <td colSpan={isEditMode ? 8 : 7} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950">
+                  <tr className="h-[42px] bg-gray-50">
+                    <td colSpan={isEditMode ? 9 : 8} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950 bg-gray-50">
                       Invoice Total:
                     </td>
-                    <td colSpan={2 + (poLines.length > 0 ? 1 : 0)} className="pl-1.5 pr-4 py-2 text-right text-sm font-bold text-gray-950">
+                    <td className="pl-1.5 pr-4 py-2 text-right text-sm font-bold text-gray-950 bg-gray-50">
                       {formatCurrency(editableLines.reduce((sum, line) => sum + line.line_total, 0))}
                     </td>
+                    {/* Empty cell for Variance column when shown */}
+                    {poLines.length > 0 && showPO && <td className="bg-gray-50"></td>}
+                    {/* Empty cell for actions placeholder column */}
+                    <td className="bg-gray-50"></td>
                   </tr>
                 </tfoot>
               </table>
@@ -2434,7 +3013,7 @@ export function LineItemsPreviewPanel({
                     {/* Same header as default view */}
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>
-                        <th colSpan={useDetailedVarianceColumns ? 9 : (showPO ? 10 : 9)} className="px-4 bg-white border-b h-[36px]">
+                        <th colSpan={useDetailedVarianceColumns ? 10 : (showPO ? 11 : 10)} className="px-4 bg-white border-b h-[36px]">
                           <div className="flex items-center justify-between h-full">
                             <div className="flex items-center gap-3">
                               <span className="text-sm font-semibold text-gray-950">Invoice</span>
@@ -2442,16 +3021,36 @@ export function LineItemsPreviewPanel({
                                 {invoiceLines.length} {invoiceLines.length === 1 ? 'line' : 'lines'}
                               </span>
                             </div>
-                            <button
-                              onClick={toggleEditMode}
-                              className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
-                                isEditMode
-                                  ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
-                                  : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
-                              }`}
-                            >
-                              {isEditMode ? 'Done' : 'Edit'}
-                            </button>
+                            <div className="flex items-center gap-2">
+                              {/* Apply Changes button - only show when there are staged reassignments */}
+                              {Object.keys(stagedReassignments).length > 0 && (
+                                <button
+                                  onClick={handleCommitReassignments}
+                                  className="px-2 py-1 text-xs font-medium rounded bg-green-600 text-white border border-green-600 hover:bg-green-700 transition-colors"
+                                >
+                                  Apply Changes ({Object.keys(stagedReassignments).length})
+                                </button>
+                              )}
+
+                              {isEditMode && (
+                                <button
+                                  onClick={toggleEditMode}
+                                  className="px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                                >
+                                  Cancel
+                                </button>
+                              )}
+                              <button
+                                onClick={toggleEditMode}
+                                className={`px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                                  isEditMode
+                                    ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
+                                    : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
+                                }`}
+                              >
+                                {isEditMode ? 'Save' : 'Edit'}
+                              </button>
+                            </div>
                           </div>
                         </th>
                       </tr>
@@ -2459,6 +3058,9 @@ export function LineItemsPreviewPanel({
                         <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">#</th>
                         <th className="w-8"></th>
                         <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Status</th>
+                        {isMultiPO && (
+                          <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">PO</th>
+                        )}
                         <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
                         <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
                         <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
@@ -2468,6 +3070,7 @@ export function LineItemsPreviewPanel({
                         {!useDetailedVarianceColumns && showPO && (
                           <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Variance</th>
                         )}
+                        <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase whitespace-nowrap">Assigned PO Line</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -2481,7 +3084,7 @@ export function LineItemsPreviewPanel({
                         const status = getLineStatus(line, matchedPO);
 
                         return (
-                          <tr key={`variance-${line.id || line.line_no}`} className="h-[48px] bg-white hover:bg-purple-50 transition-colors group">
+                          <tr key={`variance-${line.id || line.line_no}`} className={`h-[48px] bg-white hover:bg-purple-50 transition-colors group ${getRowHighlightClass(line)}`}>
                             <td className="px-1.5 py-2 text-xs text-gray-950 font-medium">{line.line_no}</td>
                             {/* Icon column for smart match indicators */}
                             <td className="px-1 py-2 text-center relative">
@@ -2744,6 +3347,74 @@ export function LineItemsPreviewPanel({
                                 </SubstitutionSuggestionPopover>
                               </td>
                             )}
+                            {/* PO / Line column - always visible */}
+                            <td className="px-1.5 py-2 text-xs text-left">
+                              {(() => {
+                                const matchedPoNumber = getMatchedPONumber(line);
+                                const matchedPoLine = getMatchedPOLine(line, lineIndex);
+
+                                // If no match, show "Unmatched"
+                                if (!matchedPoNumber || !matchedPoLine) {
+                                  return <span className="text-gray-400 text-xs">Unmatched</span>;
+                                }
+
+                                const badgeClasses = getPOBadgeClasses(matchedPoNumber);
+                                const pillText = `${matchedPoNumber} · L${matchedPoLine.line_no}`;
+
+                                // In edit mode: show clickable dropdown
+                                if (isEditMode && poDataList && poDataList.length > 0) {
+                                  const availableLines = buildAvailablePOLines(line);
+
+                                  return (
+                                    <Select.Root
+                                      value={matchedPoLine.id}
+                                      onValueChange={(newPoLineId) => {
+                                        const selectedLine = availableLines.find(l => l.poLineId === newPoLineId);
+                                        if (selectedLine) {
+                                          handleReassignLine(line, newPoLineId, selectedLine.poNumber);
+                                        }
+                                      }}
+                                    >
+                                      <Select.Trigger className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${badgeClasses.bg} ${badgeClasses.text}`}>
+                                        <Select.Value>{pillText}</Select.Value>
+                                        <Select.Icon><ChevronDown className="h-3 w-3" /></Select.Icon>
+                                      </Select.Trigger>
+                                      <Select.Portal>
+                                        <Select.Content className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 max-h-60" style={{ zIndex: 99999 }} position="popper" sideOffset={5}>
+                                          <Select.Viewport className="p-1">
+                                            {availableLines.map((poLine) => {
+                                              const lineBadgeClasses = getPOBadgeClasses(poLine.poNumber);
+                                              const isCurrentMatch = poLine.poLineId === matchedPoLine.id;
+                                              return (
+                                                <Select.Item key={poLine.poLineId} value={poLine.poLineId} className={`relative flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${isCurrentMatch ? 'bg-purple-50' : ''}`}>
+                                                  <Select.ItemText>
+                                                    <span className="flex items-center gap-2">
+                                                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
+                                                        {poLine.poNumber}
+                                                      </span>
+                                                      <span className="text-gray-600">L{poLine.lineNo}</span>
+                                                      <span className="text-gray-500 truncate max-w-[120px]">{poLine.description}</span>
+                                                      {isCurrentMatch && <span className="text-purple-600 ml-auto">✓</span>}
+                                                    </span>
+                                                  </Select.ItemText>
+                                                </Select.Item>
+                                              );
+                                            })}
+                                          </Select.Viewport>
+                                        </Select.Content>
+                                      </Select.Portal>
+                                    </Select.Root>
+                                  );
+                                }
+
+                                // View mode: static badge
+                                return (
+                                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${badgeClasses.bg} ${badgeClasses.text}`}>
+                                    {pillText}
+                                  </span>
+                                );
+                              })()}
+                            </td>
                           </tr>
                         );
                       })}
@@ -2753,7 +3424,7 @@ export function LineItemsPreviewPanel({
                         isExpanded={matchedItemsExpanded}
                         onToggle={() => setMatchedItemsExpanded(!matchedItemsExpanded)}
                         matchedCount={matchedLines.length}
-                        colSpan={useDetailedVarianceColumns ? 9 : (showPO ? 10 : 9)}
+                        colSpan={useDetailedVarianceColumns ? 10 : (showPO ? 11 : 10)}
                       />
 
                       {/* Render matched lines if expanded - Similar structure to variance lines but without drag handles */}
@@ -2766,7 +3437,7 @@ export function LineItemsPreviewPanel({
                         const status = getLineStatus(line, matchedPO);
 
                         return (
-                          <tr key={`matched-${line.id || line.line_no}`} className="h-[48px] bg-white hover:bg-purple-50 transition-colors group">
+                          <tr key={`matched-${line.id || line.line_no}`} className={`h-[48px] bg-white hover:bg-purple-50 transition-colors group ${getRowHighlightClass(line)}`}>
                             {/* Same cell structure as variance lines */}
                             <td className="px-1.5 py-2 text-xs text-gray-950 font-medium">{line.line_no}</td>
                             {/* Icon column - same 3-priority logic as variance section */}
@@ -2925,6 +3596,74 @@ export function LineItemsPreviewPanel({
                                 <span className="text-gray-400">—</span>
                               </td>
                             )}
+                            {/* PO / Line column - always visible */}
+                            <td className="px-1.5 py-2 text-xs text-left">
+                              {(() => {
+                                const matchedPoNumber = getMatchedPONumber(line);
+                                const matchedPoLine = getMatchedPOLine(line, lineIndex);
+
+                                // If no match, show "Unmatched"
+                                if (!matchedPoNumber || !matchedPoLine) {
+                                  return <span className="text-gray-400 text-xs">Unmatched</span>;
+                                }
+
+                                const badgeClasses = getPOBadgeClasses(matchedPoNumber);
+                                const pillText = `${matchedPoNumber} · L${matchedPoLine.line_no}`;
+
+                                // In edit mode: show clickable dropdown
+                                if (isEditMode && poDataList && poDataList.length > 0) {
+                                  const availableLines = buildAvailablePOLines(line);
+
+                                  return (
+                                    <Select.Root
+                                      value={matchedPoLine.id}
+                                      onValueChange={(newPoLineId) => {
+                                        const selectedLine = availableLines.find(l => l.poLineId === newPoLineId);
+                                        if (selectedLine) {
+                                          handleReassignLine(line, newPoLineId, selectedLine.poNumber);
+                                        }
+                                      }}
+                                    >
+                                      <Select.Trigger className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${badgeClasses.bg} ${badgeClasses.text}`}>
+                                        <Select.Value>{pillText}</Select.Value>
+                                        <Select.Icon><ChevronDown className="h-3 w-3" /></Select.Icon>
+                                      </Select.Trigger>
+                                      <Select.Portal>
+                                        <Select.Content className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 max-h-60" style={{ zIndex: 99999 }} position="popper" sideOffset={5}>
+                                          <Select.Viewport className="p-1">
+                                            {availableLines.map((poLine) => {
+                                              const lineBadgeClasses = getPOBadgeClasses(poLine.poNumber);
+                                              const isCurrentMatch = poLine.poLineId === matchedPoLine.id;
+                                              return (
+                                                <Select.Item key={poLine.poLineId} value={poLine.poLineId} className={`relative flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${isCurrentMatch ? 'bg-purple-50' : ''}`}>
+                                                  <Select.ItemText>
+                                                    <span className="flex items-center gap-2">
+                                                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
+                                                        {poLine.poNumber}
+                                                      </span>
+                                                      <span className="text-gray-600">L{poLine.lineNo}</span>
+                                                      <span className="text-gray-500 truncate max-w-[120px]">{poLine.description}</span>
+                                                      {isCurrentMatch && <span className="text-purple-600 ml-auto">✓</span>}
+                                                    </span>
+                                                  </Select.ItemText>
+                                                </Select.Item>
+                                              );
+                                            })}
+                                          </Select.Viewport>
+                                        </Select.Content>
+                                      </Select.Portal>
+                                    </Select.Root>
+                                  );
+                                }
+
+                                // View mode: static badge
+                                return (
+                                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${badgeClasses.bg} ${badgeClasses.text}`}>
+                                    {pillText}
+                                  </span>
+                                );
+                              })()}
+                            </td>
                           </tr>
                         );
                       })}

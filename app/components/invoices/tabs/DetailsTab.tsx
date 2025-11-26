@@ -2521,14 +2521,25 @@ export function DetailsTab({
                   e.stopPropagation();
                   setIsLineItemsEditMode(!isLineItemsEditMode);
                 }}
-                className={`absolute right-[100px] top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                className={`absolute ${isLineItemsEditMode ? 'right-[162px]' : 'right-[100px]'} top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors ${
                   isLineItemsEditMode
                     ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
                     : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
                 }`}
               >
-                {isLineItemsEditMode ? 'Done' : 'Edit'}
+                {isLineItemsEditMode ? 'Save' : 'Edit'}
               </button>
+              {isLineItemsEditMode && (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsLineItemsEditMode(false);
+                  }}
+                  className="absolute right-[100px] top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              )}
 
               {/* Expand button */}
               <button
@@ -2576,14 +2587,22 @@ export function DetailsTab({
                 {/* Edit button */}
                 <button
                   onClick={() => setIsLineItemsEditMode(!isLineItemsEditMode)}
-                  className={`absolute right-[110px] top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors ${
+                  className={`absolute ${isLineItemsEditMode ? 'right-[172px]' : 'right-[110px]'} top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors ${
                     isLineItemsEditMode
                       ? 'bg-purple-900 text-white border-purple-900 hover:bg-purple-800 hover:border-purple-800'
                       : 'bg-white text-purple-900 border-purple-900 hover:bg-gray-50'
                   }`}
                 >
-                  {isLineItemsEditMode ? 'Done' : 'Edit'}
+                  {isLineItemsEditMode ? 'Save' : 'Edit'}
                 </button>
+                {isLineItemsEditMode && (
+                  <button
+                    onClick={() => setIsLineItemsEditMode(false)}
+                    className="absolute right-[110px] top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                  >
+                    Cancel
+                  </button>
+                )}
 
                 {/* Collapse button */}
                 <button
@@ -2599,7 +2618,9 @@ export function DetailsTab({
             <LineItemsPreviewPanel
               invoiceLines={invoiceData.lines || []}
               poLines={invoiceData.po_lines}
-              matchResults={invoiceData.match_results}
+              poDataList={poComparisonData?.poDataList}
+              utilization={poComparisonData?.utilization}
+              matchResults={invoiceData.match_results || poComparisonData?.matchResults}
               currency={invoiceData.currency || 'USD'}
               invoiceId={invoiceData.id}
               externallyControlled={true}
