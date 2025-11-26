@@ -2185,7 +2185,7 @@ export function LineItemsPreviewPanel({
                                               {poNumber}
                                             </span>
                                             {utilization && utilization[poNumber] && (
-                                              <span className="ml-2 text-gray-600">
+                                              <span className="ml-2 text-gray-700">
                                                 {getUtilizationSummary(poNumber)}
                                               </span>
                                             )}
@@ -2201,7 +2201,7 @@ export function LineItemsPreviewPanel({
 
                           {/* Inline utilization summary - only when specific PO is selected */}
                           {isMultiPO && utilization && selectedPO !== 'all' && (
-                            <span className="text-xs text-gray-600 ml-2">
+                            <span className="text-xs text-gray-700 ml-2">
                               {`${selectedPO} • ${getUtilizationSummary(selectedPO)}`}
                             </span>
                           )}
@@ -2209,13 +2209,13 @@ export function LineItemsPreviewPanel({
                       </th>
                     </tr>
                     <tr className="h-[40px]">
-                      <th className="pl-5 pr-1.5 text-right text-xs font-medium text-gray-800 uppercase">#</th>
-                      <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
-                      <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
-                      <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
-                      <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
-                      <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
-                      <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
+                      <th className="pl-4 pr-1 text-right text-xs font-medium text-gray-800 uppercase w-8">#</th>
+                      <th className="px-1 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
+                      <th className="px-1 text-left text-xs font-medium text-gray-800 uppercase w-16">SKU</th>
+                      <th className="px-1 text-right text-xs font-medium text-gray-800 uppercase w-10">Qty</th>
+                      <th className="px-1 text-center text-xs font-medium text-gray-800 uppercase w-12">UOM</th>
+                      <th className="px-1 text-right text-xs font-medium text-gray-800 uppercase w-20">Price</th>
+                      <th className="pl-1 pr-4 text-right text-xs font-medium text-gray-800 uppercase w-24">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -2246,33 +2246,33 @@ export function LineItemsPreviewPanel({
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
                         >
-                          <td className={`pl-4 pr-1.5 py-2 text-xs text-right text-gray-950 ${getPORowBorderClass(matchedPO)}`}>{matchedPO.line_no}</td>
-                          <td className={`px-1.5 py-2 text-xs text-gray-950 ${
+                          <td className={`pl-4 pr-1 py-2 text-xs text-right text-gray-950 w-8 ${getPORowBorderClass(matchedPO)}`}>{matchedPO.line_no}</td>
+                          <td className={`px-1 py-2 text-xs text-gray-950 ${
                             invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && hasDescriptionDifference(invLine, matchedPO)) || hasSuggestion(invLine))
                               ? 'bg-red-50'
                               : ''
                           }`}>
-                            <div className="truncate max-w-[250px]" title={matchedPO.description}>
+                            <div className="truncate max-w-[180px]" title={matchedPO.description}>
                               {matchedPO.item_description || matchedPO.description}
                             </div>
                           </td>
-                          <td className="px-1.5 py-2 text-xs text-gray-950">{matchedPO.sku || '-'}</td>
-                          <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
+                          <td className="px-1 py-2 text-xs text-gray-950 w-16">{matchedPO.sku || '-'}</td>
+                          <td className={`px-1 py-2 text-xs text-right text-gray-950 w-10 ${
                             invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01
                               ? 'bg-red-50'
                               : ''
                           }`}>
                             {matchedPO.qty_ordered}
                           </td>
-                          <td className="px-1.5 py-2 text-xs text-center text-gray-950">{matchedPO.uom}</td>
-                          <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
+                          <td className="px-1 py-2 text-xs text-center text-gray-950 w-12">{matchedPO.uom}</td>
+                          <td className={`px-1 py-2 text-xs text-right text-gray-950 w-20 ${
                             invLine && Math.abs(matchedPO.unit_price - invLine.unit_price) > 0.01
                               ? 'bg-red-50'
                               : ''
                           }`}>
                             {formatCurrency(matchedPO.unit_price)}
                           </td>
-                          <td className="px-1.5 py-2 text-xs text-right font-medium text-gray-950">
+                          <td className="pl-1 pr-4 py-2 text-xs text-right font-medium text-gray-950 w-24">
                             {formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)}
                           </td>
                         </tr>
@@ -2287,10 +2287,10 @@ export function LineItemsPreviewPanel({
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
                     <tr className="h-[42px] bg-gray-50">
-                      <td colSpan={6} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950 bg-gray-50">
+                      <td colSpan={6} className="px-1 py-2 text-right text-sm font-semibold text-gray-950 bg-gray-50">
                         PO Total:
                       </td>
-                      <td className="px-1.5 py-2 text-right text-sm font-bold text-gray-950 bg-gray-50">
+                      <td className="pl-1 pr-4 py-2 text-right text-sm font-bold text-gray-950 bg-gray-50">
                         {formatCurrency(poLines.reduce((sum, line) => sum + (line.qty_ordered * line.unit_price), 0))}
                       </td>
                       {/* Empty cells for visual continuity with Invoice table columns */}
