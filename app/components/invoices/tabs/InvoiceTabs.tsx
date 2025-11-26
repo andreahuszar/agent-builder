@@ -420,7 +420,9 @@ export function InvoiceTabs({
           <DetailsTab
             invoiceData={{
               ...invoiceData,
-              po_lines: poComparisonData?.poData?.po_lines || [],
+              po_lines: poComparisonData?.poDataList
+                ? poComparisonData.poDataList.flatMap(po => po.lines || po.po_lines || [])
+                : poComparisonData?.poData?.po_lines || [],
               match_results: matchResults || []
             }}
             onUpdate={onDataUpdate}
@@ -448,9 +450,13 @@ export function InvoiceTabs({
         {activeTab === 'line-items' && (
           <LineItemsPreviewPanel
             invoiceLines={invoiceData?.lines || invoiceData?.invoice_lines || []}
-            poLines={poComparisonData?.poData?.po_lines || []}
+            poLines={poComparisonData?.poDataList
+              ? poComparisonData.poDataList.flatMap(po => po.lines || po.po_lines || [])
+              : poComparisonData?.poData?.po_lines || []}
+            poDataList={poComparisonData?.poDataList}
+            utilization={poComparisonData?.utilization}
             currency={invoiceData?.currency || 'USD'}
-            matchResults={matchResults || []}
+            matchResults={matchResults || poComparisonData?.matchResults || []}
             onLinesUpdate={(lines: any[]) => {
               onDataUpdate?.({
                 ...invoiceData,
@@ -458,7 +464,7 @@ export function InvoiceTabs({
                 invoice_lines: lines
               });
             }}
-            showComparison={!hideComparison && poComparisonData?.poData?.po_lines?.length > 0}
+            showComparison={!hideComparison && (poComparisonData?.poData?.po_lines?.length > 0 || poComparisonData?.poDataList?.length > 0)}
             startExpanded={true}
             useDetailedVarianceColumns={true}
             acceptedSuggestions={acceptedLineSuggestions}

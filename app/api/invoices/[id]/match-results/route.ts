@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
-import { isMockInvoice, getMockPoComparisonData } from '@/app/services/mockInvoiceService';
+import {
+  isMockInvoice,
+  getMockPoComparisonData,
+  getMockPoComparisonDataMulti,
+  getMockInvoiceById
+} from '@/app/services/mockInvoiceService';
 
 export async function GET(
   request: NextRequest,
@@ -11,7 +16,14 @@ export async function GET(
 
     // Return mock match results for mock invoices
     if (isMockInvoice(id)) {
-      const comparisonData = getMockPoComparisonData(id);
+      // Check if this is a multi-PO invoice (same logic as po-comparison route)
+      const mockInvoice = getMockInvoiceById(id);
+      const isMultiPO = mockInvoice && mockInvoice.po_numbers_cached && mockInvoice.po_numbers_cached.length > 1;
+
+      const comparisonData = isMultiPO
+        ? getMockPoComparisonDataMulti(id)
+        : getMockPoComparisonData(id);
+
       // Extract match results from PO comparison data
       const matchResults = comparisonData?.matchResults || [];
       return NextResponse.json(matchResults);

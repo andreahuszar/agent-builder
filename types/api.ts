@@ -271,6 +271,39 @@ export interface MatchedLine {
   within_tolerance: boolean;
 }
 
+// Multi-PO Comparison Types
+export interface POUtilization {
+  totalLines: number;
+  usedLines: number;
+  totalAmount: number;
+  usedAmount: number;
+  unusedLines: POLine[];
+  fullyUsedLines: POLine[];
+}
+
+export interface POComparisonDataMulti {
+  invoice: {
+    id: string;
+    invoice_number: string;
+    lines: ComparisonInvoiceLine[];
+  };
+  poDataList: POWithLines[];  // Array of all linked POs
+  matchResults: MatchResult[];
+  utilization: {
+    [poNumber: string]: POUtilization;
+  };
+  lineComparison: LineComparisonWithPO[];
+}
+
+export interface LineComparisonWithPO {
+  invoice: ComparisonInvoiceLine;
+  po: ComparisonPOLine | null;
+  po_number: string | null;  // Which PO this line matches to
+  matchResult: MatchResult | null;
+  hasVariance: boolean;
+  status: 'matched' | 'variance' | 'unmatched';
+}
+
 // Upload Response
 export interface UploadResponse {
   success: boolean;

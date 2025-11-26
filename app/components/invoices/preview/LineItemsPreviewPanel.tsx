@@ -1,12 +1,13 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Maximize2, Minimize2, X, AlertCircle, ChevronDown, CheckCircle, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical, Zap, Sparkles, List, ArrowDownWideNarrow } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, useDroppable, DragOverlay, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import * as Switch from '@radix-ui/react-switch';
 import * as Select from '@radix-ui/react-select';
+import * as Popover from '@radix-ui/react-popover';
 import { SmartMatchPopover } from '../SmartMatchPopover';
 import { SubstitutionSuggestionPopover } from '../SubstitutionSuggestionPopover';
 import { UomMatchPopover } from '../UomMatchPopover';
@@ -301,6 +302,9 @@ export function LineItemsPreviewPanel({
   const [selectedLineForRule, setSelectedLineForRule] = useState<InvoiceLineItem | null>(null);
   const [viewMode, setViewMode] = useState<'default' | 'grouped'>('default');
   const [matchedItemsExpanded, setMatchedItemsExpanded] = useState(true);
+  const [poLineSearchQuery, setPoLineSearchQuery] = useState('');
+
+
   const containerRef = useRef<HTMLDivElement>(null);
   const flexContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
@@ -1614,26 +1618,26 @@ export function LineItemsPreviewPanel({
                     </tr>
                     <tr className="h-[40px]">
                       {isEditMode && (
-                        <th className="hidden px-2 text-center text-xs font-medium text-gray-800 uppercase w-8"></th>
+                        <th className="hidden px-1 text-center text-xs font-medium text-gray-800 uppercase w-6"></th>
                       )}
-                      <th className="pl-5 pr-1.5 text-right text-xs font-medium text-gray-800 uppercase">#</th>
-                      <th className="w-8"></th>
-                      <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">
+                      <th className="pl-3 pr-1 text-right text-xs font-medium text-gray-800 uppercase w-6">#</th>
+                      <th className="w-6"></th>
+                      <th className="px-1 text-left text-xs font-medium text-gray-800 uppercase w-16">
                         Status
                       </th>
-                      <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
-                      <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase">SKU</th>
-                      <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Qty</th>
-                      <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">UOM</th>
-                      <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price</th>
-                      <th className="pl-1.5 pr-4 text-right text-xs font-medium text-gray-800 uppercase">Total</th>
+                      <th className="px-1 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
+                      <th className="px-1 text-left text-xs font-medium text-gray-800 uppercase w-16">SKU</th>
+                      <th className="px-1 text-right text-xs font-medium text-gray-800 uppercase w-12">Qty</th>
+                      <th className="px-1 text-center text-xs font-medium text-gray-800 uppercase w-10">UOM</th>
+                      <th className="px-1 text-right text-xs font-medium text-gray-800 uppercase w-16">Price</th>
+                      <th className="pl-1 pr-2 text-right text-xs font-medium text-gray-800 uppercase w-20">Total</th>
                       {!useDetailedVarianceColumns && showPO && (
-                        <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Variance</th>
+                        <th className="px-1 text-center text-xs font-medium text-gray-800 uppercase w-16">Variance</th>
                       )}
                       {isEditMode && (
-                        <th className="px-1 text-center text-xs font-medium text-gray-800 uppercase w-14">Actions</th>
+                        <th className="px-1 text-center text-xs font-medium text-gray-800 uppercase w-12">Actions</th>
                       )}
-                      <th className="px-1 text-left text-xs font-medium text-gray-800 uppercase whitespace-nowrap">Assigned PO Line</th>
+                      <th className="px-1 pl-3 text-left text-xs font-medium text-gray-800 uppercase whitespace-nowrap border-l border-gray-200">Assigned PO Line</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -1686,11 +1690,11 @@ export function LineItemsPreviewPanel({
                         const rowContent = (listeners?: any, isDragging?: boolean, isOver?: boolean) => (
                           <>
                             {isEditMode && (
-                              <td className="hidden px-2 py-2 text-center cursor-grab active:cursor-grabbing" {...listeners}>
+                              <td className="hidden px-1 py-2 text-center cursor-grab active:cursor-grabbing" {...listeners}>
                                 <GripVertical className="h-4 w-4 text-gray-400" />
                               </td>
                             )}
-                            <td className={`pl-5 pr-1.5 py-2 text-xs text-right text-gray-950 ${getRowBorderClass(line)}`}>{line.line_no}</td>
+                            <td className={`pl-3 pr-1 py-2 text-xs text-right text-gray-950 w-6 ${getRowBorderClass(line)}`}>{line.line_no}</td>
                             {/* Icon column for smart match indicators and AI suggestions */}
                             <td className="px-1 py-2 text-center relative">
                               {hasSuggestion(line) ? (
@@ -1854,7 +1858,7 @@ export function LineItemsPreviewPanel({
                               </span>
                             )}
                           </td>
-                          <td className={`px-1.5 py-2 text-xs text-gray-950 ${
+                          <td className={`px-1 py-2 text-xs text-gray-950 ${
                             (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
                               ? 'bg-red-50'
                               : ''
@@ -1867,15 +1871,15 @@ export function LineItemsPreviewPanel({
                                 className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                               />
                             ) : (
-                              <div className="truncate max-w-[200px]" title={line.description}>
+                              <div className="truncate max-w-[160px]" title={line.description}>
                                 {line.description}
                               </div>
                             )}
                           </td>
-                          <td className="px-1.5 py-2 text-xs text-gray-950">
+                          <td className="px-1 py-2 text-xs text-gray-950 w-16">
                             {getSKU(line)}
                           </td>
-                          <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
+                          <td className={`px-1 py-2 text-xs text-right text-gray-950 w-12 ${
                             matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
                               ? 'bg-red-50'
                               : ''
@@ -1885,7 +1889,7 @@ export function LineItemsPreviewPanel({
                                 type="number"
                                 value={line.qty}
                                 onChange={(e) => handleLineChange(lineIndex, 'qty', parseFloat(e.target.value) || 0)}
-                                className={`w-14 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
+                                className={`w-12 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
                                   matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01
                                     ? ''
                                     : 'border border-gray-300'
@@ -1895,19 +1899,19 @@ export function LineItemsPreviewPanel({
                               line.qty
                             )}
                           </td>
-                          <td className="px-1.5 py-2 text-xs text-center text-gray-950">
+                          <td className="px-1 py-2 text-xs text-center text-gray-950 w-10">
                             {isEditMode ? (
                               <input
                                 type="text"
                                 value={line.uom}
                                 onChange={(e) => handleLineChange(lineIndex, 'uom', e.target.value)}
-                                className="w-16 px-1 py-0.5 text-xs text-center border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
+                                className="w-10 px-1 py-0.5 text-xs text-center border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                               />
                             ) : (
                               line.uom
                             )}
                           </td>
-                          <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
+                          <td className={`px-1 py-2 text-xs text-right text-gray-950 w-16 ${
                             matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
                               ? 'bg-red-50'
                               : ''
@@ -1917,7 +1921,7 @@ export function LineItemsPreviewPanel({
                                 type="number"
                                 value={line.unit_price}
                                 onChange={(e) => handleLineChange(lineIndex, 'unit_price', parseFloat(e.target.value) || 0)}
-                                className={`w-16 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
+                                className={`w-14 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
                                   matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01
                                     ? ''
                                     : 'border border-gray-300'
@@ -1927,11 +1931,11 @@ export function LineItemsPreviewPanel({
                               formatCurrency(line.unit_price)
                             )}
                           </td>
-                          <td className="pl-1.5 pr-4 py-2 text-xs text-right font-medium text-gray-950">
+                          <td className="pl-1 pr-2 py-2 text-xs text-right font-medium text-gray-950 w-20">
                             {formatCurrency(line.line_total)}
                           </td>
                           {!useDetailedVarianceColumns && showPO && (
-                            <td className="px-1.5 py-2 text-xs">
+                            <td className="px-1 py-2 text-xs w-16">
                               {matchedPO && (
                                 <div className="flex flex-col items-center gap-0.5">
                                   {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
@@ -1991,7 +1995,7 @@ export function LineItemsPreviewPanel({
                             </td>
                           )}
                           {/* PO / Line column - always visible */}
-                          <td className="px-1.5 py-2 text-xs text-left whitespace-nowrap">
+                          <td className="px-1.5 pl-3 py-2 text-xs text-left whitespace-nowrap border-l border-gray-200">
                             {(() => {
                               const matchedPoNumber = getMatchedPONumber(line);
                               const matchedPoLine = getMatchedPOLine(line, lineIndex);
@@ -2007,55 +2011,69 @@ export function LineItemsPreviewPanel({
                               // In edit mode: show clickable dropdown
                               if (isEditMode && poDataList && poDataList.length > 0) {
                                 const availableLines = buildAvailablePOLines(line);
+                                const filteredLines = availableLines.filter(l =>
+                                  l.description.toLowerCase().includes(poLineSearchQuery.toLowerCase()) ||
+                                  l.poNumber.toLowerCase().includes(poLineSearchQuery.toLowerCase()) ||
+                                  `L${l.lineNo}`.toLowerCase().includes(poLineSearchQuery.toLowerCase())
+                                );
 
                                 return (
-                                  <Select.Root
-                                    value={matchedPoLine.id}
-                                    onValueChange={(newPoLineId) => {
-                                      const selectedLine = availableLines.find(l => l.poLineId === newPoLineId);
-                                      if (selectedLine) {
-                                        handleReassignLine(line, newPoLineId, selectedLine.poNumber);
-                                      }
+                                  <Popover.Root
+                                    onOpenChange={(open) => {
+                                      if (!open) setPoLineSearchQuery('');
                                     }}
                                   >
-                                    <Select.Trigger className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap ${badgeClasses.bg} ${badgeClasses.text}`}>
-                                      <Select.Value>{pillText}</Select.Value>
-                                      <Select.Icon><ChevronDown className="h-3 w-3" /></Select.Icon>
-                                    </Select.Trigger>
-                                    <Select.Portal>
-                                      <Select.Content
-                                        className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 max-h-60"
+                                    <Popover.Trigger className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap ${badgeClasses.bg} ${badgeClasses.text}`}>
+                                      {pillText}
+                                      <ChevronDown className="h-3 w-3" />
+                                    </Popover.Trigger>
+                                    <Popover.Portal>
+                                      <Popover.Content
+                                        className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 w-[400px]"
                                         style={{ zIndex: 99999 }}
-                                        position="popper"
                                         sideOffset={5}
+                                        align="start"
                                       >
-                                        <Select.Viewport className="p-1">
-                                          {availableLines.map((poLine) => {
+                                        {/* Sticky search field - works in Popover without typeahead issues */}
+                                        <div className="sticky top-0 bg-white border-b border-gray-100 p-2 z-10">
+                                          <input
+                                            type="text"
+                                            placeholder="Search lines..."
+                                            value={poLineSearchQuery}
+                                            onChange={(e) => setPoLineSearchQuery(e.target.value)}
+                                            autoFocus
+                                            className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                          />
+                                        </div>
+                                        <div className="p-1 max-h-[240px] overflow-y-auto">
+                                          {filteredLines.map((poLine) => {
                                             const lineBadgeClasses = getPOBadgeClasses(poLine.poNumber);
                                             const isCurrentMatch = poLine.poLineId === matchedPoLine.id;
                                             return (
-                                              <Select.Item
-                                                key={poLine.poLineId}
-                                                value={poLine.poLineId}
-                                                className={`relative flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${isCurrentMatch ? 'bg-purple-50' : ''}`}
-                                              >
-                                                <Select.ItemText>
-                                                  <span className="flex items-center gap-2">
-                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
-                                                      {poLine.poNumber}
-                                                    </span>
-                                                    <span className="text-gray-600">L{poLine.lineNo}</span>
-                                                    <span className="text-gray-500 truncate max-w-[120px]">{poLine.description}</span>
-                                                    {isCurrentMatch && <span className="text-purple-600 ml-auto">✓</span>}
+                                              <Popover.Close asChild key={poLine.poLineId}>
+                                                <button
+                                                  onClick={() => {
+                                                    handleReassignLine(line, poLine.poLineId, poLine.poNumber);
+                                                    setPoLineSearchQuery('');
+                                                  }}
+                                                  className={`w-full flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${isCurrentMatch ? 'bg-purple-50' : ''}`}
+                                                >
+                                                  <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium whitespace-nowrap shrink-0 ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
+                                                    {poLine.poNumber}
                                                   </span>
-                                                </Select.ItemText>
-                                              </Select.Item>
+                                                  <span className="text-gray-900 w-6 text-center shrink-0 ml-2">L{poLine.lineNo}</span>
+                                                  <span className="text-gray-900 truncate flex-1 ml-2 text-left">{poLine.description}</span>
+                                                  <span className="text-gray-700 w-8 text-right shrink-0 ml-2">×{poLine.qty}</span>
+                                                  <span className="text-gray-950 w-16 text-right shrink-0 ml-2">{formatCurrency(poLine.price)}</span>
+                                                  {isCurrentMatch && <span className="text-purple-600 shrink-0 ml-2">✓</span>}
+                                                </button>
+                                              </Popover.Close>
                                             );
                                           })}
-                                        </Select.Viewport>
-                                      </Select.Content>
-                                    </Select.Portal>
-                                  </Select.Root>
+                                        </div>
+                                      </Popover.Content>
+                                    </Popover.Portal>
+                                  </Popover.Root>
                                 );
                               }
 
@@ -2108,10 +2126,10 @@ export function LineItemsPreviewPanel({
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
                     <tr className="h-[42px] bg-gray-50">
-                      <td colSpan={isEditMode ? 9 : 8} className="px-1.5 py-2 text-right text-sm font-semibold text-gray-950 bg-gray-50">
+                      <td colSpan={isEditMode ? 9 : 8} className="px-1 py-2 text-right text-sm font-semibold text-gray-950 bg-gray-50">
                         Invoice Total:
                       </td>
-                      <td className="pl-1.5 pr-4 py-2 text-right text-sm font-bold text-gray-950 bg-gray-50">
+                      <td className="pl-1 pr-2 py-2 text-right text-sm font-bold text-gray-950 bg-gray-50">
                         {formatCurrency(invoiceLines.reduce((sum, line) => sum + line.line_total, 0))}
                       </td>
                       {/* Empty cell for Variance column when not using detailed variance */}
@@ -2119,7 +2137,7 @@ export function LineItemsPreviewPanel({
                       {/* Empty cell for Actions column in edit mode */}
                       {isEditMode && <td className="bg-gray-50"></td>}
                       {/* Empty cell to cover PO / Line column */}
-                      <td className="bg-gray-50"></td>
+                      <td className="bg-gray-50 border-l border-gray-200"></td>
                     </tr>
                   </tfoot>
                 </table>
@@ -2209,13 +2227,13 @@ export function LineItemsPreviewPanel({
                       </th>
                     </tr>
                     <tr className="h-[40px]">
-                      <th className="pl-4 pr-1 text-right text-xs font-medium text-gray-800 uppercase w-8">#</th>
+                      <th className="pl-3 pr-1 text-right text-xs font-medium text-gray-800 uppercase w-6">#</th>
                       <th className="px-1 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
                       <th className="px-1 text-left text-xs font-medium text-gray-800 uppercase w-16">SKU</th>
-                      <th className="px-1 text-right text-xs font-medium text-gray-800 uppercase w-10">Qty</th>
-                      <th className="px-1 text-center text-xs font-medium text-gray-800 uppercase w-12">UOM</th>
-                      <th className="px-1 text-right text-xs font-medium text-gray-800 uppercase w-20">Price</th>
-                      <th className="pl-1 pr-4 text-right text-xs font-medium text-gray-800 uppercase w-24">Total</th>
+                      <th className="px-1 text-right text-xs font-medium text-gray-800 uppercase w-8">Qty</th>
+                      <th className="px-1 text-center text-xs font-medium text-gray-800 uppercase w-10">UOM</th>
+                      <th className="px-1 text-right text-xs font-medium text-gray-800 uppercase w-16">Price</th>
+                      <th className="pl-1 pr-2 text-right text-xs font-medium text-gray-800 uppercase w-20">Total</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -2246,33 +2264,33 @@ export function LineItemsPreviewPanel({
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
                         >
-                          <td className={`pl-4 pr-1 py-2 text-xs text-right text-gray-950 w-8 ${getPORowBorderClass(matchedPO)}`}>{matchedPO.line_no}</td>
+                          <td className={`pl-3 pr-1 py-2 text-xs text-right text-gray-950 w-6 ${getPORowBorderClass(matchedPO)}`}>{matchedPO.line_no}</td>
                           <td className={`px-1 py-2 text-xs text-gray-950 ${
                             invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && hasDescriptionDifference(invLine, matchedPO)) || hasSuggestion(invLine))
                               ? 'bg-red-50'
                               : ''
                           }`}>
-                            <div className="truncate max-w-[180px]" title={matchedPO.description}>
+                            <div className="truncate max-w-[160px]" title={matchedPO.description}>
                               {matchedPO.item_description || matchedPO.description}
                             </div>
                           </td>
                           <td className="px-1 py-2 text-xs text-gray-950 w-16">{matchedPO.sku || '-'}</td>
-                          <td className={`px-1 py-2 text-xs text-right text-gray-950 w-10 ${
+                          <td className={`px-1 py-2 text-xs text-right text-gray-950 w-8 ${
                             invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01
                               ? 'bg-red-50'
                               : ''
                           }`}>
                             {matchedPO.qty_ordered}
                           </td>
-                          <td className="px-1 py-2 text-xs text-center text-gray-950 w-12">{matchedPO.uom}</td>
-                          <td className={`px-1 py-2 text-xs text-right text-gray-950 w-20 ${
+                          <td className="px-1 py-2 text-xs text-center text-gray-950 w-10">{matchedPO.uom}</td>
+                          <td className={`px-1 py-2 text-xs text-right text-gray-950 w-16 ${
                             invLine && Math.abs(matchedPO.unit_price - invLine.unit_price) > 0.01
                               ? 'bg-red-50'
                               : ''
                           }`}>
                             {formatCurrency(matchedPO.unit_price)}
                           </td>
-                          <td className="pl-1 pr-4 py-2 text-xs text-right font-medium text-gray-950 w-24">
+                          <td className="pl-1 pr-2 py-2 text-xs text-right font-medium text-gray-950 w-20">
                             {formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)}
                           </td>
                         </tr>
@@ -2290,12 +2308,12 @@ export function LineItemsPreviewPanel({
                       <td colSpan={6} className="px-1 py-2 text-right text-sm font-semibold text-gray-950 bg-gray-50">
                         PO Total:
                       </td>
-                      <td className="pl-1 pr-4 py-2 text-right text-sm font-bold text-gray-950 bg-gray-50">
+                      <td className="pl-1 pr-2 py-2 text-right text-sm font-bold text-gray-950 bg-gray-50">
                         {formatCurrency(poLines.reduce((sum, line) => sum + (line.qty_ordered * line.unit_price), 0))}
                       </td>
                       {/* Empty cells for visual continuity with Invoice table columns */}
                       {!useDetailedVarianceColumns && (
-                        <td className="px-1.5 py-2 bg-gray-50"></td>
+                        <td className="px-1 py-2 bg-gray-50"></td>
                       )}
                       {isEditMode && (
                         <td className="px-1.5 py-2 bg-gray-50"></td>
@@ -2304,64 +2322,6 @@ export function LineItemsPreviewPanel({
                   </tfoot>
                 </table>
               </div>
-
-              {/* Continuation table to create visual flow between PO and Variance */}
-              <div className="flex-1">
-                <table className="w-full">
-                  <thead className="bg-gray-50 sticky top-0 z-10">
-                    {/* Two-row header to match Invoice/PO/Variance structure */}
-                    <tr>
-                      <th className="px-4 bg-white border-b border-r border-gray-200 h-[36px]">
-                        <div className="h-full"></div>
-                      </th>
-                    </tr>
-                    <tr className="h-[40px]">
-                      <th className="px-1.5 border-r border-gray-200">&nbsp;</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-100">
-                    {(Array.isArray(displaySlots) ? displaySlots : slots).map((slot) => {
-                      const hasPOLine = slot.poLine !== null;
-
-                      // Only show continuation row if there's a PO line at this position
-                      // This creates visual continuity from PO table to Variance column
-                      if (!hasPOLine) {
-                        return null;
-                      }
-
-                      return (
-                        <tr
-                          key={`continuation-${slot.position}`}
-                          className={`h-[48px] border-r border-gray-200 ${
-                            hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'
-                          }`}
-                          onMouseEnter={() => handleRowHover(slot.position)}
-                          onMouseLeave={handleRowLeave}
-                        >
-                          <td className="px-1.5 py-2">&nbsp;</td>
-                        </tr>
-                      );
-                    })}
-
-                    {/* Empty spacer row in edit mode to match "Add Line" row */}
-                    {isEditMode && (
-                      <tr className="h-[40px] border-r border-gray-200 bg-white">
-                        <td className="px-1.5 py-2">&nbsp;</td>
-                      </tr>
-                    )}
-                  </tbody>
-                  <tfoot className="bg-gray-50 sticky bottom-0">
-                    <tr className="h-[42px] border-r border-gray-200 bg-gray-50">
-                      <td className="px-1.5 py-2 bg-gray-50">&nbsp;</td>
-                    </tr>
-                  </tfoot>
-                </table>
-              </div>
-
-              {/* Flexible spacer - only shown when there's enough space */}
-              {useDetailedVarianceColumns && hasEnoughSpace && (
-                <div className="flex-grow min-w-0"></div>
-              )}
 
               {/* Variance Panel - adaptive positioning */}
               {useDetailedVarianceColumns && (
@@ -3070,7 +3030,7 @@ export function LineItemsPreviewPanel({
                         {!useDetailedVarianceColumns && showPO && (
                           <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Variance</th>
                         )}
-                        <th className="px-1.5 text-left text-xs font-medium text-gray-800 uppercase whitespace-nowrap">Assigned PO Line</th>
+                        <th className="px-1.5 pl-3 text-left text-xs font-medium text-gray-800 uppercase whitespace-nowrap border-l border-gray-200">Assigned PO Line</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -3348,7 +3308,7 @@ export function LineItemsPreviewPanel({
                               </td>
                             )}
                             {/* PO / Line column - always visible */}
-                            <td className="px-1.5 py-2 text-xs text-left">
+                            <td className="px-1.5 pl-3 py-2 text-xs text-left border-l border-gray-200">
                               {(() => {
                                 const matchedPoNumber = getMatchedPONumber(line);
                                 const matchedPoLine = getMatchedPOLine(line, lineIndex);
@@ -3364,46 +3324,69 @@ export function LineItemsPreviewPanel({
                                 // In edit mode: show clickable dropdown
                                 if (isEditMode && poDataList && poDataList.length > 0) {
                                   const availableLines = buildAvailablePOLines(line);
+                                  const filteredLines = availableLines.filter(l =>
+                                    l.description.toLowerCase().includes(poLineSearchQuery.toLowerCase()) ||
+                                    l.poNumber.toLowerCase().includes(poLineSearchQuery.toLowerCase()) ||
+                                    `L${l.lineNo}`.toLowerCase().includes(poLineSearchQuery.toLowerCase())
+                                  );
 
                                   return (
-                                    <Select.Root
-                                      value={matchedPoLine.id}
-                                      onValueChange={(newPoLineId) => {
-                                        const selectedLine = availableLines.find(l => l.poLineId === newPoLineId);
-                                        if (selectedLine) {
-                                          handleReassignLine(line, newPoLineId, selectedLine.poNumber);
-                                        }
+                                    <Popover.Root
+                                      onOpenChange={(open) => {
+                                        if (!open) setPoLineSearchQuery('');
                                       }}
                                     >
-                                      <Select.Trigger className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${badgeClasses.bg} ${badgeClasses.text}`}>
-                                        <Select.Value>{pillText}</Select.Value>
-                                        <Select.Icon><ChevronDown className="h-3 w-3" /></Select.Icon>
-                                      </Select.Trigger>
-                                      <Select.Portal>
-                                        <Select.Content className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 max-h-60" style={{ zIndex: 99999 }} position="popper" sideOffset={5}>
-                                          <Select.Viewport className="p-1">
-                                            {availableLines.map((poLine) => {
+                                      <Popover.Trigger className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${badgeClasses.bg} ${badgeClasses.text}`}>
+                                        {pillText}
+                                        <ChevronDown className="h-3 w-3" />
+                                      </Popover.Trigger>
+                                      <Popover.Portal>
+                                        <Popover.Content
+                                          className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 w-[400px]"
+                                          style={{ zIndex: 99999 }}
+                                          sideOffset={5}
+                                          align="start"
+                                        >
+                                          {/* Sticky search field - works in Popover without typeahead issues */}
+                                          <div className="sticky top-0 bg-white border-b border-gray-100 p-2 z-10">
+                                            <input
+                                              type="text"
+                                              placeholder="Search lines..."
+                                              value={poLineSearchQuery}
+                                              onChange={(e) => setPoLineSearchQuery(e.target.value)}
+                                              autoFocus
+                                              className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                            />
+                                          </div>
+                                          <div className="p-1 max-h-[240px] overflow-y-auto">
+                                            {filteredLines.map((poLine) => {
                                               const lineBadgeClasses = getPOBadgeClasses(poLine.poNumber);
                                               const isCurrentMatch = poLine.poLineId === matchedPoLine.id;
                                               return (
-                                                <Select.Item key={poLine.poLineId} value={poLine.poLineId} className={`relative flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${isCurrentMatch ? 'bg-purple-50' : ''}`}>
-                                                  <Select.ItemText>
-                                                    <span className="flex items-center gap-2">
-                                                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
-                                                        {poLine.poNumber}
-                                                      </span>
-                                                      <span className="text-gray-600">L{poLine.lineNo}</span>
-                                                      <span className="text-gray-500 truncate max-w-[120px]">{poLine.description}</span>
-                                                      {isCurrentMatch && <span className="text-purple-600 ml-auto">✓</span>}
+                                                <Popover.Close asChild key={poLine.poLineId}>
+                                                  <button
+                                                    onClick={() => {
+                                                      handleReassignLine(line, poLine.poLineId, poLine.poNumber);
+                                                      setPoLineSearchQuery('');
+                                                    }}
+                                                    className={`w-full flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${isCurrentMatch ? 'bg-purple-50' : ''}`}
+                                                  >
+                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium whitespace-nowrap shrink-0 ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
+                                                      {poLine.poNumber}
                                                     </span>
-                                                  </Select.ItemText>
-                                                </Select.Item>
+                                                    <span className="text-gray-900 w-6 text-center shrink-0 ml-2">L{poLine.lineNo}</span>
+                                                    <span className="text-gray-900 truncate flex-1 ml-2 text-left">{poLine.description}</span>
+                                                    <span className="text-gray-700 w-8 text-right shrink-0 ml-2">×{poLine.qty}</span>
+                                                    <span className="text-gray-950 w-16 text-right shrink-0 ml-2">{formatCurrency(poLine.price)}</span>
+                                                    {isCurrentMatch && <span className="text-purple-600 shrink-0 ml-2">✓</span>}
+                                                  </button>
+                                                </Popover.Close>
                                               );
                                             })}
-                                          </Select.Viewport>
-                                        </Select.Content>
-                                      </Select.Portal>
-                                    </Select.Root>
+                                          </div>
+                                        </Popover.Content>
+                                      </Popover.Portal>
+                                    </Popover.Root>
                                   );
                                 }
 
@@ -3597,7 +3580,7 @@ export function LineItemsPreviewPanel({
                               </td>
                             )}
                             {/* PO / Line column - always visible */}
-                            <td className="px-1.5 py-2 text-xs text-left">
+                            <td className="px-1.5 pl-3 py-2 text-xs text-left border-l border-gray-200">
                               {(() => {
                                 const matchedPoNumber = getMatchedPONumber(line);
                                 const matchedPoLine = getMatchedPOLine(line, lineIndex);
@@ -3613,46 +3596,69 @@ export function LineItemsPreviewPanel({
                                 // In edit mode: show clickable dropdown
                                 if (isEditMode && poDataList && poDataList.length > 0) {
                                   const availableLines = buildAvailablePOLines(line);
+                                  const filteredLines = availableLines.filter(l =>
+                                    l.description.toLowerCase().includes(poLineSearchQuery.toLowerCase()) ||
+                                    l.poNumber.toLowerCase().includes(poLineSearchQuery.toLowerCase()) ||
+                                    `L${l.lineNo}`.toLowerCase().includes(poLineSearchQuery.toLowerCase())
+                                  );
 
                                   return (
-                                    <Select.Root
-                                      value={matchedPoLine.id}
-                                      onValueChange={(newPoLineId) => {
-                                        const selectedLine = availableLines.find(l => l.poLineId === newPoLineId);
-                                        if (selectedLine) {
-                                          handleReassignLine(line, newPoLineId, selectedLine.poNumber);
-                                        }
+                                    <Popover.Root
+                                      onOpenChange={(open) => {
+                                        if (!open) setPoLineSearchQuery('');
                                       }}
                                     >
-                                      <Select.Trigger className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${badgeClasses.bg} ${badgeClasses.text}`}>
-                                        <Select.Value>{pillText}</Select.Value>
-                                        <Select.Icon><ChevronDown className="h-3 w-3" /></Select.Icon>
-                                      </Select.Trigger>
-                                      <Select.Portal>
-                                        <Select.Content className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 max-h-60" style={{ zIndex: 99999 }} position="popper" sideOffset={5}>
-                                          <Select.Viewport className="p-1">
-                                            {availableLines.map((poLine) => {
+                                      <Popover.Trigger className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity ${badgeClasses.bg} ${badgeClasses.text}`}>
+                                        {pillText}
+                                        <ChevronDown className="h-3 w-3" />
+                                      </Popover.Trigger>
+                                      <Popover.Portal>
+                                        <Popover.Content
+                                          className="overflow-hidden bg-white rounded-md shadow-lg border border-gray-200 w-[400px]"
+                                          style={{ zIndex: 99999 }}
+                                          sideOffset={5}
+                                          align="start"
+                                        >
+                                          {/* Sticky search field - works in Popover without typeahead issues */}
+                                          <div className="sticky top-0 bg-white border-b border-gray-100 p-2 z-10">
+                                            <input
+                                              type="text"
+                                              placeholder="Search lines..."
+                                              value={poLineSearchQuery}
+                                              onChange={(e) => setPoLineSearchQuery(e.target.value)}
+                                              autoFocus
+                                              className="w-full px-2 py-1.5 text-xs border border-gray-200 rounded focus:outline-none focus:ring-1 focus:ring-purple-500"
+                                            />
+                                          </div>
+                                          <div className="p-1 max-h-[240px] overflow-y-auto">
+                                            {filteredLines.map((poLine) => {
                                               const lineBadgeClasses = getPOBadgeClasses(poLine.poNumber);
                                               const isCurrentMatch = poLine.poLineId === matchedPoLine.id;
                                               return (
-                                                <Select.Item key={poLine.poLineId} value={poLine.poLineId} className={`relative flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${isCurrentMatch ? 'bg-purple-50' : ''}`}>
-                                                  <Select.ItemText>
-                                                    <span className="flex items-center gap-2">
-                                                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
-                                                        {poLine.poNumber}
-                                                      </span>
-                                                      <span className="text-gray-600">L{poLine.lineNo}</span>
-                                                      <span className="text-gray-500 truncate max-w-[120px]">{poLine.description}</span>
-                                                      {isCurrentMatch && <span className="text-purple-600 ml-auto">✓</span>}
+                                                <Popover.Close asChild key={poLine.poLineId}>
+                                                  <button
+                                                    onClick={() => {
+                                                      handleReassignLine(line, poLine.poLineId, poLine.poNumber);
+                                                      setPoLineSearchQuery('');
+                                                    }}
+                                                    className={`w-full flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${isCurrentMatch ? 'bg-purple-50' : ''}`}
+                                                  >
+                                                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium whitespace-nowrap shrink-0 ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
+                                                      {poLine.poNumber}
                                                     </span>
-                                                  </Select.ItemText>
-                                                </Select.Item>
+                                                    <span className="text-gray-900 w-6 text-center shrink-0 ml-2">L{poLine.lineNo}</span>
+                                                    <span className="text-gray-900 truncate flex-1 ml-2 text-left">{poLine.description}</span>
+                                                    <span className="text-gray-700 w-8 text-right shrink-0 ml-2">×{poLine.qty}</span>
+                                                    <span className="text-gray-950 w-16 text-right shrink-0 ml-2">{formatCurrency(poLine.price)}</span>
+                                                    {isCurrentMatch && <span className="text-purple-600 shrink-0 ml-2">✓</span>}
+                                                  </button>
+                                                </Popover.Close>
                                               );
                                             })}
-                                          </Select.Viewport>
-                                        </Select.Content>
-                                      </Select.Portal>
-                                    </Select.Root>
+                                          </div>
+                                        </Popover.Content>
+                                      </Popover.Portal>
+                                    </Popover.Root>
                                   );
                                 }
 

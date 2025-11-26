@@ -984,7 +984,7 @@ export function DetailsTab({
     <Tooltip.Provider>
       <div className="h-full flex flex-col relative">
         {/* Scrollable Content Area - Now takes full height */}
-        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative">
+        <div ref={scrollContainerRef} className="flex-1 overflow-y-auto relative pb-24">
           {/* Fraud Risk Banner - Show when fraud risk is triggered */}
           {invoiceData.fraud_risk?.triggered && (
             <FraudRiskBanner

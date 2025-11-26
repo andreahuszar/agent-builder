@@ -9,6 +9,7 @@
 
 import { UnifiedInvoice } from '@/types/invoice';
 import { enrichInvoiceWithDemoData } from './invoiceDataService';
+import { getMockPOByNumber } from './mockPOService';
 
 // Type alias for backward compatibility
 type Invoice = Partial<UnifiedInvoice>;
@@ -175,6 +176,143 @@ export const generateBaselineInvoices = (): Invoice[] => {
         ]
       }
     ]
+  } as Invoice);
+
+  // ========================================================================
+  // MULTI-PO INVOICE (Test for multiple PO matching)
+  // ========================================================================
+  const multiPODate = new Date(now);
+  multiPODate.setDate(multiPODate.getDate() - 4); // Created 4 days ago
+  const multiPODueDate = new Date(multiPODate);
+  multiPODueDate.setDate(multiPODueDate.getDate() + 30); // Due in 26 days
+
+  const multiPOLines = [
+    {
+      id: 'line-multi-po-1',
+      line_no: 1,
+      sku: 'DK-0001',
+      product_code: 'DK-0001',
+      description: 'Software License - Annual Subscription',
+      qty: 10,
+      uom: 'EA',
+      unit_price: 200.00,
+      net_amount: 2000.00,
+      line_total: 2000.00,
+      po_line_id: 'po-line-9001-1', // From PO-2025-9001
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-multi-po-2',
+      line_no: 2,
+      sku: 'TV-0002',
+      product_code: 'TV-0002',
+      description: 'Professional Services - Account Onboarding Sessions',
+      qty: 4,
+      uom: 'EA',
+      unit_price: 1250.00,
+      net_amount: 5000.00,
+      line_total: 5000.00,
+      po_line_id: 'po-line-9001-2', // From PO-2025-9001
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-multi-po-3',
+      line_no: 3,
+      sku: 'HW-5500',
+      product_code: 'HW-5500',
+      description: 'Server Hardware - Rack Mount',
+      qty: 2,
+      uom: 'EA',
+      unit_price: 3500.00,
+      net_amount: 7000.00,
+      line_total: 7000.00,
+      po_line_id: 'po-line-9002-1', // From PO-2025-9002 (different PO!)
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-multi-po-4',
+      line_no: 4,
+      sku: 'NET-7700',
+      product_code: 'NET-7700',
+      description: 'Network Equipment - 48-Port Switch',
+      qty: 1,
+      uom: 'EA',
+      unit_price: 2500.00,
+      net_amount: 2500.00,
+      line_total: 2500.00,
+      po_line_id: 'po-line-9002-2', // From PO-2025-9002 (different PO!)
+      gr_line_id: null,
+      ses_line_id: null
+    }
+  ];
+
+  const multiPOSubtotal = 16500.00;
+  const multiPOTax = 3300.00; // 20% VAT
+  const multiPOTotal = 19800.00;
+
+  mockInvoices.push({
+    id: 'baseline-multi-po-1',
+    invoice_number: 'INV-MULTI-001',
+    vendor_name_snapshot: 'TechSupply Solutions Ltd',
+    vendor_id: 'VND0001412',
+    vendor_tax_id_snapshot: '637 214 5',
+    vendor_address_snapshot: 'Office 12, 123 Fairview, Claremont Street, Stratford-upon-Avon, CV37 0AE',
+    vendor_email: 'accountsreceiveable@techsupplysls.com',
+    vendor_phone: '+44 (0) 1789 557 849',
+    customer_no: 'CS948929',
+    job_number: null,
+    bill_to_snapshot: {
+      legal_name: 'GSPV Ltd',
+      tax_id: '927 8131 1',
+      email: 'phil@xelix.com',
+      phone: '+44 20 8648 4267',
+      address: 'Senna Building, Gorsuch Pl, London, E2 8JF'
+    },
+    invoice_date: '2025-11-09',
+    due_date: '2025-12-09',
+    email_received_date: '2025-11-08',
+    currency: 'GBP',
+    subtotal: multiPOSubtotal,
+    tax_total: multiPOTax,
+    tax_rate_percent: 20,
+    total: multiPOTotal,
+    status: 'verification',
+    match_status: 'matched',
+    type: 'PO',
+    vendor_requires_po: true,
+    vendor_is_verified: true,
+    approval_status: 'pending',
+    assigned_to_name: 'James Wilson',
+    assigned_to_user_id: 'user-4',
+    po_numbers_cached: ['PO-2025-9001', 'PO-2025-9002'], // MULTIPLE POs!
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: [],
+    created_at: multiPODate.toISOString(),
+    updated_at: multiPODate.toISOString(),
+    data_ingestion_date: multiPODate.toISOString().split('T')[0],
+    ledger: 'Accounts Payable',
+    cost_center: 'CC-9002 - Corporate Services',
+    gl_code: 'GL-5000',
+    department: 'Product',
+    payment_terms: '30',
+    lines: multiPOLines,
+    invoice_lines: multiPOLines,
+    payment_bank_details: {
+      bank_name: 'HSBC UK',
+      account_number: '12345674',
+      iban: 'GB63 HBUK 4005 1512 3456 74',
+      swift_bic: 'HBUKGB4B',
+      sort_code: '40-05-15'
+    },
+    display_config: {
+      template: 'purple-modern',
+      interactiveFields: [],
+      layout: {}
+    }
   } as Invoice);
 
   // ========================================================================
@@ -2272,6 +2410,18 @@ export const getMockPoComparisonData = (invoiceId: string, invoiceData?: any): a
     };
   });
 
+  // Convert poData to PODataWithLines format for poDataList
+  const poDataWithLines = {
+    id: poData.po_id,
+    po_number: poData.po_number,
+    vendor_id: poData.vendor_id,
+    currency: poData.currency,
+    po_status: poData.po_status,
+    subtotal: poData.subtotal,
+    total: poData.total,
+    lines: poData.po_lines
+  };
+
   return {
     invoice: {
       id: invoice.id,
@@ -2280,6 +2430,7 @@ export const getMockPoComparisonData = (invoiceId: string, invoiceData?: any): a
       lines: invoiceLines
     },
     poData: poData,
+    poDataList: [poDataWithLines], // Also provide as array for consistent component handling
     matchResults: matchResults,
     grData: {
       gr_lines: []
@@ -2305,6 +2456,209 @@ export const getMockPoComparisonData = (invoiceId: string, invoiceData?: any): a
       };
     }),
     unmatchedPoLines: []
+  };
+};
+
+/**
+ * Generate mock PO comparison data for invoices with MULTIPLE POs
+ * Supports multi-PO scenarios with utilization tracking
+ *
+ * @param invoiceId - Invoice ID
+ * @param invoiceData - Optional invoice data to use
+ */
+export const getMockPoComparisonDataMulti = (invoiceId: string, invoiceData?: any): any | null => {
+  if (!isMockInvoice(invoiceId)) {
+    return null;
+  }
+
+  // Use provided invoice data if available, otherwise fetch from static mock data
+  const invoice = invoiceData || getMockInvoiceById(invoiceId);
+  if (!invoice || !invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0) {
+    return null;
+  }
+
+  const poNumbers = invoice.po_numbers_cached;
+  const invoiceLines = invoice.lines || invoice.invoice_lines || [];
+
+  // Fetch all POs
+  const poDataList: any[] = [];
+  const allMatchResults: any[] = [];
+  const utilization: {[poNumber: string]: any} = {};
+
+  poNumbers.forEach((poNumber: string) => {
+    const mockPO = getMockPOByNumber(poNumber);
+
+    let poLines: any[];
+    if (mockPO && mockPO.lines) {
+      poLines = mockPO.lines;
+    } else {
+      // Fallback: create mock PO lines
+      poLines = invoiceLines
+        .slice(0, 3)
+        .map((line: any, index: number) => ({
+          id: `po-line-${poNumber}-${index + 1}`,
+          line_no: index + 1,
+          description: line.description,
+          item_description: line.description,
+          sku: line.sku || line.product_code || '-',
+          qty_ordered: line.qty * 0.95,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: line.qty * 0.95,
+          qty_remaining_to_invoice: line.qty * 0.95,
+          uom: line.uom || 'EA',
+          unit_price: line.unit_price * 1.02,
+          status: 'open'
+        }));
+    }
+
+    const poTotal = poLines.reduce((sum: number, line: any) =>
+      sum + (line.qty_ordered * line.unit_price), 0);
+
+    poDataList.push({
+      id: `po-${poNumber}`,
+      po_number: poNumber,
+      vendor_id: invoice.vendor_id,
+      currency: invoice.currency || 'USD',
+      po_status: 'approved',
+      subtotal: poTotal,
+      total: poTotal * 1.2,
+      lines: poLines
+    });
+  });
+
+  // Generate match results for all invoice lines
+  invoiceLines.forEach((invLine: any, index: number) => {
+    // Try to find matching PO line across all POs
+    let poLine = null;
+    let matchedPoNumber = null;
+
+    // First try to match by po_line_id
+    if (invLine.po_line_id) {
+      for (const poData of poDataList) {
+        poLine = poData.lines.find((pl: any) => pl.id === invLine.po_line_id);
+        if (poLine) {
+          matchedPoNumber = poData.po_number;
+          break;
+        }
+      }
+    }
+
+    // Fallback: match by line_no to first PO
+    if (!poLine && poDataList[0]) {
+      poLine = poDataList[0].lines.find((pl: any) => pl.line_no === invLine.line_no);
+      if (poLine) {
+        matchedPoNumber = poDataList[0].po_number;
+      }
+    }
+
+    const invoiceQtyForComparison = invLine.qty;
+    const invoicePriceForComparison = invLine.unit_price;
+    const qtyVariance = poLine ? invoiceQtyForComparison - poLine.qty_ordered : 0;
+    const priceVariance = poLine ? invoicePriceForComparison - poLine.unit_price : 0;
+    const invoiceNetAmount = invLine.net_amount || (invLine.qty * invLine.unit_price);
+    const poNetAmount = poLine ? (poLine.qty_ordered * poLine.unit_price) : 0;
+
+    allMatchResults.push({
+      id: `match-${index + 1}`,
+      invoice_line_id: invLine.id || `line-${index + 1}`,
+      matched_po_line_id: poLine?.id || null,
+      matched_po_number: matchedPoNumber,
+      matched_gr_line_id: null,
+      qty_variance: qtyVariance,
+      price_variance: priceVariance,
+      amount_variance: poLine ? invoiceNetAmount - poNetAmount : 0,
+      within_tolerance: poLine ? (Math.abs(qtyVariance) < 1 && Math.abs(priceVariance) < 10) : false,
+      explanation_code: poLine ? (Math.abs(qtyVariance) > 1 ? 'QTY_MISMATCH' : Math.abs(priceVariance) > 10 ? 'PRICE_MISMATCH' : 'PERFECT_MATCH') : 'NO_PO_LINE',
+      po_line_no: poLine?.line_no || null,
+      po_description: poLine?.description || null,
+      po_qty: poLine?.qty_ordered || null,
+      po_unit_price: poLine?.unit_price || null,
+      po_uom: poLine?.uom || null,
+      gr_qty_received: null
+    });
+  });
+
+  // Calculate utilization for each PO
+  poDataList.forEach((poData) => {
+    const poNumber = poData.po_number;
+    const poLines = poData.lines;
+
+    // Count matched lines for this PO
+    const matchedLineIds = allMatchResults
+      .filter(mr => mr.matched_po_number === poNumber)
+      .map(mr => mr.matched_po_line_id);
+
+    const usedLines = new Set(matchedLineIds).size;
+    const totalLines = poLines.length;
+
+    // Calculate amounts
+    const totalAmount = poLines.reduce((sum: number, line: any) =>
+      sum + (line.qty_ordered * line.unit_price), 0);
+
+    const usedAmount = poLines
+      .filter((line: any) => matchedLineIds.includes(line.id))
+      .reduce((sum: number, line: any) =>
+        sum + (line.qty_ordered * line.unit_price), 0);
+
+    // Identify unused and fully used lines
+    const unusedLines = poLines.filter((line: any) =>
+      !matchedLineIds.includes(line.id)
+    );
+
+    const fullyUsedLines = poLines.filter((line: any) =>
+      matchedLineIds.includes(line.id)
+    );
+
+    utilization[poNumber] = {
+      totalLines,
+      usedLines,
+      totalAmount,
+      usedAmount,
+      unusedLines,
+      fullyUsedLines
+    };
+  });
+
+  // Build line comparison with PO number
+  const lineComparison = invoiceLines.map((invLine: any, index: number) => {
+    const matchResult = allMatchResults[index];
+
+    let poLine = null;
+    let poNumber = null;
+
+    if (matchResult.matched_po_line_id) {
+      for (const poData of poDataList) {
+        poLine = poData.lines.find((pl: any) => pl.id === matchResult.matched_po_line_id);
+        if (poLine) {
+          poNumber = poData.po_number;
+          break;
+        }
+      }
+    }
+
+    return {
+      invoice: invLine,
+      po: poLine || null,
+      po_number: poNumber,
+      gr: null,
+      matchResult: matchResult,
+      hasVariance: matchResult && !matchResult.within_tolerance,
+      status: poLine ? (matchResult.within_tolerance ? 'matched' : 'variance') : 'unmatched'
+    };
+  });
+
+  return {
+    invoice: {
+      id: invoice.id,
+      invoice_number: invoice.invoice_number,
+      po_numbers_cached: invoice.po_numbers_cached,
+      lines: invoiceLines
+    },
+    poDataList: poDataList,
+    matchResults: allMatchResults,
+    utilization: utilization,
+    lineComparison: lineComparison
   };
 };
 

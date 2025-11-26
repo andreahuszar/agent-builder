@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
-import { isMockInvoice, getMockPoComparisonData } from '@/app/services/mockInvoiceService';
+import {
+  isMockInvoice,
+  getMockPoComparisonData,
+  getMockPoComparisonDataMulti,
+  getMockInvoiceById
+} from '@/app/services/mockInvoiceService';
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -13,7 +18,14 @@ export async function GET(request: Request, { params }: Params) {
   try {
     // Return mock PO comparison data for mock invoices
     if (isMockInvoice(invoiceId)) {
-      const mockData = getMockPoComparisonData(invoiceId);
+      // Check if this is a multi-PO invoice
+      const mockInvoice = getMockInvoiceById(invoiceId);
+      const isMultiPO = mockInvoice && mockInvoice.po_numbers_cached && mockInvoice.po_numbers_cached.length > 1;
+
+      const mockData = isMultiPO
+        ? getMockPoComparisonDataMulti(invoiceId)
+        : getMockPoComparisonData(invoiceId);
+
       return NextResponse.json(mockData);
     }
     // Get invoice with its lines
