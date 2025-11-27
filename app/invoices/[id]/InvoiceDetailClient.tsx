@@ -643,9 +643,9 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           }}
         >
           <ResizablePanel
-            defaultSizes={[50, 50]}
+            defaultSizes={[42, 58]}
             minSizes={[20, 30]}
-            storageKey={`invoice-unified-v2-${invoiceId}`}
+            storageKey={`invoice-unified-v4-${invoiceId}`}
             className="h-full"
             onSizeChange={handlePanelSizeChange}
           >
@@ -766,6 +766,19 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
   const poNumber = getPOStatus();
 
+  // Derive unique PO numbers from poComparisonData (stays in sync with line items)
+  const assignedPONumbers = useMemo(() => {
+    // Primary source: poDataList from comparison data (reflects what's assigned to line items)
+    if (poComparisonData?.poDataList && poComparisonData.poDataList.length > 0) {
+      return poComparisonData.poDataList.map((po: any) => po.po_number);
+    }
+    // Fallback: use header's cached PO numbers
+    if (invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0) {
+      return invoice.po_numbers_cached;
+    }
+    return [];
+  }, [poComparisonData, invoice.po_numbers_cached]);
+
   // Calculate missing fields count
   // This MUST match the exact logic in InvoiceTabs fieldErrorsCount
   const calculateMissingFieldsCount = (invoiceData?: any) => {
@@ -847,6 +860,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         total={invoiceTotal}
         currency={invoice.currency}
         poNumber={poNumber}
+        poNumbers={assignedPONumbers}
         matchStatus={invoice.match_status}
         matchResults={grData?.isPartial && matchResults.length === 0 ?
           // Create synthetic match result to indicate partial GR when matching hasn't run

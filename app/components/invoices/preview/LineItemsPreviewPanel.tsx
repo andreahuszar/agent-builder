@@ -15,7 +15,8 @@ import { useToast } from '@/app/components/ui/Toast';
 import { SparkleButton } from '../SparkleButton';
 import { CustomRulePopover, UnitConversionRule } from '../CustomRulePopover';
 import { TeachRuleDrawer } from '../TeachRuleDrawer';
-import { POLineUsage, ResolvedPOLine } from '@/types/api';
+import { AddPODrawer } from '../AddPODrawer';
+import { POLineUsage, ResolvedPOLine, POWithLines } from '@/types/api';
 
 interface InvoiceLineItem {
   id?: string;
@@ -116,6 +117,9 @@ interface LineItemsPreviewPanelProps {
   hideEditButton?: boolean; // Hide the Edit button in the Invoice table header
   externalEditMode?: boolean; // External control for edit mode
   onEditModeChange?: (isEditing: boolean) => void; // Callback when edit mode changes
+  // Add PO flow props
+  onAddPO?: (poNumber: string, poData: any) => void; // Callback when a PO is added
+  invoiceVendor?: string; // Vendor name for filtering POs
 }
 
 // Draggable and Droppable Row Component for drag-and-drop functionality
@@ -285,6 +289,8 @@ export function LineItemsPreviewPanel({
   hideEditButton = false,
   externalEditMode,
   onEditModeChange,
+  onAddPO,
+  invoiceVendor,
 }: LineItemsPreviewPanelProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(!startExpanded); // Start expanded if startExpanded is true
@@ -307,6 +313,9 @@ export function LineItemsPreviewPanel({
   const [poLineSearchQuery, setPoLineSearchQuery] = useState('');
   const [otherPOLinesExpanded, setOtherPOLinesExpanded] = useState(false); // Collapsed by default
 
+  // Add PO drawer state
+  const [showAddPODrawer, setShowAddPODrawer] = useState(false);
+  const [reopenDropdownForLineId, setReopenDropdownForLineId] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement>(null);
   const flexContainerRef = useRef<HTMLDivElement>(null);
@@ -861,6 +870,14 @@ export function LineItemsPreviewPanel({
     return '';
   };
 
+  // Get PO number for a PO line (used for sorting and highlighting)
+  const getPONumberForLine = (poLine: POLineItem | null): string | null => {
+    if (!poLine) return null;
+    return poDataList?.find(po =>
+      (po.lines || po.po_lines)?.some((l: any) => l.id === poLine.id)
+    )?.po_number || null;
+  };
+
   // Check if an invoice line has a staged reassignment
   const hasStagedReassignment = (invoiceLine: InvoiceLineItem): boolean => {
     const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
@@ -1039,8 +1056,14 @@ export function LineItemsPreviewPanel({
       group => group.unused.length > 0 || group.usedByOther.length > 0
     );
 
-    // Sort by PO number for consistent ordering
-    poGroups.sort((a, b) => a.poNumber.localeCompare(b.poNumber));
+    // Sort by PO number, with selected PO first when a specific PO is selected
+    poGroups.sort((a, b) => {
+      if (selectedPO !== 'all') {
+        if (a.poNumber === selectedPO && b.poNumber !== selectedPO) return -1;
+        if (a.poNumber !== selectedPO && b.poNumber === selectedPO) return 1;
+      }
+      return a.poNumber.localeCompare(b.poNumber);
+    });
 
     // Calculate totals
     const totalUnused = poGroups.reduce((sum, g) => sum + g.unused.length, 0);
@@ -1055,16 +1078,33 @@ export function LineItemsPreviewPanel({
     const currentPoNumber = getMatchedPONumber(invoiceLine);
     const currentPoLineId = invoiceLine.po_line_id || null;
 
-    // Stage the reassignment
-    setStagedReassignments(prev => ({
-      ...prev,
-      [lineId]: {
+    // Stage the reassignment, clearing any conflicting claims from other lines
+    setStagedReassignments(prev => {
+      const updated = { ...prev };
+
+      // Clear any other line's claim to this same PO line (conflict resolution)
+      // "Last action wins" - the victim line becomes unassigned (not reverted to original)
+      for (const [otherLineId, reassignment] of Object.entries(updated)) {
+        if (otherLineId !== lineId && reassignment.newPoLineId === newPoLineId) {
+          // Set to unassigned rather than deleting (which would revert to original)
+          updated[otherLineId] = {
+            ...reassignment,
+            newPoLineId: null,
+            newPoNumber: null
+          };
+        }
+      }
+
+      // Add this line's reassignment
+      updated[lineId] = {
         oldPoLineId: currentPoLineId,
         oldPoNumber: currentPoNumber,
         newPoLineId,
         newPoNumber
-      }
-    }));
+      };
+
+      return updated;
+    });
 
     // Close the dropdown
     setReassignmentDropdownOpen(null);
@@ -1129,6 +1169,25 @@ export function LineItemsPreviewPanel({
     );
   };
 
+  // Handle adding a new PO from the drawer
+  const handleAddPO = useCallback((poNumber: string, poData: PODataWithLines) => {
+    // Close drawer
+    setShowAddPODrawer(false);
+
+    // Notify parent to add PO to the invoice's linked POs
+    // Parent (DetailsTab) handles showing the toast
+    onAddPO?.(poNumber, poData);
+
+    // If opened from dropdown, reopen that dropdown
+    if (reopenDropdownForLineId) {
+      // Use setTimeout to allow drawer close animation
+      setTimeout(() => {
+        setReassignmentDropdownOpen(reopenDropdownForLineId);
+        setReopenDropdownForLineId(null);
+      }, 350);
+    }
+  }, [onAddPO, reopenDropdownForLineId]);
+
   // Cancel all staged reassignments
   const handleCancelReassignments = () => {
     const count = Object.keys(stagedReassignments).length;
@@ -1152,17 +1211,70 @@ export function LineItemsPreviewPanel({
     return matchResults.find((mr) => mr.invoice_line_id === lineId);
   };
 
+  // Helper: Find a PO line by ID across all POs
+  const findPOLineById = (poLineId: string) => {
+    // First try the local poLines array
+    const localMatch = poLines.find(po => po.id === poLineId);
+    if (localMatch) return localMatch;
+
+    // Search across all POs in poDataList
+    if (poDataList) {
+      for (const poData of poDataList) {
+        const lines = poData.lines || poData.po_lines || [];
+        const match = lines.find((pl: any) => pl.id === poLineId);
+        if (match) return match;
+      }
+    }
+    return null;
+  };
+
   // Get PO line that matches an invoice line
   const getMatchedPOLine = (invoiceLine: InvoiceLineItem, lineIndex?: number) => {
-    // First try to find a match via match results
-    const matchResult = getMatchResultForLine(invoiceLine.id);
-    if (matchResult?.matched_po_line_id) {
-      return poLines.find(po => po.id === matchResult.matched_po_line_id);
+    const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
+
+    // Helper to check if a PO line has been "stolen" by another invoice line's staged reassignment
+    const isStolen = (poLineId: string) => {
+      // Check if any OTHER invoice line has a staged reassignment targeting this PO line
+      for (const [otherLineId, reassignment] of Object.entries(stagedReassignments)) {
+        if (otherLineId !== lineId && reassignment.newPoLineId === poLineId) {
+          return true; // Another line has claimed this PO line
+        }
+      }
+      return false;
+    };
+
+    // 1. Check for staged reassignment first (pending changes)
+    if (stagedReassignments[lineId]?.newPoLineId) {
+      return findPOLineById(stagedReassignments[lineId].newPoLineId);
     }
 
-    // If no match result, use index-based matching for simple comparison
+    // 2. Check for saved po_line_id on the invoice line
+    if (invoiceLine.po_line_id) {
+      // Check if this PO line was stolen by another line
+      if (isStolen(invoiceLine.po_line_id)) {
+        return null; // Another line claimed it
+      }
+      return findPOLineById(invoiceLine.po_line_id);
+    }
+
+    // 3. Check match results from backend
+    const matchResult = getMatchResultForLine(lineId);
+    if (matchResult?.matched_po_line_id) {
+      // Check if this PO line was stolen by another line
+      if (isStolen(matchResult.matched_po_line_id)) {
+        return null; // Another line claimed it
+      }
+      return findPOLineById(matchResult.matched_po_line_id);
+    }
+
+    // 4. Index-based fallback only for initial display (before any assignments)
     if (lineIndex !== undefined && poLines[lineIndex]) {
-      return poLines[lineIndex];
+      const poLine = poLines[lineIndex];
+      // Check if this PO line was stolen by another line
+      if (isStolen(poLine.id)) {
+        return null; // Another line claimed it
+      }
+      return poLine;
     }
 
     return null;
@@ -1439,8 +1551,19 @@ export function LineItemsPreviewPanel({
   // Process slots for grouped view if needed
   const getDisplaySlots = () => {
     if (viewMode === 'default') {
-      // Sort by line number only
+      // Sort by line number, with selected PO lines first when a specific PO is selected
       const sortedSlots = [...slots].sort((a, b) => {
+        // When a specific PO is selected, prioritize those lines
+        if (isMultiPO && selectedPO !== 'all') {
+          const poNumberA = getPONumberForLine(a.poLine);
+          const poNumberB = getPONumberForLine(b.poLine);
+
+          // Selected PO lines come first
+          if (poNumberA === selectedPO && poNumberB !== selectedPO) return -1;
+          if (poNumberA !== selectedPO && poNumberB === selectedPO) return 1;
+        }
+
+        // Then sort by line number
         const lineNoA = a.invoiceLine?.line_no ?? Infinity;
         const lineNoB = b.invoiceLine?.line_no ?? Infinity;
         return lineNoA - lineNoB;
@@ -2223,17 +2346,12 @@ export function LineItemsPreviewPanel({
                             {(() => {
                               const matchedPoNumber = getMatchedPONumber(line);
                               const matchedPoLine = getMatchedPOLine(line, lineIndex);
+                              const isUnmatched = !matchedPoNumber || !matchedPoLine;
 
-                              // If no match, show "Unmatched"
-                              if (!matchedPoNumber || !matchedPoLine) {
-                                return <span className="text-gray-400 text-xs">Unmatched</span>;
-                              }
-
-                              const badgeClasses = getPOBadgeClasses(matchedPoNumber);
-                              const pillText = `${matchedPoNumber} · L${matchedPoLine.line_no}`;
-
-                              // In edit mode: show clickable dropdown
+                              // In edit mode: show clickable dropdown (for both matched AND unmatched)
                               if (isEditMode && poDataList && poDataList.length > 0) {
+                                const badgeClasses = !isUnmatched ? getPOBadgeClasses(matchedPoNumber) : { bg: '', text: '' };
+                                const pillText = !isUnmatched ? `${matchedPoNumber} · L${matchedPoLine.line_no}` : '';
                                 const availableLines = buildAvailablePOLines(line);
                                 const filteredLines = availableLines.filter(l =>
                                   l.description.toLowerCase().includes(poLineSearchQuery.toLowerCase()) ||
@@ -2247,8 +2365,11 @@ export function LineItemsPreviewPanel({
                                       if (!open) setPoLineSearchQuery('');
                                     }}
                                   >
-                                    <Popover.Trigger className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap ${badgeClasses.bg} ${badgeClasses.text}`}>
-                                      {pillText}
+                                    <Popover.Trigger className={isUnmatched
+                                      ? `inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer hover:bg-gray-100 transition-colors whitespace-nowrap text-gray-700 bg-gray-50 border border-gray-300`
+                                      : `inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium cursor-pointer hover:opacity-80 transition-opacity whitespace-nowrap ${badgeClasses.bg} ${badgeClasses.text}`
+                                    }>
+                                      {isUnmatched ? 'Unmatched' : pillText}
                                       <ChevronDown className="h-3 w-3" />
                                     </Popover.Trigger>
                                     <Popover.Portal>
@@ -2270,19 +2391,21 @@ export function LineItemsPreviewPanel({
                                           />
                                         </div>
                                         <div className="p-1 max-h-[280px] overflow-y-auto">
-                                          {/* Clear Assignment Option */}
-                                          <Popover.Close asChild>
-                                            <button
-                                              onClick={() => handleClearAssignment(line)}
-                                              className="w-full flex items-center px-2 py-1.5 text-xs rounded hover:bg-red-50 text-gray-600 border-b border-gray-100 mb-1"
-                                            >
-                                              <X className="h-3 w-3 mr-2 text-gray-400" />
-                                              <span>No PO line / Clear assignment</span>
-                                            </button>
-                                          </Popover.Close>
+                                          {/* Clear Assignment Option - only show if already matched */}
+                                          {!isUnmatched && (
+                                            <Popover.Close asChild>
+                                              <button
+                                                onClick={() => handleClearAssignment(line)}
+                                                className="w-full flex items-center px-2 py-1.5 text-xs rounded hover:bg-red-50 text-gray-600 border-b border-gray-100 mb-1"
+                                              >
+                                                <X className="h-3 w-3 mr-2 text-gray-400" />
+                                                <span>No PO line / Clear assignment</span>
+                                              </button>
+                                            </Popover.Close>
+                                          )}
                                           {filteredLines.map((poLine) => {
                                             const lineBadgeClasses = getPOBadgeClasses(poLine.poNumber);
-                                            const isCurrentMatch = poLine.poLineId === matchedPoLine.id;
+                                            const isCurrentMatch = !isUnmatched && poLine.poLineId === matchedPoLine?.id;
                                             const isUsedByOther = poLine.usage.state === 'usedByOtherInvoice';
                                             const isUsedByThis = poLine.usage.state === 'usedByThisInvoice' && !isCurrentMatch;
                                             const invoiceNumber = isUsedByOther && poLine.usage.state === 'usedByOtherInvoice'
@@ -2294,7 +2417,7 @@ export function LineItemsPreviewPanel({
                                               return (
                                                 <div
                                                   key={poLine.poLineId}
-                                                  className="w-full flex items-center px-2 py-1.5 text-xs rounded bg-amber-50/50 cursor-not-allowed border-l-2 border-gray-300"
+                                                  className="w-full flex items-center px-2 py-1.5 text-xs rounded bg-amber-50/50 cursor-not-allowed"
                                                 >
                                                   {/* PO Badge - fixed width */}
                                                   <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium w-24 shrink-0 justify-center ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
@@ -2328,7 +2451,7 @@ export function LineItemsPreviewPanel({
                                                   }}
                                                   className={`w-full flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${
                                                     isCurrentMatch ? 'bg-purple-50 border-l-2 border-purple-500' :
-                                                    isUsedByThis ? 'bg-blue-50/50 border-l-2 border-blue-300' : ''
+                                                    isUsedByThis ? 'bg-blue-50/50' : ''
                                                   }`}
                                                 >
                                                   {/* PO Badge - fixed width */}
@@ -2366,6 +2489,23 @@ export function LineItemsPreviewPanel({
                                               </Popover.Close>
                                             );
                                           })}
+                                          {/* Add Another PO Option */}
+                                          {onAddPO && (
+                                            <div className="border-t border-gray-100 mt-1 pt-1">
+                                              <Popover.Close asChild>
+                                                <button
+                                                  onClick={() => {
+                                                    setReopenDropdownForLineId(line.id || `line-${line.line_no}`);
+                                                    setShowAddPODrawer(true);
+                                                  }}
+                                                  className="w-full flex items-center px-2 py-1.5 text-xs rounded hover:bg-purple-50 text-purple-700"
+                                                >
+                                                  <Plus className="h-3 w-3 mr-2" />
+                                                  <span>Add another PO...</span>
+                                                </button>
+                                              </Popover.Close>
+                                            </div>
+                                          )}
                                         </div>
                                       </Popover.Content>
                                     </Popover.Portal>
@@ -2373,7 +2513,14 @@ export function LineItemsPreviewPanel({
                                 );
                               }
 
-                              // View mode: static badge
+                              // View mode: static text
+                              if (isUnmatched) {
+                                return <span className="text-gray-400 text-xs">Unmatched</span>;
+                              }
+
+                              // View mode: static badge for matched lines
+                              const badgeClasses = getPOBadgeClasses(matchedPoNumber);
+                              const pillText = `${matchedPoNumber} · L${matchedPoLine.line_no}`;
                               return (
                                 <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium ${badgeClasses.bg} ${badgeClasses.text}`}>
                                   {pillText}
@@ -2516,8 +2663,19 @@ export function LineItemsPreviewPanel({
                           {/* Inline utilization summary - only when specific PO is selected */}
                           {isMultiPO && utilization && selectedPO !== 'all' && (
                             <span className="text-xs text-gray-700 ml-2">
-                              {`${selectedPO} • ${getUtilizationSummary(selectedPO)}`}
+                              {getUtilizationSummary(selectedPO)}
                             </span>
+                          )}
+
+                          {/* Add PO Button */}
+                          {onAddPO && (
+                            <button
+                              onClick={() => setShowAddPODrawer(true)}
+                              className="inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50 ml-auto"
+                            >
+                              <Plus className="h-3 w-3" />
+                              Add PO
+                            </button>
                           )}
                         </div>
                       </th>
@@ -2626,11 +2784,11 @@ export function LineItemsPreviewPanel({
                   if (poGroups.length === 0) return null;
 
                   return (
-                    <div className="mt-2 border border-gray-200 rounded-lg bg-gray-50">
+                    <div className="mt-2 border-t border-gray-200 bg-gray-50">
                       {/* Collapsible Header */}
                       <button
                         onClick={() => setOtherPOLinesExpanded(!otherPOLinesExpanded)}
-                        className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-gray-100 transition-colors rounded-t-lg"
+                        className="w-full flex items-center justify-between px-4 py-2 text-left hover:bg-gray-100 transition-colors"
                       >
                         <div className="flex items-center gap-2">
                           <ChevronDown
@@ -2641,9 +2799,9 @@ export function LineItemsPreviewPanel({
                             ({totalUnused} available{totalUsedByOther > 0 ? `, ${totalUsedByOther} used by other invoices` : ''})
                           </span>
                         </div>
-                        {!otherPOLinesExpanded && (
-                          <span className="text-xs text-gray-500 italic">Click to expand</span>
-                        )}
+                        <span className="text-xs text-purple-600 hover:text-purple-800 hover:underline">
+                          {otherPOLinesExpanded ? 'Collapse' : 'Expand'}
+                        </span>
                       </button>
 
                       {/* Expanded Content - Grouped by PO */}
@@ -2686,7 +2844,7 @@ export function LineItemsPreviewPanel({
                                 {/* Used by Other Invoices */}
                                 {poGroup.usedByOther.length > 0 && (
                                   <div>
-                                    <div className="text-xs font-medium text-gray-500 mb-1.5 flex items-center gap-1">
+                                    <div className="text-xs font-medium text-gray-700 mb-1.5 flex items-center gap-1">
                                       <Link2 className="h-3 w-3" />
                                       Used by other invoices ({poGroup.usedByOther.length})
                                     </div>
@@ -2696,9 +2854,9 @@ export function LineItemsPreviewPanel({
                                           key={line.poLineId}
                                           className="flex items-center gap-2 px-2 py-1 bg-gray-100 border border-gray-200 rounded text-xs opacity-70"
                                         >
-                                          <span className="text-gray-500 w-5 text-center shrink-0">L{line.lineNo}</span>
-                                          <span className="text-gray-500 truncate flex-1">{line.description}</span>
-                                          <span className="text-gray-400 italic shrink-0">Used by {line.usedByInvoice}</span>
+                                          <span className="text-gray-950 w-5 text-center shrink-0">L{line.lineNo}</span>
+                                          <span className="text-gray-950 truncate flex-1">{line.description}</span>
+                                          <span className="text-gray-700 italic shrink-0">Used by {line.usedByInvoice}</span>
                                         </div>
                                       ))}
                                     </div>
@@ -3765,7 +3923,7 @@ export function LineItemsPreviewPanel({
                                                 return (
                                                   <div
                                                     key={poLine.poLineId}
-                                                    className="w-full flex items-center px-2 py-1.5 text-xs rounded bg-amber-50/50 cursor-not-allowed border-l-2 border-gray-300"
+                                                    className="w-full flex items-center px-2 py-1.5 text-xs rounded bg-amber-50/50 cursor-not-allowed"
                                                   >
                                                     {/* PO Badge - fixed width */}
                                                     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium w-24 shrink-0 justify-center ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
@@ -3799,7 +3957,7 @@ export function LineItemsPreviewPanel({
                                                     }}
                                                     className={`w-full flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${
                                                       isCurrentMatch ? 'bg-purple-50 border-l-2 border-purple-500' :
-                                                      isUsedByThis ? 'bg-blue-50/50 border-l-2 border-blue-300' : ''
+                                                      isUsedByThis ? 'bg-blue-50/50' : ''
                                                     }`}
                                                   >
                                                     {/* PO Badge - fixed width */}
@@ -3837,6 +3995,23 @@ export function LineItemsPreviewPanel({
                                                 </Popover.Close>
                                               );
                                             })}
+                                            {/* Add Another PO Option */}
+                                            {onAddPO && (
+                                              <div className="border-t border-gray-100 mt-1 pt-1">
+                                                <Popover.Close asChild>
+                                                  <button
+                                                    onClick={() => {
+                                                      setReopenDropdownForLineId(line.id || `line-${line.line_no}`);
+                                                      setShowAddPODrawer(true);
+                                                    }}
+                                                    className="w-full flex items-center px-2 py-1.5 text-xs rounded hover:bg-purple-50 text-purple-700"
+                                                  >
+                                                    <Plus className="h-3 w-3 mr-2" />
+                                                    <span>Add another PO...</span>
+                                                  </button>
+                                                </Popover.Close>
+                                              </div>
+                                            )}
                                           </div>
                                         </Popover.Content>
                                       </Popover.Portal>
@@ -4109,7 +4284,7 @@ export function LineItemsPreviewPanel({
                                                 return (
                                                   <div
                                                     key={poLine.poLineId}
-                                                    className="w-full flex items-center px-2 py-1.5 text-xs rounded bg-amber-50/50 cursor-not-allowed border-l-2 border-gray-300"
+                                                    className="w-full flex items-center px-2 py-1.5 text-xs rounded bg-amber-50/50 cursor-not-allowed"
                                                   >
                                                     {/* PO Badge - fixed width */}
                                                     <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium w-24 shrink-0 justify-center ${lineBadgeClasses.bg} ${lineBadgeClasses.text}`}>
@@ -4143,7 +4318,7 @@ export function LineItemsPreviewPanel({
                                                     }}
                                                     className={`w-full flex items-center px-2 py-1.5 text-xs rounded outline-none cursor-pointer hover:bg-gray-100 focus:bg-gray-100 ${
                                                       isCurrentMatch ? 'bg-purple-50 border-l-2 border-purple-500' :
-                                                      isUsedByThis ? 'bg-blue-50/50 border-l-2 border-blue-300' : ''
+                                                      isUsedByThis ? 'bg-blue-50/50' : ''
                                                     }`}
                                                   >
                                                     {/* PO Badge - fixed width */}
@@ -4181,6 +4356,23 @@ export function LineItemsPreviewPanel({
                                                 </Popover.Close>
                                               );
                                             })}
+                                            {/* Add Another PO Option */}
+                                            {onAddPO && (
+                                              <div className="border-t border-gray-100 mt-1 pt-1">
+                                                <Popover.Close asChild>
+                                                  <button
+                                                    onClick={() => {
+                                                      setReopenDropdownForLineId(line.id || `line-${line.line_no}`);
+                                                      setShowAddPODrawer(true);
+                                                    }}
+                                                    className="w-full flex items-center px-2 py-1.5 text-xs rounded hover:bg-purple-50 text-purple-700"
+                                                  >
+                                                    <Plus className="h-3 w-3 mr-2" />
+                                                    <span>Add another PO...</span>
+                                                  </button>
+                                                </Popover.Close>
+                                              </div>
+                                            )}
                                           </div>
                                         </Popover.Content>
                                       </Popover.Portal>
@@ -4245,6 +4437,22 @@ export function LineItemsPreviewPanel({
           vendorName="BuildTech Supplies Ltd"
           onConfirm={handleConfirmRule}
         />
+
+        {/* Add PO Drawer */}
+        {onAddPO && (
+          <AddPODrawer
+            isOpen={showAddPODrawer}
+            onClose={() => {
+              setShowAddPODrawer(false);
+              setReopenDropdownForLineId(null);
+            }}
+            onAddPO={handleAddPO}
+            invoiceVendor={invoiceVendor}
+            invoiceCurrency={currency}
+            currentPONumbers={allPONumbers}
+            invoiceId={invoiceId || ''}
+          />
+        )}
       </div>
     </div>
   );
