@@ -4,23 +4,38 @@ import { getAllMockPOs } from '@/app/services/mockPOService';
 
 export async function GET(request: NextRequest) {
   try {
-    // Check if we should use mock data
-    const useMockData = process.env.USE_MOCK_DATA === 'true' || process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+    // Check if we should use mock data (default to true, same as invoices route)
+    const useMockData = process.env.USE_MOCK_DATA !== 'false';
     if (useMockData) {
       console.log(`[MockPO] Fetching all mock POs`);
       const mockPOs = getAllMockPOs();
 
-      // Transform to match expected format
-      const purchaseOrders = mockPOs.map(po => ({
-        id: po.id,
-        po_number: po.po_number,
-        vendor_name: po.vendor_name,
-        order_date: po.order_date,
-        status: po.status,
-        currency: po.currency,
-        created_at: po.order_date,
-        total_amount: po.total
-      }));
+      // Transform to match expected format with usage data for AddPODrawer
+      const purchaseOrders = mockPOs.map(po => {
+        // Calculate total from lines
+        const lines = (po as any).lines || [];
+        const total = lines.reduce((sum: number, line: any) => sum + (line.qty_ordered * line.unit_price), 0);
+
+        // Calculate usage stats
+        const usedLines = lines.filter((line: any) => line.usedByInvoiceId);
+        const usedAmount = usedLines.reduce((sum: number, line: any) => sum + (line.qty_ordered * line.unit_price), 0);
+
+        return {
+          id: po.id,
+          po_number: po.po_number,
+          vendor_name: po.vendor_name,
+          order_date: po.order_date,
+          status: po.status,
+          currency: po.currency,
+          created_at: po.order_date,
+          total_amount: total,
+          // Extended fields for AddPODrawer
+          total: total,
+          lines_total: lines.length,
+          lines_used: usedLines.length,
+          remaining_amount: total - usedAmount
+        };
+      });
 
       console.log(`[MockPO] Successfully fetched ${purchaseOrders.length} mock purchase orders`);
       return NextResponse.json({

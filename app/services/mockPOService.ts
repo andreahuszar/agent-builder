@@ -449,7 +449,7 @@ export const generateMockPOs = (): Record<string, POHeader> => {
         {
           id: 'po-line-9011-6',
           line_no: 6,
-          description: 'Landscaping Sand',
+          description: 'Ground Sand - MA-145784',
           item_description: 'Ground Sand - MA-145784',
           sku: 'MA-145784',
           qty_ordered: 54,
@@ -885,6 +885,65 @@ export const generateMockPOs = (): Record<string, POHeader> => {
       ],
       subtotal: 0,
       total: 0
+    },
+
+    // ============================================================================
+    // PO for Volga Industrial Supplies OOO (fraud-risk-1 invoice)
+    // PO has slightly different values creating variances for fraud detection demo
+    // ============================================================================
+    'PO-2025-7001': {
+      id: 'mock-po-7001',
+      po_number: 'PO-2025-7001',
+      vendor_name: 'Volga Industrial Supplies OOO',
+      vendor_id: 'VND0099905',
+      currency: 'EUR',
+      status: 'open',
+      lines: [
+        {
+          id: 'po-line-7001-1',
+          line_no: 1,
+          description: 'Industrial Manufacturing Equipment - Distillation Column (17 stages)',
+          item_description: 'Distillation Column - 17 Stage',
+          qty_ordered: 1.9,
+          uom: 'UNIT',
+          unit_price: 86700.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 1.9,
+          qty_remaining_to_invoice: 1.9,
+          status: 'open'
+        },
+        {
+          id: 'po-line-7001-2',
+          line_no: 2,
+          description: 'Installation & Commissioning Services',
+          item_description: 'Installation Services',
+          qty_ordered: 152,
+          uom: 'HOUR',
+          unit_price: 255.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 152,
+          qty_remaining_to_invoice: 152,
+          status: 'open'
+        },
+        {
+          id: 'po-line-7001-3',
+          line_no: 3,
+          description: 'Technical Documentation & Training',
+          item_description: 'Documentation & Training Package',
+          qty_ordered: 0.95,
+          uom: 'PACKAGE',
+          unit_price: 10200.00,
+          qty_received_to_date: 0,
+          qty_invoiced_to_date: 0,
+          qty_remaining_to_receive: 0.95,
+          qty_remaining_to_invoice: 0.95,
+          status: 'open'
+        }
+      ],
+      subtotal: 0,
+      total: 0
     }
   };
 
@@ -919,7 +978,8 @@ export const getAllMockPOs = (): POHeader[] => {
 
 // Check if this is a mock PO number
 export const isMockPO = (poNumber: string): boolean => {
-  const useMockData = process.env.USE_MOCK_DATA === 'true' || process.env.NEXT_PUBLIC_USE_MOCK_DATA === 'true';
+  // Default to true (same pattern as invoices route)
+  const useMockData = process.env.USE_MOCK_DATA !== 'false';
   if (!useMockData) return false;
 
   // Check if PO number matches mock pattern (PO-2025-9xxx, PO-2025-8xxx, PO-2025-7xxx, or BG prefix)

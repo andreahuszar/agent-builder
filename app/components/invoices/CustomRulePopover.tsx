@@ -70,9 +70,28 @@ export function CustomRulePopover({
     year: 'numeric'
   }).format(new Date(rule.createdAt));
 
-  // Calculate if conversion is correct
-  const expectedPOQty = invoiceQty * (rule.toQuantity / rule.fromQuantity);
-  const conversionMatches = Math.abs(expectedPOQty - poQty) < 0.01;
+  // Calculate if conversion is correct (direction-aware)
+  // If PO UOM matches fromUnit, we convert PO qty to invoice UOM
+  // If PO UOM matches toUnit, we convert invoice qty to PO UOM
+  const poUomNormalized = poUom.toLowerCase().replace(/s$/, '');
+  const fromUnitNormalized = rule.fromUnit.toLowerCase().replace(/s$/, '');
+  const toUnitNormalized = rule.toUnit.toLowerCase().replace(/s$/, '');
+
+  let expectedPOQty: number;
+  let expectedInvoiceQty: number;
+  let conversionMatches: boolean;
+
+  if (poUomNormalized === fromUnitNormalized) {
+    // PO is in fromUnit, convert PO qty to invoice UOM
+    expectedInvoiceQty = poQty * (rule.toQuantity / rule.fromQuantity);
+    conversionMatches = Math.abs(expectedInvoiceQty - invoiceQty) < 0.01;
+    expectedPOQty = poQty; // PO qty stays as is
+  } else {
+    // PO is in toUnit, convert invoice qty to PO UOM
+    expectedPOQty = invoiceQty * (rule.fromQuantity / rule.toQuantity);
+    conversionMatches = Math.abs(expectedPOQty - poQty) < 0.01;
+    expectedInvoiceQty = invoiceQty; // Invoice qty stays as is
+  }
 
   return (
     <Popover.Root open={open} onOpenChange={onOpenChange}>
@@ -129,7 +148,13 @@ export function CustomRulePopover({
             <div className="flex items-center gap-1.5 text-xs text-gray-800">
               <Check className="h-3 w-3 text-green-600" />
               <span>
-                Conversion: {invoiceQty} {invoiceUom} × ({rule.toQuantity}/{rule.fromQuantity}) = {expectedPOQty.toFixed(2)} {poUom}
+                {poUomNormalized === fromUnitNormalized ? (
+                  // Show PO to Invoice conversion
+                  <>Conversion: {poQty} {poUom} × ({rule.toQuantity}/{rule.fromQuantity}) = {expectedInvoiceQty.toFixed(2)} {invoiceUom}</>
+                ) : (
+                  // Show Invoice to PO conversion
+                  <>Conversion: {invoiceQty} {invoiceUom} ÷ ({rule.toQuantity}/{rule.fromQuantity}) = {expectedPOQty.toFixed(2)} {poUom}</>
+                )}
                 {conversionMatches && ' ✓'}
               </span>
             </div>

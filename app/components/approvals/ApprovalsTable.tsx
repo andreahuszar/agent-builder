@@ -2,20 +2,15 @@
 
 import React from 'react';
 import {
-  Check, X, MoreHorizontal, FileText, CheckSquare, Square
+  UserPlus, UserMinus, FileText, CheckSquare, Square, Bell, MoreVertical, Mail
 } from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/app/components/ui/dropdown-menu';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/app/components/ui/tooltip';
 import { ViewType, UserRole } from '@/app/components/approvals/ApprovalsClient';
 import { SLAStatusBadge } from './SLAStatusBadge';
 import { StatusBadge } from '@/app/components/invoices/StatusBadge';
@@ -70,6 +65,8 @@ interface ApprovalsTableProps {
   onApprove: (id: string) => void;
   onReject: (id: string, reason: string) => void;
   onDelegate: (id: string, assignee: TeamMember) => void;
+  onNudge: (id: string, approverName: string) => void;
+  onUnassign: (id: string, currentAssigneeName: string) => void;
   teamMembers: TeamMember[];
   isLoading: boolean;
   activeView: ViewType;
@@ -85,6 +82,8 @@ export function ApprovalsTable({
   onApprove,
   onReject,
   onDelegate,
+  onNudge,
+  onUnassign,
   teamMembers,
   isLoading,
   activeView,
@@ -221,7 +220,7 @@ export function ApprovalsTable({
             <th scope="col" className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800 truncate">
               Approver
             </th>
-            {activeView === 'pending' && (
+            {(activeView === 'pending' || activeView === 'approved') && (
               <th scope="col" className="px-3 py-2.5 text-left text-sm font-semibold text-gray-800 truncate">
                 Actions
               </th>
@@ -305,7 +304,7 @@ export function ApprovalsTable({
                   </div>
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-sm">
-                  <StatusBadge status={invoice.workflow_status || invoice.status || 'approval'} size="sm" />
+                  <StatusBadge status="approval" size="sm" />
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-sm">
                   {assignedMember ? (
@@ -326,43 +325,141 @@ export function ApprovalsTable({
                     onClick={(e) => e.stopPropagation()}
                     className="px-3 py-2.5 whitespace-nowrap"
                   >
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:border-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                        >
+                          <UserPlus className="h-3.5 w-3.5" />
+                          Assign
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        {teamMembers.map((member) => (
+                          <DropdownMenuItem
+                            key={member.id}
+                            onClick={() => onDelegate(invoice.id, member)}
+                            className="cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3 w-full">
+                              <div className={`h-7 w-7 rounded-full ${member.color} flex items-center justify-center flex-shrink-0`}>
+                                <span className="text-xs font-medium text-white">
+                                  {member.initials}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-gray-900 group-hover:text-white group-focus:text-white truncate">
+                                  {member.name}
+                                </div>
+                                {member.role && (
+                                  <div className="text-xs text-gray-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
+                                    {member.role}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </td>
+                )}
+                {activeView === 'approved' && (
+                  <td
+                    onClick={(e) => e.stopPropagation()}
+                    className="px-3 py-2.5 whitespace-nowrap"
+                  >
                     <div className="flex items-center gap-2">
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onApprove(invoice.id);
-                              }}
-                              className="p-0 hover:bg-gray-100 rounded transition-colors group"
+                      {/* Nudge Button */}
+                      <button
+                        onClick={() => onNudge(invoice.id, invoice.assigned_to_name || 'Approver')}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:border-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                      >
+                        <Bell className="h-3.5 w-3.5" />
+                        Nudge
+                      </button>
+                      {/* Reassign Icon Button with Dropdown */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="inline-flex items-center justify-center p-1.5 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:border-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                            title="Reassign"
+                          >
+                            <UserPlus className="h-3.5 w-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          {teamMembers.map((member) => (
+                            <DropdownMenuItem
+                              key={member.id}
+                              onClick={() => onDelegate(invoice.id, member)}
+                              className="cursor-pointer"
                             >
-                              <Check className="h-4 w-4 text-gray-900 group-hover:text-green-600 transition-colors" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-gray-800 text-white border-gray-800">
-                            <p>Approve</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                onReject(invoice.id, 'Needs review');
-                              }}
-                              className="p-0 hover:bg-gray-100 rounded transition-colors group"
-                            >
-                              <X className="h-4 w-4 text-gray-900 group-hover:text-red-600 transition-colors" />
-                            </button>
-                          </TooltipTrigger>
-                          <TooltipContent className="bg-gray-800 text-white border-gray-800">
-                            <p>Reject</p>
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                              <div className="flex items-center gap-3 w-full">
+                                <div className={`h-7 w-7 rounded-full ${member.color} flex items-center justify-center flex-shrink-0`}>
+                                  <span className="text-xs font-medium text-white">
+                                    {member.initials}
+                                  </span>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-gray-900 group-hover:text-white group-focus:text-white truncate">
+                                    {member.name}
+                                  </div>
+                                  {member.role && (
+                                    <div className="text-xs text-gray-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
+                                      {member.role}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem
+                            onClick={() => onUnassign(invoice.id, invoice.assigned_to_name || 'Approver')}
+                            className="cursor-pointer text-red-600 hover:!bg-red-600 hover:!text-white focus:!bg-red-600 focus:!text-white"
+                          >
+                            <div className="flex items-center gap-3 w-full">
+                              <div className="h-7 w-7 rounded-full bg-red-100 group-hover:bg-red-200 flex items-center justify-center flex-shrink-0">
+                                <UserMinus className="h-4 w-4 text-red-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-red-600 group-hover:text-white group-focus:text-white truncate">
+                                  Unassign
+                                </div>
+                                <div className="text-xs text-red-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
+                                  Return to Pending Review
+                                </div>
+                              </div>
+                            </div>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {/* More Actions (3 dots) */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="inline-flex items-center justify-center p-1.5 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:border-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                            title="More actions"
+                          >
+                            <MoreVertical className="h-3.5 w-3.5" />
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-48">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              // TODO: Implement send email functionality
+                              console.log('Send email for invoice:', invoice.id);
+                            }}
+                            className="cursor-pointer"
+                          >
+                            <div className="flex items-center gap-2 w-full">
+                              <Mail className="h-4 w-4 text-gray-500" />
+                              <span className="text-sm text-gray-900 group-hover:text-white group-focus:text-white">Send Email</span>
+                            </div>
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </td>
                 )}

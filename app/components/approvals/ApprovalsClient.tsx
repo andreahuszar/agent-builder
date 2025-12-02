@@ -6,16 +6,24 @@ import {
   Clock, CheckCircle, XCircle, AlertTriangle,
   Calendar, Users, Filter, ChevronDown,
   Check, X, Forward, MoreVertical, Plus,
-  User, DollarSign, Building2, Hash, FileText, Search
+  User, DollarSign, Building2, Hash, FileText, Search, CalendarDays
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
 import { ApprovalsTable } from '@/app/components/approvals/ApprovalsTable';
 import { InvoiceDrawer } from '@/app/components/approvals/InvoiceDrawer';
 import { DelegationModal } from '@/app/components/approvals/DelegationModal';
+import { UnassignModal } from '@/app/components/approvals/UnassignModal';
 import { TeamWorkloadDrawer } from '@/app/components/approvals/TeamWorkloadDrawer';
 import { BulkAssignmentDrawer } from '@/app/components/approvals/BulkAssignmentDrawer';
 import { compareBySLA, type SLAStatus } from '@/app/services/slaService';
+import { useToast } from '@/app/components/ui/Toast';
 
-export type ViewType = 'pending' | 'on-hold' | 'approved' | 'rejected' | 'all';
+export type ViewType = 'pending' | 'on-hold' | 'approved' | 'rejected' | 'completed_rejected' | 'all';
 export type UserRole = 'user' | 'admin';
 
 interface Invoice {
@@ -60,6 +68,7 @@ interface TeamMember {
 
 export function ApprovalsClient() {
   const router = useRouter();
+  const { showToast } = useToast();
   const [activeView, setActiveView] = useState<ViewType>('pending');
   const [userRole, setUserRole] = useState<UserRole>('user');
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
@@ -67,39 +76,63 @@ export function ApprovalsClient() {
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [showDelegationModal, setShowDelegationModal] = useState<{ invoiceId: string; assignee: TeamMember } | null>(null);
+  const [showUnassignModal, setShowUnassignModal] = useState<{ invoiceId: string; currentAssigneeName: string } | null>(null);
   const [showTeamWorkloadDrawer, setShowTeamWorkloadDrawer] = useState(false);
   const [showBulkAssignmentDrawer, setShowBulkAssignmentDrawer] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [dateFilter, setDateFilter] = useState<string>('last30');
 
-  // Default team members (fallback)
-  const defaultTeamMembers: TeamMember[] = [
-    { id: '1', name: 'Sarah Chen', initials: 'SC', role: 'AP Manager', color: 'bg-violet-500', current_workload: 8, capacity: 12, status: 'available' },
-    { id: '2', name: 'Michael Johnson', initials: 'MJ', role: 'AP Specialist', color: 'bg-blue-500', current_workload: 5, capacity: 10, status: 'busy' },
-    { id: '3', name: 'Anna Rodriguez', initials: 'AR', role: 'Finance Director', color: 'bg-green-500', current_workload: 3, capacity: 8, status: 'available' },
-    { id: '4', name: 'David Kim', initials: 'DK', role: 'CFO', color: 'bg-amber-500', current_workload: 2, capacity: 6, status: 'available' },
-    { id: '5', name: 'Lisa Park', initials: 'LP', role: 'Senior Accountant', color: 'bg-purple-500', current_workload: 6, capacity: 10, status: 'out-of-office' },
+  // Date filter options
+  const dateFilterOptions = [
+    { id: 'last7', label: 'Last 7 Days', days: 7 },
+    { id: 'last30', label: 'Last 30 Days', days: 30 },
+    { id: 'last90', label: 'Last 90 Days', days: 90 },
+    { id: 'last6months', label: 'Last 6 Months', days: 180 },
+    { id: 'lastYear', label: 'Last Year', days: 365 },
+    { id: 'all', label: 'All Time', days: null },
   ];
-  
-  // Initialize with default team members if empty
-  useEffect(() => {
-    if (teamMembers.length === 0) {
-      setTeamMembers(defaultTeamMembers);
-    }
-  }, []);
+
+  const getDateFilterLabel = () => {
+    const option = dateFilterOptions.find(o => o.id === dateFilter);
+    return option?.label || 'Last 30 Days';
+  };
+
+  const filterByDate = (invoices: Invoice[]): Invoice[] => {
+    const option = dateFilterOptions.find(o => o.id === dateFilter);
+    if (!option || option.days === null) return invoices;
+
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - option.days);
+    cutoffDate.setHours(0, 0, 0, 0);
+
+    return invoices.filter(inv => {
+      const invoiceDate = new Date(inv.invoice_date);
+      return invoiceDate >= cutoffDate;
+    });
+  };
+
+  // Default team members (fallback) - IDs must match those used in mock invoices (user-1, user-2, etc.)
+  const defaultTeamMembers: TeamMember[] = [
+    { id: 'user-1', name: 'Sarah Mitchell', initials: 'SM', role: 'Approver', color: 'bg-purple-600', current_workload: 5, capacity: 20, status: 'available' },
+    { id: 'user-2', name: 'James Thompson', initials: 'JT', role: 'Approver', color: 'bg-blue-600', current_workload: 3, capacity: 20, status: 'available' },
+    { id: 'user-3', name: 'Caroline Walsh', initials: 'CW', role: 'Approver', color: 'bg-green-600', current_workload: 4, capacity: 20, status: 'available' },
+    { id: 'user-4', name: 'James Wilson', initials: 'JW', role: 'Senior Approver', color: 'bg-orange-600', current_workload: 6, capacity: 20, status: 'available' },
+  ];
 
   // Fetch all invoices on mount and when user role changes
   useEffect(() => {
     fetchInvoices();
   }, [userRole]);
   
-  // Filter invoices when view changes
+  // Filter invoices when view or date filter changes
   useEffect(() => {
     if (allInvoices.length > 0) {
-      const filtered = filterInvoicesByView(allInvoices, activeView);
+      const dateFiltered = filterByDate(allInvoices);
+      const filtered = filterInvoicesByView(dateFiltered, activeView);
       setFilteredInvoices(filtered);
     }
-  }, [activeView, allInvoices]);
+  }, [activeView, allInvoices, dateFilter]);
 
   const fetchInvoices = async () => {
     setIsLoading(true);
@@ -140,6 +173,7 @@ export function ApprovalsClient() {
 
     switch (view) {
       case 'pending':
+        // "Pending Review" tab - unassigned invoices waiting to be assigned
         filtered = invoices.filter(inv => {
           // Include standard pending statuses
           const isPendingStatus =
@@ -147,6 +181,7 @@ export function ApprovalsClient() {
             inv.status === 'requires_review' ||
             inv.status === 'processing' ||
             inv.status === 'validating' ||
+            inv.status === 'verification' ||
             inv.status === 'draft';
 
           // Also include overdue invoices (not paid/approved/rejected)
@@ -158,21 +193,44 @@ export function ApprovalsClient() {
             inv.status !== 'rejected' &&
             inv.status !== 'void';
 
-          return isPendingStatus || isOverdue;
+          // Only show unassigned invoices in Pending Review
+          const isUnassigned = !inv.assigned_to_user_id;
+
+          return (isPendingStatus || isOverdue) && isUnassigned;
         });
         break;
       case 'on-hold':
         filtered = invoices.filter(inv => inv.status === 'on_hold');
         break;
       case 'approved':
-        filtered = invoices.filter(inv =>
-          inv.status === 'approved' ||
-          inv.status === 'approved_ready_for_payment' ||
-          inv.status === 'paid'
-        );
+        // "Pending Approval" tab - assigned invoices waiting for approver action
+        filtered = invoices.filter(inv => {
+          const hasAssignee = !!inv.assigned_to_user_id;
+          const isPendingApprovalStatus =
+            inv.status === 'pending_approval' ||
+            inv.status === 'requires_review' ||
+            inv.status === 'processing' ||
+            inv.status === 'validating' ||
+            inv.status === 'verification' ||
+            inv.status === 'draft';
+          return hasAssignee && isPendingApprovalStatus;
+        });
         break;
       case 'rejected':
-        filtered = invoices.filter(inv => inv.status === 'rejected' || inv.status === 'void');
+        // "Pending Rejected" - rejected invoices that still have an assignee (awaiting final processing)
+        filtered = invoices.filter(inv => {
+          const isRejectedStatus = inv.status === 'rejected' || inv.status === 'void';
+          const hasAssignee = !!inv.assigned_to_user_id;
+          return isRejectedStatus && hasAssignee;
+        });
+        break;
+      case 'completed_rejected':
+        // "Rejected" - fully processed rejected invoices (no assignee)
+        filtered = invoices.filter(inv => {
+          const isRejectedStatus = inv.status === 'rejected' || inv.status === 'void';
+          const isUnassigned = !inv.assigned_to_user_id;
+          return isRejectedStatus && isUnassigned;
+        });
         break;
       case 'all':
         filtered = invoices;
@@ -204,25 +262,64 @@ export function ApprovalsClient() {
   };
 
   const getViewStats = () => {
-    // Calculate stats from complete dataset for stability
+    // Calculate stats from date-filtered dataset for accurate counts
+    // Must match the logic in filterInvoicesByView
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
+    // Apply date filter first
+    const dateFilteredInvoices = filterByDate(allInvoices);
+
     return {
-      pending: allInvoices.filter(inv =>
-        inv.status === 'pending_approval' ||
-        inv.status === 'requires_review' ||
-        inv.status === 'processing' ||
-        inv.status === 'validating' ||
-        inv.status === 'draft'
-      ).length,
-      onHold: allInvoices.filter(inv => inv.status === 'on_hold').length,
-      approved: allInvoices.filter(inv =>
-        inv.status === 'approved' ||
-        inv.status === 'approved_ready_for_payment' ||
-        inv.status === 'paid'
-      ).length,
-      rejected: allInvoices.filter(inv => inv.status === 'rejected' || inv.status === 'void').length,
+      pending: dateFilteredInvoices.filter(inv => {
+        // Include standard pending statuses
+        const isPendingStatus =
+          inv.status === 'pending_approval' ||
+          inv.status === 'requires_review' ||
+          inv.status === 'processing' ||
+          inv.status === 'validating' ||
+          inv.status === 'verification' ||
+          inv.status === 'draft';
+
+        // Also include overdue invoices (not paid/approved/rejected)
+        const dueDate = new Date(inv.due_date);
+        const isOverdue =
+          dueDate < today &&
+          inv.status !== 'paid' &&
+          inv.status !== 'approved' &&
+          inv.status !== 'rejected' &&
+          inv.status !== 'void';
+
+        // Exclude invoices that are assigned (those go to Pending Approval)
+        const isUnassigned = !inv.assigned_to_user_id;
+
+        return (isPendingStatus || isOverdue) && isUnassigned;
+      }).length,
+      onHold: dateFilteredInvoices.filter(inv => inv.status === 'on_hold').length,
+      approved: dateFilteredInvoices.filter(inv => {
+        // Pending Approval tab shows invoices that have been assigned
+        const hasAssignee = !!inv.assigned_to_user_id;
+        const isPendingApprovalStatus =
+          inv.status === 'pending_approval' ||
+          inv.status === 'requires_review' ||
+          inv.status === 'processing' ||
+          inv.status === 'validating' ||
+          inv.status === 'verification' ||
+          inv.status === 'draft';
+        return hasAssignee && isPendingApprovalStatus;
+      }).length,
+      rejected: dateFilteredInvoices.filter(inv => {
+        // Pending Rejected - rejected with assignee
+        const isRejectedStatus = inv.status === 'rejected' || inv.status === 'void';
+        const hasAssignee = !!inv.assigned_to_user_id;
+        return isRejectedStatus && hasAssignee;
+      }).length,
+      completedRejected: dateFilteredInvoices.filter(inv => {
+        // Rejected - completed rejected (no assignee)
+        const isRejectedStatus = inv.status === 'rejected' || inv.status === 'void';
+        const isUnassigned = !inv.assigned_to_user_id;
+        return isRejectedStatus && isUnassigned;
+      }).length,
     };
   };
 
@@ -256,19 +353,62 @@ export function ApprovalsClient() {
     }
   };
 
-  const handleDelegate = async (invoiceId: string, assigneeId: string, reason: string) => {
+  const handleDelegate = async (invoiceId: string, assigneeId: string, assigneeName: string, reason: string) => {
     try {
-      const response = await fetch(`/api/approvals/${invoiceId}/delegate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ assigneeId, reason }),
-      });
-      if (response.ok) {
-        await fetchInvoices();
-        setShowDelegationModal(null);
-      }
+      // Update local state directly for demo purposes (mock data doesn't persist through API refetch)
+      setAllInvoices(prevInvoices =>
+        prevInvoices.map(inv =>
+          inv.id === invoiceId
+            ? {
+                ...inv,
+                assigned_to_user_id: assigneeId,
+                assigned_to_name: assigneeName,
+                status: 'approved_ready_for_payment', // Moves to "Pending Approval" tab
+              }
+            : inv
+        )
+      );
+
+      // Show success toast
+      showToast(`Invoice delegated to ${assigneeName} successfully`, 'success');
+
+      setShowDelegationModal(null);
     } catch (error) {
       console.error('Error delegating invoice:', error);
+      showToast('Failed to delegate invoice', 'error');
+    }
+  };
+
+  const handleNudge = (invoiceId: string, approverName: string) => {
+    showToast(`Reminder sent to ${approverName}`, 'success');
+  };
+
+  const handleUnassign = (invoiceId: string, reason: string) => {
+    try {
+      // Update local state to unassign and move back to Pending Review
+      setAllInvoices(prevInvoices =>
+        prevInvoices.map(inv =>
+          inv.id === invoiceId
+            ? {
+                ...inv,
+                assigned_to_user_id: undefined,
+                assigned_to_name: undefined,
+                status: 'pending_approval', // Moves back to "Pending Review" tab
+                assigned_at: undefined,
+                sla_hours: undefined,
+                sla_status: undefined,
+              }
+            : inv
+        )
+      );
+
+      // Show success toast
+      showToast('Invoice unassigned and returned to Pending Review', 'success');
+
+      setShowUnassignModal(null);
+    } catch (error) {
+      console.error('Error unassigning invoice:', error);
+      showToast('Failed to unassign invoice', 'error');
     }
   };
 
@@ -385,7 +525,8 @@ export function ApprovalsClient() {
             {[
               { id: 'pending', label: 'Pending Review', count: stats.pending },
               { id: 'approved', label: 'Pending Approval', count: stats.approved },
-              { id: 'rejected', label: 'Rejected', count: stats.rejected },
+              { id: 'rejected', label: 'Pending Rejected', count: stats.rejected },
+              { id: 'completed_rejected', label: 'Rejected', count: stats.completedRejected },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -415,6 +556,33 @@ export function ApprovalsClient() {
       {/* Search & Filter Section */}
       <div className="mb-4">
         <div className="flex items-center gap-2">
+          {/* Date Range Filter */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <button
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition-all border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
+                style={{ minWidth: '130px' }}
+              >
+                <span className="truncate flex-1 text-left">{getDateFilterLabel()}</span>
+                <ChevronDown className="h-3 w-3 ml-1 flex-shrink-0" />
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="w-44">
+              {dateFilterOptions.map((option) => (
+                <DropdownMenuItem
+                  key={option.id}
+                  onClick={() => setDateFilter(option.id)}
+                  className={`cursor-pointer ${dateFilter === option.id ? 'bg-purple-50 text-purple-900' : ''}`}
+                >
+                  <span className="text-sm">{option.label}</span>
+                  {dateFilter === option.id && (
+                    <Check className="h-3.5 w-3.5 ml-auto text-purple-600" />
+                  )}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+
           {/* Search Input */}
           <div className="relative w-48">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-gray-600" />
@@ -480,6 +648,8 @@ export function ApprovalsClient() {
               onApprove={handleApprove}
               onReject={handleReject}
               onDelegate={(invoiceId, assignee) => setShowDelegationModal({ invoiceId, assignee })}
+              onNudge={handleNudge}
+              onUnassign={(invoiceId, currentAssigneeName) => setShowUnassignModal({ invoiceId, currentAssigneeName })}
               teamMembers={teamMembers}
               isLoading={isLoading}
               activeView={activeView}
@@ -504,8 +674,18 @@ export function ApprovalsClient() {
         <DelegationModal
           invoiceId={showDelegationModal.invoiceId}
           assignee={showDelegationModal.assignee}
-          onConfirm={(reason) => handleDelegate(showDelegationModal.invoiceId, showDelegationModal.assignee.id, reason)}
+          onConfirm={(reason) => handleDelegate(showDelegationModal.invoiceId, showDelegationModal.assignee.id, showDelegationModal.assignee.name, reason)}
           onClose={() => setShowDelegationModal(null)}
+        />
+      )}
+
+      {/* Unassign Modal */}
+      {showUnassignModal && (
+        <UnassignModal
+          invoiceId={showUnassignModal.invoiceId}
+          currentAssigneeName={showUnassignModal.currentAssigneeName}
+          onConfirm={(reason) => handleUnassign(showUnassignModal.invoiceId, reason)}
+          onClose={() => setShowUnassignModal(null)}
         />
       )}
 

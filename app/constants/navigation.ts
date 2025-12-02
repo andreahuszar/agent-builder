@@ -133,6 +133,7 @@ export const MODULE_PILLS: Record<string, TabItem[]> = {
     { id: 'kanban', label: 'Kanban', href: '/helpdesk/kanban' },
   ],
   'settings': [
-    { id: 'settings', label: 'Settings', href: '/settings' },
+    { id: 'agent-builder', label: 'Agent Builder', href: '/settings#agent-builder' },
+    { id: 'general', label: 'General', href: '/settings#general' },
   ],
 };

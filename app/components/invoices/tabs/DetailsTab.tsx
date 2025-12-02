@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import Cookies from 'js-cookie';
 import { formatVendorAddress } from '@/app/lib/addressFormatter';
 import {
@@ -61,7 +61,7 @@ import { AccountingAutoCodingPopover } from '../AccountingAutoCodingPopover';
 import { FraudRiskBanner } from '../FraudRiskBanner';
 import { AutoRejectBanner } from '../AutoRejectBanner';
 import { PolicyDocumentDrawer } from '../PolicyDocumentDrawer';
-import { LineItemsPreviewPanel } from '../preview/LineItemsPreviewPanel';
+import { LineItemsPreviewPanel, LineItemsValidationState } from '../preview/LineItemsPreviewPanel';
 import {
   ValidationCard,
   ValidationCardContainer,
@@ -92,6 +92,7 @@ interface DetailsTabProps {
   matchResults?: any[]; // Match results for validation
   approvalLimit?: number; // Approval limit for validation
   poComparisonData?: any; // PO comparison data for validation
+  onStatusUpdate?: (status: string) => void; // Update workflow status when all validations pass
 }
 
 export function DetailsTab({
@@ -115,7 +116,8 @@ export function DetailsTab({
   onFieldAutoReprocess,
   matchResults = [],
   approvalLimit = 2500,
-  poComparisonData
+  poComparisonData,
+  onStatusUpdate
 }: DetailsTabProps) {
   // Track which field's AI suggestion is expanded
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
@@ -128,6 +130,40 @@ export function DetailsTab({
   const [policyLinkToView, setPolicyLinkToView] = useState<string | null>(null);
   // Toast notifications
   const { showToast } = useToast();
+
+  // Local state to augment poComparisonData with added POs
+  const [addedPOs, setAddedPOs] = useState<any[]>([]);
+
+  // Merged PO comparison data (prop + locally added POs)
+  const mergedPoComparisonData = useMemo(() => {
+    if (!addedPOs.length) return poComparisonData;
+
+    return {
+      ...poComparisonData,
+      poDataList: [...(poComparisonData?.poDataList || []), ...addedPOs],
+      utilization: {
+        ...poComparisonData?.utilization,
+        ...addedPOs.reduce((acc, po) => ({
+          ...acc,
+          [po.po_number]: {
+            totalLines: po.lines?.length || 0,
+            usedLines: 0,
+            totalAmount: po.total || 0,
+            usedAmount: 0,
+            unusedLines: po.lines || [],
+            fullyUsedLines: []
+          }
+        }), {})
+      }
+    };
+  }, [poComparisonData, addedPOs]);
+
+  // Handler for adding a new PO to the invoice
+  const handleAddPOToInvoice = useCallback((poNumber: string, poData: any) => {
+    setAddedPOs(prev => [...prev, poData]);
+    showToast(`${poNumber} has been added to this invoice`, 'success');
+  }, [showToast]);
+
   // Calculate totals from line items for accuracy
   const calculatedSubtotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + (line.net_amount || 0), 0) || 0;
   const calculatedTaxTotal = invoiceData?.lines?.reduce((sum: number, line: any) => sum + ((line.line_total || 0) - (line.net_amount || 0)), 0) || 0;
@@ -181,6 +217,8 @@ export function DetailsTab({
   const [isLineItemsExpanded, setIsLineItemsExpanded] = useState(true); // Start expanded
   const [isLineItemsFullscreen, setIsLineItemsFullscreen] = useState(false);
   const [isLineItemsEditMode, setIsLineItemsEditMode] = useState(false);
+  const [lineItemsErrorCount, setLineItemsErrorCount] = useState<number | null>(null); // Track reactive error count from LineItemsPreviewPanel
+  const [lineItemsValidationState, setLineItemsValidationState] = useState<LineItemsValidationState | null>(null); // Track reactive validation state for filtering warnings
   const lineItemsContainerRef = useRef<HTMLDivElement>(null);
 
   // Toggle fullscreen for line items
@@ -515,23 +553,78 @@ export function DetailsTab({
     return issues;
   }, [invoiceData, validationResults]);
 
-  // Check if all validations passed (no errors or warnings)
+  // Check if all validations passed (no errors or warnings) - using static data
   const allValidationsPassed = Object.values(validationIssues).every(
     categoryIssues => categoryIssues.length === 0
   );
 
-  // Count total errors and warnings
+  // Filter validation issues based on reactive state from LineItemsPreviewPanel
+  // This removes warnings for issues that have been fixed client-side
+  const filteredValidationIssues = useMemo(() => {
+    // If no reactive state yet, return original issues
+    if (!lineItemsValidationState) return validationIssues;
+
+    const filtered: typeof validationIssues = {
+      financial: [],
+      process: [],
+      compliance: [],
+      risk: [],
+      data_quality: [],
+      delivery: [],
+    };
+
+    // Filter each category
+    (Object.keys(validationIssues) as Array<keyof typeof validationIssues>).forEach(category => {
+      filtered[category] = validationIssues[category].filter(issue => {
+        // Remove "Invoice has line item variances" when all lines are matched
+        if (issue.field === 'match_status' && lineItemsValidationState.allLinesMatched) {
+          return false;
+        }
+
+        // Remove line-specific warnings when that line is resolved
+        // Validation fields use format: line_<line_number>
+        const lineMatch = issue.field?.match(/^line_(\d+)$/);
+        if (lineMatch) {
+          const fieldLineId = `line-${lineMatch[1]}`;
+          if (lineItemsValidationState.resolvedLineIds.includes(fieldLineId)) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+    });
+
+    return filtered;
+  }, [validationIssues, lineItemsValidationState]);
+
+  // Check if all FILTERED validations passed (reactive)
+  const filteredAllValidationsPassed = Object.values(filteredValidationIssues).every(
+    categoryIssues => categoryIssues.length === 0
+  );
+
+  // Update workflow status to 'posted' when all validations pass
+  useEffect(() => {
+    if (filteredAllValidationsPassed &&
+        lineItemsValidationState?.allLinesMatched &&
+        invoiceData.status !== 'posted' &&
+        onStatusUpdate) {
+      onStatusUpdate('posted');
+    }
+  }, [filteredAllValidationsPassed, lineItemsValidationState?.allLinesMatched, invoiceData.status, onStatusUpdate]);
+
+  // Count total errors and warnings from FILTERED issues
   const validationCounts = useMemo(() => {
     let errorCount = 0;
     let warningCount = 0;
-    Object.values(validationIssues).forEach(categoryIssues => {
+    Object.values(filteredValidationIssues).forEach(categoryIssues => {
       categoryIssues.forEach(issue => {
         if (issue.severity === 'error') errorCount++;
         else if (issue.severity === 'warning') warningCount++;
       });
     });
     return { errorCount, warningCount };
-  }, [validationIssues]);
+  }, [filteredValidationIssues]);
 
   // Count errors in Additional Details section (payment and coding fields)
   const additionalDetailsErrorCount = useMemo(() => {
@@ -1023,89 +1116,106 @@ export function DetailsTab({
             />
           )}
 
-        {/* Validation Results Accordion */}
-        {!allValidationsPassed && (
-          <div>
-            <div
-              className="relative px-4 py-2.5 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
-              onClick={() => setIsValidationExpanded(!isValidationExpanded)}
-            >
-              <div className="flex items-center gap-2">
-                {isValidationExpanded ? (
-                  <ChevronUp className="h-4 w-4 text-gray-500" />
-                ) : (
-                  <ChevronDown className="h-4 w-4 text-gray-500" />
-                )}
-                <AlertTriangle className={`h-4 w-4 ${validationCounts.errorCount > 0 ? 'text-red-600' : 'text-purple-600'}`} />
-                <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Validation Results</h3>
-                {validationCounts.errorCount > 0 && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                    {validationCounts.errorCount} exception{validationCounts.errorCount !== 1 ? 's' : ''}
+        {/* Validation Results Accordion - Always visible */}
+        <div>
+          <div
+            className="relative px-4 py-2.5 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+            onClick={() => setIsValidationExpanded(!isValidationExpanded)}
+          >
+            <div className="flex items-center gap-2">
+              {isValidationExpanded ? (
+                <ChevronUp className="h-4 w-4 text-gray-500" />
+              ) : (
+                <ChevronDown className="h-4 w-4 text-gray-500" />
+              )}
+              {filteredAllValidationsPassed ? (
+                <>
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Validation Results</h3>
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                    Ready to post
                   </span>
-                )}
-                {validationCounts.warningCount > 0 && (
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                    {validationCounts.warningCount} warning{validationCounts.warningCount !== 1 ? 's' : ''}
-                  </span>
-                )}
-              </div>
+                </>
+              ) : (
+                <>
+                  <AlertTriangle className={`h-4 w-4 ${validationCounts.errorCount > 0 ? 'text-red-600' : 'text-purple-600'}`} />
+                  <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Validation Results</h3>
+                  {validationCounts.errorCount > 0 && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      {validationCounts.errorCount} exception{validationCounts.errorCount !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                  {validationCounts.warningCount > 0 && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
+                      {validationCounts.warningCount} warning{validationCounts.warningCount !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </>
+              )}
             </div>
-            {isValidationExpanded && (
-              <div className="px-4 py-3 bg-white border-b border-gray-200">
+          </div>
+          {isValidationExpanded && (
+            <div className="px-4 py-3 bg-white border-b border-gray-200">
+              {filteredAllValidationsPassed ? (
+                <div className="flex items-center gap-2 text-green-700">
+                  <CheckCircle className="h-5 w-5" />
+                  <span className="text-sm font-medium">All validation checks have passed. Invoice is ready for posting.</span>
+                </div>
+              ) : (
                 <ValidationCardContainer>
-                  {validationIssues.financial.length > 0 && (
+                  {filteredValidationIssues.financial.length > 0 && (
                     <ValidationCard
                       category="financial"
-                      issues={validationIssues.financial}
+                      issues={filteredValidationIssues.financial}
                       defaultExpanded={true}
                       compact={true}
                     />
                   )}
-                  {validationIssues.process.length > 0 && (
+                  {filteredValidationIssues.process.length > 0 && (
                     <ValidationCard
                       category="process"
-                      issues={validationIssues.process}
+                      issues={filteredValidationIssues.process}
                       defaultExpanded={true}
                       compact={true}
                     />
                   )}
-                  {validationIssues.compliance.length > 0 && (
+                  {filteredValidationIssues.compliance.length > 0 && (
                     <ValidationCard
                       category="compliance"
-                      issues={validationIssues.compliance}
+                      issues={filteredValidationIssues.compliance}
                       defaultExpanded={true}
                       compact={true}
                     />
                   )}
-                  {validationIssues.risk.length > 0 && (
+                  {filteredValidationIssues.risk.length > 0 && (
                     <ValidationCard
                       category="risk"
-                      issues={validationIssues.risk}
+                      issues={filteredValidationIssues.risk}
                       defaultExpanded={true}
                       compact={true}
                     />
                   )}
-                  {validationIssues.data_quality.length > 0 && (
+                  {filteredValidationIssues.data_quality.length > 0 && (
                     <ValidationCard
                       category="data_quality"
-                      issues={validationIssues.data_quality}
+                      issues={filteredValidationIssues.data_quality}
                       defaultExpanded={true}
                       compact={true}
                     />
                   )}
-                  {validationIssues.delivery.length > 0 && (
+                  {filteredValidationIssues.delivery.length > 0 && (
                     <ValidationCard
                       category="delivery"
-                      issues={validationIssues.delivery}
+                      issues={filteredValidationIssues.delivery}
                       defaultExpanded={true}
                       compact={true}
                     />
                   )}
                 </ValidationCardContainer>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Invoice Header Section */}
         <div>
@@ -1549,9 +1659,50 @@ export function DetailsTab({
                       </div>
                     ) : hasPONumber ? (
                       <div className="flex items-center">
-                        <p className="text-sm font-medium text-gray-950">
-                          {displayPONumber}
-                        </p>
+                        {(() => {
+                          const allPONumbers = editedData.po_numbers_cached || invoiceData.po_numbers_cached || [];
+                          const hasMultiplePOs = allPONumbers.length > 1;
+
+                          const poDisplay = (
+                            <div className="flex items-center">
+                              <p className="text-sm font-medium text-gray-950">
+                                {displayPONumber}
+                              </p>
+                              {hasMultiplePOs && (
+                                <span className="ml-1.5 bg-purple-100 text-purple-700 w-5 h-5 rounded-full text-[10px] font-semibold inline-flex items-center justify-center cursor-default">
+                                  +{allPONumbers.length - 1}
+                                </span>
+                              )}
+                            </div>
+                          );
+
+                          if (hasMultiplePOs) {
+                            return (
+                              <Tooltip.Root delayDuration={200}>
+                                <Tooltip.Trigger asChild>
+                                  {poDisplay}
+                                </Tooltip.Trigger>
+                                <Tooltip.Portal>
+                                  <Tooltip.Content
+                                    side="bottom"
+                                    className="z-50 bg-gray-900 text-white px-3 py-2 rounded-md shadow-lg text-xs"
+                                    sideOffset={5}
+                                  >
+                                    <div className="space-y-1">
+                                      <div className="font-medium text-gray-300 mb-1.5">Assigned POs:</div>
+                                      {allPONumbers.map((po: string) => (
+                                        <div key={po} className="font-mono">{po}</div>
+                                      ))}
+                                    </div>
+                                    <Tooltip.Arrow className="fill-gray-900" />
+                                  </Tooltip.Content>
+                                </Tooltip.Portal>
+                              </Tooltip.Root>
+                            );
+                          }
+
+                          return poDisplay;
+                        })()}
                         {/* Add auto-correction indicator if field was auto-corrected */}
                         {(() => {
                           const autoCorrection = getAutoCorrection('po_numbers_cached');
@@ -2498,9 +2649,16 @@ export function DetailsTab({
                 <Package className="h-4 w-4 text-purple-600" />
                 <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Line Items</h3>
 
-                {/* Validation status pill */}
+                {/* Validation status pill - uses reactive count from LineItemsPreviewPanel when available */}
                 {(() => {
-                  const errorCount = (invoiceData.match_results || []).filter((mr: any) => !mr.within_tolerance).length;
+                  // Use reactive count from LineItemsPreviewPanel if available, otherwise fall back to static calculation
+                  const errorCount = lineItemsErrorCount !== null
+                    ? lineItemsErrorCount
+                    : (() => {
+                        const matchResultErrors = (invoiceData.match_results || []).filter((mr: any) => !mr.within_tolerance).length;
+                        const pendingSuggestions = (invoiceData.lines || []).filter((line: any) => line.suggested_po_match).length;
+                        return matchResultErrors + pendingSuggestions;
+                      })();
                   return errorCount > 0 ? (
                     <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
                       <AlertCircle className="h-3 w-3" />
@@ -2567,9 +2725,16 @@ export function DetailsTab({
                   <Package className="h-4 w-4 text-purple-600" />
                   <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Line Items</h3>
 
-                  {/* Validation status pill */}
+                  {/* Validation status pill - uses reactive count from LineItemsPreviewPanel when available */}
                   {(() => {
-                    const errorCount = (invoiceData.match_results || []).filter((mr: any) => !mr.within_tolerance).length;
+                    // Use reactive count from LineItemsPreviewPanel if available, otherwise fall back to static calculation
+                    const errorCount = lineItemsErrorCount !== null
+                      ? lineItemsErrorCount
+                      : (() => {
+                          const matchResultErrors = (invoiceData.match_results || []).filter((mr: any) => !mr.within_tolerance).length;
+                          const pendingSuggestions = (invoiceData.lines || []).filter((line: any) => line.suggested_po_match).length;
+                          return matchResultErrors + pendingSuggestions;
+                        })();
                     return errorCount > 0 ? (
                       <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
                         <AlertCircle className="h-3 w-3" />
@@ -2618,9 +2783,9 @@ export function DetailsTab({
             <LineItemsPreviewPanel
               invoiceLines={invoiceData.lines || []}
               poLines={invoiceData.po_lines}
-              poDataList={poComparisonData?.poDataList}
-              utilization={poComparisonData?.utilization}
-              matchResults={invoiceData.match_results || poComparisonData?.matchResults}
+              poDataList={mergedPoComparisonData?.poDataList}
+              utilization={mergedPoComparisonData?.utilization}
+              matchResults={invoiceData.match_results || mergedPoComparisonData?.matchResults}
               currency={invoiceData.currency || 'USD'}
               invoiceId={invoiceData.id}
               externallyControlled={true}
@@ -2632,6 +2797,10 @@ export function DetailsTab({
               hideEditButton={true}
               externalEditMode={isLineItemsEditMode}
               onEditModeChange={setIsLineItemsEditMode}
+              onAddPO={handleAddPOToInvoice}
+              invoiceVendor={invoiceData.vendor_name_snapshot}
+              onErrorCountChange={setLineItemsErrorCount}
+              onValidationStateChange={setLineItemsValidationState}
             />
           </div>
           )}

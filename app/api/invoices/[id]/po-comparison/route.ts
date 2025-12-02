@@ -11,6 +11,38 @@ interface Params {
   params: Promise<{ id: string }>;
 }
 
+// POST handler - accepts invoice data in body for generating mock data with updated state
+// Used when PO is dynamically assigned and we need comparison data before mock cache is updated
+export async function POST(request: Request, { params }: Params) {
+  const resolvedParams = await params;
+  const invoiceId = resolvedParams.id;
+
+  try {
+    const body = await request.json();
+    const invoiceData = body.invoiceData;
+
+    // For mock invoices, generate comparison data using provided invoice data
+    if (isMockInvoice(invoiceId) && invoiceData) {
+      const isMultiPO = invoiceData.po_numbers_cached && invoiceData.po_numbers_cached.length > 1;
+
+      const mockData = isMultiPO
+        ? getMockPoComparisonDataMulti(invoiceId, invoiceData)
+        : getMockPoComparisonData(invoiceId, invoiceData);
+
+      return NextResponse.json(mockData || { poData: null, poDataList: [], matchResults: [] });
+    }
+
+    // Fall back to GET behavior if no invoice data provided
+    return GET(request, { params });
+  } catch (error) {
+    console.error('Error in POST po-comparison:', error);
+    return NextResponse.json(
+      { error: 'Failed to fetch PO comparison data' },
+      { status: 500 }
+    );
+  }
+}
+
 export async function GET(request: Request, { params }: Params) {
   const resolvedParams = await params;
   const invoiceId = resolvedParams.id;

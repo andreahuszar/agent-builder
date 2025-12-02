@@ -25,9 +25,10 @@ interface InvoiceDetailClientProps {
   assignedUserName?: string | null;
   onAssignUser?: (userName: string | null) => void;
   onStatusUpdate?: (status: string) => void;
+  workflowStatus?: string;
 }
 
-export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'review', onInvoiceNumberUpdate, assignedUserName, onAssignUser, onStatusUpdate }: InvoiceDetailClientProps) {
+export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'review', onInvoiceNumberUpdate, assignedUserName, onAssignUser, onStatusUpdate, workflowStatus }: InvoiceDetailClientProps) {
   // Preserve original invoice data for static preview display
   const [originalInvoice] = useState(initialInvoice);
   // Editable invoice data for right panel
@@ -66,9 +67,17 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     }
   };
 
-  const fetchPoComparisonData = async () => {
+  const fetchPoComparisonData = async (updatedInvoice?: any) => {
     try {
-      const response = await fetch(`/api/invoices/${invoiceId}/po-comparison`);
+      // If updated invoice data is provided, use POST to pass it along
+      // This ensures mock data generation uses the latest state (e.g., after PO assignment)
+      const options = updatedInvoice ? {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ invoiceData: updatedInvoice })
+      } : {};
+
+      const response = await fetch(`/api/invoices/${invoiceId}/po-comparison`, options);
       if (response.ok) {
         const data = await response.json();
         setPoComparisonData(data);
@@ -123,7 +132,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     // If PO was just assigned, fetch PO comparison data to enable line matching
     if (poWasJustAssigned) {
       console.log('[InvoiceDetailClient] PO was just assigned, fetching PO comparison data...');
-      await fetchPoComparisonData();
+      await fetchPoComparisonData(updatedData);
     }
 
     // If line items changed, recalculate match results to reflect updated matches
@@ -443,7 +452,16 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           });
 
           console.log('[Auto-Reprocess] PO assignment persisted. Fetching PO comparison data...');
-          await fetchPoComparisonData();
+          // Pass the updated invoice data to ensure mock data generation uses the new PO
+          const updatedInvoiceForComparison = {
+            ...invoiceToValidate,
+            po_numbers_cached: invoiceToValidate.po_numbers_cached,
+            status: newStatus,
+            type: 'PO',
+            lines: updatedLines,
+            invoice_lines: updatedLines
+          };
+          await fetchPoComparisonData(updatedInvoiceForComparison);
           console.log('[Auto-Reprocess] PO comparison data loaded - three-column view should now appear.');
         }
 
@@ -700,6 +718,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           onFieldAutoReprocess={handleAutoReprocess}
           acceptedLineSuggestions={acceptedLineSuggestions}
           onAcceptLineSuggestion={handleAcceptLineSuggestion}
+          onStatusUpdate={onStatusUpdate}
         />
           </ResizablePanel>
         </div>
@@ -880,7 +899,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         isSaving={isSaving}
         assignedUserName={assignedUserName}
         onAssignUser={onAssignUser}
-        workflowStatus={invoice.status}
+        workflowStatus={workflowStatus || invoice.status}
         onAgentToggle={() => setIsAgentPanelOpen(!isAgentPanelOpen)}
       />
 

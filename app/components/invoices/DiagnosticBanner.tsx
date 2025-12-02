@@ -5,12 +5,14 @@ import { Check, AlertTriangle, X, ChevronDown, MessageSquare, FileCheck, FileTex
 import { HelpdeskPill } from './HelpdeskPill';
 import { UserAssignmentDropdown } from './UserAssignmentDropdown';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/app/components/ui/tooltip';
 import { getInvoiceAgentPreference } from '@/app/utils/cookies';
 
 interface DiagnosticBannerProps {
   total: number;
   currency: string;
   poNumber?: string | null;
+  poNumbers?: string[];  // Array of PO numbers for multi-PO support
   matchStatus?: string;
   matchResults?: any[];
   hasGR?: boolean;
@@ -38,6 +40,7 @@ export function DiagnosticBanner({
   total,
   currency = 'USD',
   poNumber,
+  poNumbers,
   matchStatus,
   matchResults = [],
   hasGR = false,
@@ -145,38 +148,83 @@ export function DiagnosticBanner({
         <div className="h-5 border-l border-gray-200"></div>
 
         {/* PO Status */}
-        <div className={`
-          inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium
-          ${poNumber === 'PO Missing' || poNumber === '"PO Missing"'
-            ? 'bg-red-50 text-red-700'
-            : poNumber === 'N/A' || poNumber === '"N/A"'
-              ? 'bg-gray-100 text-gray-700'  // Gray for Non-PO (neutral, like No GR/SES)
-              : poNumber
-                ? 'bg-green-50 text-green-700'
-                : 'bg-red-50 text-red-700'}
-        `}>
-          {poNumber === 'PO Missing' || poNumber === '"PO Missing"' ? (
-            <>
+        {(() => {
+          // Use poNumbers array if provided, otherwise fall back to poNumber
+          const displayPONumbers = poNumbers && poNumbers.length > 0
+            ? poNumbers
+            : (poNumber && poNumber !== 'PO Missing' && poNumber !== '"PO Missing"' && poNumber !== 'N/A' && poNumber !== '"N/A"' ? [poNumber] : []);
+
+          const isPOMissing = poNumber === 'PO Missing' || poNumber === '"PO Missing"' || (!poNumber && displayPONumbers.length === 0);
+          const isNonPO = poNumber === 'N/A' || poNumber === '"N/A"';
+          const hasPOs = displayPONumbers.length > 0;
+
+          if (isNonPO) {
+            return (
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700">
+                <X className="h-3 w-3" />
+                <span>Non-PO</span>
+              </div>
+            );
+          }
+
+          if (isPOMissing) {
+            return (
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+                <X className="h-3 w-3" />
+                <span>PO Missing</span>
+              </div>
+            );
+          }
+
+          if (hasPOs) {
+            const badge = (
+              <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-50 text-green-700 cursor-default">
+                <Check className="h-3 w-3" />
+                <span>PO: {displayPONumbers[0]}</span>
+                {displayPONumbers.length > 1 && (
+                  <span className="ml-1 bg-green-200 text-green-800 w-5 h-5 rounded-full text-[10px] font-semibold inline-flex items-center justify-center">
+                    +{displayPONumbers.length - 1}
+                  </span>
+                )}
+              </div>
+            );
+
+            // Only wrap with tooltip if multiple POs
+            if (displayPONumbers.length > 1) {
+              return (
+                <TooltipProvider>
+                  <Tooltip delayDuration={200}>
+                    <TooltipTrigger asChild>
+                      {badge}
+                    </TooltipTrigger>
+                    <TooltipContent
+                      side="bottom"
+                      className="z-50 bg-gray-900 text-white px-3 py-2 rounded-md shadow-lg text-xs"
+                      sideOffset={5}
+                    >
+                      <div className="space-y-1">
+                        <div className="font-medium text-gray-300 mb-1.5">Assigned POs:</div>
+                        {displayPONumbers.map(po => (
+                          <div key={po} className="font-mono">{po}</div>
+                        ))}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              );
+            }
+
+            return badge;
+          }
+
+          // Fallback
+          return (
+            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
               <X className="h-3 w-3" />
               <span>PO Missing</span>
-            </>
-          ) : poNumber === 'N/A' || poNumber === '"N/A"' ? (
-            <>
-              <X className="h-3 w-3" />  {/* X icon for Non-PO (matches No GR/SES styling) */}
-              <span>Non-PO</span>
-            </>
-          ) : poNumber ? (
-            <>
-              <Check className="h-3 w-3" />
-              <span>PO: {poNumber}</span>
-            </>
-          ) : (
-            <>
-              <X className="h-3 w-3" />
-              <span>PO Missing</span>
-            </>
-          )}
-        </div>
+            </div>
+          );
+        })()}
 
         {/* Receipt Status - HIDDEN FOR NOW (will decide later) */}
         {false && (

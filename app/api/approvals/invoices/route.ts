@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { getAllMockInvoices } from '@/app/services/mockInvoiceService';
 
-const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true';
+// Use mock data if explicitly set OR if database URL is not configured
+const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true' || !process.env.DATABASE_URL;
 
 export async function GET(request: NextRequest) {
   try {
@@ -81,6 +82,17 @@ export async function GET(request: NextRequest) {
           color: 'bg-green-600',
           status: 'available',
           current_workload: 4,
+          capacity: 20
+        },
+        {
+          id: 'user-4',
+          name: 'James Wilson',
+          email: 'james.wilson@company.com',
+          role: 'Senior Approver',
+          initials: 'JW',
+          color: 'bg-orange-600',
+          status: 'available',
+          current_workload: 6,
           capacity: 20
         }
       ];

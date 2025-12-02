@@ -908,7 +908,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
       tax_rate: 15,
       tax_amount: 126.00,
       line_total: 966.00,
-      po_line_id: 'po-line-9011-1',
+      po_line_id: 'po-line-9010-1',
       gr_line_id: null,
       ses_line_id: null,
       notes: 'Class 2 Vehicle rental. Pick-up and drop-off from same location. Fleet Booking (rentalcars.com). Full-to-full return policy.'
@@ -925,7 +925,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
       tax_rate: 15,
       tax_amount: 31.50,
       line_total: 241.50,
-      po_line_id: 'po-line-9011-2',
+      po_line_id: 'po-line-9010-2',
       gr_line_id: null,
       ses_line_id: null,
       notes: 'Full protection incl. 3rd-Party Liability'
@@ -1199,8 +1199,9 @@ export const generateBaselineInvoices = (): Invoice[] => {
     vendor_requires_po: true, // This vendor requires PO
     vendor_is_verified: true,
     approval_status: 'pending',
-    assigned_to_name: 'James Wilson',
-    assigned_to_user_id: 'user-4',
+    // No assigned approver yet - this invoice needs review before assignment
+    assigned_to_name: undefined,
+    assigned_to_user_id: undefined,
     po_numbers_cached: [], // Empty - no PO assigned yet (user must accept AI suggestion)
     po_id: null, // No PO ID until user accepts the close_match_po suggestion
     gr_numbers: [],
@@ -1541,9 +1542,9 @@ export const generateBaselineInvoices = (): Invoice[] => {
     vendor_is_verified: true,
     approval_status: 'pending',
     issues: ['Line Item Variance'],
-    assigned_to_name: 'Emily Roberts',
-    assigned_to_user_id: 'user-3',
-    assigned_to_email: 'emily.roberts@company.com',
+    // No assigned approver yet - this invoice needs review before assignment
+    assigned_to_name: undefined,
+    assigned_to_user_id: undefined,
     cost_center: 'CC-6606',
     cost_center_name: 'Legal',
     gl_code: 'GL-1002',

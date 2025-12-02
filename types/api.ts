@@ -348,3 +348,28 @@ export interface FieldPosition {
   page?: number;
   confidence?: number;
 }
+
+// PO Line with usage tracking
+export interface POLineWithUsage extends POLine {
+  usedByInvoiceId?: string;
+  usedByInvoiceNumber?: string;
+}
+
+// PO with lines that include usage tracking
+export interface POWithLinesAndUsage extends Omit<POWithLines, 'lines'> {
+  lines: POLineWithUsage[];
+  vendor_name: string;
+  order_date: string;
+}
+
+// PO search result with usage summary for Add PO drawer
+export interface POSearchResultWithUsage {
+  po_number: string;
+  vendor_name: string;
+  currency: string;
+  total: number;
+  status: string;
+  lines_total: number;
+  lines_used: number;
+  remaining_amount: number;
+}

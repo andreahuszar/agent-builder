@@ -120,6 +120,17 @@ interface LineItemsPreviewPanelProps {
   // Add PO flow props
   onAddPO?: (poNumber: string, poData: any) => void; // Callback when a PO is added
   invoiceVendor?: string; // Vendor name for filtering POs
+  // Callback to report error count changes (for parent components to update their UI)
+  onErrorCountChange?: (errorCount: number) => void;
+  // Callback to report validation state changes (for reactive validation results)
+  onValidationStateChange?: (state: LineItemsValidationState) => void;
+}
+
+// Interface for validation state reported to parent
+export interface LineItemsValidationState {
+  errorCount: number;
+  resolvedLineIds: string[];  // Line IDs where issues have been fixed
+  allLinesMatched: boolean;   // True when all lines show "Matched" status
 }
 
 // Draggable and Droppable Row Component for drag-and-drop functionality
@@ -291,6 +302,8 @@ export function LineItemsPreviewPanel({
   onEditModeChange,
   onAddPO,
   invoiceVendor,
+  onErrorCountChange,
+  onValidationStateChange,
 }: LineItemsPreviewPanelProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(!startExpanded); // Start expanded if startExpanded is true
@@ -325,6 +338,8 @@ export function LineItemsPreviewPanel({
 
   // Multi-PO support: determine if we're in multi-PO mode
   const isMultiPO = Boolean(poDataList && poDataList.length > 1);
+  // Show "Assigned PO Line" column when in edit mode OR when multiple POs exist
+  const showAssignedPOColumn = isEditMode || isMultiPO;
   const allPONumbers = poDataList?.map(po => po.po_number) || [];
 
   // PO selection state: 'all' or specific PO number
@@ -410,6 +425,46 @@ export function LineItemsPreviewPanel({
             uom: poLine.uom,
             unit_price: poLine.unit_price,
             usage: effectiveUsage
+          } as POLineItem;
+        }
+      }
+    }
+
+    // Fallback: Check if invoice line has a direct po_line_id reference
+    // This handles cases where PO lines don't have usage metadata (e.g., mock data)
+    if (invoiceLine.po_line_id) {
+      for (const poData of poDataList || []) {
+        const matchedLine = poData.lines.find(pl => pl.id === invoiceLine.po_line_id);
+        if (matchedLine) {
+          return {
+            id: matchedLine.id,
+            line_no: matchedLine.line_no,
+            description: matchedLine.description || matchedLine.item_description || '',
+            item_description: matchedLine.item_description,
+            qty_ordered: matchedLine.qty_ordered,
+            uom: matchedLine.uom,
+            unit_price: matchedLine.unit_price,
+            usage: { state: 'usedByThisInvoice', invoiceLineId }
+          } as POLineItem;
+        }
+      }
+    }
+
+    // Fallback: Check if invoice line has a suggested_po_match (AI suggestion)
+    // Show the suggested PO line on the PO side so user can see the proposed match
+    if (invoiceLine.suggested_po_match?.po_line_id) {
+      for (const poData of poDataList || []) {
+        const matchedLine = poData.lines.find(pl => pl.id === invoiceLine.suggested_po_match!.po_line_id);
+        if (matchedLine) {
+          return {
+            id: matchedLine.id,
+            line_no: matchedLine.line_no,
+            description: matchedLine.description || matchedLine.item_description || '',
+            item_description: matchedLine.item_description,
+            qty_ordered: matchedLine.qty_ordered,
+            uom: matchedLine.uom,
+            unit_price: matchedLine.unit_price,
+            usage: { state: 'suggested', invoiceLineId }
           } as POLineItem;
         }
       }
@@ -1314,17 +1369,53 @@ export function LineItemsPreviewPanel({
     }
 
     // If showing comparison, count mismatches
+    // IMPORTANT: This logic must match getLineStatus() exactly
+    // Use editableLines (same as visual rendering) not invoiceLines
     let errorCount = 0;
-    invoiceLines.forEach((invoiceLine, index) => {
+    editableLines.forEach((invoiceLine, index) => {
       const poLine = getMatchedPOLine(invoiceLine, index);
+      const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
 
-      // Count mismatches with matched PO lines
-      if (poLine && hasMismatch(invoiceLine, poLine)) {
-        errorCount++;
+      // Match getLineStatus() logic exactly:
+
+      // 1. Accepted suggestions are matched (not variance)
+      if (acceptedSuggestions.has(lineId)) {
+        return; // matched
       }
 
-      // Also count lines with pending substitution suggestions as variances
-      if (!poLine && invoiceLine.suggested_po_match) {
+      // 2. Rejected suggestions are variances
+      if (rejectedSuggestions.has(lineId)) {
+        errorCount++;
+        return;
+      }
+
+      // 3. Pending suggestions are variances (whether or not they have a matched PO)
+      if (hasSuggestion(invoiceLine)) {
+        errorCount++;
+        return;
+      }
+
+      // 4. Manually unmatched lines are variances
+      if (unmatchedLines.has(lineId)) {
+        errorCount++;
+        return;
+      }
+
+      // 5. Smart matches (UOM or description difference auto-matched) are matched
+      if (poLine && (hasMatchedUomDifference(invoiceLine, poLine) || hasMatchedDescriptionDifference(invoiceLine, poLine))) {
+        return; // matched
+      }
+
+      // 6. Custom rule matches are matched
+      if (poLine && hasCustomRuleMatch(invoiceLine, poLine)) {
+        return; // matched
+      }
+
+      // 7. No PO line = missing (not counted as variance for the pill)
+      if (!poLine) return;
+
+      // 8. Actual mismatches are variances
+      if (hasMismatch(invoiceLine, poLine)) {
         errorCount++;
       }
     });
@@ -1368,7 +1459,8 @@ export function LineItemsPreviewPanel({
     }
 
     // Check if there's a pending suggestion - treat as variance (not yet matched)
-    if (hasSuggestion(invoiceLine)) {
+    // UNLESS the line has been manually marked as matched
+    if (hasSuggestion(invoiceLine) && !manuallyMatchedLines.has(lineId)) {
       return 'variance';
     }
 
@@ -1428,9 +1520,11 @@ export function LineItemsPreviewPanel({
   };
 
   // Check if line has description difference that is STILL auto-matched (not manually unmatched)
+  // This is a "smart match" - descriptions differ BUT values (qty/price) match
   const hasMatchedDescriptionDifference = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): boolean => {
     const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
-    return hasDescriptionDifference(invoiceLine, poLine) && !unmatchedLines.has(lineId);
+    // Only a "smart match" if descriptions differ but VALUES MATCH (qty/price are the same)
+    return hasDescriptionDifference(invoiceLine, poLine) && !hasMismatch(invoiceLine, poLine) && !unmatchedLines.has(lineId);
   };
 
   // Check if line has a custom conversion rule
@@ -1452,11 +1546,22 @@ export function LineItemsPreviewPanel({
     const rule = getCustomRule(invoiceLine);
     if (!rule) return false;
 
-    // Validate that the rule applies to this line
-    const expectedPOQty = invoiceLine.qty * (rule.toQuantity / rule.fromQuantity);
-    const matches = Math.abs(expectedPOQty - poLine.qty_ordered) < 0.01;
+    // Direction-aware conversion check (same logic as RuleChatInterface validation)
+    const poUomNormalized = poLine.uom.toLowerCase().replace(/s$/, '');
+    const fromUnitNormalized = rule.fromUnit.toLowerCase().replace(/s$/, '');
+    const toUnitNormalized = rule.toUnit.toLowerCase().replace(/s$/, '');
 
-    return matches;
+    if (poUomNormalized === fromUnitNormalized) {
+      // PO is in fromUnit, convert PO qty to invoice UOM and compare
+      const expectedInvoiceQty = poLine.qty_ordered * (rule.toQuantity / rule.fromQuantity);
+      return Math.abs(expectedInvoiceQty - invoiceLine.qty) < 0.01;
+    } else if (poUomNormalized === toUnitNormalized) {
+      // PO is in toUnit, convert invoice qty to PO UOM and compare
+      const expectedPOQty = invoiceLine.qty * (rule.fromQuantity / rule.toQuantity);
+      return Math.abs(expectedPOQty - poLine.qty_ordered) < 0.01;
+    }
+
+    return false;
   };
 
   // Get SKU from line data, or generate for display purposes
@@ -1474,6 +1579,69 @@ export function LineItemsPreviewPanel({
 
   const errorCount = countErrors();
 
+  // Report error count changes to parent component
+  useEffect(() => {
+    if (onErrorCountChange) {
+      onErrorCountChange(errorCount);
+    }
+  }, [errorCount, onErrorCountChange]);
+
+  // Calculate validation state for parent component (for reactive validation results)
+  const getValidationState = (): LineItemsValidationState => {
+    const resolvedLineIds: string[] = [];
+    let allLinesMatched = true;
+
+    editableLines.forEach((line, index) => {
+      const matchedPO = getMatchedPOLine(line, index);
+      const lineId = line.id || `line-${line.line_no}`;
+      // Use line_no for field matching (validation fields use line_<line_no>)
+      const lineNumber = line.line_no;
+      const fieldLineId = `line-${lineNumber}`;
+
+      // Check if this line was originally a variance but is now resolved
+      const hasOriginalMismatch = matchedPO && hasMismatch(line, matchedPO);
+      const hadSuggestion = line.suggested_po_match;
+
+      // Line is resolved if:
+      // 1. It had a mismatch that was fixed by manual match, accepted suggestion, custom rule, or UOM conversion
+      // 2. It had a suggestion that was accepted or manually marked as matched
+      const isResolved =
+        (hasOriginalMismatch && (manuallyMatchedLines.has(lineId) || acceptedSuggestions.has(lineId) || (matchedPO && hasCustomRuleMatch(line, matchedPO)) || (matchedPO && hasMatchedUomDifference(line, matchedPO)))) ||
+        (hadSuggestion && (acceptedSuggestions.has(lineId) || manuallyMatchedLines.has(lineId)));
+
+      if (isResolved) {
+        resolvedLineIds.push(fieldLineId);
+      }
+
+      // Check if this line is currently a variance
+      // For lines with suggestions, also check manuallyMatchedLines to allow "Mark as Matched" to clear the variance
+      const isVariance = (matchedPO && hasOriginalMismatch &&
+                         !manuallyMatchedLines.has(lineId) &&
+                         !acceptedSuggestions.has(lineId) &&
+                         !hasCustomRuleMatch(line, matchedPO) &&
+                         !hasMatchedUomDifference(line, matchedPO)) ||
+                         (hadSuggestion && !acceptedSuggestions.has(lineId) && !manuallyMatchedLines.has(lineId));
+
+      if (isVariance) {
+        allLinesMatched = false;
+      }
+    });
+
+    return {
+      errorCount,
+      resolvedLineIds,
+      allLinesMatched
+    };
+  };
+
+  // Report validation state changes to parent component
+  useEffect(() => {
+    if (onValidationStateChange) {
+      const validationState = getValidationState();
+      onValidationStateChange(validationState);
+    }
+  }, [errorCount, acceptedSuggestions, manuallyMatchedLines, customRules, editableLines, onValidationStateChange]);
+
   // Categorize lines into variances and matched for grouped view
   const categorizeLines = () => {
     const varianceLines: InvoiceLineItem[] = [];
@@ -1484,10 +1652,13 @@ export function LineItemsPreviewPanel({
       const lineId = line.id || `line-${line.line_no}`;
 
       // Check if it's a variance
+      // Lines with matching custom rules or UOM conversions should NOT be variances
       const isVariance = matchedPO &&
                         hasMismatch(line, matchedPO) &&
                         !manuallyMatchedLines.has(lineId) &&
-                        !acceptedSuggestions.has(lineId);
+                        !acceptedSuggestions.has(lineId) &&
+                        !hasCustomRuleMatch(line, matchedPO) &&
+                        !hasMatchedUomDifference(line, matchedPO);
 
       if (isVariance) {
         varianceLines.push(line);
@@ -1984,7 +2155,9 @@ export function LineItemsPreviewPanel({
                       {isEditMode && (
                         <th className="px-1 text-center text-xs font-medium text-gray-800 uppercase w-12">Actions</th>
                       )}
-                      <th className="px-1 pl-3 text-left text-xs font-medium text-gray-800 uppercase whitespace-nowrap border-l border-gray-200">Assigned PO Line</th>
+                      {showAssignedPOColumn && (
+                        <th className="px-1 pl-3 text-left text-xs font-medium text-gray-800 uppercase whitespace-nowrap">Assigned PO Line</th>
+                      )}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -2087,7 +2260,7 @@ export function LineItemsPreviewPanel({
                                     </Tooltip.Portal>
                                   </Tooltip.Root>
                                 </Tooltip.Provider>
-                              ) : matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) ? (
+                              ) : matchedPO && (hasUomConversion(line) || hasMatchedDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) ? (
                                 // PRIORITY 2: Show purple Zap for smart matches
                                 <Tooltip.Provider>
                                   <Tooltip.Root delayDuration={200} open={openPopoverId === `invoice-${line.id || `line-${line.line_no}`}` ? false : undefined}>
@@ -2227,7 +2400,7 @@ export function LineItemsPreviewPanel({
                             {getSKU(line)}
                           </td>
                           <td className={`px-1 py-2 text-xs text-right text-gray-950 w-12 ${
-                            matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
+                            matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
                               ? 'bg-red-50'
                               : ''
                           }`}>
@@ -2237,7 +2410,7 @@ export function LineItemsPreviewPanel({
                                 value={line.qty}
                                 onChange={(e) => handleLineChange(lineIndex, 'qty', parseFloat(e.target.value) || 0)}
                                 className={`w-12 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
-                                  matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01
+                                  matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
                                     ? ''
                                     : 'border border-gray-300'
                                 }`}
@@ -2259,7 +2432,7 @@ export function LineItemsPreviewPanel({
                             )}
                           </td>
                           <td className={`px-1 py-2 text-xs text-right text-gray-950 w-16 ${
-                            matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
+                            matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
                               ? 'bg-red-50'
                               : ''
                           }`}>
@@ -2269,7 +2442,7 @@ export function LineItemsPreviewPanel({
                                 value={line.unit_price}
                                 onChange={(e) => handleLineChange(lineIndex, 'unit_price', parseFloat(e.target.value) || 0)}
                                 className={`w-14 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
-                                  matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01
+                                  matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
                                     ? ''
                                     : 'border border-gray-300'
                                 }`}
@@ -2285,22 +2458,29 @@ export function LineItemsPreviewPanel({
                             <td className="px-1 py-2 text-xs w-16">
                               {matchedPO && (
                                 <div className="flex flex-col items-center gap-0.5">
-                                  {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
-                                    <span className={`text-xs font-semibold ${
-                                      hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
-                                    }`}>
-                                      Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
-                                    </span>
-                                  )}
-                                  {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
-                                    <span className={`text-xs font-semibold ${
-                                      hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
-                                    }`}>
-                                      Price: {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
-                                    </span>
-                                  )}
-                                  {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
+                                  {/* Show 0 variance when custom rule matches OR UOM conversion reconciles */}
+                                  {(hasCustomRuleMatch(line, matchedPO) || hasMatchedUomDifference(line, matchedPO)) ? (
                                     <span className="text-green-600 font-bold text-xs">0 / {formatCurrency(0)}</span>
+                                  ) : (
+                                    <>
+                                      {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
+                                        <span className={`text-xs font-semibold ${
+                                          hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
+                                        }`}>
+                                          Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
+                                        </span>
+                                      )}
+                                      {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
+                                        <span className={`text-xs font-semibold ${
+                                          hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
+                                        }`}>
+                                          Price: {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
+                                        </span>
+                                      )}
+                                      {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
+                                        <span className="text-green-600 font-bold text-xs">0 / {formatCurrency(0)}</span>
+                                      )}
+                                    </>
                                   )}
                                 </div>
                               )}
@@ -2341,8 +2521,9 @@ export function LineItemsPreviewPanel({
                               </div>
                             </td>
                           )}
-                          {/* PO / Line column - always visible */}
-                          <td className="px-1.5 pl-3 py-2 text-xs text-left whitespace-nowrap border-l border-gray-200">
+                          {/* PO / Line column - conditionally visible */}
+                          {showAssignedPOColumn && (
+                          <td className="px-1.5 pl-3 py-2 text-xs text-left whitespace-nowrap">
                             {(() => {
                               const matchedPoNumber = getMatchedPONumber(line);
                               const matchedPoLine = getMatchedPOLine(line, lineIndex);
@@ -2528,6 +2709,7 @@ export function LineItemsPreviewPanel({
                               );
                             })()}
                           </td>
+                          )}
                           </>
                         );
 
@@ -2580,7 +2762,7 @@ export function LineItemsPreviewPanel({
                       {/* Empty cell for Actions column in edit mode */}
                       {isEditMode && <td className="bg-gray-50"></td>}
                       {/* Empty cell to cover PO / Line column */}
-                      <td className="bg-gray-50 border-l border-gray-200"></td>
+                      {showAssignedPOColumn && <td className="bg-gray-50"></td>}
                     </tr>
                   </tfoot>
                 </table>
@@ -2730,15 +2912,19 @@ export function LineItemsPreviewPanel({
                           </td>
                           <td className="px-1 py-2 text-xs text-gray-950 w-16">{matchedPO.sku || '-'}</td>
                           <td className={`px-1 py-2 text-xs text-right text-gray-950 w-8 ${
-                            invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01
+                            invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01 && !hasCustomRuleMatch(invLine, matchedPO) && !hasMatchedUomDifference(invLine, matchedPO)
                               ? 'bg-red-50'
                               : ''
                           }`}>
                             {matchedPO.qty_ordered}
                           </td>
-                          <td className="px-1 py-2 text-xs text-center text-gray-950 w-10">{matchedPO.uom}</td>
+                          <td className={`px-1 py-2 text-xs text-center text-gray-950 w-10 ${
+                            invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01 && !hasCustomRuleMatch(invLine, matchedPO) && !hasMatchedUomDifference(invLine, matchedPO) && invLine.uom.toLowerCase() !== matchedPO.uom.toLowerCase()
+                              ? 'bg-red-50'
+                              : ''
+                          }`}>{matchedPO.uom}</td>
                           <td className={`px-1 py-2 text-xs text-right text-gray-950 w-16 ${
-                            invLine && Math.abs(matchedPO.unit_price - invLine.unit_price) > 0.01
+                            invLine && Math.abs(matchedPO.unit_price - invLine.unit_price) > 0.01 && !hasCustomRuleMatch(invLine, matchedPO) && !hasMatchedUomDifference(invLine, matchedPO)
                               ? 'bg-red-50'
                               : ''
                           }`}>
@@ -2776,12 +2962,13 @@ export function LineItemsPreviewPanel({
                   </tfoot>
                 </table>
 
-                {/* Other PO Lines - Collapsible section grouped by PO */}
+                {/* Other PO Lines - Collapsible section grouped by PO (only for multi-PO invoices) */}
                 {(() => {
                   const { poGroups, totalUnused, totalUsedByOther } = getOtherPOLines();
                   const totalOther = totalUnused + totalUsedByOther;
 
-                  if (poGroups.length === 0) return null;
+                  // Only show "Other PO Lines" section for multi-PO invoices
+                  if (!isMultiPO || poGroups.length === 0) return null;
 
                   return (
                     <div className="mt-2 border-t border-gray-200 bg-gray-50">
@@ -2931,7 +3118,10 @@ export function LineItemsPreviewPanel({
                             {/* Qty Variance Column */}
                             <td className="px-1.5 py-2 text-xs text-right">
                               {matchedPO ? (
-                                Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 ? (
+                                // Show 0 variance if custom rule matches OR UOM conversion reconciles the difference
+                                (hasCustomRuleMatch(line, matchedPO) || hasMatchedUomDifference(line, matchedPO)) ? (
+                                  <span className="text-green-600 font-bold">0</span>
+                                ) : Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 ? (
                                   <span className="text-red-600 font-semibold">
                                     {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
                                   </span>
@@ -2946,7 +3136,10 @@ export function LineItemsPreviewPanel({
                             {/* Price Variance Column */}
                             <td className="px-1.5 py-2 text-xs text-right">
                               {matchedPO ? (
-                                Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 ? (
+                                // Show 0 variance if custom rule matches OR UOM conversion reconciles the difference
+                                (hasCustomRuleMatch(line, matchedPO) || hasMatchedUomDifference(line, matchedPO)) ? (
+                                  <span className="text-green-600 font-bold">{formatCurrency(0)}</span>
+                                ) : Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 ? (
                                   <span className="text-red-600 font-semibold">
                                     {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
                                   </span>
@@ -3160,7 +3353,7 @@ export function LineItemsPreviewPanel({
                                   </Tooltip.Portal>
                                 </Tooltip.Root>
                               </Tooltip.Provider>
-                            ) : matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) ? (
+                            ) : matchedPO && (hasUomConversion(line) || hasMatchedDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) ? (
                               <Tooltip.Provider>
                                 <Tooltip.Root delayDuration={200} open={openPopoverId === `invoice-detailed-${line.id || `line-${line.line_no}`}` ? false : undefined}>
                                   {hasCustomRule(line) ? (
@@ -3299,7 +3492,7 @@ export function LineItemsPreviewPanel({
                           {getSKU(line)}
                         </td>
                         <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                          matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
+                          matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
                             ? 'bg-red-50'
                             : ''
                         }`}>
@@ -3309,7 +3502,7 @@ export function LineItemsPreviewPanel({
                               value={line.qty}
                               onChange={(e) => handleLineChange(lineIndex, 'qty', parseFloat(e.target.value) || 0)}
                               className={`w-14 px-2 py-1 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
-                                matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01
+                                matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
                                   ? ''
                                   : 'border border-gray-300'
                               }`}
@@ -3331,7 +3524,7 @@ export function LineItemsPreviewPanel({
                           )}
                         </td>
                         <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                          matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
+                          matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
                             ? 'bg-red-50'
                             : ''
                         }`}>
@@ -3342,7 +3535,7 @@ export function LineItemsPreviewPanel({
                               onChange={(e) => handleLineChange(lineIndex, 'unit_price', parseFloat(e.target.value) || 0)}
                               step="0.01"
                               className={`w-16 px-1 py-1 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
-                                matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01
+                                matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
                                   ? ''
                                   : 'border border-gray-300'
                               }`}
@@ -3358,22 +3551,29 @@ export function LineItemsPreviewPanel({
                           <td className="px-1.5 py-2 text-xs">
                             {matchedPO && (
                               <div className="flex flex-col items-center gap-0.5">
-                                {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
-                                  <span className={`text-xs font-semibold ${
-                                    hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
-                                  }`}>
-                                    Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
-                                  </span>
-                                )}
-                                {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
-                                  <span className={`text-xs font-semibold ${
-                                    hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
-                                  }`}>
-                                    Price: {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
-                                  </span>
-                                )}
-                                {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
+                                {/* Show 0 variance when custom rule matches OR UOM conversion reconciles */}
+                                {(hasCustomRuleMatch(line, matchedPO) || hasMatchedUomDifference(line, matchedPO)) ? (
                                   <span className="text-green-600 font-bold text-xs">0 / {formatCurrency(0)}</span>
+                                ) : (
+                                  <>
+                                    {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && (
+                                      <span className={`text-xs font-semibold ${
+                                        hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
+                                      }`}>
+                                        Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
+                                      </span>
+                                    )}
+                                    {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
+                                      <span className={`text-xs font-semibold ${
+                                        hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
+                                      }`}>
+                                        Price: {line.unit_price > matchedPO.unit_price ? '+' : ''}{formatCurrency(line.unit_price - matchedPO.unit_price)}
+                                      </span>
+                                    )}
+                                    {Math.abs(line.qty - matchedPO.qty_ordered) <= 0.01 && Math.abs(line.unit_price - matchedPO.unit_price) <= 0.01 && (
+                                      <span className="text-green-600 font-bold text-xs">0 / {formatCurrency(0)}</span>
+                                    )}
+                                  </>
                                 )}
                               </div>
                             )}
@@ -3570,7 +3770,9 @@ export function LineItemsPreviewPanel({
                         {!useDetailedVarianceColumns && showPO && (
                           <th className="px-1.5 text-center text-xs font-medium text-gray-800 uppercase">Variance</th>
                         )}
-                        <th className="px-1.5 pl-3 text-left text-xs font-medium text-gray-800 uppercase whitespace-nowrap border-l border-gray-200">Assigned PO Line</th>
+                        {showAssignedPOColumn && (
+                          <th className="px-1.5 pl-3 text-left text-xs font-medium text-gray-800 uppercase whitespace-nowrap">Assigned PO Line</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -3623,7 +3825,7 @@ export function LineItemsPreviewPanel({
                                     </Tooltip.Portal>
                                   </Tooltip.Root>
                                 </Tooltip.Provider>
-                              ) : matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) ? (
+                              ) : matchedPO && (hasUomConversion(line) || hasMatchedDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) ? (
                                 // PRIORITY 2: Show purple Zap for smart matches
                                 <Tooltip.Provider>
                                   <Tooltip.Root delayDuration={200} open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}` ? false : undefined}>
@@ -3751,7 +3953,7 @@ export function LineItemsPreviewPanel({
                               {getSKU(line)}
                             </td>
                             <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                              matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
+                              matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
                                 ? 'bg-red-50'
                                 : ''
                             }`}>
@@ -3761,7 +3963,7 @@ export function LineItemsPreviewPanel({
                                   value={line.qty}
                                   onChange={(e) => handleLineChange(lineIndex, 'qty', parseFloat(e.target.value) || 0)}
                                   className={`w-14 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
-                                    matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01
+                                    matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
                                       ? ''
                                       : 'border border-gray-300'
                                   }`}
@@ -3783,7 +3985,7 @@ export function LineItemsPreviewPanel({
                               )}
                             </td>
                             <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                              matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`)
+                              matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
                                 ? 'bg-red-50'
                                 : ''
                             }`}>
@@ -3794,7 +3996,7 @@ export function LineItemsPreviewPanel({
                                   value={line.unit_price}
                                   onChange={(e) => handleLineChange(lineIndex, 'unit_price', parseFloat(e.target.value) || 0)}
                                   className={`w-20 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
-                                    matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01
+                                    matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
                                       ? ''
                                       : 'border border-gray-300'
                                   }`}
@@ -3810,8 +4012,11 @@ export function LineItemsPreviewPanel({
                               <td className="px-1.5 py-2 text-xs text-center">
                                 {matchedPO && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) ? (
                                   <>
-                                    {Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 ||
-                                     Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 ? (
+                                    {/* Show dash when custom rule matches OR UOM conversion reconciles - no variance */}
+                                    {(hasCustomRuleMatch(line, matchedPO) || hasMatchedUomDifference(line, matchedPO)) ? (
+                                      <span className="text-gray-400">—</span>
+                                    ) : (Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 ||
+                                     Math.abs(line.unit_price - matchedPO.unit_price) > 0.01) ? (
                                       <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
                                         {((line.line_total - (matchedPO.qty_ordered * matchedPO.unit_price)) >= 0 ? '+' : '') +
                                           formatCurrency(Math.abs(line.line_total - (matchedPO.qty_ordered * matchedPO.unit_price)))}
@@ -3847,8 +4052,9 @@ export function LineItemsPreviewPanel({
                                 </SubstitutionSuggestionPopover>
                               </td>
                             )}
-                            {/* PO / Line column - always visible */}
-                            <td className="px-1.5 pl-3 py-2 text-xs text-left border-l border-gray-200">
+                            {/* PO / Line column - conditionally visible */}
+                            {showAssignedPOColumn && (
+                            <td className="px-1.5 pl-3 py-2 text-xs text-left">
                               {(() => {
                                 const matchedPoNumber = getMatchedPONumber(line);
                                 const matchedPoLine = getMatchedPOLine(line, lineIndex);
@@ -4027,6 +4233,7 @@ export function LineItemsPreviewPanel({
                                 );
                               })()}
                             </td>
+                            )}
                           </tr>
                         );
                       })}
@@ -4088,7 +4295,7 @@ export function LineItemsPreviewPanel({
                                     </Tooltip.Portal>
                                   </Tooltip.Root>
                                 </Tooltip.Provider>
-                              ) : matchedPO && (hasUomConversion(line) || hasDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) ? (
+                              ) : matchedPO && (hasUomConversion(line) || hasMatchedDescriptionDifference(line, matchedPO) || hasCustomRule(line)) && !unmatchedLines.has(line.id || `line-${line.line_no}`) ? (
                                 <Tooltip.Provider>
                                   <Tooltip.Root delayDuration={200}>
                                     {hasCustomRule(line) ? (
@@ -4208,8 +4415,9 @@ export function LineItemsPreviewPanel({
                                 <span className="text-gray-400">—</span>
                               </td>
                             )}
-                            {/* PO / Line column - always visible */}
-                            <td className="px-1.5 pl-3 py-2 text-xs text-left border-l border-gray-200">
+                            {/* PO / Line column - conditionally visible */}
+                            {showAssignedPOColumn && (
+                            <td className="px-1.5 pl-3 py-2 text-xs text-left">
                               {(() => {
                                 const matchedPoNumber = getMatchedPONumber(line);
                                 const matchedPoLine = getMatchedPOLine(line, lineIndex);
@@ -4388,6 +4596,7 @@ export function LineItemsPreviewPanel({
                                 );
                               })()}
                             </td>
+                            )}
                           </tr>
                         );
                       })}

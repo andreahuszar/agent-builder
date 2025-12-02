@@ -59,6 +59,8 @@ interface InvoiceTabsProps {
   // Line item suggestion acceptance (persists across tab switches)
   acceptedLineSuggestions?: Set<string>;
   onAcceptLineSuggestion?: (lineId: string) => void;
+  // Status update callback (for updating workflow stepper when all matched)
+  onStatusUpdate?: (status: string) => void;
 }
 
 export function InvoiceTabs({
@@ -94,6 +96,7 @@ export function InvoiceTabs({
   onFieldAutoReprocess,
   acceptedLineSuggestions = new Set(),
   onAcceptLineSuggestion,
+  onStatusUpdate,
 }: InvoiceTabsProps) {
   // Determine initial tab based on invoice status
   const getInitialTab = (): TabId => {
@@ -445,6 +448,7 @@ export function InvoiceTabs({
             matchResults={matchResults}
             approvalLimit={2500}
             poComparisonData={poComparisonData}
+            onStatusUpdate={onStatusUpdate}
           />
         )}
         {activeTab === 'line-items' && (

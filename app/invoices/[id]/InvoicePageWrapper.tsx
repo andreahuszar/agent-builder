@@ -169,6 +169,7 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
         viewMode={viewMode}
         onInvoiceNumberUpdate={handleInvoiceNumberUpdate}
         onStatusUpdate={handleStatusUpdate}
+        workflowStatus={reactiveStatus}
         assignedUserName={assignedUserName}
         onAssignUser={handleAssignUser}
       />
@@ -183,6 +184,7 @@ export function InvoiceDetailClientWithViewMode({
   viewMode,
   onInvoiceNumberUpdate,
   onStatusUpdate,
+  workflowStatus,
   assignedUserName,
   onAssignUser
 }: {
@@ -191,6 +193,7 @@ export function InvoiceDetailClientWithViewMode({
   viewMode: ViewMode;
   onInvoiceNumberUpdate?: (invoiceNumber: string) => void;
   onStatusUpdate?: (status: string) => void;
+  workflowStatus?: string;
   assignedUserName?: string | null;
   onAssignUser?: (userName: string | null) => void;
 }) {
@@ -201,6 +204,7 @@ export function InvoiceDetailClientWithViewMode({
       viewMode={viewMode}
       onInvoiceNumberUpdate={onInvoiceNumberUpdate}
       onStatusUpdate={onStatusUpdate}
+      workflowStatus={workflowStatus}
       assignedUserName={assignedUserName}
       onAssignUser={onAssignUser}
     />
