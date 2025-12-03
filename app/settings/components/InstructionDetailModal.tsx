@@ -20,6 +20,7 @@ import {
   Check,
   Play,
   Circle,
+  Bot,
 } from 'lucide-react';
 import {
   Instruction,
