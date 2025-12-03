@@ -34,7 +34,7 @@ import {
   ACTION_OPTIONS,
   STAGE_OPTIONS,
 } from '../types';
-import { StatusPill, HexagonIcon, ConfidenceBar, StatCard } from './UIComponents';
+import { StatusPill, HexagonIcon, ConfidenceBar, StatCard, AnimatedText } from './UIComponents';
 
 interface InstructionDetailModalProps {
   instruction?: Instruction | null;
