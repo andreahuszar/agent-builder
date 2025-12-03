@@ -286,6 +286,21 @@ export default function AllInvoicesClient() {
     }
 
     console.log(`[AllInvoices] After filtering: ${filtered.length} invoices`);
+
+    // Sort: auto-rejected invoices first, then by received date (newest first)
+    filtered.sort((a, b) => {
+      // Auto-rejected invoices come first
+      const aIsAutoRejected = a.status === 'auto_rejected';
+      const bIsAutoRejected = b.status === 'auto_rejected';
+      if (aIsAutoRejected && !bIsAutoRejected) return -1;
+      if (!aIsAutoRejected && bIsAutoRejected) return 1;
+
+      // Then sort by received date (newest first)
+      const aDate = new Date(a.email_received_date || a.created_at || 0).getTime();
+      const bDate = new Date(b.email_received_date || b.created_at || 0).getTime();
+      return bDate - aDate;
+    });
+
     setFilteredInvoices(filtered);
   }, [searchQuery, invoices, selectedVendors, selectedExceptions]);
 

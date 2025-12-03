@@ -338,6 +338,8 @@ export function LineItemsPreviewPanel({
 
   // Multi-PO support: determine if we're in multi-PO mode
   const isMultiPO = Boolean(poDataList && poDataList.length > 1);
+  // Detect non-PO invoices - no PO data available
+  const isNonPO = (!poLines || poLines.length === 0) && (!poDataList || poDataList.length === 0);
   // Show "Assigned PO Line" column when in edit mode OR when multiple POs exist
   const showAssignedPOColumn = isEditMode || isMultiPO;
   const allPONumbers = poDataList?.map(po => po.po_number) || [];
@@ -1980,16 +1982,19 @@ export function LineItemsPreviewPanel({
           <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
             {invoiceLines.length} {invoiceLines.length === 1 ? 'line' : 'lines'}
           </span>
-          {errorCount > 0 ? (
-            <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
-              <AlertCircle className="h-3 w-3" />
-              {errorCount} {errorCount === 1 ? 'variance' : 'variances'}
-            </span>
-          ) : (
-            <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
-              <CheckCircle className="h-3 w-3" />
-              Fully Matched
-            </span>
+          {/* Only show matching badge for PO invoices */}
+          {!isNonPO && (
+            errorCount > 0 ? (
+              <span className="flex items-center gap-1 px-2 py-0.5 bg-red-100 text-red-700 rounded-full text-xs font-medium">
+                <AlertCircle className="h-3 w-3" />
+                {errorCount} {errorCount === 1 ? 'variance' : 'variances'}
+              </span>
+            ) : (
+              <span className="flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 rounded-full text-xs font-medium">
+                <CheckCircle className="h-3 w-3" />
+                Fully Matched
+              </span>
+            )
           )}
         </div>
         <div className="flex items-center gap-2">
@@ -2091,19 +2096,24 @@ export function LineItemsPreviewPanel({
                             <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                               {invoiceLines.length} {invoiceLines.length === 1 ? 'line' : 'lines'}
                             </span>
-                            <div className="h-5 w-px bg-gray-300"></div>
-                            <span className="text-xs font-medium text-gray-600">Compare to:</span>
-                            <label className="flex items-center gap-1.5">
-                              <Switch.Root
-                                checked={showPO}
-                                onCheckedChange={setShowPO}
-                                disabled={!poLines || poLines.length === 0}
-                                className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                              >
-                                <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
-                              </Switch.Root>
-                              <span className="text-xs font-medium text-gray-950">PO</span>
-                            </label>
+                            {/* Hide PO toggle for non-PO invoices */}
+                            {!isNonPO && (
+                              <>
+                                <div className="h-5 w-px bg-gray-300"></div>
+                                <span className="text-xs font-medium text-gray-600">Compare to:</span>
+                                <label className="flex items-center gap-1.5">
+                                  <Switch.Root
+                                    checked={showPO}
+                                    onCheckedChange={setShowPO}
+                                    disabled={!poLines || poLines.length === 0}
+                                    className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                  >
+                                    <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                                  </Switch.Root>
+                                  <span className="text-xs font-medium text-gray-950">PO</span>
+                                </label>
+                              </>
+                            )}
                           </div>
 
                           {/* Right side: Edit/Save/Cancel buttons */}
@@ -2374,7 +2384,7 @@ export function LineItemsPreviewPanel({
                             )}
                             {status === 'missing' && (
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 whitespace-nowrap">
-                                Not Matched
+                                {isNonPO ? 'Not Approved' : 'Not Matched'}
                               </span>
                             )}
                           </td>
@@ -3186,21 +3196,26 @@ export function LineItemsPreviewPanel({
                           <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                             {invoiceLines.length} {invoiceLines.length === 1 ? 'line' : 'lines'}
                           </span>
-                          <div className="h-5 w-px bg-gray-300"></div>
-                          <span className="text-xs font-medium text-gray-600">Compare to:</span>
+                          {/* Hide PO toggle for non-PO invoices */}
+                          {!isNonPO && (
+                            <>
+                              <div className="h-5 w-px bg-gray-300"></div>
+                              <span className="text-xs font-medium text-gray-600">Compare to:</span>
 
-                          {/* PO Toggle */}
-                          <label className="flex items-center gap-1.5">
-                            <Switch.Root
-                              checked={showPO}
-                              onCheckedChange={setShowPO}
-                              disabled={!poLines || poLines.length === 0}
-                              className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                            >
-                              <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
-                            </Switch.Root>
-                            <span className="text-xs font-medium text-gray-950">PO</span>
-                          </label>
+                              {/* PO Toggle */}
+                              <label className="flex items-center gap-1.5">
+                                <Switch.Root
+                                  checked={showPO}
+                                  onCheckedChange={setShowPO}
+                                  disabled={!poLines || poLines.length === 0}
+                                  className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                                >
+                                  <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
+                                </Switch.Root>
+                                <span className="text-xs font-medium text-gray-950">PO</span>
+                              </label>
+                            </>
+                          )}
 
                           {/* Receipt Toggle - Hidden for now */}
                           <label className="hidden flex items-center gap-1.5">
@@ -3466,7 +3481,7 @@ export function LineItemsPreviewPanel({
                           )}
                           {status === 'missing' && (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 whitespace-nowrap">
-                              Not Matched
+                              {isNonPO ? 'Not Approved' : 'Not Matched'}
                             </span>
                           )}
                         </td>
@@ -3929,7 +3944,7 @@ export function LineItemsPreviewPanel({
                               )}
                               {status === 'missing' && (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-800 whitespace-nowrap">
-                                  Not Matched
+                                  {isNonPO ? 'Not Approved' : 'Not Matched'}
                                 </span>
                               )}
                             </td>

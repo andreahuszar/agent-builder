@@ -177,7 +177,7 @@ export function VendorSwapPopover({
               disabled={!selectedVendor}
               className="flex-1 px-3 py-2 text-sm font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              Add Vendor
+              Apply Vendor
             </button>
           </div>
 

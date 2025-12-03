@@ -239,8 +239,8 @@ export function ApprovalsClient() {
         filtered = invoices;
     }
 
-    // Sort by SLA status (most urgent first) - only for pending view
-    if (view === 'pending') {
+    // Sort by SLA status (most urgent first) - for pending and approved views
+    if (view === 'pending' || view === 'approved') {
       return filtered.sort((a, b) => {
         // Prioritize invoices with SLA data
         const aHasSLA = a.assigned_at && a.sla_hours && a.sla_status;
@@ -667,6 +667,10 @@ export function ApprovalsClient() {
         onClose={() => setSelectedInvoiceId(null)}
         onApprove={handleApprove}
         onReject={handleReject}
+        onNudge={handleNudge}
+        onDelegate={(invoiceId, assignee) => setShowDelegationModal({ invoiceId, assignee })}
+        onUnassign={(invoiceId, currentAssigneeName) => setShowUnassignModal({ invoiceId, currentAssigneeName })}
+        teamMembers={teamMembers}
       />
 
       {/* Delegation Modal */}

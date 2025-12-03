@@ -371,6 +371,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
     approval_status: 'pending',
     assigned_to_name: 'James Wilson', // Approver assigned
     assigned_to_user_id: 'user-4',
+    skip_approver_validation: true, // Don't show approver as error - only vendor exception for this demo
+    job_number: 'CUST-2025-001', // Customer ID to avoid missing field exception
     // SLA tracking
     assigned_at: baselineNonPOAssignedAt.toISOString(),
     sla_hours: 48,
@@ -1644,7 +1646,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: autoReject1Tax,
     tax_rate_percent: 8,
     total: autoReject1Total,
-    status: 'rejected', // Rejected (auto-rejected)
+    status: 'auto_rejected', // Auto-rejected
     match_status: 'auto_rejected',
     type: 'PO',
     vendor_requires_po: true,
@@ -1731,7 +1733,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: autoReject2Tax,
     tax_rate_percent: 20,
     total: autoReject2Total,
-    status: 'rejected', // Rejected (contract violation)
+    status: 'auto_rejected', // Auto-rejected (contract violation)
     match_status: 'auto_rejected',
     type: 'PO',
     vendor_requires_po: true,
@@ -1824,8 +1826,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
     data_ingestion_date: slaApproaching1Date.toISOString().split('T')[0],
     lines: slaApproaching1Lines,
     invoice_lines: slaApproaching1Lines,
-    assigned_to_name: 'Caroline Walsh',
-    assigned_to_user_id: 'user-3',
+    assigned_to_name: 'Sarah Mitchell',
+    assigned_to_user_id: 'user-1',
     // SLA tracking
     assigned_at: slaApproaching1AssignedAt.toISOString(),
     sla_hours: 48,
@@ -1928,8 +1930,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
     data_ingestion_date: slaBreached1Date.toISOString().split('T')[0],
     lines: slaBreached1Lines,
     invoice_lines: slaBreached1Lines,
-    assigned_to_name: 'Caroline Walsh',
-    assigned_to_user_id: 'user-3',
+    assigned_to_name: 'James Thompson',
+    assigned_to_user_id: 'user-2',
     // SLA tracking
     assigned_at: slaBreached1AssignedAt.toISOString(),
     sla_hours: 48,
@@ -2042,8 +2044,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
     data_ingestion_date: slaSevere1Date.toISOString().split('T')[0],
     lines: slaSevere1Lines,
     invoice_lines: slaSevere1Lines,
-    assigned_to_name: 'Caroline Walsh',
-    assigned_to_user_id: 'user-3',
+    assigned_to_name: 'James Wilson',
+    assigned_to_user_id: 'user-4',
     // SLA tracking
     assigned_at: slaSevere1AssignedAt.toISOString(),
     sla_hours: 48,

@@ -221,6 +221,9 @@ export function DetailsTab({
   const [lineItemsValidationState, setLineItemsValidationState] = useState<LineItemsValidationState | null>(null); // Track reactive validation state for filtering warnings
   const lineItemsContainerRef = useRef<HTMLDivElement>(null);
 
+  // Detect non-PO invoices - no PO data available
+  const isNonPO = !invoiceData.po_lines || invoiceData.po_lines.length === 0;
+
   // Toggle fullscreen for line items
   const toggleLineItemsFullscreen = () => {
     setIsLineItemsFullscreen(!isLineItemsFullscreen);
@@ -484,8 +487,13 @@ export function DetailsTab({
 
     // Add database validation warnings if they exist
     if (invoiceData?.validation_warnings && Array.isArray(invoiceData.validation_warnings)) {
+      // Valid categories that exist in our issues object
+      const validCategories: ValidationCategory[] = ['financial', 'process', 'compliance', 'risk', 'data_quality', 'delivery'];
+
       invoiceData.validation_warnings.forEach((warning: any, idx: number) => {
-        const category = warning.category || 'risk';
+        // Default to 'risk' if category is missing or invalid
+        const rawCategory = warning.category || 'risk';
+        const category: ValidationCategory = validCategories.includes(rawCategory) ? rawCategory : 'risk';
         let detailsText = warning.details;
 
         // Format details if it's an object
@@ -507,13 +515,13 @@ export function DetailsTab({
         const validSeverities = ['error', 'warning', 'info', 'success'];
         const severity = validSeverities.includes(warning.severity) ? warning.severity : 'warning';
 
-        issues[category as ValidationCategory].push({
+        issues[category].push({
           id: `db-warning-${idx}`,
           field: warning.field,
           message: warning.message,
           details: detailsText,
           severity,
-          category: category as ValidationCategory,
+          category,
         });
       });
     }
@@ -1491,7 +1499,17 @@ export function DetailsTab({
                   />
                 ) : (
                   <div className="flex items-start gap-2">
-                    {renderField('vendor_name_snapshot', invoiceData.vendor_name_snapshot, 'text', 'Vendor')}
+                    {/* Show orange input with suggested vendor when vendor reassignment is pending */}
+                    {invoiceData.ocr_extractions?.vendor_name_snapshot?.candidates && invoiceData.ocr_extractions.vendor_name_snapshot.candidates.length > 0 ? (
+                      <input
+                        type="text"
+                        value={invoiceData.ocr_extractions.vendor_name_snapshot.candidates[0].value}
+                        readOnly
+                        className="w-full px-3 py-1.5 text-sm font-medium text-gray-950 border-2 border-orange-300 bg-orange-50 rounded-md cursor-default"
+                      />
+                    ) : (
+                      renderField('vendor_name_snapshot', invoiceData.vendor_name_snapshot, 'text', 'Vendor')
+                    )}
                     {invoiceData.vendor_is_verified === false && (
                       <Tooltip.Provider>
                         <Tooltip.Root>
@@ -1913,7 +1931,7 @@ export function DetailsTab({
                       </p>
                       <PendingConfirmationIndicator />
                     </div>
-                  ) : !invoiceData.assigned_to_name ? (
+                  ) : !invoiceData.assigned_to_name && !invoiceData.skip_approver_validation ? (
                     <div className="relative">
                       {/* Red-bordered empty input field */}
                       <input
@@ -1952,6 +1970,10 @@ export function DetailsTab({
                         onReject={() => {
                           onFieldReject!('assigned_to_name');
                           setExpandedSuggestion(null);
+                        }}
+                        onSelectOther={() => {
+                          setExpandedSuggestion(null);
+                          setIsEditing(true);
                         }}
                         onClose={() => {
                           setExpandedSuggestion(null);
@@ -2649,8 +2671,8 @@ export function DetailsTab({
                 <Package className="h-4 w-4 text-purple-600" />
                 <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Line Items</h3>
 
-                {/* Validation status pill - uses reactive count from LineItemsPreviewPanel when available */}
-                {(() => {
+                {/* Validation status pill - only show for PO invoices */}
+                {!isNonPO && (() => {
                   // Use reactive count from LineItemsPreviewPanel if available, otherwise fall back to static calculation
                   const errorCount = lineItemsErrorCount !== null
                     ? lineItemsErrorCount
@@ -2725,8 +2747,8 @@ export function DetailsTab({
                   <Package className="h-4 w-4 text-purple-600" />
                   <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Line Items</h3>
 
-                  {/* Validation status pill - uses reactive count from LineItemsPreviewPanel when available */}
-                  {(() => {
+                  {/* Validation status pill - only show for PO invoices */}
+                  {!isNonPO && (() => {
                     // Use reactive count from LineItemsPreviewPanel if available, otherwise fall back to static calculation
                     const errorCount = lineItemsErrorCount !== null
                       ? lineItemsErrorCount

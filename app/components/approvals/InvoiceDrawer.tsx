@@ -6,8 +6,15 @@ import {
   X, FileText, DollarSign, Calendar, Building2,
   User, Hash, CreditCard, MessageSquare, Send,
   Check, XCircle, Clock, AlertTriangle, Package, Image, TrendingUp,
-  File, Coins, BookOpen, Link2
+  File, Coins, BookOpen, Link2, Bell, UserPlus, UserMinus, Mail
 } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/app/components/ui/dropdown-menu';
 import { SLABreachBanner } from './SLABreachBanner';
 import { SLATimelineVisualization } from './SLATimelineVisualization';
 import { SLAStatusPanel } from './SLAStatusPanel';
@@ -17,7 +24,14 @@ import { EscalationPreviewPanel } from './EscalationPreviewPanel';
 import { DocumentPreview } from '../invoices/DocumentPreview';
 import { ResizablePanel } from '../invoices/ResizablePanel';
 import { VendorCommunication } from '@/types/invoice';
-import { WorkflowBreadcrumb } from '@/app/components/invoices/WorkflowBreadcrumb';
+
+interface TeamMember {
+  id: string;
+  name: string;
+  initials: string;
+  color: string;
+  role?: string;
+}
 
 interface Invoice {
   id: string;
@@ -74,6 +88,10 @@ interface InvoiceDrawerProps {
   onClose: () => void;
   onApprove: (id: string) => void;
   onReject: (id: string, reason: string) => void;
+  onNudge?: (id: string, approverName: string) => void;
+  onDelegate?: (id: string, assignee: TeamMember) => void;
+  onUnassign?: (id: string, currentAssigneeName: string) => void;
+  teamMembers?: TeamMember[];
 }
 
 export function InvoiceDrawer({
@@ -83,6 +101,10 @@ export function InvoiceDrawer({
   onClose,
   onApprove,
   onReject,
+  onNudge,
+  onDelegate,
+  onUnassign,
+  teamMembers = [],
 }: InvoiceDrawerProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
@@ -282,34 +304,83 @@ export function InvoiceDrawer({
               </div>
               {['pending_approval', 'requires_review', 'processing', 'validating', 'draft', 'pending', 'submitted'].includes(invoice.status) && (
                 <div className="flex items-center gap-2">
-                  <button
-                    onClick={() => {
-                      const reason = prompt('Please provide a reason for rejection:');
-                      if (reason) {
-                        onReject(invoice.id, reason);
-                      }
-                    }}
-                    className="box-border inline-flex items-center justify-center px-3 py-1.5 bg-white text-purple-900 text-sm font-medium rounded-md border border-purple-900 hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-                  >
-                    Reject
-                  </button>
-                  <button
-                    onClick={() => onApprove(invoice.id)}
-                    className="box-border inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-purple-900 text-white text-sm font-medium rounded-md border border-transparent hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-                  >
-                    <Check className="h-4 w-4" />
-                    Approve
-                  </button>
+                  {/* Nudge Button */}
+                  {onNudge && (
+                    <button
+                      onClick={() => onNudge(invoice.id, invoice.assigned_to_name || 'Approver')}
+                      className="box-border inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white text-purple-900 text-sm font-medium rounded-md border border-purple-900 hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                    >
+                      <Bell className="h-4 w-4" />
+                      Nudge
+                    </button>
+                  )}
+                  {/* Reassign Dropdown */}
+                  {onDelegate && teamMembers.length > 0 && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <button
+                          className="box-border inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white text-purple-900 text-sm font-medium rounded-md border border-purple-900 hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                        >
+                          <UserPlus className="h-4 w-4" />
+                          Reassign
+                        </button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-56">
+                        {teamMembers.map((member) => (
+                          <DropdownMenuItem
+                            key={member.id}
+                            onClick={() => onDelegate(invoice.id, member)}
+                            className="cursor-pointer"
+                          >
+                            <div className="flex items-center gap-3 w-full">
+                              <div className={`h-7 w-7 rounded-full ${member.color} flex items-center justify-center flex-shrink-0`}>
+                                <span className="text-xs font-medium text-white">
+                                  {member.initials}
+                                </span>
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="text-sm font-medium text-gray-900 group-hover:text-white group-focus:text-white truncate">
+                                  {member.name}
+                                </div>
+                                {member.role && (
+                                  <div className="text-xs text-gray-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
+                                    {member.role}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </DropdownMenuItem>
+                        ))}
+                        {onUnassign && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem
+                              onClick={() => onUnassign(invoice.id, invoice.assigned_to_name || 'Approver')}
+                              className="cursor-pointer text-red-600 hover:!bg-red-600 hover:!text-white focus:!bg-red-600 focus:!text-white"
+                            >
+                              <div className="flex items-center gap-3 w-full">
+                                <div className="h-7 w-7 rounded-full bg-red-100 group-hover:bg-red-200 flex items-center justify-center flex-shrink-0">
+                                  <UserMinus className="h-4 w-4 text-red-600" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-red-600 group-hover:text-white group-focus:text-white truncate">
+                                    Unassign
+                                  </div>
+                                  <div className="text-xs text-red-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
+                                    Return to Pending Review
+                                  </div>
+                                </div>
+                              </div>
+                            </DropdownMenuItem>
+                          </>
+                        )}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               )}
             </div>
           </div>
-
-          {/* Workflow Breadcrumb */}
-          <WorkflowBreadcrumb
-            currentStatus={invoice.status || 'data_capture'}
-            invoiceType={invoice.po_numbers_cached && invoice.po_numbers_cached.length > 0 ? 'PO' : 'Non-PO'}
-          />
 
           {/* Tabs */}
           <div className="border-b border-gray-200">
