@@ -699,7 +699,6 @@ export default function EnhancedInvoicesClient({
              inv.status === 'approval' ||
              inv.status === 'on_hold' ||
              inv.status === 'disputed' ||
-             inv.status === 'auto_rejected' ||
              inv.match_status === 'exception' ||
              inv.match_status === 'not_matched' ||
              inv.match_status === 'unmatched' ||
@@ -708,7 +707,6 @@ export default function EnhancedInvoicesClient({
              inv.match_status === 'quantity_mismatch' ||
              inv.match_status === 'amount_mismatch' ||
              inv.match_status === 'line_mismatch' ||
-             inv.match_status === 'auto_rejected' ||
              inv.match_status === 'variance')
           );
 
@@ -929,21 +927,7 @@ export default function EnhancedInvoicesClient({
 
   // Get current tab's invoices - using filtered invoices to respect all active filters
   const currentTabInvoices = useMemo(() => {
-    const tabInvoices = getTabInvoices(activeTab, filteredInvoices, exceptionNavigationMode);
-
-    // Sort: auto-rejected invoices first, then by received date (newest first)
-    return [...tabInvoices].sort((a, b) => {
-      // Auto-rejected invoices come first
-      const aIsAutoRejected = a.status === 'auto_rejected';
-      const bIsAutoRejected = b.status === 'auto_rejected';
-      if (aIsAutoRejected && !bIsAutoRejected) return -1;
-      if (!aIsAutoRejected && bIsAutoRejected) return 1;
-
-      // Then sort by received date (newest first)
-      const aDate = new Date(a.email_received_date || a.created_at || 0).getTime();
-      const bDate = new Date(b.email_received_date || b.created_at || 0).getTime();
-      return bDate - aDate;
-    });
+    return getTabInvoices(activeTab, filteredInvoices, exceptionNavigationMode);
   }, [activeTab, filteredInvoices, getTabInvoices, exceptionNavigationMode]);
 
   // Get current tab's selected invoices
@@ -1528,20 +1512,6 @@ export default function EnhancedInvoicesClient({
     if (filteredInvoiceIds && filteredInvoiceIds.size > 0) {
       filtered = filtered.filter(invoice => filteredInvoiceIds.has(invoice.id));
     }
-
-    // Sort: auto-rejected invoices first, then by received date (newest first)
-    filtered.sort((a, b) => {
-      // Auto-rejected invoices come first
-      const aIsAutoRejected = a.status === 'auto_rejected';
-      const bIsAutoRejected = b.status === 'auto_rejected';
-      if (aIsAutoRejected && !bIsAutoRejected) return -1;
-      if (!aIsAutoRejected && bIsAutoRejected) return 1;
-
-      // Then sort by received date (newest first)
-      const aDate = new Date(a.email_received_date || a.created_at || 0).getTime();
-      const bDate = new Date(b.email_received_date || b.created_at || 0).getTime();
-      return bDate - aDate;
-    });
 
     setFilteredInvoices(filtered);
   }, [searchQuery, invoices, activeView, selectedVendors, selectedExceptions, activeQuickFilters, invoiceTypeFilter, activeTab, filteredInvoiceIds, exceptionNavigationMode]);

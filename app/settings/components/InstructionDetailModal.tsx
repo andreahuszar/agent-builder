@@ -16,12 +16,128 @@ import {
   Undo2,
   Zap,
   ChevronRight,
+  ChevronDown,
   AlertTriangle,
   Check,
   Play,
   Circle,
   Bot,
+  Pencil,
+  Mail,
 } from 'lucide-react';
+import { EmailTemplateDrawer } from './EmailTemplateDrawer';
+
+// Demo vendors for the vendor selection scenario
+const DEMO_VENDORS = [
+  'Acme Corp',
+  'TechSupply Inc',
+  'Office Depot',
+  'Global Services Ltd',
+  'Metro Supplies',
+];
+
+// Demo recipients for email notification scenario
+const DEMO_RECIPIENTS = [
+  { id: 'jane-smith', name: 'Jane Smith', department: 'Finance', email: 'jane.smith@company.com' },
+  { id: 'jane-doe', name: 'Jane Doe', department: 'Accounts Payable', email: 'jane.doe@company.com' },
+  { id: 'jane-wilson', name: 'Jane Wilson', department: 'Approvals', email: 'jane.wilson@company.com' },
+  { id: 'john-manager', name: 'John Manager', department: 'Vendor Management', email: 'john.manager@company.com' },
+  { id: 'sarah-budget', name: 'Sarah Budget', department: 'Budget Control', email: 'sarah.budget@company.com' },
+];
+
+// Email template structure
+interface EmailTemplate {
+  id: string;
+  name: string;
+  subject: string;
+  body: string;
+  category: 'exception' | 'approval' | 'notification' | 'custom';
+}
+
+// Context-aware demo templates based on instruction type
+const DEMO_EMAIL_TEMPLATES: Record<string, EmailTemplate> = {
+  automation: {
+    id: 'auto-approval',
+    name: 'Auto-Approval Notification',
+    category: 'notification',
+    subject: 'Invoice {{invoice_number}} Auto-Approved',
+    body: `Hello,
+
+The following invoice has been automatically approved based on your configured rules:
+
+Invoice Number: {{invoice_number}}
+Vendor: {{vendor_name}}
+Amount: {{amount}}
+Date: {{invoice_date}}
+
+This invoice met all criteria for automatic approval:
+- Amount under threshold
+- Vendor on trusted list
+- Valid PO match
+
+No action is required. This is an informational notification.
+
+Best regards,
+Xelix Invoice Processing`,
+  },
+  exception: {
+    id: 'exception-alert',
+    name: 'Exception Alert',
+    category: 'exception',
+    subject: 'Action Required: Invoice {{invoice_number}} Exception',
+    body: `Hello {{recipient_name}},
+
+An exception has been flagged on the following invoice that requires your attention:
+
+Invoice Number: {{invoice_number}}
+Vendor: {{vendor_name}}
+Amount: {{amount}}
+Exception Type: {{exception_type}}
+
+Please review and take appropriate action in the Xelix dashboard.
+
+Best regards,
+Xelix Invoice Processing`,
+  },
+  routing: {
+    id: 'approval-request',
+    name: 'Approval Request',
+    category: 'approval',
+    subject: 'Approval Required: Invoice {{invoice_number}} from {{vendor_name}}',
+    body: `Hello {{recipient_name}},
+
+A new invoice requires your approval:
+
+Invoice Number: {{invoice_number}}
+Vendor: {{vendor_name}}
+Amount: {{amount}}
+Due Date: {{due_date}}
+Department: {{department}}
+
+Please review and approve or reject this invoice in the Xelix dashboard.
+
+Best regards,
+Xelix Invoice Processing`,
+  },
+  validation: {
+    id: 'validation-notice',
+    name: 'Validation Notice',
+    category: 'notification',
+    subject: 'Invoice {{invoice_number}} Validation Complete',
+    body: `Hello,
+
+The following invoice has completed validation:
+
+Invoice Number: {{invoice_number}}
+Vendor: {{vendor_name}}
+Amount: {{amount}}
+PO Match Status: {{match_status}}
+
+Best regards,
+Xelix Invoice Processing`,
+  },
+};
+
 import {
   Instruction,
   Condition,
@@ -65,6 +181,10 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
   // Collapsible Details section state (for manual mode, collapsed by default)
   const [detailsOpen, setDetailsOpen] = useState(false);
 
+  // Title editing state
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const titleInputRef = useRef<HTMLInputElement>(null);
+
   // Rationale expansion state (for assistant mode)
   const [rationaleOpen, setRationaleOpen] = useState(false);
 
@@ -106,7 +226,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
     type: 'assistant' | 'user';
     content: string;
     action?: {
-      type: 'confirm_amount_change' | 'create_rule';
+      type: 'confirm_amount_change' | 'create_rule' | 'select_vendors' | 'add_email_action' | 'select_email_recipient';
       label: string;
       newAmount?: number;
     };
@@ -124,6 +244,37 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
   const [invoiceTypeLabel, setInvoiceTypeLabel] = useState('Invoice type');
   const [awaitingAmountChange, setAwaitingAmountChange] = useState(false);
   const [currentAmount, setCurrentAmount] = useState(500);
+
+  // Vendor selection scenario state
+  const [awaitingVendorSelection, setAwaitingVendorSelection] = useState(false);
+  const [vendorDropdownOpen, setVendorDropdownOpen] = useState(false);
+  const [selectedVendors, setSelectedVendors] = useState<string[]>([]);
+  const [currentVendorFilter, setCurrentVendorFilter] = useState('Trusted vendors list');
+  const [ifLineDropdownOpen, setIfLineDropdownOpen] = useState(false);
+
+  // Email notification scenario state
+  const [showEmailAction, setShowEmailAction] = useState(false); // Unsaved email action (shows purple highlight)
+  const [emailActionSaved, setEmailActionSaved] = useState(false); // Saved email action (no highlight)
+  const [savedEmailRecipient, setSavedEmailRecipient] = useState<{ id: string; name: string; department: string } | null>(null); // Saved recipient
+  const [awaitingEmailRecipient, setAwaitingEmailRecipient] = useState(false);
+  const [emailRecipientDropdownOpen, setEmailRecipientDropdownOpen] = useState(false);
+  const [selectedEmailRecipient, setSelectedEmailRecipient] = useState<{ id: string; name: string; department: string } | null>(null);
+  const [matchingRecipients, setMatchingRecipients] = useState<typeof DEMO_RECIPIENTS>([]);
+
+  // Email template state
+  const [emailTemplateDrawerOpen, setEmailTemplateDrawerOpen] = useState(false);
+  const [selectedEmailTemplate, setSelectedEmailTemplate] = useState<EmailTemplate | null>(null);
+  const [savedEmailTemplate, setSavedEmailTemplate] = useState<EmailTemplate | null>(null);
+  const [editedTemplateSubject, setEditedTemplateSubject] = useState('');
+  const [editedTemplateBody, setEditedTemplateBody] = useState('');
+  const [isTemplateModified, setIsTemplateModified] = useState(false);
+
+  // Title animation state
+  const [animatedTitle, setAnimatedTitle] = useState('');
+  const [isAnimatingTitle, setIsAnimatingTitle] = useState(false);
+
+  // Click sweep animation state
+  const [sweepingLine, setSweepingLine] = useState<string | null>(null);
 
   // Create mode specific state
   const [showCreatedRule, setShowCreatedRule] = useState(false);
@@ -179,6 +330,30 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
     setInvoiceTypeLabel('Invoice type');
     setAwaitingAmountChange(false);
     setCurrentAmount(500);
+    // Reset vendor selection state
+    setAwaitingVendorSelection(false);
+    setVendorDropdownOpen(false);
+    setSelectedVendors([]);
+    setCurrentVendorFilter('Trusted vendors list');
+    setIfLineDropdownOpen(false);
+    // Reset email action state
+    setShowEmailAction(false);
+    setEmailActionSaved(false);
+    setSavedEmailRecipient(null);
+    setAwaitingEmailRecipient(false);
+    setEmailRecipientDropdownOpen(false);
+    setSelectedEmailRecipient(null);
+    setMatchingRecipients([]);
+    // Reset email template state
+    setEmailTemplateDrawerOpen(false);
+    setSelectedEmailTemplate(null);
+    setSavedEmailTemplate(null);
+    setEditedTemplateSubject('');
+    setEditedTemplateBody('');
+    setIsTemplateModified(false);
+    // Reset title animation state
+    setAnimatedTitle('');
+    setIsAnimatingTitle(false);
     // Reset create mode state
     setShowCreatedRule(false);
     setRuleAnimationStep(0);
@@ -366,7 +541,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
           content: `I'll change the amount threshold from $${currentAmount} to $${newAmount}.`,
           action: {
             type: 'confirm_amount_change' as const,
-            label: 'Change Instruction',
+            label: 'Yes, change instruction.',
             newAmount,
           }
         }]);
@@ -417,6 +592,33 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
         type: 'assistant',
         content: "I've reverted the amount threshold back to $500.",
       }]);
+    } else if (currentVendorFilter !== 'Trusted vendors list') {
+      // Undo vendor change
+      setCurrentVendorFilter('Trusted vendors list');
+      setSelectedVendors([]);
+      setCanUndo(false);
+      // Revert title back to original
+      setEditedName(instruction?.name || 'Auto-approve small vendors');
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        type: 'assistant',
+        content: "I've reverted the vendor filter back to the Trusted vendors list.",
+      }]);
+    } else if (showEmailAction) {
+      // Undo email action and template
+      setShowEmailAction(false);
+      setSelectedEmailRecipient(null);
+      setMatchingRecipients([]);
+      setSelectedEmailTemplate(null);
+      setEditedTemplateSubject('');
+      setEditedTemplateBody('');
+      setIsTemplateModified(false);
+      setCanUndo(false);
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        type: 'assistant',
+        content: "I've removed the email notification action.",
+      }]);
     }
   };
 
@@ -449,6 +651,222 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
         }]);
       }, 1200);
     }, 2000);
+  };
+
+  // Handler for Vendor selection scenario
+  const handleVendorScenario = () => {
+    setAwaitingVendorSelection(true);
+
+    setTimeout(() => {
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        type: 'assistant',
+        content: `Currently, this instruction checks if the vendor is in the "Trusted vendors list". Would you like to change this to specific vendors instead?`,
+        action: {
+          type: 'select_vendors' as const,
+          label: 'Select vendors',
+        }
+      }]);
+    }, 1000);
+  };
+
+  // Handler for Email notification scenario
+  const handleEmailScenario = () => {
+    setTimeout(() => {
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        type: 'assistant',
+        content: "Would you like to add an email notification action to this instruction? This will send an email when the rule conditions are met.",
+        action: {
+          type: 'add_email_action' as const,
+          label: 'Yes, add email notification.',
+        }
+      }]);
+    }, 1000);
+  };
+
+  // Toggle vendor selection
+  const toggleVendorSelection = (vendor: string) => {
+    setSelectedVendors(prev =>
+      prev.includes(vendor)
+        ? prev.filter(v => v !== vendor)
+        : [...prev, vendor]
+    );
+  };
+
+  // Generate updated title based on selected vendors
+  const getUpdatedTitle = (vendors: string[]) => {
+    if (vendors.length === 1) {
+      return `Auto-approve ${vendors[0]}`;
+    } else if (vendors.length === 2) {
+      return `Auto-approve ${vendors[0]} & ${vendors[1]}`;
+    } else {
+      return `Auto-approve ${vendors.length} vendors`;
+    }
+  };
+
+  // Trigger sweep animation on a line
+  const triggerSweep = (lineId: string) => {
+    setSweepingLine(lineId);
+    setTimeout(() => setSweepingLine(null), 500); // Reset after animation completes
+  };
+
+  // Animate title letter by letter
+  const animateTitle = (newTitle: string) => {
+    setIsAnimatingTitle(true);
+    setAnimatedTitle('');
+    let currentIndex = 0;
+
+    const interval = setInterval(() => {
+      if (currentIndex <= newTitle.length) {
+        setAnimatedTitle(newTitle.substring(0, currentIndex));
+        currentIndex++;
+      } else {
+        clearInterval(interval);
+        setIsAnimatingTitle(false);
+        setEditedName(newTitle);
+      }
+    }, 30); // 30ms per character
+  };
+
+  // Apply vendor change with animation
+  const applyVendorChange = () => {
+    if (selectedVendors.length === 0) return;
+
+    setRuleOverlayActive(true);
+    setAwaitingVendorSelection(false);
+    setVendorDropdownOpen(false);
+
+    // Clear the action from the message to hide the selector
+    setChatMessages(prev => prev.map(msg =>
+      msg.action ? { ...msg, action: undefined } : msg
+    ));
+
+    setTimeout(() => {
+      setRuleOverlayActive(false);
+      setCurrentVendorFilter(selectedVendors.join(' or '));
+      setIfLineDropdownOpen(false);
+      setCanUndo(true);
+
+      const vendorText = selectedVendors.length === 1
+        ? selectedVendors[0]
+        : `${selectedVendors.slice(0, -1).join(', ')} or ${selectedVendors[selectedVendors.length - 1]}`;
+
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        type: 'assistant',
+        content: `Done! The vendor filter has been updated to only apply to ${vendorText}. Please review the change above.`,
+      }]);
+
+      // Trigger title animation after a small delay
+      setTimeout(() => {
+        const newTitle = getUpdatedTitle(selectedVendors);
+        animateTitle(newTitle);
+      }, 500);
+    }, 3000);
+  };
+
+  // Apply email action - ask for recipient first
+  const applyEmailAction = () => {
+    // Clear the action button
+    setChatMessages(prev => prev.map(msg =>
+      msg.action?.type === 'add_email_action' ? { ...msg, action: undefined } : msg
+    ));
+
+    setAwaitingEmailRecipient(true);
+
+    // Ask who to send to
+    setTimeout(() => {
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        type: 'assistant',
+        content: "Who should receive the email notification? Type a name to search.",
+      }]);
+    }, 500);
+  };
+
+  // Handle email recipient search
+  const handleEmailRecipientSearch = (searchTerm: string) => {
+    const lowerSearch = searchTerm.toLowerCase();
+
+    // Find matching recipients
+    const matches = DEMO_RECIPIENTS.filter(r =>
+      r.name.toLowerCase().includes(lowerSearch) ||
+      r.department.toLowerCase().includes(lowerSearch)
+    );
+
+    setMatchingRecipients(matches);
+
+    if (matches.length === 0) {
+      // No matches found
+      setTimeout(() => {
+        setChatMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          type: 'assistant',
+          content: `No recipients found matching "${searchTerm}". Try a different name.`,
+        }]);
+      }, 500);
+    } else if (matches.length === 1) {
+      // Exactly one match - auto-select but show confirmation
+      setTimeout(() => {
+        setChatMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          type: 'assistant',
+          content: `Found ${matches[0].name} (${matches[0].department}). Would you like to send notifications to them?`,
+          action: {
+            type: 'select_email_recipient' as const,
+            label: `Yes, send to ${matches[0].name}`,
+          }
+        }]);
+        setSelectedEmailRecipient(matches[0]);
+      }, 500);
+    } else {
+      // Multiple matches - show dropdown
+      setTimeout(() => {
+        setChatMessages(prev => [...prev, {
+          id: Date.now().toString(),
+          type: 'assistant',
+          content: `Found ${matches.length} people matching "${searchTerm}". Please select the right one:`,
+          action: {
+            type: 'select_email_recipient' as const,
+            label: 'Select recipient',
+          }
+        }]);
+      }, 500);
+    }
+  };
+
+  // Apply email action with selected recipient
+  const applyEmailWithRecipient = () => {
+    if (!selectedEmailRecipient) return;
+
+    setRuleOverlayActive(true);
+    setAwaitingEmailRecipient(false);
+    setEmailRecipientDropdownOpen(false);
+
+    // Clear the action from the message
+    setChatMessages(prev => prev.map(msg =>
+      msg.action?.type === 'select_email_recipient' ? { ...msg, action: undefined } : msg
+    ));
+
+    setTimeout(() => {
+      setRuleOverlayActive(false);
+      setShowEmailAction(true);
+      setCanUndo(true);
+
+      // Auto-select template based on instruction type
+      const instructionType = instruction?.type || 'automation';
+      const suggestedTemplate = DEMO_EMAIL_TEMPLATES[instructionType] || DEMO_EMAIL_TEMPLATES.automation;
+      setSelectedEmailTemplate(suggestedTemplate);
+      setEditedTemplateSubject(suggestedTemplate.subject);
+      setEditedTemplateBody(suggestedTemplate.body);
+
+      setChatMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        type: 'assistant',
+        content: `Done! I've added a 'Send Email to ${selectedEmailRecipient.name}' action to your instruction. I've also suggested an appropriate email template. Please review the changes above.`,
+      }]);
+    }, 3000);
   };
 
   // Chat submit handler with pattern detection
@@ -492,6 +910,24 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
     // Scenario 2: Detect number when awaiting amount change
     if (awaitingAmountChange && /\d+/.test(lowerMessage)) {
       handleAmountChangeConfirm(userMessage);
+      return;
+    }
+
+    // Scenario 3: Detect "vendor" keyword for vendor selection
+    if (lowerMessage.includes('vendor')) {
+      handleVendorScenario();
+      return;
+    }
+
+    // Scenario 4: Handle email recipient search when awaiting
+    if (awaitingEmailRecipient) {
+      handleEmailRecipientSearch(userMessage);
+      return;
+    }
+
+    // Scenario 5: Detect "email" keyword for email notification action
+    if (lowerMessage.includes('email')) {
+      handleEmailScenario();
       return;
     }
 
@@ -541,6 +977,31 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
     };
     console.log('Saving instruction:', updated);
     onSave(updated);
+
+    // Clear modification indicators after saving (changes are now committed)
+    // Keep the values but remove the "unsaved" visual indicators
+    setShowNewCondition(false);
+
+    // Transfer email action from unsaved to saved state (keeps it visible but removes purple highlight)
+    if (showEmailAction && selectedEmailRecipient) {
+      setEmailActionSaved(true);
+      setSavedEmailRecipient(selectedEmailRecipient);
+    }
+    setShowEmailAction(false);
+    setSelectedEmailRecipient(null);
+    setMatchingRecipients([]);
+
+    // Transfer email template from unsaved to saved state
+    if (selectedEmailTemplate) {
+      const finalTemplate = isTemplateModified
+        ? { ...selectedEmailTemplate, subject: editedTemplateSubject, body: editedTemplateBody, name: 'Custom Template' }
+        : selectedEmailTemplate;
+      setSavedEmailTemplate(finalTemplate);
+    }
+    setSelectedEmailTemplate(null);
+    setIsTemplateModified(false);
+
+    setCanUndo(false);
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -554,19 +1015,55 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
   return (
     <>
     <div
-      className="fixed inset-0 flex items-center justify-center bg-black/50"
+      className="fixed inset-0 flex items-center justify-center bg-black/50 animate-[fadeIn_0.2s_ease-out]"
       style={{ zIndex: 10000 }}
       onClick={handleBackdropClick}
     >
-      <div className="flex flex-col w-[96vw] max-w-[1800px] h-[95vh] bg-white rounded-xl shadow-2xl overflow-hidden">
+      <div className="flex flex-col w-[96vw] max-w-[1800px] h-[95vh] bg-white rounded-xl shadow-2xl overflow-hidden animate-[modalSlideIn_0.3s_ease-out]">
         {/* Header - Full Width */}
-        <div className="flex items-start justify-between px-6 py-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gray-50 flex-shrink-0">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-3">
-              <h2 className="text-xl font-semibold text-gray-900">
-                {isCreateMode ? 'New Instruction' : instruction?.name}
-              </h2>
+              {isEditingTitle ? (
+                <input
+                  ref={titleInputRef}
+                  type="text"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  onBlur={() => setIsEditingTitle(false)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') setIsEditingTitle(false);
+                    if (e.key === 'Escape') {
+                      setEditedName(instruction?.name || 'New Instruction');
+                      setIsEditingTitle(false);
+                    }
+                  }}
+                  className="text-xl font-semibold text-gray-900 bg-white border border-purple-300 rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  autoFocus
+                />
+              ) : isAnimatingTitle ? (
+                <h2 className="text-xl font-semibold text-gray-900 px-2 py-1 -mx-2 -my-1">
+                  {animatedTitle}
+                  <span className="animate-pulse text-purple-600">|</span>
+                </h2>
+              ) : (
+                <button
+                  onClick={() => {
+                    setIsEditingTitle(true);
+                    setTimeout(() => titleInputRef.current?.select(), 0);
+                  }}
+                  className="group flex items-center gap-2 hover:bg-gray-100 rounded-md px-2 py-1 -mx-2 -my-1 transition-colors"
+                >
+                  <h2 className="text-xl font-semibold text-gray-900">
+                    {isCreateMode ? 'New Instruction' : editedName}
+                  </h2>
+                  <Pencil className="w-4 h-4 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </button>
+              )}
               {!isCreateMode && instruction && <StatusPill status={instruction.status} />}
+              {!isCreateMode && instruction && (
+                <span className="text-sm text-gray-500 ml-3">Created by: Caroline Walsh</span>
+              )}
             </div>
           </div>
           <div className="flex items-center gap-2 ml-4">
@@ -595,7 +1092,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
         {/* Body - Two Column Layout */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left Side - Content */}
-          <div className="flex-1 overflow-y-auto p-6 min-w-0">
+          <div className="flex-1 overflow-y-auto p-6 min-w-0 bg-gray-50/50">
             <div className="space-y-4">
               {/* Tab Bar */}
               <div className="flex border-b border-gray-200">
@@ -623,26 +1120,17 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                 <>
               {/* Assistant Mode: Review Current Instruction Read-Only Card */}
               {editMode === 'assistant' && (
-                <div className="rounded-lg border border-gray-200 bg-white p-4">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="text-sm font-semibold text-gray-900">
-                      {isCreateMode ? 'New instruction' : 'Current instruction'}
-                    </h3>
-                    {!isCreateMode && canUndo && (
-                      <button
-                        onClick={handleUndo}
-                        className="text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1 transition-colors"
-                      >
-                        <Undo2 className="w-3 h-3" />
-                        Undo
-                      </button>
-                    )}
-                  </div>
-                  <p className="text-xs text-gray-800 mb-3">
-                    {isCreateMode
-                      ? 'Your new instruction will appear here once created.'
-                      : 'This is how the agent currently interprets this instruction.'}
-                  </p>
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm animate-[cardFadeIn_0.4s_ease-out_0.35s_both]">
+                  {isCreateMode ? (
+                    <>
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="text-sm font-semibold text-gray-900">New instruction</h3>
+                      </div>
+                      <p className="text-xs text-gray-800 mb-3">
+                        Your new instruction will appear here once created.
+                      </p>
+                    </>
+                  ) : null}
 
                   {/* Create Mode: Empty Placeholder or Animated Rule */}
                   {isCreateMode && !showCreatedRule && (
@@ -657,9 +1145,14 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                       {/* Overlay animation during creation */}
                       {ruleOverlayActive && (
                         <div className="absolute inset-0 bg-purple-200/60 backdrop-blur-[1px] rounded-lg flex items-center justify-center z-10">
-                          <div className="flex items-center gap-2 text-purple-800">
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                            <span className="text-sm font-medium">Creating instruction...</span>
+                          <div className="flex items-center gap-3 text-purple-800">
+                            <Sparkles className="w-5 h-5 text-purple-600" />
+                            <span className="text-sm font-medium">Thinking</span>
+                            <div className="flex items-center gap-1">
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-600 ai-thinking-dot" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-600 ai-thinking-dot" />
+                              <span className="w-1.5 h-1.5 rounded-full bg-purple-600 ai-thinking-dot" />
+                            </div>
                           </div>
                         </div>
                       )}
@@ -668,7 +1161,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                       {ruleAnimationStep >= 1 && (
                         <div className="flex items-start gap-2 mb-3 pb-3 border-b border-purple-200 animate-[slideIn_0.4s_ease-out_forwards]">
                           <Zap className="w-4 h-4 text-purple-900 flex-shrink-0 mt-0.5" />
-                          <p className="text-sm text-gray-900">
+                          <p className="text-sm font-semibold text-purple-900">
                             Auto-reject PO-backed invoices with no matching PO in ERP
                           </p>
                         </div>
@@ -677,7 +1170,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                       {/* WHEN - animates in with step 1 */}
                       {ruleAnimationStep >= 1 && (
                         <div className="flex items-start gap-2 -mx-2 px-2 py-1.5 animate-[slideIn_0.4s_ease-out_forwards]">
-                          <span className="inline-block text-xs font-semibold text-purple-800 bg-purple-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5">
+                          <span className="inline-block text-xs font-semibold text-purple-800 bg-purple-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5" style={{ boxShadow: '0 1px 1px rgba(147, 51, 234, 0.35)' }}>
                             WHEN
                           </span>
                           <span className="text-gray-900">Invoice reaches Validation & Exceptions stage</span>
@@ -687,7 +1180,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                       {/* IF - animates in with step 2 */}
                       {ruleAnimationStep >= 2 && (
                         <div className="flex items-start gap-2 -mx-2 px-2 py-1.5 pl-6 animate-[slideIn_0.4s_ease-out_forwards]">
-                          <span className="inline-block text-xs font-semibold text-blue-800 bg-blue-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5">
+                          <span className="inline-block text-xs font-semibold text-blue-800 bg-blue-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5" style={{ boxShadow: '0 1px 1px rgba(37, 99, 235, 0.35)' }}>
                             IF
                           </span>
                           <span className="text-gray-900">
@@ -699,7 +1192,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                       {/* AND - animates in with step 3 */}
                       {ruleAnimationStep >= 3 && (
                         <div className="flex items-start gap-2 -mx-2 px-2 py-1.5 pl-6 animate-[slideIn_0.4s_ease-out_forwards]">
-                          <span className="inline-block text-xs font-medium text-gray-700 bg-gray-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5">
+                          <span className="inline-block text-xs font-medium text-gray-950 bg-gray-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5" style={{ boxShadow: '0 1px 1px rgba(107, 114, 128, 0.35)' }}>
                             AND
                           </span>
                           <span className="text-gray-900">
@@ -711,7 +1204,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                       {/* THEN - animates in with step 4 */}
                       {ruleAnimationStep >= 4 && (
                         <div className="flex items-start gap-2 -mx-2 px-2 py-1.5 animate-[slideIn_0.4s_ease-out_forwards]">
-                          <span className="inline-block text-xs font-semibold text-green-800 bg-green-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5">
+                          <span className="inline-block text-xs font-semibold text-green-800 bg-green-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5" style={{ boxShadow: '0 1px 1px rgba(22, 163, 74, 0.35)' }}>
                             THEN
                           </span>
                           <span className="text-gray-900">Auto-reject invoice</span>
@@ -723,27 +1216,56 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                   {/* Edit Mode: Enhanced WHEN/IF/THEN display with overlay support */}
                   {!isCreateMode && (
                   <div className="space-y-1 text-sm bg-purple-50 rounded-lg p-4 relative">
+                    {/* Undo button - positioned in top right corner of purple box */}
+                    {canUndo && (
+                      <button
+                        onClick={handleUndo}
+                        className="absolute top-2 right-2 text-xs text-purple-600 hover:text-purple-800 flex items-center gap-1 transition-colors z-20"
+                      >
+                        <Undo2 className="w-3 h-3" />
+                        Undo
+                      </button>
+                    )}
                     {/* Overlay animation during updates */}
                     {ruleOverlayActive && (
                       <div className="absolute inset-0 bg-purple-200/60 backdrop-blur-[1px] rounded-lg flex items-center justify-center z-10">
-                        <div className="flex items-center gap-2 text-purple-800">
-                          <Loader2 className="w-5 h-5 animate-spin" />
-                          <span className="text-sm font-medium">Updating instruction...</span>
+                        <div className="flex items-center gap-3 text-purple-800">
+                          <Sparkles className="w-5 h-5 text-purple-600" />
+                          <span className="text-sm font-medium">Thinking</span>
+                          <div className="flex items-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-600 ai-thinking-dot" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-600 ai-thinking-dot" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-purple-600 ai-thinking-dot" />
+                          </div>
                         </div>
                       </div>
                     )}
-                    {/* Summary sentence - dynamic based on amount changes */}
+                    {/* Summary sentence - dynamic based on amount and vendor changes */}
                     <div className="flex items-start gap-2 mb-3 pb-3 border-b border-purple-200">
                       <Zap className="w-4 h-4 text-purple-900 flex-shrink-0 mt-0.5" />
-                      <p className="text-sm text-gray-900">
-                        {currentAmount !== 500
-                          ? `Automatically approve invoices under $${currentAmount} from trusted vendors`
-                          : instruction?.description}
+                      <p className="text-sm font-semibold text-purple-900">
+                        {(() => {
+                          const amount = currentAmount;
+                          const vendorText = currentVendorFilter === 'Trusted vendors list'
+                            ? 'trusted vendors'
+                            : selectedVendors.length === 1
+                              ? selectedVendors[0]
+                              : `${selectedVendors.length} vendors`;
+
+                          // If anything changed from defaults, show dynamic text
+                          if (currentAmount !== 500 || currentVendorFilter !== 'Trusted vendors list') {
+                            return `Automatically approve invoices under $${amount} from ${vendorText}`;
+                          }
+                          return instruction?.description;
+                        })()}
                       </p>
                     </div>
                     {/* WHEN */}
-                    <button className="group w-full flex items-start gap-2 -mx-2 px-2 py-1.5 rounded-md hover:bg-purple-200/80 transition-colors text-left cursor-pointer">
-                      <span className="inline-block text-xs font-semibold text-purple-800 bg-purple-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 group-hover:ring-1 group-hover:ring-white/70 transition-shadow">
+                    <button
+                      onClick={() => triggerSweep('when')}
+                      className={`group w-full flex items-start gap-2 -mx-2 px-2 py-1.5 rounded-md click-sweep hover:bg-purple-100/50 transition-colors text-left cursor-pointer ${sweepingLine === 'when' ? 'animate-sweep' : ''}`}
+                    >
+                      <span className="inline-block text-xs font-semibold text-purple-800 bg-purple-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 group-hover:ring-1 group-hover:ring-white/70 transition-shadow" style={{ boxShadow: '0 1px 1px rgba(147, 51, 234, 0.35)' }}>
                         WHEN
                       </span>
                       <span className="text-gray-900 flex-1">{instruction?.logic?.when || 'Invoice is processed'}</span>
@@ -753,35 +1275,88 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                       </span>
                     </button>
 
-                    {/* IF with AND conditions and grouping */}
-                    <button className="group w-full flex items-start gap-2 -mx-2 px-2 py-1.5 rounded-md hover:bg-purple-200/80 transition-colors text-left cursor-pointer">
-                      <span className="inline-block text-xs font-semibold text-blue-800 bg-blue-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 group-hover:ring-1 group-hover:ring-white/70 transition-shadow">
-                        IF
-                      </span>
-                      <span className="flex-1">
-                        <span className="border-b border-dotted border-gray-500" title="Click to see vendor list">
-                          Vendor
+                    {/* IF with AND conditions - vendor text is clickable for dropdown */}
+                    <div className="relative">
+                      <div className={`group w-full flex items-start gap-2 -mx-2 px-2 py-1.5 rounded-md transition-colors text-left ${currentVendorFilter !== 'Trusted vendors list' ? 'bg-purple-100/40' : ''}`}>
+                        {currentVendorFilter !== 'Trusted vendors list' && (
+                          <span className="w-2 h-2 rounded-full bg-purple-500 flex-shrink-0 mt-1.5" aria-label="Modified" />
+                        )}
+                        <span className="inline-block text-xs font-semibold text-blue-800 bg-blue-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5" style={{ boxShadow: '0 1px 1px rgba(37, 99, 235, 0.35)' }}>
+                          IF
                         </span>
-                        {' '}is in{' '}
-                        <span className="border-b border-dotted border-gray-500" title="Acme Corp, TechSupply Inc, Office Depot...">
-                          Trusted vendors list
+                        <span className="flex-1">
+                          <span className="border-b border-dotted border-gray-500">
+                            Vendor
+                          </span>
+                          {currentVendorFilter === 'Trusted vendors list' ? (
+                            <>
+                              {' '}is in{' '}
+                              <button
+                                onClick={() => setIfLineDropdownOpen(!ifLineDropdownOpen)}
+                                className="border-b border-dotted border-purple-500 text-purple-700 hover:text-purple-900 hover:border-purple-700 cursor-pointer transition-colors"
+                                title="Click to select specific vendors"
+                              >
+                                Trusted vendors list
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              {' '}={' '}
+                              <button
+                                onClick={() => setIfLineDropdownOpen(!ifLineDropdownOpen)}
+                                className="border-b border-dotted border-purple-500 font-medium text-purple-700 hover:text-purple-900 hover:border-purple-700 cursor-pointer transition-colors"
+                                title="Click to change vendors"
+                              >
+                                {currentVendorFilter}
+                              </button>
+                            </>
+                          )}
                         </span>
-                      </span>
-                      <span className="text-xs text-purple-500 group-hover:text-purple-800 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 font-medium inline-flex items-center gap-1 self-center">
-                        Modify line in assistant
-                        <Sparkles className="w-3 h-3" />
-                      </span>
-                    </button>
+                      </div>
+
+                      {/* Vendor dropdown for IF line */}
+                      {ifLineDropdownOpen && (
+                        <div className="absolute left-6 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-20 py-2">
+                          <div className="px-3 py-1.5 text-xs font-medium text-gray-500 border-b border-gray-100">
+                            Select vendors for this rule
+                          </div>
+                          {DEMO_VENDORS.map((vendor) => (
+                            <label
+                              key={vendor}
+                              className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                            >
+                              <input
+                                type="checkbox"
+                                checked={selectedVendors.includes(vendor)}
+                                onChange={() => toggleVendorSelection(vendor)}
+                                className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                              />
+                              <span className="text-sm text-gray-900">{vendor}</span>
+                            </label>
+                          ))}
+                          {selectedVendors.length > 0 && (
+                            <div className="px-3 pt-2 mt-1 border-t border-gray-100">
+                              <button
+                                onClick={applyVendorChange}
+                                className="w-full px-3 py-1.5 text-xs bg-purple-900 hover:bg-purple-800 text-white rounded-md transition-colors"
+                              >
+                                Apply Changes ({selectedVendors.length} selected)
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
 
                     {/* AND condition - Amount (clickable for demo) */}
                     <button
-                      onClick={handleModifyAmountClick}
-                      className={`group w-full flex items-center gap-2 -mx-2 px-2 py-1.5 rounded-md hover:bg-purple-200/80 transition-colors pl-6 text-left cursor-pointer ${currentAmount !== 500 ? 'bg-purple-200/50' : ''}`}
+                      onClick={() => { triggerSweep('and-amount'); handleModifyAmountClick(); }}
+                      className={`group w-full flex items-center gap-2 -mx-2 px-2 py-1.5 rounded-md click-sweep hover:bg-purple-100/50 transition-colors pl-12 text-left cursor-pointer ${currentAmount !== 500 ? 'bg-purple-100/40' : ''} ${sweepingLine === 'and-amount' ? 'animate-sweep' : ''}`}
                     >
                       {currentAmount !== 500 && (
                         <span className="w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" aria-label="Modified" />
                       )}
-                      <span className="text-xs font-medium text-gray-700 bg-gray-200 px-1.5 py-0.5 rounded group-hover:ring-1 group-hover:ring-white/70 transition-shadow">AND</span>
+                      <span className="text-xs font-medium text-gray-950 bg-gray-200 px-1.5 py-0.5 rounded group-hover:ring-1 group-hover:ring-white/70 transition-shadow" style={{ boxShadow: '0 1px 1px rgba(107, 114, 128, 0.35)' }}>AND</span>
                       <span className="flex-1">
                         <span className="border-b border-dotted border-gray-500" title="Invoice total amount">
                           Amount
@@ -798,8 +1373,11 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                     </button>
 
                     {/* AND with grouped OR conditions - Invoice timing (renamed from Invoice type) */}
-                    <button className="group w-full flex items-start gap-2 -mx-2 px-2 py-1.5 rounded-md hover:bg-purple-200/80 transition-colors pl-6 text-left cursor-pointer">
-                      <span className="text-xs font-medium text-gray-700 bg-gray-200 px-1.5 py-0.5 rounded flex-shrink-0 group-hover:ring-1 group-hover:ring-white/70 transition-shadow">AND</span>
+                    <button
+                      onClick={() => triggerSweep('and-type')}
+                      className={`group w-full flex items-start gap-2 -mx-2 px-2 py-1.5 rounded-md click-sweep hover:bg-purple-100/50 transition-colors pl-12 text-left cursor-pointer ${sweepingLine === 'and-type' ? 'animate-sweep' : ''}`}
+                    >
+                      <span className="text-xs font-medium text-gray-950 bg-gray-200 px-1.5 py-0.5 rounded flex-shrink-0 group-hover:ring-1 group-hover:ring-white/70 transition-shadow" style={{ boxShadow: '0 1px 1px rgba(107, 114, 128, 0.35)' }}>AND</span>
                       <div className="border-l-2 border-gray-300 pl-3 space-y-1 flex-1">
                         <div>
                           <span className="border-b border-dotted border-gray-500" title="Invoice document type">
@@ -811,7 +1389,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                           </span>
                         </div>
                         <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-amber-800 bg-amber-200 px-1.5 py-0.5 rounded group-hover:ring-1 group-hover:ring-white/70 transition-shadow">OR</span>
+                          <span className="text-xs font-medium text-gray-950 bg-white px-1.5 py-0.5 rounded group-hover:ring-1 group-hover:ring-white/70 transition-shadow" style={{ boxShadow: '0 1px 1px rgba(107, 114, 128, 0.35)' }}>OR</span>
                           <span>
                             <span className="border-b border-dotted border-gray-500" title="Invoice document type">
                               {invoiceTypeLabel}
@@ -831,9 +1409,12 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
 
                     {/* New AND condition - Non-PO backed (animated entry) */}
                     {showNewCondition && (
-                      <button className="group w-full flex items-center gap-2 -mx-2 px-2 py-1.5 rounded-md hover:bg-purple-200/80 transition-colors pl-6 text-left cursor-pointer animate-[slideIn_0.5s_ease-out_forwards] bg-purple-200/50">
+                      <button
+                        onClick={() => triggerSweep('and-nonpo')}
+                        className={`group w-full flex items-center gap-2 -mx-2 px-2 py-1.5 rounded-md click-sweep hover:bg-purple-100/50 transition-colors pl-12 text-left cursor-pointer animate-[slideIn_0.5s_ease-out_forwards] bg-purple-100/40 ${sweepingLine === 'and-nonpo' ? 'animate-sweep' : ''}`}
+                      >
                         <span className="w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" aria-label="Modified" />
-                        <span className="text-xs font-medium text-gray-700 bg-gray-200 px-1.5 py-0.5 rounded group-hover:ring-1 group-hover:ring-white/70 transition-shadow">AND</span>
+                        <span className="text-xs font-medium text-gray-950 bg-gray-200 px-1.5 py-0.5 rounded group-hover:ring-1 group-hover:ring-white/70 transition-shadow" style={{ boxShadow: '0 1px 1px rgba(107, 114, 128, 0.35)' }}>AND</span>
                         <span className="flex-1">
                           <span className="border-b border-dotted border-gray-500">Invoice type</span>
                           {' '}={' '}
@@ -847,8 +1428,11 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                     )}
 
                     {/* THEN - dynamic based on mode */}
-                    <button className="group w-full flex items-start gap-2 -mx-2 px-2 py-1.5 rounded-md hover:bg-purple-200/80 transition-colors text-left cursor-pointer">
-                      <span className="inline-block text-xs font-semibold text-green-800 bg-green-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 group-hover:ring-1 group-hover:ring-white/70 transition-shadow">
+                    <button
+                      onClick={() => triggerSweep('then')}
+                      className={`group w-full flex items-start gap-2 -mx-2 px-2 py-1.5 rounded-md click-sweep hover:bg-purple-100/50 transition-colors text-left cursor-pointer ${sweepingLine === 'then' ? 'animate-sweep' : ''}`}
+                    >
+                      <span className="inline-block text-xs font-semibold text-green-800 bg-green-200 px-1.5 py-0.5 rounded flex-shrink-0 mt-0.5 group-hover:ring-1 group-hover:ring-white/70 transition-shadow" style={{ boxShadow: '0 1px 1px rgba(22, 163, 74, 0.35)' }}>
                         THEN
                       </span>
                       <span className="text-gray-900 flex-1 transition-all duration-200">
@@ -859,6 +1443,42 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                         <Sparkles className="w-3 h-3" />
                       </span>
                     </button>
+
+                    {/* Email notification action - shown when unsaved (with highlight) OR saved (without highlight) */}
+                    {(showEmailAction || emailActionSaved) && (
+                      <button
+                        onClick={() => triggerSweep('and-email')}
+                        className={`group w-full flex items-center gap-2 -mx-2 px-2 py-1.5 pl-12 rounded-md hover:bg-purple-100/50 transition-colors text-left cursor-pointer ${showEmailAction ? 'bg-purple-100/40' : ''}`}
+                      >
+                        {showEmailAction && (
+                          <span className="w-2 h-2 rounded-full bg-purple-500 flex-shrink-0" aria-label="Modified" />
+                        )}
+                        <span className="text-xs font-medium text-gray-950 bg-gray-200 px-1.5 py-0.5 rounded group-hover:ring-1 group-hover:ring-white/70 transition-shadow" style={{ boxShadow: '0 1px 1px rgba(107, 114, 128, 0.35)' }}>AND</span>
+                        <span className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-blue-100 text-blue-700 rounded text-sm" style={{ boxShadow: '0 1px 1px rgba(59, 130, 246, 0.35)' }}>
+                          <Mail className="w-3.5 h-3.5" />
+                          Send Email
+                          {(selectedEmailRecipient || savedEmailRecipient) && (
+                            <span className="font-medium">to {(selectedEmailRecipient || savedEmailRecipient)?.name}</span>
+                          )}
+                        </span>
+                        {/* Template pill - clickable */}
+                        {(selectedEmailTemplate || savedEmailTemplate) && (
+                          <span
+                            onClick={(e) => { e.stopPropagation(); setEmailTemplateDrawerOpen(true); }}
+                            className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-white text-gray-700 rounded text-sm hover:bg-gray-50 transition-colors cursor-pointer"
+                            style={{ boxShadow: '0 1px 1px rgba(107, 114, 128, 0.35)' }}
+                          >
+                            <FileText className="w-3.5 h-3.5" />
+                            {(savedEmailTemplate || selectedEmailTemplate)?.name}
+                            {isTemplateModified && <span className="text-amber-500">*</span>}
+                          </span>
+                        )}
+                        <span className="text-xs text-purple-500 group-hover:text-purple-800 opacity-0 group-hover:opacity-100 transition-all flex-shrink-0 font-medium inline-flex items-center gap-1 self-center ml-auto">
+                          Modify line in assistant
+                          <Sparkles className="w-3 h-3" />
+                        </span>
+                      </button>
+                    )}
                   </div>
                   )}
 
@@ -949,7 +1569,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
 
               {/* Mode Section - Visible in assistant mode only */}
               {editMode === 'assistant' && (
-                <div className="rounded-lg border border-gray-200 bg-white p-4">
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm animate-[cardFadeIn_0.4s_ease-out_0.45s_both]">
                   <h3 className="text-sm font-semibold text-gray-900 mb-3">Mode</h3>
                   <div className="flex gap-2">
                     {MODE_OPTIONS.map((option) => (
@@ -981,7 +1601,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
               {editMode === 'manual' && (
                 <>
                   {/* Collapsible Details Section */}
-                  <div className="rounded-lg border border-gray-200 bg-white">
+                  <div className="rounded-lg border border-gray-200 bg-white shadow-sm">
                     <button
                       onClick={() => setDetailsOpen(!detailsOpen)}
                       className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors"
@@ -1030,7 +1650,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                   </div>
 
                   {/* Logic Section - WHEN/IF/THEN Builder */}
-                  <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Logic</h3>
                     <p className="text-xs text-gray-500 mb-3">
                       Technical structure used by the agent.
@@ -1039,7 +1659,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                     <div className="space-y-4">
                       {/* WHEN */}
                       <div>
-                        <span className="inline-block text-xs font-semibold text-purple-700 bg-purple-100 px-2 py-0.5 rounded mb-2">
+                        <span className="inline-block text-xs font-semibold text-purple-700 bg-purple-100 px-2 py-0.5 rounded mb-2" style={{ boxShadow: '0 1px 1px rgba(147, 51, 234, 0.35)' }}>
                           WHEN
                         </span>
                         <select
@@ -1055,7 +1675,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
 
                       {/* IF - Conditions */}
                       <div>
-                        <span className="inline-block text-xs font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded mb-2">
+                        <span className="inline-block text-xs font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded mb-2" style={{ boxShadow: '0 1px 1px rgba(37, 99, 235, 0.35)' }}>
                           IF
                         </span>
                         <div className="space-y-2">
@@ -1106,7 +1726,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
 
                       {/* THEN - Actions */}
                       <div>
-                        <span className="inline-block text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded mb-2">
+                        <span className="inline-block text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded mb-2" style={{ boxShadow: '0 1px 1px rgba(22, 163, 74, 0.35)' }}>
                           THEN
                         </span>
                         <div className="space-y-2">
@@ -1149,7 +1769,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                   </div>
 
                   {/* Scope & Mode Section */}
-                  <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                     <h3 className="text-sm font-semibold text-gray-900 mb-3">Scope & mode</h3>
                     <div className="space-y-4">
                       {/* Entities */}
@@ -1256,7 +1876,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
               {/* Simulation Tab Content */}
               {activeTab === 'simulation' && (
                 <div className="space-y-4">
-                  <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm animate-[cardFadeIn_0.4s_ease-out_0.35s_both]">
                     <h3 className="text-sm font-semibold text-gray-900">Simulation</h3>
                     <p className="text-xs text-gray-500 mb-4">
                       See how this instruction would have behaved on past invoices.
@@ -1408,7 +2028,7 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
               {/* Live Activity Tab Content */}
               {activeTab === 'live' && (
                 <div className="space-y-4">
-                  <div className="rounded-lg border border-gray-200 bg-white p-4">
+                  <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm animate-[cardFadeIn_0.4s_ease-out_0.35s_both]">
                     <h3 className="text-sm font-semibold text-gray-900">Live activity</h3>
                     <p className="text-xs text-gray-500 mb-4">
                       Monitor recent triggers for this instruction.
@@ -1639,6 +2259,126 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
                           {msg.action.label}
                         </button>
                       )}
+                      {/* Vendor selector with dropdown */}
+                      {msg.action && msg.action.type === 'select_vendors' && (
+                        <div className="mt-3">
+                          {/* Vendor selector pill */}
+                          <div className="relative inline-block">
+                            <button
+                              onClick={() => setVendorDropdownOpen(!vendorDropdownOpen)}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-purple-100 hover:bg-purple-200 text-purple-900 rounded-full transition-all cursor-pointer border border-purple-300"
+                            >
+                              {selectedVendors.length === 0
+                                ? 'Select vendors'
+                                : selectedVendors.length === 1
+                                  ? selectedVendors[0]
+                                  : `${selectedVendors.length} vendors selected`}
+                              <ChevronDown className={`w-3 h-3 transition-transform ${vendorDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Dropdown - opens upward */}
+                            {vendorDropdownOpen && (
+                              <div className="absolute left-0 bottom-full mb-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-2">
+                                <div className="px-3 py-1.5 text-xs font-medium text-gray-500 border-b border-gray-100">
+                                  Select vendors for this rule
+                                </div>
+                                {DEMO_VENDORS.map((vendor) => (
+                                  <label
+                                    key={vendor}
+                                    className="flex items-center gap-2 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                                  >
+                                    <input
+                                      type="checkbox"
+                                      checked={selectedVendors.includes(vendor)}
+                                      onChange={() => toggleVendorSelection(vendor)}
+                                      className="w-4 h-4 text-purple-600 border-gray-300 rounded focus:ring-purple-500"
+                                    />
+                                    <span className="text-sm text-gray-900">{vendor}</span>
+                                  </label>
+                                ))}
+                                {selectedVendors.length > 0 && (
+                                  <div className="px-3 pt-2 mt-1 border-t border-gray-100">
+                                    <button
+                                      onClick={applyVendorChange}
+                                      className="w-full px-3 py-1.5 text-xs bg-purple-900 hover:bg-purple-800 text-white rounded-md transition-colors"
+                                    >
+                                      Apply Changes ({selectedVendors.length} selected)
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {/* Email action button */}
+                      {msg.action && msg.action.type === 'add_email_action' && (
+                        <button
+                          onClick={applyEmailAction}
+                          className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-purple-100 hover:bg-purple-200 text-purple-900 rounded-full transition-all cursor-pointer"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          {msg.action.label}
+                        </button>
+                      )}
+                      {/* Email recipient selector dropdown */}
+                      {msg.action && msg.action.type === 'select_email_recipient' && matchingRecipients.length > 1 && (
+                        <div className="mt-3">
+                          <div className="relative inline-block">
+                            <button
+                              onClick={() => setEmailRecipientDropdownOpen(!emailRecipientDropdownOpen)}
+                              className="inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-purple-100 hover:bg-purple-200 text-purple-900 rounded-full transition-all cursor-pointer border border-purple-300"
+                            >
+                              {selectedEmailRecipient ? selectedEmailRecipient.name : 'Select recipient'}
+                              <ChevronDown className={`w-3 h-3 transition-transform ${emailRecipientDropdownOpen ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {/* Dropdown - opens upward */}
+                            {emailRecipientDropdownOpen && (
+                              <div className="absolute left-0 bottom-full mb-1 w-72 bg-white border border-gray-200 rounded-lg shadow-lg z-10 py-2">
+                                <div className="px-3 py-1.5 text-xs font-medium text-gray-500 border-b border-gray-100">
+                                  Select email recipient
+                                </div>
+                                {matchingRecipients.map((recipient) => (
+                                  <button
+                                    key={recipient.id}
+                                    onClick={() => {
+                                      setSelectedEmailRecipient(recipient);
+                                      // Keep dropdown open so user can see and click confirm button
+                                    }}
+                                    className={`w-full flex flex-col items-start px-3 py-2 hover:bg-gray-50 cursor-pointer text-left ${
+                                      selectedEmailRecipient?.id === recipient.id ? 'bg-purple-50' : ''
+                                    }`}
+                                  >
+                                    <span className="text-sm font-medium text-gray-900">{recipient.name}</span>
+                                    <span className="text-xs text-gray-500">{recipient.department}</span>
+                                  </button>
+                                ))}
+                                {selectedEmailRecipient && (
+                                  <div className="px-3 pt-2 mt-1 border-t border-gray-100">
+                                    <button
+                                      onClick={applyEmailWithRecipient}
+                                      className="w-full px-3 py-1.5 text-xs bg-purple-900 hover:bg-purple-800 text-white rounded-md transition-colors"
+                                    >
+                                      Confirm: {selectedEmailRecipient.name}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                      {/* Single match confirmation button */}
+                      {msg.action && msg.action.type === 'select_email_recipient' && matchingRecipients.length === 1 && (
+                        <button
+                          onClick={applyEmailWithRecipient}
+                          className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-xs bg-purple-100 hover:bg-purple-200 text-purple-900 rounded-full transition-all cursor-pointer"
+                        >
+                          <Mail className="w-3.5 h-3.5" />
+                          {msg.action.label}
+                        </button>
+                      )}
                     </div>
                   </div>
                 )
@@ -1783,6 +2523,35 @@ function InstructionDetailModal({ instruction, isOpen, onClose, onSave, isCreate
         </div>,
         document.body
       )}
+
+      {/* Email Template Drawer */}
+      <EmailTemplateDrawer
+        isOpen={emailTemplateDrawerOpen}
+        onClose={() => setEmailTemplateDrawerOpen(false)}
+        template={selectedEmailTemplate || savedEmailTemplate}
+        subject={editedTemplateSubject}
+        body={editedTemplateBody}
+        onSubjectChange={(value) => {
+          setEditedTemplateSubject(value);
+          setIsTemplateModified(true);
+        }}
+        onBodyChange={(value) => {
+          setEditedTemplateBody(value);
+          setIsTemplateModified(true);
+        }}
+        onSave={() => {
+          // Template changes saved via state - nothing additional needed
+        }}
+        onReset={() => {
+          const template = selectedEmailTemplate || savedEmailTemplate;
+          if (template) {
+            setEditedTemplateSubject(template.subject);
+            setEditedTemplateBody(template.body);
+            setIsTemplateModified(false);
+          }
+        }}
+        isModified={isTemplateModified}
+      />
     </>
   );
 }

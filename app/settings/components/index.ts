@@ -1,4 +1,5 @@
 export { default as InstructionDetailModal } from './InstructionDetailModal';
+export { default as EmailTemplateDrawer } from './EmailTemplateDrawer';
 export {
   StatCard,
   HexagonIcon,

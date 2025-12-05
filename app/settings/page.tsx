@@ -8,7 +8,6 @@ import {
   Copy,
   Trash2,
   ChevronRight,
-  Play,
   Circle,
   Clock,
   Zap,
@@ -123,13 +122,6 @@ function InstructionCard({ instruction, onEdit }: InstructionCardProps) {
 
           {/* Action Buttons */}
           <div className="flex items-center gap-0.5">
-            <button
-              onClick={() => console.log('Simulate instruction:', instruction.id)}
-              className="p-1.5 text-gray-800 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
-              aria-label="Simulate instruction"
-            >
-              <Play className="w-4 h-4" />
-            </button>
             <button
               onClick={() => onEdit(instruction)}
               className="p-1.5 text-gray-800 hover:text-gray-900 hover:bg-gray-100 rounded transition-colors"
@@ -280,7 +272,9 @@ function AgentBuilderContent() {
     setInstructions(prev => prev.map(inst =>
       inst.id === updated.id ? updated : inst
     ));
-    handleCloseDetail();
+    // Don't update selectedInstruction - this would trigger the modal's useEffect
+    // and reset all state including chat messages and saved email actions
+    // The modal already has the updated values in its local state
   };
 
   return (
