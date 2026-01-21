@@ -1966,7 +1966,7 @@ status: ${isActive ? "active" : "inactive"}`
       )}
 
       {showDecisionLog && selectedInvoice && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10001] p-4">
           <Card className="w-full max-w-3xl max-h-[80vh] overflow-hidden flex flex-col">
             <div className="p-4 border-b flex items-center justify-between bg-muted/30">
               <div>
