@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import prisma from '@/lib/db/prisma';
 import { getAllMockInvoices } from '@/app/services/mockInvoiceService';
 
-// Use mock data if explicitly set OR if database URL is not configured
-const USE_MOCK_DATA = process.env.USE_MOCK_DATA === 'true' || !process.env.DATABASE_URL;
+// Use mock data if enabled (default to true, same as invoices and purchase-orders routes)
+const USE_MOCK_DATA = process.env.USE_MOCK_DATA !== 'false';
 
 export async function GET(request: NextRequest) {
   try {

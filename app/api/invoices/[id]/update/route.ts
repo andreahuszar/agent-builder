@@ -75,7 +75,7 @@ export async function PATCH(
     }
     if (body.terms_text && body.terms_text !== current.terms_text) {
       fieldsToUpdate.push('terms_text');
-      manuallyEdited.payment_terms_text = true;
+      manuallyEdited.terms_text = true;
     }
     if (body.vendor_name_snapshot && body.vendor_name_snapshot !== current.vendor_name_snapshot) {
       fieldsToUpdate.push('vendor_name_snapshot');
