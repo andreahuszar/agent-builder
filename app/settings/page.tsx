@@ -563,7 +563,32 @@ interface SettingsContentProps {
 }
 
 function SettingsContent({ currentView = 'agent-builder' }: SettingsContentProps) {
-  if (currentView === 'general') {
+  // Check URL hash if currentView not provided
+  const [view, setView] = useState<string>(currentView || 'agent-builder');
+  
+  useEffect(() => {
+    // Check hash on mount
+    const hash = window.location.hash.substring(1);
+    if (hash && (hash === 'general' || hash === 'agent-builder')) {
+      setView(hash);
+    } else if (currentView) {
+      setView(currentView);
+    }
+  }, [currentView]);
+
+  // Listen for hash changes
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash.substring(1);
+      if (hash && (hash === 'general' || hash === 'agent-builder')) {
+        setView(hash);
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  if (view === 'general') {
     return <GeneralSettingsContent />;
   }
 
