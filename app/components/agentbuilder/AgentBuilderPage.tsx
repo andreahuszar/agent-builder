@@ -455,6 +455,10 @@ ERROR HANDLING:
 
   const [agentMetrics, setAgentMetrics] = useState<Record<string, AgentMetrics>>({})
 
+  const formatNumber = (num: number) => {
+    return new Intl.NumberFormat("en-US").format(num)
+  }
+
   useState(() => {
     const metrics: Record<string, AgentMetrics> = {}
     const baseMultiplier = dateRange === "7days" ? 1 : dateRange === "30days" ? 4.3 : 13
@@ -828,6 +832,32 @@ ERROR HANDLING:
             {mode === "build" && (
               <div className="w-[480px] border-l border-border bg-card flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {/* Agent Statistics - show for agents with metrics */}
+                  {editingAgent?.id && agentMetrics[editingAgent.id] && (
+                    <div className="grid grid-cols-3 gap-4">
+                      <Card className="p-4">
+                        <div className="space-y-1">
+                          <div className="text-sm text-muted-foreground">Lines Evaluated</div>
+                          <div className="text-2xl font-bold">{formatNumber(agentMetrics[editingAgent.id].evaluated)}</div>
+                          <div className="text-xs text-muted-foreground">Last 24 hours</div>
+                        </div>
+                      </Card>
+                      <Card className="p-4">
+                        <div className="space-y-1">
+                          <div className="text-sm text-muted-foreground">Lines Acted On</div>
+                          <div className="text-2xl font-bold">{formatNumber(agentMetrics[editingAgent.id].actedOn)}</div>
+                          <div className="text-xs text-muted-foreground">Last 24 hours</div>
+                        </div>
+                      </Card>
+                      <Card className="p-4">
+                        <div className="space-y-1">
+                          <div className="text-sm text-muted-foreground">Lines Referred</div>
+                          <div className="text-2xl font-bold">{formatNumber(agentMetrics[editingAgent.id].referred)}</div>
+                          <div className="text-xs text-muted-foreground">Last 24 hours</div>
+                        </div>
+                      </Card>
+                    </div>
+                  )}
                   {/* Prompt Section */}
                   <Card className="p-6 flex flex-col" style={{ height: "600px" }}>
                     <div className="flex items-center justify-between mb-2">
