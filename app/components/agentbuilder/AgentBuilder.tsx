@@ -73,7 +73,7 @@ export function AgentBuilder({
   const [model, setModel] = useState("gpt-4")
   const [agentMode, setAgentMode] = useState<"observe" | "suggest" | "auto-apply">("observe") // Added agent mode state
   const [prompt, setPrompt] = useState("")
-  const [activeTools, setActiveTools] = useState<string[]>([])
+  const [activeSkills, setActiveSkills] = useState<string[]>([])
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [advancedYaml, setAdvancedYaml] = useState("")
   const [originalPrompt, setOriginalPrompt] = useState("")
@@ -88,7 +88,7 @@ export function AgentBuilder({
   const [testOutput, setTestOutput] = useState("")
   const [isTesting, setIsTesting] = useState(false)
   const [isActive, setIsActive] = useState(false)
-  const [selectedTools, setSelectedTools] = useState<string[]>([]) // Added selectedTools state
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]) // Added selectedSkills state
   const [selectedTimePeriod, setSelectedTimePeriod] = useState<"7days" | "30days" | "3months" | "6months">("7days")
   const [testResults, setTestResults] = useState<any[]>([])
   const [testProgress, setTestProgress] = useState(0)
@@ -139,13 +139,13 @@ export function AgentBuilder({
       action,
       changes,
       snapshot: {
-        id: agent?.id,
+        id: agent?.id || "",
         name: agentName,
         stage,
         model,
         mode: agentMode,
         prompt,
-        tools: activeTools,
+        skills: activeSkills,
         active: isActive,
       },
     }
@@ -163,8 +163,8 @@ export function AgentBuilder({
     setModel(snapshot.model || "gpt-4")
     setAgentMode(snapshot.mode || "observe")
     setPrompt(snapshot.prompt || "")
-    setActiveTools(snapshot.tools || [])
-    setSelectedTools(snapshot.tools || [])
+    setActiveSkills(snapshot.skills || [])
+    setSelectedSkills(snapshot.skills || [])
     setIsActive(snapshot.active ?? false)
 
     addVersionEntry("edited", [`Rolled back to version from ${new Date(version.timestamp).toLocaleString()}`])
@@ -377,8 +377,8 @@ export function AgentBuilder({
       setAgentMode(agent.mode || "observe")
       setPrompt(agent.prompt || "")
       setOriginalPrompt(agent.prompt || "")
-      setActiveTools(agent.tools || [])
-      setSelectedTools(agent.tools || [])
+      setActiveSkills(agent.skills || [])
+      setSelectedSkills(agent.skills || [])
       setIsActive(agent.active ?? false)
       setTestResults([])
       setTestProgress(0)
@@ -391,7 +391,7 @@ export function AgentBuilder({
         model: agent.model || "gpt-4",
         mode: agent.mode || "observe",
         prompt: agent.prompt || "",
-        tools: agent.tools || [],
+        skills: agent.skills || [],
       })
       setHasChanges(false)
       lastAgentIdRef.current = agent.id
@@ -406,7 +406,7 @@ export function AgentBuilder({
         model: agent.model || "gpt-4",
         mode: agent.mode || "observe",
         prompt: agent.prompt || "",
-        tools: agent.tools || [],
+        skills: agent.skills || [],
         active: agent.active ?? false,
       }
       setVersionHistory([
@@ -427,8 +427,8 @@ export function AgentBuilder({
       setAgentMode("observe")
       setPrompt("")
       setOriginalPrompt("")
-      setActiveTools([])
-      setSelectedTools([])
+      setActiveSkills([])
+      setSelectedSkills([])
       setIsActive(false)
       setTestResults([])
       setTestProgress(0)
@@ -447,10 +447,10 @@ export function AgentBuilder({
         setPrompt(agent.prompt || "")
         setOriginalPrompt(agent.prompt || "")
       }
-      if (JSON.stringify(agent.tools) !== JSON.stringify(activeTools)) {
-        console.log("[v0] Updating tools from external source")
-        setActiveTools(agent.tools || [])
-        setSelectedTools(agent.tools || [])
+      if (JSON.stringify(agent.skills) !== JSON.stringify(activeSkills)) {
+        console.log("[v0] Updating skills from external source")
+        setActiveSkills(agent.skills || [])
+        setSelectedSkills(agent.skills || [])
       }
     }
   }, [agent])
@@ -786,7 +786,7 @@ export function AgentBuilder({
       model,
       mode: agentMode,
       prompt,
-      tools: activeTools,
+      skills: activeSkills,
     }
 
     const changed =
@@ -795,10 +795,10 @@ export function AgentBuilder({
       currentData.model !== originalAgentData.model ||
       currentData.mode !== originalAgentData.mode ||
       currentData.prompt !== originalAgentData.prompt ||
-      JSON.stringify(currentData.tools) !== JSON.stringify(originalAgentData.tools)
+      JSON.stringify(currentData.skills) !== JSON.stringify(originalAgentData.skills)
 
     setHasChanges(changed)
-  }, [agentName, stage, model, agentMode, prompt, activeTools, originalAgentData, isPreview])
+  }, [agentName, stage, model, agentMode, prompt, activeSkills, originalAgentData, isPreview])
 
   // Removed the old useEffect for agentMetrics and kept the new one
 
@@ -986,7 +986,7 @@ Items: Monthly Hosting, Cloud Storage`,
       if (model !== originalAgentData.model) changes.push(`Model: "${originalAgentData.model}" → "${model}"`)
       if (agentMode !== originalAgentData.mode) changes.push(`Mode: "${originalAgentData.mode}" → "${agentMode}"`)
       if (prompt !== originalAgentData.prompt) changes.push("Prompt updated")
-      if (JSON.stringify(activeTools) !== JSON.stringify(originalAgentData.tools)) changes.push("Tools modified")
+      if (JSON.stringify(activeSkills) !== JSON.stringify(originalAgentData.skills)) changes.push("Skills modified")
     } else {
       // If it's a new agent, mark as created
       if (!agent?.id) {
@@ -1001,7 +1001,7 @@ Items: Monthly Hosting, Cloud Storage`,
       model,
       mode: agentMode,
       prompt,
-      tools: activeTools,
+      skills: activeSkills,
       active: isActive,
     }
 
@@ -1016,7 +1016,7 @@ Items: Monthly Hosting, Cloud Storage`,
       model,
       mode: agentMode,
       prompt,
-      tools: activeTools,
+      skills: activeSkills,
     })
   }
 
@@ -1058,7 +1058,7 @@ Items: Monthly Hosting, Cloud Storage`,
             : (0.3 + Math.random() * 0.4).toFixed(2),
           reason: failureReason,
           action: action,
-          toolsUsed: activeTools.slice(0, Math.floor(Math.random() * 3) + 2),
+          skillsUsed: activeSkills.slice(0, Math.floor(Math.random() * 3) + 2),
         })
       })
 
@@ -1116,7 +1116,7 @@ Items: Monthly Hosting, Cloud Storage`,
       model,
       input: testInput || "Sample invoice data",
       processing: {
-        tools_used: activeTools,
+        skills_used: activeSkills,
         prompt_applied: prompt.substring(0, 100) + "...",
       },
       result: {
@@ -1243,9 +1243,9 @@ inputs:
       : ""
   }
 
-tools:
+skills:
   allowed:
-    ${selectedTools.length > 0 ? selectedTools.map((t) => `- ${t.toLowerCase().replace(/\s+/g, "_")}`).join("\n    ") : "- data_validator\n    - erp_connector"}
+    ${selectedSkills.length > 0 ? selectedSkills.map((t) => `- ${t.toLowerCase().replace(/\s+/g, "_")}`).join("\n    ") : "- verify_data\n    - connect_to_erp_system"}
   constraints:
     max_tool_calls: 10
     timeout_seconds: 30
@@ -1388,19 +1388,19 @@ model:
 status: ${isActive ? "active" : "inactive"}`
   }
 
-  const AVAILABLE_TOOLS = [
-    "OCR Engine",
-    "Document Parser",
-    "Data Validator",
-    "PO Lookup Service",
-    "Fuzzy Matching Engine",
-    "Exception Manager",
-    "ERP Connector",
-    "Workflow Engine",
-    "Approval Router",
-    "Email Sender",
-    "GL Mapper",
-    "Vendor Lookup",
+  const AVAILABLE_SKILLS = [
+    "Extract text",
+    "Process Documents",
+    "Verify Data",
+    "Find Purchase Orders",
+    "Intelligent Matching",
+    "Flag Issues",
+    "Connect to ERP System",
+    "Run Workflows",
+    "Route for Approval",
+    "Send Messages",
+    "Map to General Ledger",
+    "Find Vendor Information",
   ]
 
   const getModeStyles = (mode: "observe" | "suggest" | "auto-apply") => {
@@ -1692,8 +1692,8 @@ status: ${isActive ? "active" : "inactive"}`
                         <span className="font-medium">{model}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Tools:</span>
-                        <span className="font-medium">{activeTools.length} selected</span>
+                        <span className="text-muted-foreground">Skills:</span>
+                        <span className="font-medium">{activeSkills.length} selected</span>
                       </div>
                     </div>
                   </Card>
@@ -2383,42 +2383,42 @@ status: ${isActive ? "active" : "inactive"}`
             )}
           </Card>
 
-          {/* Tools Section */}
+          {/* Skills Section */}
           <Card className="p-6 space-y-4">
             <div>
-              <h3 className="text-lg font-semibold mb-1">Available Tools</h3>
+              <h3 className="text-lg font-semibold mb-1">Available Skills</h3>
               <p className="text-xs text-muted-foreground mb-4">
-                {isPreview ? "Tools enabled for this agent" : "Select the tools this agent can use during execution"}
+                {isPreview ? "Skills enabled for this agent" : "Select the skills this agent can use during execution"}
               </p>
               <div className="grid grid-cols-3 gap-3">
-                {AVAILABLE_TOOLS.map((tool) => (
+                {AVAILABLE_SKILLS.map((skill) => (
                   <Card
-                    key={tool}
+                    key={skill}
                     className={`p-3 transition-colors ${
                       isPreview ? "cursor-default" : "cursor-pointer hover:bg-accent"
-                    } ${activeTools.includes(tool) ? "border-primary bg-primary/5" : ""}`}
+                    } ${activeSkills.includes(skill) ? "border-primary bg-primary/5" : ""}`}
                     onClick={() => {
                       if (!isPreview) {
-                        setActiveTools((prev) =>
-                          prev.includes(tool) ? prev.filter((t) => t !== tool) : [...prev, tool],
+                        setActiveSkills((prev) =>
+                          prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill],
                         )
                       }
                     }}
                   >
                     <div className="flex items-center gap-2">
                       <Checkbox
-                        checked={activeTools.includes(tool)}
+                        checked={activeSkills.includes(skill)}
                         onCheckedChange={() => {
                           if (!isPreview) {
-                            setActiveTools((prev) =>
-                              prev.includes(tool) ? prev.filter((t) => t !== tool) : [...prev, tool],
+                            setActiveSkills((prev) =>
+                              prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill],
                             )
                           }
                         }}
                         className="cursor-pointer"
                         disabled={isPreview}
                       />
-                      <span className="text-sm font-medium">{tool}</span>
+                      <span className="text-sm font-medium">{skill}</span>
                     </div>
                   </Card>
                 ))}
