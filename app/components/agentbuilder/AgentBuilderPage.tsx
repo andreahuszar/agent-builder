@@ -46,14 +46,22 @@ export default function AgentBuilderPage() {
     }
   }, [])
 
-  // Effect to auto-create new agent when switching to build mode with no agent selected
-  useEffect(() => {
-    if (mode === "build" && !editingAgent && !testingAgent) {
-      console.log("[v0] Auto-creating new agent when entering build mode")
-      handleCreateNewAgent()
+  // Load agents from localStorage on mount
+  const loadAgentsFromStorage = () => {
+    if (typeof window !== 'undefined') {
+      const stored = localStorage.getItem('agents')
+      if (stored) {
+        try {
+          return JSON.parse(stored)
+        } catch (e) {
+          console.error('Failed to parse stored agents:', e)
+        }
+      }
     }
-  }, [mode])
-  const [agents, setAgents] = useState<Agent[]>([
+    return null
+  }
+
+  const [agents, setAgents] = useState<Agent[]>(loadAgentsFromStorage() || [
     {
       id: "1",
       name: "Document Format",
@@ -436,6 +444,22 @@ ERROR HANDLING:
       skills: ["Send Messages", "Run Workflows", "Connect to ERP System"],
     },
   ])
+
+  // Save agents to localStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== 'undefined' && agents.length > 0) {
+      localStorage.setItem('agents', JSON.stringify(agents))
+    }
+  }, [agents])
+
+  // Effect to auto-create new agent when switching to build mode with no agent selected
+  useEffect(() => {
+    if (mode === "build" && !editingAgent && !testingAgent) {
+      console.log("[v0] Auto-creating new agent when entering build mode")
+      handleCreateNewAgent()
+    }
+  }, [mode])
+
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
   const [isPreviewMode, setIsPreviewMode] = useState(false)
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())

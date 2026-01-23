@@ -1,8 +1,9 @@
 "use client"
 
+import { useState } from "react"
 import { Card } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
-import { ArrowDownIcon, CheckCircle2, Circle, AlertCircle, Plus } from "lucide-react"
+import { CheckCircle2, Circle, AlertCircle, Plus, ChevronDown, ChevronRight } from "lucide-react"
 import { Button } from "@/app/components/ui/button"
 
 type Agent = {
@@ -38,6 +39,11 @@ export function WorkflowVisualizer({
   agentMetrics,
   onAgentClick,
 }: WorkflowVisualizerProps) {
+  // State to track which stages are expanded (Ingestion open by default)
+  const [expandedStages, setExpandedStages] = useState<Set<string>>(
+    new Set(["ingestion"])
+  )
+
   const stages = [
     { id: "ingestion", name: "Ingestion", description: "Receive and validate invoices" },
     { id: "data-capture", name: "Data Capture", description: "Extract line items and amounts" },
@@ -46,6 +52,19 @@ export function WorkflowVisualizer({
     { id: "approval", name: "Approval", description: "Route for authorization" },
     { id: "posting", name: "Posting", description: "Post to accounting systems" },
   ]
+
+  // Toggle stage expansion/collapse
+  const toggleStage = (stageId: string) => {
+    setExpandedStages(prev => {
+      const next = new Set(prev)
+      if (next.has(stageId)) {
+        next.delete(stageId)
+      } else {
+        next.add(stageId)
+      }
+      return next
+    })
+  }
 
   const getStageStatus = (stageId: string) => {
     const stageAgents = agents.filter((a) => a.stage === stageId)
@@ -78,10 +97,12 @@ export function WorkflowVisualizer({
           <p className="text-sm text-muted-foreground mt-1">Monitor agent performance and efficiency</p>
         </div>
 
-        <div className="space-y-0">
+        <div className="space-y-2">
           {stages.map((stage, index) => {
             const status = getStageStatus(stage.id)
             const stageAgents = agents.filter((a) => a.stage === stage.id)
+            const activeCount = stageAgents.filter((a) => a.active).length
+            const inactiveCount = stageAgents.length - activeCount
 
             return (
               <div key={stage.id}>
@@ -89,77 +110,109 @@ export function WorkflowVisualizer({
                   <div className="flex items-start gap-4">
                     <div className="flex-shrink-0 mt-1">{getStatusIcon(status)}</div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between gap-3 mb-2">
-                        <div className="flex items-center gap-3">
-                          <h3 className="text-lg font-semibold">{stage.name}</h3>
-                        </div>
-                        {onCreateAgent && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onCreateAgent(stage.id)}
-                            className="gap-2 shrink-0"
-                          >
-                            <Plus className="w-3.5 h-3.5" />
-                            New Agent
-                          </Button>
+                      {/* Clickable Stage Header */}
+                      <div 
+                        className={`flex items-center gap-3 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800 -m-2 p-2 rounded transition-colors ${expandedStages.has(stage.id) ? 'mb-2' : ''}`}
+                        onClick={() => toggleStage(stage.id)}
+                      >
+                        {expandedStages.has(stage.id) ? (
+                          <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronRight className="w-4 h-4 text-muted-foreground" />
+                        )}
+                        <h3 className="text-lg font-semibold">{stage.name}</h3>
+                        {stageAgents.length > 0 ? (
+                          <div className="flex items-center gap-2">
+                            {activeCount > 0 && (
+                              <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                                {activeCount} active
+                              </Badge>
+                            )}
+                            {inactiveCount > 0 && (
+                              <Badge variant="outline" className="text-xs">
+                                {inactiveCount} inactive
+                              </Badge>
+                            )}
+                          </div>
+                        ) : (
+                          <Badge variant="outline" className="text-xs text-muted-foreground">
+                            0 agents
+                          </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground mb-4">{stage.description}</p>
 
-                      {stageAgents.length > 0 && (
-                        <div className="space-y-2">
-                          {stageAgents.map((agent) => {
-                            const metrics = agentMetrics[agent.id]
+                      {/* Expandable Content */}
+                      {expandedStages.has(stage.id) && (
+                        <>
+                          <p className="text-sm text-muted-foreground mb-4">{stage.description}</p>
 
-                            return (
-                              <div key={agent.id} className="flex items-center justify-between p-3 rounded-lg bg-muted">
-                                <div className="flex items-center gap-3">
-                                  <div
-                                    className={`w-2 h-2 rounded-full ${
-                                      agent.active ? "bg-green-500" : "bg-muted-foreground/40"
-                                    }`}
-                                  />
-                                  <span
-                                    className="text-sm font-medium cursor-pointer hover:text-primary transition-colors"
-                                    onClick={() => onAgentClick?.(agent)}
-                                  >
-                                    {agent.name}
-                                  </span>
-                                </div>
-                                <div className="flex items-center gap-3">
-                                  <Badge variant={agent.active ? "default" : "secondary"} className="text-xs">
-                                    {agent.active ? "Active" : "Inactive"}
-                                  </Badge>
-                                  {agent.mode && (
-                                    <Badge
-                                      variant="outline"
-                                      className={`text-xs ${
-                                        agent.mode === "observe"
-                                          ? "bg-blue-500/10 text-blue-600 border-blue-500/20"
-                                          : agent.mode === "suggest"
-                                            ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                                            : "bg-red-500/10 text-red-600 border-red-500/20"
-                                      }`}
-                                    >
-                                      {agent.mode}
-                                    </Badge>
-                                  )}
-                                </div>
-                              </div>
-                            )
-                          })}
-                        </div>
+                          {stageAgents.length > 0 && (
+                            <div className="space-y-2 mb-4">
+                              {stageAgents.map((agent) => {
+                                const metrics = agentMetrics[agent.id]
+
+                                return (
+                                  <div key={agent.id} className="flex items-center justify-between p-3 rounded-lg bg-muted">
+                                    <div className="flex items-center gap-3">
+                                      <div
+                                        className={`w-2 h-2 rounded-full ${
+                                          agent.active ? "bg-green-500" : "bg-muted-foreground/40"
+                                        }`}
+                                      />
+                                      <span
+                                        className="text-sm font-medium cursor-pointer hover:text-primary transition-colors"
+                                        onClick={(e) => {
+                                          e.stopPropagation()
+                                          onAgentClick?.(agent)
+                                        }}
+                                      >
+                                        {agent.name}
+                                      </span>
+                                    </div>
+                                    <div className="flex items-center gap-3">
+                                      <Badge variant={agent.active ? "default" : "secondary"} className="text-xs">
+                                        {agent.active ? "Active" : "Inactive"}
+                                      </Badge>
+                                      {agent.mode && (
+                                        <Badge
+                                          variant="outline"
+                                          className={`text-xs ${
+                                            agent.mode === "observe"
+                                              ? "bg-blue-500/10 text-blue-600 border-blue-500/20"
+                                              : agent.mode === "suggest"
+                                                ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                                                : "bg-red-500/10 text-red-600 border-red-500/20"
+                                          }`}
+                                        >
+                                          {agent.mode}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )}
+
+                          {onCreateAgent && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onCreateAgent(stage.id)
+                              }}
+                              className="gap-2"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              New Agent
+                            </Button>
+                          )}
+                        </>
                       )}
                     </div>
                   </div>
                 </Card>
-
-                {index < stages.length - 1 && (
-                  <div className="flex justify-center py-2">
-                    <ArrowDownIcon className="w-5 h-5 text-muted-foreground" />
-                  </div>
-                )}
               </div>
             )
           })}

@@ -47,7 +47,22 @@ export default function ExecutiveDashboardClient() {
     try {
       await new Promise(resolve => setTimeout(resolve, 500))
       const days = parseInt(dateRange) || 30
-      const dashboardData = generateExecutiveDashboardData(days)
+      
+      // Get real agent count from localStorage
+      let activeAgentsCount = 8 // fallback default
+      if (typeof window !== 'undefined') {
+        const storedAgents = localStorage.getItem('agents')
+        if (storedAgents) {
+          try {
+            const agents = JSON.parse(storedAgents)
+            activeAgentsCount = agents.filter((agent: any) => agent.active).length
+          } catch (e) {
+            console.error('Failed to parse stored agents:', e)
+          }
+        }
+      }
+      
+      const dashboardData = generateExecutiveDashboardData(days, activeAgentsCount)
       setData(dashboardData)
     } catch (err) {
       console.error('Error loading dashboard:', err)

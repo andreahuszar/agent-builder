@@ -78,9 +78,9 @@ const generateDateRange = (days: number) => {
   return dates
 }
 
-export function generateExecutiveDashboardData(dateRangeDays: number = 30): ExecutiveDashboardData {
+export function generateExecutiveDashboardData(dateRangeDays: number = 30, activeAgentsCount?: number): ExecutiveDashboardData {
   // Base metrics - enterprise scale
-  const activeAgents = randomBetween(75, 150)
+  const activeAgents = activeAgentsCount !== undefined ? activeAgentsCount : randomBetween(75, 150)
   const totalInvoices = randomBetween(8500, 15000)
   const agentErrors = randomBetween(8, 18)
   const agentsRequiringReview = randomBetween(12, 25)
