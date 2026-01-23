@@ -3,7 +3,6 @@
 import { Card } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { ArrowDownIcon, CheckCircle2, Circle, AlertCircle, Plus } from "lucide-react"
-import { WorkflowDashboard } from "./WorkflowDashboard"
 import { Button } from "@/app/components/ui/button"
 
 type Agent = {
@@ -73,9 +72,11 @@ export function WorkflowVisualizer({
   return (
     <div className="h-full overflow-y-auto p-6 bg-background py-6">
       <div className="max-w-6xl mx-auto space-y-6">
-        <div></div>
-
-        <WorkflowDashboard dateRange={dateRange} onDateRangeChange={onDateRangeChange} />
+        {/* Page Header */}
+        <div>
+          <h2 className="text-2xl font-bold">Invoice processing workflow</h2>
+          <p className="text-sm text-muted-foreground mt-1">Monitor agent performance and efficiency</p>
+        </div>
 
         <div className="space-y-0">
           {stages.map((stage, index) => {
@@ -127,29 +128,6 @@ export function WorkflowVisualizer({
                                   </span>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                  {/* Show metrics only for active agents */}
-                                  {metrics && agent.active && (
-                                    <div className="flex items-center gap-4 text-xs">
-                                      <div className="text-muted-foreground">
-                                        <span className="font-medium">Evaluated:</span>{" "}
-                                        <span className="text-foreground font-semibold">
-                                          {formatNumber(metrics.evaluated)}
-                                        </span>
-                                      </div>
-                                      <div className="text-muted-foreground">
-                                        <span className="font-medium">Acted on:</span>{" "}
-                                        <span className="text-foreground font-semibold">
-                                          {formatNumber(metrics.actedOn)}
-                                        </span>
-                                      </div>
-                                      <div className="text-muted-foreground">
-                                        <span className="font-medium">Referred:</span>{" "}
-                                        <span className="text-foreground font-semibold">
-                                          {formatNumber(metrics.referred)}
-                                        </span>
-                                      </div>
-                                    </div>
-                                  )}
                                   <Badge variant={agent.active ? "default" : "secondary"} className="text-xs">
                                     {agent.active ? "Active" : "Inactive"}
                                   </Badge>

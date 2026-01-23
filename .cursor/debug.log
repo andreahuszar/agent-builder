@@ -1,0 +1,40 @@
+{"location":"MainApp.tsx:112","message":"MainApp component rendering","data":{"timestamp":1769180381001},"timestamp":1769180381001,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:115","message":"About to render AppLayout","data":{"activeModule":"invoice-processing"},"timestamp":1769180381002,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:112","message":"MainApp component rendering","data":{"timestamp":1769180381002},"timestamp":1769180381002,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:115","message":"About to render AppLayout","data":{"activeModule":"invoice-processing"},"timestamp":1769180381002,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"AppLayout.tsx:29","message":"Computing currentPills","data":{"currentModule":"invoice-processing"},"timestamp":1769180381002,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:32","message":"Got pills from MODULE_PILLS","data":{"pillsCount":9,"currentModule":"invoice-processing"},"timestamp":1769180381002,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:62","message":"Returning filtered pills","data":{"finalPillsCount":5,"pillIds":["dashboard","executive-dashboard","invoices","approvals","all-invoices"]},"timestamp":1769180381002,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:29","message":"Computing currentPills","data":{"currentModule":"invoice-processing"},"timestamp":1769180381002,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:32","message":"Got pills from MODULE_PILLS","data":{"pillsCount":9,"currentModule":"invoice-processing"},"timestamp":1769180381002,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:62","message":"Returning filtered pills","data":{"finalPillsCount":5,"pillIds":["dashboard","executive-dashboard","invoices","approvals","all-invoices"]},"timestamp":1769180381002,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769180381225,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769180381225,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769180381225,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769180381225,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769180381263,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769180381264,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769180381264,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769180381264,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769180381268,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769180381268,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769180381268,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769180381268,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769180381522,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769180381522,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769180381522,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769180381522,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"executive-dashboard"},"timestamp":1769180384778,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"executive-dashboard"},"timestamp":1769180384779,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"executive-dashboard"},"timestamp":1769180384779,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"executive-dashboard"},"timestamp":1769180384779,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"AppLayout.tsx:29","message":"Computing currentPills","data":{"currentModule":"settings"},"timestamp":1769180428472,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:32","message":"Got pills from MODULE_PILLS","data":{"pillsCount":2,"currentModule":"settings"},"timestamp":1769180428472,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:62","message":"Returning filtered pills","data":{"finalPillsCount":2,"pillIds":["agent-builder","general"]},"timestamp":1769180428472,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:29","message":"Computing currentPills","data":{"currentModule":"settings"},"timestamp":1769180428472,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:32","message":"Got pills from MODULE_PILLS","data":{"pillsCount":2,"currentModule":"settings"},"timestamp":1769180428473,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:62","message":"Returning filtered pills","data":{"finalPillsCount":2,"pillIds":["agent-builder","general"]},"timestamp":1769180428473,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"agent-builder"},"timestamp":1769180428488,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"agent-builder"},"timestamp":1769180428488,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"agent-builder"},"timestamp":1769180428488,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"agent-builder"},"timestamp":1769180428488,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}

@@ -134,6 +134,7 @@ export const MODULE_PILLS: Record<string, TabItem[]> = {
   ],
   'settings': [
     { id: 'agent-builder', label: 'Agent Builder', href: '/agent-builder' },
+    { id: 'executive-dashboard', label: 'Dashboard', href: '/agent-builder?view=executive-dashboard' },
     { id: 'general', label: 'General', href: '/settings#general' },
   ],
 };
