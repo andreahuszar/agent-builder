@@ -27,7 +27,17 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
 
   // Get pills for the active module and filter based on visibility preferences
   const currentPills = React.useMemo(() => {
+    // #region agent log
+    if (typeof window !== 'undefined') {
+      fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppLayout.tsx:29',message:'Computing currentPills',data:{currentModule},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    }
+    // #endregion
     let pills = MODULE_PILLS[currentModule] || [];
+    // #region agent log
+    if (typeof window !== 'undefined') {
+      fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppLayout.tsx:32',message:'Got pills from MODULE_PILLS',data:{pillsCount:pills.length,currentModule},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    }
+    // #endregion
 
     if (currentModule === 'invoice-processing') {
       // Create a copy of pills to modify
@@ -59,6 +69,11 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
       });
     }
 
+    // #region agent log
+    if (typeof window !== 'undefined') {
+      fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'AppLayout.tsx:62',message:'Returning filtered pills',data:{finalPillsCount:pills.length,pillIds:pills.map(p=>p.id)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+    }
+    // #endregion
     return pills;
   }, [currentModule, poVisibility, launchpadVisibility, exceptionNavigation]);
 

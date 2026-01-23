@@ -20,6 +20,11 @@ interface InvoiceProcessingContentProps {
 }
 
 function InvoiceProcessingContent({ currentView = 'invoices' }: InvoiceProcessingContentProps) {
+  // #region agent log
+  if (typeof window !== 'undefined') {
+    fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MainApp.tsx:22',message:'InvoiceProcessingContent rendering',data:{currentView},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  }
+  // #endregion
   const [invoices, setInvoices] = useState([]);
   const [purchaseOrders, setPurchaseOrders] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -62,6 +67,11 @@ function InvoiceProcessingContent({ currentView = 'invoices' }: InvoiceProcessin
     }
   };
 
+  // #region agent log
+  if (typeof window !== 'undefined') {
+    fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MainApp.tsx:65',message:'Rendering view content',data:{currentView},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  }
+  // #endregion
   return (
     <>
       {currentView === 'launchpad' && <LaunchpadClient />}
@@ -110,9 +120,28 @@ function InvoiceProcessingContent({ currentView = 'invoices' }: InvoiceProcessin
 }
 
 export default function MainApp() {
-  return (
-    <AppLayout activeModule="invoice-processing">
-      <InvoiceProcessingContent />
-    </AppLayout>
-  );
+  // #region agent log
+  if (typeof window !== 'undefined') {
+    fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MainApp.tsx:112',message:'MainApp component rendering',data:{timestamp:Date.now()},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+  }
+  // #endregion
+  try {
+    // #region agent log
+    if (typeof window !== 'undefined') {
+      fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MainApp.tsx:115',message:'About to render AppLayout',data:{activeModule:'invoice-processing'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    }
+    // #endregion
+    return (
+      <AppLayout activeModule="invoice-processing">
+        <InvoiceProcessingContent />
+      </AppLayout>
+    );
+  } catch (error) {
+    // #region agent log
+    if (typeof window !== 'undefined') {
+      fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'MainApp.tsx:123',message:'Error in MainApp component',data:{error:error instanceof Error ? error.message : String(error),stack:error instanceof Error ? error.stack : undefined},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'D'})}).catch(()=>{});
+    }
+    // #endregion
+    throw error;
+  }
 }
