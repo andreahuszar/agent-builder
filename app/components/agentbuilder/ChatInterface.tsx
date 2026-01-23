@@ -12,29 +12,29 @@ type Message = {
   content: string
   timestamp: Date
   generatedPrompt?: string
-  suggestedTools?: string[]
+  suggestedSkills?: string[]
 }
 
 interface ChatInterfaceProps {
-  onPromptGenerated?: (prompt: string, tools: string[]) => void
+  onPromptGenerated?: (prompt: string, skills: string[]) => void
   currentPrompt?: string
   agentId?: string
   currentAgent?: Agent | null
 }
 
-const AVAILABLE_TOOLS = [
-  "OCR Engine",
-  "Document Parser",
-  "Data Validator",
-  "PO Lookup Service",
-  "Fuzzy Matching Engine",
-  "Exception Manager",
-  "ERP Connector",
-  "Workflow Engine",
-  "Approval Router",
-  "Email Sender",
-  "GL Mapper",
-  "Vendor Lookup",
+const AVAILABLE_SKILLS = [
+  "Extract text",
+  "Process Documents",
+  "Verify Data",
+  "Find Purchase Orders",
+  "Intelligent Matching",
+  "Flag Issues",
+  "Connect to ERP System",
+  "Run Workflows",
+  "Route for Approval",
+  "Send Messages",
+  "Map to General Ledger",
+  "Find Vendor Information",
 ]
 
 export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, currentAgent }: ChatInterfaceProps) {
@@ -157,8 +157,8 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
         }
       }
 
-      // Extract structured prompt and tools from response
-      const { prompt, tools } = extractPromptAndTools(fullResponse)
+      // Extract structured prompt and skills from response
+      const { prompt, skills } = extractPromptAndSkills(fullResponse)
 
       // Update final message with extracted data
       setMessages((prev) =>
@@ -168,7 +168,7 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
                 ...msg,
                 content: fullResponse,
                 generatedPrompt: prompt,
-                suggestedTools: tools,
+                suggestedSkills: skills,
               }
             : msg,
         ),
@@ -190,9 +190,9 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
     }
   }
 
-  const handleApplyPrompt = (prompt: string, tools: string[]) => {
+  const handleApplyPrompt = (prompt: string, skills: string[]) => {
     if (onPromptGenerated) {
-      onPromptGenerated(prompt, tools)
+      onPromptGenerated(prompt, skills)
     }
   }
 
@@ -206,6 +206,7 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
             <p className="text-xs text-muted-foreground">Invoice Processing Specialist</p>
           </div>
         </div>
+
       </div>
 
       {/* Messages */}
@@ -228,7 +229,7 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
                   size="sm"
                   variant="outline"
                   className="gap-2 bg-background hover:bg-accent"
-                  onClick={() => handleApplyPrompt(message.generatedPrompt!, message.suggestedTools || [])}
+                  onClick={() => handleApplyPrompt(message.generatedPrompt!, message.suggestedSkills || [])}
                 >
                   <CheckCircle2 className="w-3.5 h-3.5" />
                   Apply to Prompt
@@ -274,9 +275,9 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
   )
 }
 
-function extractPromptAndTools(response: string): { prompt: string; tools: string[] } {
+function extractPromptAndSkills(response: string): { prompt: string; skills: string[] } {
   let prompt = ""
-  const tools: string[] = []
+  const skills: string[] = []
 
   console.log("[v0] Full AI response:", response.substring(0, 500))
 
@@ -303,10 +304,10 @@ function extractPromptAndTools(response: string): { prompt: string; tools: strin
         inStructuredSection = true
       }
 
-      // Stop capturing at SUGGESTED TOOLS or conversational endings
+      // Stop capturing at SUGGESTED SKILLS or conversational endings
       if (
-        /^###?\s*SUGGESTED\s+TOOLS/i.test(line) ||
-        /^\*\*SUGGESTED\s+TOOLS/i.test(line) ||
+        /^###?\s*SUGGESTED\s+SKILLS/i.test(line) ||
+        /^\*\*SUGGESTED\s+SKILLS/i.test(line) ||
         /^(How does this|Would you like|Let me know|Please let me know|Are there any|To achieve this|To implement this)/i.test(
           line,
         )
@@ -326,48 +327,48 @@ function extractPromptAndTools(response: string): { prompt: string; tools: strin
     prompt = ""
   }
 
-  // 1. Look for "SUGGESTED TOOLS:" section
-  const suggestedToolsMatch = response.match(/\*\*?SUGGESTED\s+TOOLS:?\*\*?\s*([\s\S]*?)(?=\n\n|###|$)/i)
-  if (suggestedToolsMatch) {
-    console.log("[v0] Found SUGGESTED TOOLS section")
-    const toolsSection = suggestedToolsMatch[1]
-    AVAILABLE_TOOLS.forEach((tool) => {
-      // Match: - Tool, * Tool, • Tool, **Tool**, or just Tool on its own line
-      if (new RegExp(`[-•*]?\\s*\\*?\\*?${tool}\\*?\\*?`, "i").test(toolsSection) && !tools.includes(tool)) {
-        console.log("[v0] Found tool in SUGGESTED TOOLS:", tool)
-        tools.push(tool)
+  // 1. Look for "SUGGESTED SKILLS:" section (also check for TOOLS for backward compatibility)
+  const suggestedSkillsMatch = response.match(/\*\*?SUGGESTED\s+(SKILLS|TOOLS):?\*\*?\s*([\s\S]*?)(?=\n\n|###|$)/i)
+  if (suggestedSkillsMatch) {
+    console.log("[v0] Found SUGGESTED SKILLS/TOOLS section")
+    const skillsSection = suggestedSkillsMatch[2]
+    AVAILABLE_SKILLS.forEach((skill) => {
+      // Match: - Skill, * Skill, • Skill, **Skill**, or just Skill on its own line
+      if (new RegExp(`[-•*]?\\s*\\*?\\*?${skill}\\*?\\*?`, "i").test(skillsSection) && !skills.includes(skill)) {
+        console.log("[v0] Found skill in SUGGESTED SKILLS:", skill)
+        skills.push(skill)
       }
     })
   }
 
-  // 2. Look for tools section with variations
-  const toolsSectionMatch = response.match(
-    /(tools? (needed|required)|implement.*using|recommend.*tools?):?\s*([\s\S]*?)(?=\n\n|###|$)/i,
+  // 2. Look for skills section with variations (also check for tools for backward compatibility)
+  const skillsSectionMatch = response.match(
+    /(skills?|tools?) (needed|required)|implement.*using|recommend.*(skills?|tools?):?\s*([\s\S]*?)(?=\n\n|###|$)/i,
   )
-  if (toolsSectionMatch && tools.length === 0) {
-    console.log("[v0] Found tools section (variation)")
-    const toolsSection = toolsSectionMatch[3]
-    AVAILABLE_TOOLS.forEach((tool) => {
-      if (new RegExp(`[-•*]?\\s*\\*?\\*?${tool}\\*?\\*?`, "i").test(toolsSection) && !tools.includes(tool)) {
-        console.log("[v0] Found tool in tools section:", tool)
-        tools.push(tool)
+  if (skillsSectionMatch && skills.length === 0) {
+    console.log("[v0] Found skills/tools section (variation)")
+    const sectionText = skillsSectionMatch[skillsSectionMatch.length - 1]
+    AVAILABLE_SKILLS.forEach((skill) => {
+      if (new RegExp(`[-•*]?\\s*\\*?\\*?${skill}\\*?\\*?`, "i").test(sectionText) && !skills.includes(skill)) {
+        console.log("[v0] Found skill in skills section:", skill)
+        skills.push(skill)
       }
     })
   }
 
-  // 3. Last resort: scan entire response for tool mentions
-  if (tools.length === 0) {
-    console.log("[v0] Scanning entire response for tools")
-    AVAILABLE_TOOLS.forEach((tool) => {
-      if (new RegExp(`\\b${tool}\\b`, "i").test(response)) {
-        console.log("[v0] Found tool in full scan:", tool)
-        tools.push(tool)
+  // 3. Last resort: scan entire response for skill mentions
+  if (skills.length === 0) {
+    console.log("[v0] Scanning entire response for skills")
+    AVAILABLE_SKILLS.forEach((skill) => {
+      if (new RegExp(`\\b${skill}\\b`, "i").test(response)) {
+        console.log("[v0] Found skill in full scan:", skill)
+        skills.push(skill)
       }
     })
   }
 
   console.log("[v0] Extracted prompt length:", prompt.length, "chars")
-  console.log("[v0] Extracted tools:", tools)
+  console.log("[v0] Extracted skills:", skills)
 
-  return { prompt, tools }
+  return { prompt, skills }
 }

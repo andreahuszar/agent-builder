@@ -20,7 +20,7 @@ export type Agent = {
   mode?: "observe" | "suggest" | "auto-apply"
   prompt?: string
   model?: string
-  tools?: string[]
+  skills?: string[]
 }
 
 export type AgentMetrics = {
@@ -43,159 +43,302 @@ export default function AgentBuilderPage() {
   const [agents, setAgents] = useState<Agent[]>([
     {
       id: "1",
-      name: "Invoice Ingestion Agent",
+      name: "Document Format",
       stage: "ingestion",
       active: true,
       mode: "auto-apply",
-      prompt: `ROLE: Document Reception and Initial Classification Agent - exclusively handles incoming document intake
+      prompt: `ROLE: Document Format Validation Agent - rejects invoices in Microsoft Word format
+
+AGENT DESCRIPTION:
+Reject invoices in Word format
+
+AGENT INSTRUCTIONS:
+
+1. If any invoice is received in Microsoft Word format (docx) format, automatically reject the invoice.
+2. Send the following reject email:
+3. Email template: <Incorrect invoice format>
 
 INPUTS:
-- Raw invoice documents (PDF, XLSX, CSV, email attachments)
-- Document metadata (filename, sender, timestamp, file size)
+- Raw invoice documents (PDF, XLSX, CSV, PNG/JPG, DOCX)
+- Document metadata (filename, sender, timestamp, file size, file extension)
 
 STEPS:
-1. Receive incoming document and validate file type (PDF, XLSX, CSV, PNG/JPG) and size (max 25MB)
-2. Perform virus and malware scanning
-3. Assign unique document ID and timestamp
-4. Create intake audit trail entry
-5. Route to Data Capture stage
+1. Receive incoming document and check file format/extension
+2. If document is in Microsoft Word format (.docx or .doc), immediately reject the invoice
+3. Send rejection email using template "Incorrect invoice format"
+4. Log rejection reason in audit trail
+5. For all other supported formats (PDF, XLSX, CSV, PNG/JPG), proceed with normal processing
+6. Assign unique document ID and timestamp for accepted documents
+7. Route accepted documents to Data Capture stage
 
 VALIDATIONS:
+- File format must NOT be Microsoft Word (.docx or .doc)
 - File size must not exceed 25MB
-- File format must be supported
 - Document must pass virus scan
 - Document must not be corrupted or unreadable
 
 OUTPUT:
-- Document intake record with unique ID
-- Routing to Data Capture stage
+- For Word format: Rejection email sent with "Incorrect invoice format" template
+- For accepted formats: Document intake record with unique ID and routing to Data Capture stage
 
 ERROR HANDLING:
-- If file type unsupported → Reject with supported format list
+- If file is Word format (.docx or .doc) → Automatically reject and send "Incorrect invoice format" email
+- If file type unsupported (other than Word) → Reject with supported format list
 - If file corrupted → Request resubmission
 - If virus detected → Quarantine and alert security team`,
       model: "gpt-4",
-      tools: ["Document Parser", "Virus Scanner"],
+      skills: ["Process Documents", "Send Messages"],
     },
     {
       id: "2",
-      name: "Data Capture Agent",
+      name: "OCR Agent",
       stage: "data-capture",
       active: true,
-      mode: "suggest",
-      prompt: `ROLE: Field Extraction and Data Population Agent - exclusively extracts text and numbers from documents
+      mode: "auto-apply",
+      prompt: `ROLE: Optical Character Recognition and Field Extraction Agent - exclusively extracts structured data from invoice documents using OCR technology
 
 INPUTS:
-- Validated documents from Ingestion stage
+- Validated documents from Ingestion stage (PDF, XLSX, CSV, PNG/JPG)
 - OCR engine output
 - Vendor-specific extraction templates
 
 STEPS:
-1. Extract invoice number, date, due date from document header
-2. Extract vendor name, address, tax ID
-3. Extract line items: description, quantity, unit price, amount
-4. Extract totals: subtotal, tax, total amount
-5. Calculate confidence score for each field
+1. Process document through OCR engine to extract all text and numbers
+2. Identify and extract invoice header fields
+3. Extract additional invoice details
+4. Extract line items with all associated fields
+5. Calculate confidence score for each extracted field
 6. Flag fields with confidence < 85% for manual review
 
+INVOICE HEADER FIELDS TO EXTRACT:
+- invoice_number (required): Unique invoice identifier
+- invoice_date (required): Date invoice was issued
+- due_date (required): Payment due date
+- vendor_name_snapshot: Vendor/supplier name
+- po_numbers_cached: Purchase order number(s) referenced on invoice
+- job_number: Job or reference number
+- currency: Invoice currency code (e.g., USD, GBP, EUR)
+- subtotal: Subtotal amount before tax
+- tax_total: Total tax amount
+- total: Final invoice total amount
+
+ADDITIONAL INVOICE DETAILS TO EXTRACT:
+Payment Section:
+- payment_method: Method of payment (bank_transfer, check, credit_card, ach, wire, cash)
+- terms_text: Payment terms text (e.g., "Net 30", "2/10 Net 30")
+- vendor_address_snapshot: Billing address of vendor
+- payment_bank_details: Bank information including:
+  - bank_name: Name of bank
+  - account_name: Account holder name
+  - account_number: Bank account number
+  - sort_code: Sort code (UK)
+  - iban: International Bank Account Number
+  - swift_bic: SWIFT/BIC code
+  - routing_number: Routing number (US)
+
+Coding Section:
+- ledger: Ledger account classification
+- cost_center: Cost center code
+- gl_code: General ledger account code
+- department: Department name
+- accounting_notes: Additional accounting notes
+
+LINE ITEMS FIELDS TO EXTRACT (for each line item):
+- line_no: Line item number/sequence
+- description: Item description
+- qty: Quantity ordered/received
+- uom: Unit of measure (e.g., EA, DAYS, HRS, KG)
+- unit_price: Price per unit
+- discount_amount: Discount amount if applicable
+- net_amount: Net amount after discount
+- tax_amount: Tax amount for line item
+- line_total: Total amount for line item
+- sku/product_code: SKU or product code
+- po_line_id: Reference to matched purchase order line
+- gr_line_id: Goods receipt line reference
+- ses_line_id: SES line reference
+- cost_center: Cost center for line item
+- gl_account: GL account for line item
+- project_code: Project code if applicable
+
 VALIDATIONS:
-- Invoice number must be present
+- Invoice number must be present and non-empty
 - Invoice date must be valid date format
-- Total amount must match line items sum
-- OCR confidence for amounts must exceed 85%
+- Due date must be valid date format and after invoice date
+- Total amount must match sum of line items (subtotal + tax_total)
+- OCR confidence for monetary amounts must exceed 85%
+- All required header fields must be extracted
+- Line items must have at minimum: description, quantity, unit_price, and net_amount
 
 OUTPUT:
-- Structured data object with extracted fields
-- Confidence scores per field
-- List of fields requiring manual review
+- Structured data object with all extracted fields organized by section (header, additional details, line items)
+- Confidence scores per field (0-100%)
+- List of fields requiring manual review (confidence < 85%)
+- OCR extraction metadata (processing time, page count, quality metrics)
 
 ERROR HANDLING:
-- If OCR confidence < 70% → Route to manual data entry
-- If critical field missing → Halt and request clarification
-- If total mismatch > $5 → Flag calculation error for review`,
+- If OCR confidence < 70% for critical fields → Route to manual data entry
+- If critical field missing (invoice_number, invoice_date, total) → Halt and flag for manual review
+- If total mismatch > $5 or 1% → Flag calculation error for review
+- If line item totals don't sum to invoice total → Flag for verification
+- If date formats are inconsistent → Attempt normalization, flag if ambiguous`,
       model: "gpt-4",
-      tools: ["OCR Engine", "Data Extractor"],
+      skills: ["Extract text", "Verify Data"],
     },
     {
       id: "3",
-      name: "Verification Agent",
+      name: "High value invoices",
       stage: "verification",
-      active: false,
-      mode: "observe",
-      prompt: `ROLE: Business Rules Validation Agent - exclusively validates data against business rules and master data
+      active: true,
+      mode: "auto-apply",
+      prompt: `ROLE: High Value Invoice Exception Agent - exclusively flags high value invoices for review
+
+AGENT DESCRIPTION:
+Flag high value invoices for review
+
+AGENT INSTRUCTIONS:
+
+1. If any invoice is above $10m, raise it as an exception for review
 
 INPUTS:
-- Extracted invoice data from Data Capture stage
-- Vendor master data
-- Contract pricing agreements
-- Historical vendor invoices
+- Extracted invoice data from OCR Agent stage
+- Invoice total amount
+- Currency information
 
 STEPS:
-1. Verify vendor exists and is active in vendor master
-2. Check vendor is not on blocked list
-3. Validate pricing against contract rates (±5% tolerance)
-4. Check for duplicate invoice number from this vendor
-5. Verify tax calculations match jurisdiction rates
-6. Confirm payment terms ≤ 90 days
+1. Retrieve invoice total amount from extracted data
+2. Convert to USD if invoice is in different currency (using current exchange rates)
+3. Compare invoice total against $10,000,000 threshold
+4. If invoice total exceeds $10,000,000, raise exception flag
+5. Create exception record with invoice details and reason
+6. Route invoice to exception review queue
 
 VALIDATIONS:
-- Vendor must be active in master data
-- Pricing variance must be within ±5%
-- No duplicate invoice numbers
-- Tax rate must match jurisdiction
-- Payment terms must not exceed 90 days
+- Invoice total must be a valid numeric value
+- Currency conversion must use accurate exchange rates
+- Exception flag must be raised for any invoice above $10,000,000 USD
 
 OUTPUT:
-- Validation status: Pass / Fail
-- List of rule violations
-- Risk score (0-100)
+- Exception status: Exception Raised / No Exception
+- Exception reason: "Invoice value exceeds $10m threshold"
+- Invoice total amount (in USD)
+- Routing to exception review queue
 
 ERROR HANDLING:
-- If vendor blocked → Reject with reason code
-- If pricing variance > 10% → Escalate to procurement
-- If duplicate found → Reject with reference to original`,
+- If invoice total cannot be determined → Flag for manual review
+- If currency conversion fails → Use invoice currency and flag for manual conversion
+- If exception raised → Ensure invoice is routed to review queue and approver is notified`,
       model: "gpt-3.5",
-      tools: ["Data Validator", "Vendor Lookup", "Contract Database"],
+      skills: ["Verify Data", "Flag Issues"],
     },
     {
-      id: "5",
-      name: "Approval Decision Agent",
-      stage: "approval",
+      id: "4",
+      name: "Bulk commodities tolerance",
+      stage: "matching",
       active: true,
-      mode: "suggest",
-      prompt: `ROLE: Approval Recommendation Agent - exclusively provides decision support to approvers
+      mode: "auto-apply",
+      prompt: `ROLE: Bulk Commodities Matching Tolerance Agent - exclusively adjusts matching tolerance for perishable goods and foodstuffs
+
+AGENT INSTRUCTIONS:
+
+1. If a line item relates to perishable goods / food stuffs, increase the matching tolerance level to +/- 5%
+2. Please convert all units of measure to KG for the calculation
 
 INPUTS:
-- Invoice pending approval
-- Historical approval patterns
-- Supporting documentation (PO, contracts)
-- Budget utilization status
+- Invoice line items from OCR Agent stage
+- Purchase order line items
+- Line item descriptions
+- Quantities and units of measure
+- Unit prices
 
 STEPS:
-1. Calculate risk score based on vendor history and amount
-2. Compare pricing to historical invoices from this vendor
-3. Check budget remaining in cost center
-4. Identify any unusual patterns or red flags
-5. Provide approve/reject recommendation with rationale
-6. Highlight key information for approver attention
+1. Analyze each invoice line item description to identify if it relates to perishable goods or foodstuffs
+2. Identify keywords and categories that indicate perishable goods (e.g., fresh produce, dairy, meat, seafood, frozen foods, beverages, etc.)
+3. For line items identified as perishable goods/foodstuffs:
+   a. Convert all units of measure to KG (kilograms) for both invoice and PO line items
+   b. Apply conversion factors for common units (e.g., LBS to KG, OZ to KG, TON to KG, etc.)
+   c. Increase matching tolerance to +/- 5% for quantity and price comparisons
+4. For non-perishable line items, use standard matching tolerance (typically +/- 1-2%)
+5. Perform matching comparison with adjusted tolerances
+6. Flag any variances that exceed the applicable tolerance threshold
 
 VALIDATIONS:
-- Invoice matches PO line items if PO-backed
-- Pricing within historical range (±15%)
-- Budget has sufficient remaining funds
+- Unit of measure conversion must be accurate (use standard conversion factors)
+- Perishable goods identification must be based on description keywords and categories
+- Tolerance adjustment must only apply to identified perishable goods/foodstuffs
+- All quantity comparisons must use KG as the base unit for perishable goods
 
 OUTPUT:
-- Recommendation: Approve / Request Info / Reject
-- Risk score with explanation
-- Key decision factors highlighted
-- Budget impact summary
+- Matching results with adjusted tolerances for perishable goods
+- Unit conversions applied (original unit → KG)
+- Tolerance level applied per line item (+/- 5% for perishables, standard for others)
+- Variance calculations in KG
+- Match status: Matched / Variance Within Tolerance / Variance Exceeds Tolerance
 
 ERROR HANDLING:
-- If risk score > 70 → Recommend detailed review
-- If budget insufficient → Suggest payment delay
-- If pricing outlier → Flag for procurement review`,
+- If unit of measure cannot be converted to KG → Flag for manual review
+- If perishable goods identification is ambiguous → Apply conservative tolerance (+/- 3%)
+- If conversion factor is unknown → Flag line item for manual conversion
+- If matching fails due to conversion errors → Route to manual matching queue`,
       model: "gpt-4",
-      tools: ["Risk Analyzer", "Budget Checker", "Historical Data"],
+      skills: ["Find Purchase Orders", "Intelligent Matching", "Verify Data"],
+    },
+    {
+      id: "8",
+      name: "Routing approval for IT spend",
+      stage: "approval",
+      active: true,
+      mode: "auto-apply",
+      prompt: `ROLE: IT Spend Approval Routing Agent - exclusively routes non-PO invoices for software and IT services to designated approver
+
+AGENT INSTRUCTIONS:
+
+If any non PO invoice relates to the procurement of software / IT services, route for approval to Thomas Eaton (thomas.eaton@xx.com)
+
+INPUTS:
+- Invoice data from previous stages
+- Purchase order information (to determine if invoice is PO-backed or non-PO)
+- Line item descriptions
+- Vendor information
+- Invoice category/classification
+
+STEPS:
+1. Check if invoice is PO-backed (has associated purchase order)
+2. If invoice is non-PO (no purchase order), proceed to step 3; otherwise, skip routing
+3. Analyze invoice line items and descriptions to identify software/IT services:
+   - Software licenses, subscriptions, SaaS products
+   - IT services (consulting, support, maintenance)
+   - Cloud services, hosting, infrastructure
+   - Software development, implementation services
+   - IT hardware if bundled with services
+   - Technology consulting and advisory services
+4. Check vendor name and category for IT-related indicators
+5. If invoice relates to software/IT services:
+   a. Route invoice for approval to Thomas Eaton (thomas.eaton@xx.com)
+   b. Set approver assignment in workflow
+   c. Send notification to approver
+   d. Log routing decision and reason
+6. If invoice does not relate to software/IT services, continue with standard approval routing
+
+VALIDATIONS:
+- Invoice must be non-PO (no purchase order associated)
+- Invoice must relate to software or IT services
+- Approver email must be valid: thomas.eaton@xx.com
+- Routing must be logged in audit trail
+
+OUTPUT:
+- Approval routing status: Routed to IT Approver / Standard Routing
+- Assigned approver: Thomas Eaton (thomas.eaton@xx.com) for IT spend invoices
+- Routing reason: "Non-PO invoice for software/IT services"
+- Notification sent to approver
+
+ERROR HANDLING:
+- If invoice classification is ambiguous → Route to Thomas Eaton for review (better safe than miss IT spend)
+- If approver email invalid → Flag for manual routing
+- If routing fails → Retry routing, escalate if persistent failure
+- If PO status unclear → Check PO lookup service, route to IT approver if non-PO`,
+      model: "gpt-4",
+      skills: ["Route for Approval", "Run Workflows", "Find Vendor Information", "Find Purchase Orders"],
     },
     {
       id: "6",
@@ -236,7 +379,7 @@ ERROR HANDLING:
 - If GL account invalid → Route to accounting for correction
 - If posting fails → Retry 3 times, then escalate`,
       model: "gpt-4",
-      tools: ["ERP Connector", "GL Mapper", "Tax Calculator"],
+      skills: ["Connect to ERP System", "Map to General Ledger"],
     },
     {
       id: "7",
@@ -277,7 +420,7 @@ ERROR HANDLING:
 - If insufficient funds → Delay payment, notify treasury
 - If payment rejected by bank → Try alternative method`,
       model: "gpt-3.5",
-      tools: ["Payment Gateway", "Bank Integration", "Email Sender"],
+      skills: ["Send Messages", "Run Workflows", "Connect to ERP System"],
     },
   ])
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
@@ -403,7 +546,7 @@ ERROR HANDLING:
   }
 
   const handleCreateNewAgent = () => {
-    setEditingAgent({ id: "", name: "", stage: "", active: false, mode: "observe", prompt: "", model: "", tools: [] }) // Added mode field
+    setEditingAgent({ id: "", name: "", stage: "", active: false, mode: "observe", prompt: "", model: "", skills: [] }) // Added mode field
     setIsPreviewMode(false)
     setMode("build")
   }
@@ -417,7 +560,7 @@ ERROR HANDLING:
       mode: "observe",
       prompt: "",
       model: "",
-      tools: [],
+      skills: [],
     })
     setIsPreviewMode(false)
     setMode("build")
@@ -444,14 +587,14 @@ ERROR HANDLING:
     setIsPreviewMode(false)
   }
 
-  const handlePromptGenerated = (generatedPrompt: string, tools: string[]) => {
-    console.log("[v0] Prompt generated, updating agent with tools:", tools)
+  const handlePromptGenerated = (generatedPrompt: string, skills: string[]) => {
+    console.log("[v0] Prompt generated, updating agent with skills:", skills)
     if (editingAgent) {
-      // Update the editing agent with the generated prompt and tools
+      // Update the editing agent with the generated prompt and skills
       setEditingAgent({
         ...editingAgent,
         prompt: generatedPrompt,
-        tools: tools,
+        skills: skills,
       })
     }
   }
