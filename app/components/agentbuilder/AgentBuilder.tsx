@@ -2107,7 +2107,7 @@ status: ${isActive ? "active" : "inactive"}`
         {" "}
         {/* CHANGED max-w-6xl to max-w-4xl */}
         {/* Header */}
-        <div className="flex items-center justify-between">
+        <div className={isPreview ? "space-y-4" : "flex items-center justify-between"}>
           <div>
             <h2 className="text-2xl font-bold">
               {!agent?.id && !isPreview ? "Create Agent" : agent?.name || "Agent Configuration"}
@@ -2163,20 +2163,6 @@ status: ${isActive ? "active" : "inactive"}`
             )}
           </div>
         </div>
-        {(agent || editingAgent) && (
-          <div className={`${currentModeStyles.bg} ${currentModeStyles.border} border-2 rounded-lg p-4`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`${currentModeStyles.badge} px-3 py-1 rounded-full text-sm font-semibold uppercase tracking-wide`}
-                >
-                  {agentMode === "auto-apply" ? "Auto-Apply" : agentMode}
-                </div>
-                <p className={`text-sm ${currentModeStyles.text} font-medium`}>{getModeDescription(agentMode)}</p>
-              </div>
-            </div>
-          </div>
-        )}
         {/* Agent Statistics - show for agents with metrics */}
         {agent?.id && agentMetrics && (
           <div className="grid grid-cols-3 gap-4">
@@ -2203,23 +2189,19 @@ status: ${isActive ? "active" : "inactive"}`
             </Card>
           </div>
         )}
-        {/* Show zero metrics message for newly saved agents */}
-        {agent?.id && !agentMetrics && (
-          <Card className="p-4 bg-muted/50">
-            <div className="flex items-start gap-3">
-              <div className="text-muted-foreground">
-                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
+        {(agent || editingAgent) && (
+          <div className={`${currentModeStyles.bg} ${currentModeStyles.border} border-2 rounded-lg p-4`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div
+                  className={`${currentModeStyles.badge} px-3 py-1 rounded-full text-sm font-semibold uppercase tracking-wide`}
+                >
+                  {agentMode === "auto-apply" ? "Auto-Apply" : agentMode}
+                </div>
+                <p className={`text-sm ${currentModeStyles.text} font-medium`}>{getModeDescription(agentMode)}</p>
               </div>
-              <p className="text-sm text-muted-foreground">Stats will be shown once agent has been live for 24 hours</p>
             </div>
-          </Card>
+          </div>
         )}
         {conflicts.length > 0 && (
           <Card className="p-4 border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
@@ -2272,6 +2254,24 @@ status: ${isActive ? "active" : "inactive"}`
                   </div>
                 ))}
               </div>
+            </div>
+          </Card>
+        )}
+        {/* Show zero metrics message for newly saved agents */}
+        {agent?.id && !agentMetrics && (
+          <Card className="p-4 bg-muted/50">
+            <div className="flex items-start gap-3">
+              <div className="text-muted-foreground">
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    strokeWidth={2}
+                    d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                  />
+                </svg>
+              </div>
+              <p className="text-sm text-muted-foreground">Stats will be shown once agent has been live for 24 hours</p>
             </div>
           </Card>
         )}

@@ -829,7 +829,7 @@ ERROR HANDLING:
               <div className="w-[480px] border-l border-border bg-card flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   {/* Prompt Section */}
-                  <Card className="p-6 space-y-4">
+                  <Card className="p-6 flex flex-col" style={{ height: "600px" }}>
                     <div className="flex items-center justify-between mb-2">
                       <Label htmlFor="system-prompt">System Prompt</Label>
                       {!isPreviewMode && (
@@ -840,14 +840,13 @@ ERROR HANDLING:
                     </div>
 
                     {!showAdvanced ? (
-                      <div className="space-y-2">
+                      <div className="space-y-2 flex-1 flex flex-col min-h-0">
                         <Textarea
                           id="system-prompt"
                           value={currentPrompt}
                           readOnly
                           placeholder="Define the agent's behavior and instructions..."
-                          rows={16}
-                          className="font-mono text-sm bg-muted/50 cursor-not-allowed"
+                          className="font-mono text-sm bg-muted/50 cursor-not-allowed flex-1 resize-none"
                           disabled={true}
                         />
                         <p className="text-xs text-muted-foreground">
@@ -855,11 +854,11 @@ ERROR HANDLING:
                         </p>
                       </div>
                     ) : (
-                      <div className="space-y-2">
+                      <div className="space-y-2 flex-1 flex flex-col min-h-0">
                         <Textarea
                           value={advancedYaml}
                           readOnly
-                          className="border rounded-lg p-4 bg-slate-950 text-green-400 font-mono text-xs whitespace-pre overflow-x-auto min-h-[400px] cursor-not-allowed opacity-75"
+                          className="border rounded-lg p-4 bg-slate-950 text-green-400 font-mono text-xs whitespace-pre overflow-x-auto flex-1 resize-none cursor-not-allowed opacity-75"
                           disabled={true}
                           placeholder="# No prompt defined yet"
                         />
