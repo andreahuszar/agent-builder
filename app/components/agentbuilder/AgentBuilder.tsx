@@ -2399,7 +2399,7 @@ status: ${isActive ? "active" : "inactive"}`
                   <Card
                     key={entry.id}
                     className={`p-4 transition-colors ${
-                      selectedVersion === entry.id ? "border-primary bg-primary/5" : "hover:bg-accent/50"
+                      selectedVersion === entry.id ? "border-primary bg-primary/5" : "hover:bg-gray-50 dark:hover:bg-gray-800"
                     }`}
                   >
                     <div className="flex items-start justify-between gap-4">

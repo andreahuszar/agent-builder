@@ -4,6 +4,8 @@ import { useState, useEffect } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Send, Bot, User, CheckCircle2 } from "lucide-react"
+import { Card } from "@/app/components/ui/card"
+import { Textarea } from "@/app/components/ui/textarea"
 import type { Agent } from "./AgentBuilderPage"
 
 type Message = {
@@ -43,12 +45,13 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
       id: "1",
       role: "assistant",
       content:
-        "Hi! I'm your invoice processing specialist. Tell me what your agent needs to do - I'll expand it into a detailed, production-ready configuration with specific fields, validation rules, and error handling.",
+        "Hi! I'm your invoice processing specialist. Tell me what your agent needs to do, and I'll ask a few clarifying questions to build the perfect configuration for you.",
       timestamp: new Date(),
     },
   ])
   const [input, setInput] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
+  const [questionCount, setQuestionCount] = useState(0)
 
   useEffect(() => {
     console.log("[v0] Agent changed, clearing chat. Agent ID:", agentId)
@@ -57,11 +60,12 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
         id: "1",
         role: "assistant",
         content:
-          "Hi! I'm your invoice processing specialist. Tell me what your agent needs to do - I'll expand it into a detailed, production-ready configuration with specific fields, validation rules, and error handling.",
+          "Hi! I'm your invoice processing specialist. Tell me what your agent needs to do, and I'll ask a few clarifying questions to build the perfect configuration for you.",
         timestamp: new Date(),
       },
     ])
     setInput("")
+    setQuestionCount(0)
   }, [agentId])
 
   const handleSend = async () => {
@@ -81,6 +85,11 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
 
     try {
       console.log("[v0] Sending chat request")
+      
+      // Count assistant messages that are questions (not prompts with generatedPrompt)
+      const assistantQuestions = messages.filter(m => m.role === "assistant" && !m.generatedPrompt && m.id !== "1")
+      const currentQuestionCount = assistantQuestions.length
+      
       const response = await fetch("/api/agent-builder/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -89,6 +98,7 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
             role: m.role,
             content: m.content,
           })),
+          questionCount: currentQuestionCount,
         }),
       })
 
@@ -158,7 +168,19 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
       }
 
       // Extract structured prompt and skills from response
-      const { prompt, skills } = extractPromptAndSkills(fullResponse)
+      const { prompt, skills, isQuestion } = extractPromptAndSkills(fullResponse)
+
+      console.log("[v0] Extraction result:", {
+        promptLength: prompt.length,
+        skillsCount: skills.length,
+        isQuestion,
+        hasPrompt: !!prompt,
+      })
+
+      // Update question count if this is a question (not a generated prompt)
+      if (isQuestion && !prompt) {
+        setQuestionCount((prev) => prev + 1)
+      }
 
       // Update final message with extracted data
       setMessages((prev) =>
@@ -167,8 +189,8 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
             ? {
                 ...msg,
                 content: fullResponse,
-                generatedPrompt: prompt,
-                suggestedSkills: skills,
+                generatedPrompt: prompt || undefined, // Only set if prompt exists
+                suggestedSkills: skills.length > 0 ? skills : undefined,
               }
             : msg,
         ),
@@ -219,21 +241,75 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
               </div>
             )}
             <div className="max-w-[85%] space-y-2">
-              <div
-                className={`p-3 rounded-lg ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
-              >
-                <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
-              </div>
-              {message.role === "assistant" && message.generatedPrompt && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="gap-2 bg-background hover:bg-accent"
-                  onClick={() => handleApplyPrompt(message.generatedPrompt!, message.suggestedSkills || [])}
+              {/* Regular message content - show only if not a generated prompt */}
+              {!(message.role === "assistant" && message.generatedPrompt) && (
+                <div
+                  className={`p-3 rounded-lg ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
                 >
-                  <CheckCircle2 className="w-3.5 h-3.5" />
-                  Apply to Prompt
-                </Button>
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                </div>
+              )}
+              
+              {/* Generated Prompt Display with Apply Button */}
+              {message.role === "assistant" && message.generatedPrompt && message.generatedPrompt.length > 0 && (
+                <Card className="p-4 space-y-3 border-2 border-dashed border-primary/50 bg-primary/5">
+                  <h4 className="text-sm font-semibold text-primary">Generated Structured Prompt:</h4>
+                  <Textarea
+                    value={message.generatedPrompt}
+                    readOnly
+                    rows={10}
+                    className="font-mono text-xs bg-background/50 border-primary/30 cursor-not-allowed resize-none"
+                    disabled={true}
+                  />
+                  {message.suggestedSkills && message.suggestedSkills.length > 0 && (
+                    <div>
+                      <h4 className="text-xs font-medium text-muted-foreground mb-1">Suggested Skills:</h4>
+                      <div className="flex flex-wrap gap-2">
+                        {message.suggestedSkills.map((skill) => (
+                          <span key={skill} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md">
+                            {skill}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  <Button
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={() => handleApplyPrompt(message.generatedPrompt!, message.suggestedSkills || [])}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Apply to Agent
+                  </Button>
+                </Card>
+              )}
+              
+              {/* Fallback: Show apply button if response has structured content but extraction didn't work */}
+              {message.role === "assistant" && 
+               !message.generatedPrompt && 
+               (message.content.includes("ROLE:") || 
+                message.content.includes("INPUTS:") || 
+                message.content.includes("STEPS:") || 
+                message.content.includes("OUTPUT:")) && 
+               !message.content.trim().endsWith("?") && (
+                <Card className="p-4 space-y-3 border-2 border-dashed border-primary/50 bg-primary/5">
+                  <h4 className="text-sm font-semibold text-primary">Generated Prompt (Full Response):</h4>
+                  <Textarea
+                    value={message.content}
+                    readOnly
+                    rows={10}
+                    className="font-mono text-xs bg-background/50 border-primary/30 cursor-not-allowed resize-none"
+                    disabled={true}
+                  />
+                  <Button
+                    size="sm"
+                    className="w-full gap-2"
+                    onClick={() => handleApplyPrompt(message.content, message.suggestedSkills || [])}
+                  >
+                    <CheckCircle2 className="w-4 h-4" />
+                    Apply to Agent
+                  </Button>
+                </Card>
               )}
             </div>
             {message.role === "user" && (
@@ -275,7 +351,7 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
   )
 }
 
-function extractPromptAndSkills(response: string): { prompt: string; skills: string[] } {
+function extractPromptAndSkills(response: string): { prompt: string; skills: string[]; isQuestion: boolean } {
   let prompt = ""
   const skills: string[] = []
 
@@ -284,47 +360,71 @@ function extractPromptAndSkills(response: string): { prompt: string; skills: str
   const hasStructuredContent =
     response.includes("ROLE:") ||
     response.includes("INPUTS:") ||
+    response.includes("INPUT:") ||
     response.includes("STEPS:") ||
-    response.includes("OUTPUT:")
+    response.includes("STEP:") ||
+    response.includes("OUTPUT:") ||
+    response.includes("VALIDATIONS:") ||
+    response.includes("VALIDATION:") ||
+    response.includes("ERROR HANDLING:") ||
+    response.includes("ERROR_HANDLING:")
+
+  // Detect if this is a question (not a generated prompt)
+  // A question typically:
+  // - Doesn't have structured sections
+  // - Ends with a question mark
+  // - Is conversational
+  const isQuestion = !hasStructuredContent && (
+    response.trim().endsWith("?") ||
+    /^(To help|Could you|What|Which|How|When|Where|Would|Can|Should|Do you|Are you)/i.test(response.trim())
+  )
 
   if (hasStructuredContent) {
     // Split response into lines to process
     const lines = response.split("\n")
     let inStructuredSection = false
     const promptLines: string[] = []
+    let foundFirstSection = false
 
     for (let i = 0; i < lines.length; i++) {
       const line = lines[i]
 
-      // Start capturing when we hit a structured section
+      // Start capturing when we hit a structured section (more flexible matching)
       if (
-        /^###?\s*(ROLE|INPUTS?|STEPS?|VALIDATIONS?|OUTPUT|ERROR\s+HANDLING|CONTEXT)/i.test(line) ||
-        /^\*\*(ROLE|INPUTS?|STEPS?|VALIDATIONS?|OUTPUT|ERROR\s+HANDLING|CONTEXT)/i.test(line)
+        /^###?\s*(ROLE|INPUTS?|STEPS?|VALIDATIONS?|OUTPUT|ERROR\s*HANDLING|CONTEXT|AGENT|DESCRIPTION)/i.test(line) ||
+        /^\*\*(ROLE|INPUTS?|STEPS?|VALIDATIONS?|OUTPUT|ERROR\s*HANDLING|CONTEXT|AGENT|DESCRIPTION)/i.test(line) ||
+        /^(ROLE|INPUTS?|STEPS?|VALIDATIONS?|OUTPUT|ERROR\s*HANDLING|CONTEXT|AGENT|DESCRIPTION):/i.test(line.trim())
       ) {
         inStructuredSection = true
+        foundFirstSection = true
+        // Include the section header line
+        promptLines.push(line)
+        continue
       }
 
-      // Stop capturing at SUGGESTED SKILLS or conversational endings
-      if (
-        /^###?\s*SUGGESTED\s+SKILLS/i.test(line) ||
-        /^\*\*SUGGESTED\s+SKILLS/i.test(line) ||
-        /^(How does this|Would you like|Let me know|Please let me know|Are there any|To achieve this|To implement this)/i.test(
-          line,
-        )
-      ) {
-        inStructuredSection = false
-        break
-      }
-
-      // Capture the line if we're in a structured section
-      if (inStructuredSection) {
+      // If we've found the first section, continue capturing until we hit a stop condition
+      if (foundFirstSection && inStructuredSection) {
+        // Stop capturing at SUGGESTED SKILLS or conversational endings
+        if (
+          /^###?\s*SUGGESTED\s+(SKILLS|TOOLS)/i.test(line) ||
+          /^\*\*SUGGESTED\s+(SKILLS|TOOLS)/i.test(line) ||
+          /^SUGGESTED\s+(SKILLS|TOOLS):/i.test(line.trim()) ||
+          /^(How does this|Would you like|Let me know|Please let me know|Are there any|To achieve this|To implement this|Here is|This prompt)/i.test(line.trim())
+        ) {
+          inStructuredSection = false
+          break
+        }
+        // Continue capturing lines
         promptLines.push(line)
       }
     }
 
     prompt = promptLines.join("\n").trim()
+    console.log("[v0] Extracted prompt length:", prompt.length, "chars")
+    console.log("[v0] Extracted prompt preview:", prompt.substring(0, 200))
   } else {
     prompt = ""
+    console.log("[v0] No structured content found in response")
   }
 
   // 1. Look for "SUGGESTED SKILLS:" section (also check for TOOLS for backward compatibility)
@@ -369,6 +469,7 @@ function extractPromptAndSkills(response: string): { prompt: string; skills: str
 
   console.log("[v0] Extracted prompt length:", prompt.length, "chars")
   console.log("[v0] Extracted skills:", skills)
+  console.log("[v0] Is question:", isQuestion)
 
-  return { prompt, skills }
+  return { prompt, skills, isQuestion }
 }
