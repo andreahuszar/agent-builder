@@ -11,6 +11,7 @@ import { Card } from "@/app/components/ui/card"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Save, Play, Edit, Power, X, Loader2, RefreshCw, Trash2, ChevronRight } from "lucide-react" // Added Trash2 icon and ChevronRight icon
+import { ChatInterface } from "./ChatInterface"
 
 import type { Agent } from "./AgentBuilderPage"
 
@@ -42,6 +43,9 @@ interface AgentBuilderProps {
   allAgents?: any[] // Added allAgents prop for conflict detection
   onDelete?: (agentId: string) => void // Added onDelete prop
   agentMetrics?: { evaluated: number; actedOn: number; referred: number } // Added agentMetrics prop
+  onPromptGenerated?: (prompt: string, skills: string[]) => void // Added for prompt generation from chat
+  currentAgent?: Agent | null // Added for passing agent context to chat
+  onStateChange?: (prompt: string, skills: string[], advancedYaml?: string) => void // Callback to sync state with parent
 }
 
 const stages = [
@@ -67,6 +71,9 @@ export function AgentBuilder({
   allAgents = [], // Default to empty array if not provided
   onDelete, // Added onDelete
   agentMetrics, // Added agentMetrics prop
+  onPromptGenerated, // Added for prompt generation from chat
+  currentAgent, // Added for passing agent context to chat
+  onStateChange, // Callback to sync state with parent
 }: AgentBuilderProps) {
   const [agentName, setAgentName] = useState("")
   const [stage, setStage] = useState("ingestion")
@@ -295,6 +302,28 @@ export function AgentBuilder({
     const text = rulesToPrompt(rules)
     setPrompt(text)
   }
+
+  const handlePromptGenerated = (generatedPrompt: string, skills: string[]) => {
+    setPrompt(generatedPrompt)
+    setActiveSkills(skills)
+    setSelectedSkills(skills)
+    if (onPromptGenerated) {
+      onPromptGenerated(generatedPrompt, skills)
+    }
+    // Sync state with parent
+    if (onStateChange) {
+      const yaml = showAdvanced ? generateCodeView() : ""
+      onStateChange(generatedPrompt, skills, yaml)
+    }
+  }
+
+  // Sync state with parent component for right sidebar rendering
+  useEffect(() => {
+    if (onStateChange) {
+      const yaml = showAdvanced ? generateCodeView() : ""
+      onStateChange(prompt, activeSkills, yaml)
+    }
+  }, [prompt, activeSkills, showAdvanced, agentName, stage, model, agentMode, onStateChange])
 
   const extractErrorScenariosFromPrompt = (promptText: string): string[] => {
     if (!promptText) return []
@@ -2341,90 +2370,19 @@ status: ${isActive ? "active" : "inactive"}`
             </div>
           </Card>
 
-          {/* Prompt Section */}
-          <Card className="p-6 space-y-4">
-            <div className="flex items-center justify-between mb-2">
-              <Label htmlFor="system-prompt">System Prompt</Label>
-              {!isPreview && (
-                <Button type="button" variant="ghost" size="sm" onClick={handleToggleAdvanced}>
-                  {showAdvanced ? "Basic view" : "Advanced view"}
-                </Button>
-              )}
-            </div>
+          {/* AI Configuration Assistant Chat */}
+          {!isPreview && (
+            <Card className="p-0 overflow-hidden flex flex-col" style={{ height: "800px" }}>
+              <ChatInterface
+                onPromptGenerated={handlePromptGenerated}
+                currentPrompt={prompt}
+                agentId={agent?.id || "new"}
+                currentAgent={currentAgent}
+              />
+            </Card>
+          )}
 
-            {!showAdvanced ? (
-              <div className="space-y-2">
-                <Textarea
-                  id="system-prompt"
-                  value={prompt}
-                  readOnly
-                  placeholder="Define the agent's behavior and instructions..."
-                  rows={12}
-                  className="font-mono text-sm bg-muted/50 cursor-not-allowed"
-                  disabled={true}
-                />
-                <p className="text-xs text-muted-foreground">
-                  This prompt defines how the agent will process data at its deployment stage. <strong>This field can only be updated using the "Apply to Prompt" button in the AI Configuration Assistant</strong> to ensure security and prevent malicious prompt injection.
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                <Textarea
-                  value={advancedYaml}
-                  readOnly
-                  className="border rounded-lg p-4 bg-slate-950 text-green-400 font-mono text-xs whitespace-pre overflow-x-auto min-h-[400px] cursor-not-allowed opacity-75"
-                  disabled={true}
-                  placeholder="# No prompt defined yet"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Advanced view shows detailed YAML configuration. <strong>This field can only be updated using the "Apply to Prompt" button in the AI Configuration Assistant</strong> to ensure security and prevent malicious prompt injection.
-                </p>
-              </div>
-            )}
-          </Card>
-
-          {/* Skills Section */}
-          <Card className="p-6 space-y-4">
-            <div>
-              <h3 className="text-lg font-semibold mb-1">Available Skills</h3>
-              <p className="text-xs text-muted-foreground mb-4">
-                {isPreview ? "Skills enabled for this agent" : "Select the skills this agent can use during execution"}
-              </p>
-              <div className="grid grid-cols-3 gap-3">
-                {AVAILABLE_SKILLS.map((skill) => (
-                  <Card
-                    key={skill}
-                    className={`p-3 transition-colors ${
-                      isPreview ? "cursor-default" : "cursor-pointer hover:bg-accent"
-                    } ${activeSkills.includes(skill) ? "border-primary bg-primary/5" : ""}`}
-                    onClick={() => {
-                      if (!isPreview) {
-                        setActiveSkills((prev) =>
-                          prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill],
-                        )
-                      }
-                    }}
-                  >
-                    <div className="flex items-center gap-2">
-                      <Checkbox
-                        checked={activeSkills.includes(skill)}
-                        onCheckedChange={() => {
-                          if (!isPreview) {
-                            setActiveSkills((prev) =>
-                              prev.includes(skill) ? prev.filter((s) => s !== skill) : [...prev, skill],
-                            )
-                          }
-                        }}
-                        className="cursor-pointer"
-                        disabled={isPreview}
-                      />
-                      <span className="text-sm font-medium">{skill}</span>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
-          </Card>
+          {/* Prompt and Skills are now rendered in the right sidebar in AgentBuilderPage */}
 
           {/* Version History Section */}
           {agent?.id && versionHistory.length > 0 && (

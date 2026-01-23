@@ -3,12 +3,15 @@
 import { useEffect } from "react"
 import { useState } from "react"
 import { Button } from "@/app/components/ui/button"
-import { ChatInterface } from "./ChatInterface"
 import { AgentBuilder } from "./AgentBuilder"
 import { WorkflowVisualizer } from "./WorkflowVisualizer"
 import Navigation from "@/app/components/Navigation"
 import UserMenu from "@/app/components/UserMenu"
 import { Plus, Pencil, ChevronDown, ChevronRight, Power } from "lucide-react"
+import { Card } from "@/app/components/ui/card"
+import { Label } from "@/app/components/ui/label"
+import { Textarea } from "@/app/components/ui/textarea"
+import { Checkbox } from "@/app/components/ui/checkbox"
 
 type Mode = "chat" | "observe" | "build"
 
@@ -428,6 +431,27 @@ ERROR HANDLING:
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
   const [testingAgent, setTestingAgent] = useState<Agent | null>(null)
   const [dateRange, setDateRange] = useState<"7days" | "30days" | "3months">("7days")
+  
+  // State for Prompt and Skills to render in right sidebar
+  const [currentPrompt, setCurrentPrompt] = useState<string>("")
+  const [currentSkills, setCurrentSkills] = useState<string[]>([])
+  const [showAdvanced, setShowAdvanced] = useState(false)
+  const [advancedYaml, setAdvancedYaml] = useState<string>("")
+  
+  const AVAILABLE_SKILLS = [
+    "Extract text",
+    "Process Documents",
+    "Verify Data",
+    "Find Purchase Orders",
+    "Intelligent Matching",
+    "Flag Issues",
+    "Connect to ERP System",
+    "Run Workflows",
+    "Route for Approval",
+    "Send Messages",
+    "Map to General Ledger",
+    "Find Vendor Information",
+  ]
 
   const [agentMetrics, setAgentMetrics] = useState<Record<string, AgentMetrics>>({})
 
@@ -589,6 +613,8 @@ ERROR HANDLING:
 
   const handlePromptGenerated = (generatedPrompt: string, skills: string[]) => {
     console.log("[v0] Prompt generated, updating agent with skills:", skills)
+    setCurrentPrompt(generatedPrompt)
+    setCurrentSkills(skills)
     if (editingAgent) {
       // Update the editing agent with the generated prompt and skills
       setEditingAgent({
@@ -598,6 +624,25 @@ ERROR HANDLING:
       })
     }
   }
+
+  const handlePromptAndSkillsUpdate = (prompt: string, skills: string[], advancedYaml?: string) => {
+    setCurrentPrompt(prompt)
+    setCurrentSkills(skills)
+    if (advancedYaml !== undefined) {
+      setAdvancedYaml(advancedYaml)
+    }
+  }
+
+  // Sync state when editing agent changes
+  useEffect(() => {
+    if (editingAgent) {
+      setCurrentPrompt(editingAgent.prompt || "")
+      setCurrentSkills(editingAgent.skills || [])
+    } else {
+      setCurrentPrompt("")
+      setCurrentSkills([])
+    }
+  }, [editingAgent?.id, editingAgent?.prompt, editingAgent?.skills])
 
   const handleDeleteAgent = (agentId: string) => {
     setAgents((prev) => prev.filter((a) => a.id !== agentId))
@@ -772,18 +817,112 @@ ERROR HANDLING:
                   allAgents={agents}
                   onDelete={handleDeleteAgent}
                   agentMetrics={editingAgent?.id ? agentMetrics[editingAgent.id] : undefined}
+                  onPromptGenerated={handlePromptGenerated}
+                  currentAgent={editingAgent}
+                  onStateChange={handlePromptAndSkillsUpdate}
                 />
               )}
             </div>
 
-            {/* Right: Chat Assistant */}
+            {/* Right: Prompt and Skills */}
             {mode === "build" && (
-              <div className="w-80 border-l border-border">
-                <ChatInterface
-                  onPromptGenerated={handlePromptGenerated}
-                  agentId={editingAgent?.id || "new"}
-                  currentAgent={editingAgent}
-                />
+              <div className="w-[480px] border-l border-border bg-card flex flex-col overflow-hidden">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {/* Prompt Section */}
+                  <Card className="p-6 space-y-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <Label htmlFor="system-prompt">System Prompt</Label>
+                      {!isPreviewMode && (
+                        <Button type="button" variant="ghost" size="sm" onClick={() => setShowAdvanced(!showAdvanced)}>
+                          {showAdvanced ? "Basic view" : "Advanced view"}
+                        </Button>
+                      )}
+                    </div>
+
+                    {!showAdvanced ? (
+                      <div className="space-y-2">
+                        <Textarea
+                          id="system-prompt"
+                          value={currentPrompt}
+                          readOnly
+                          placeholder="Define the agent's behavior and instructions..."
+                          rows={16}
+                          className="font-mono text-sm bg-muted/50 cursor-not-allowed"
+                          disabled={true}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          This prompt defines how the agent will process data at its deployment stage. <strong>This field can only be updated using the "Apply to Prompt" button in the AI Configuration Assistant</strong> to ensure security and prevent malicious prompt injection.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        <Textarea
+                          value={advancedYaml}
+                          readOnly
+                          className="border rounded-lg p-4 bg-slate-950 text-green-400 font-mono text-xs whitespace-pre overflow-x-auto min-h-[400px] cursor-not-allowed opacity-75"
+                          disabled={true}
+                          placeholder="# No prompt defined yet"
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          Advanced view shows detailed YAML configuration. <strong>This field can only be updated using the "Apply to Prompt" button in the AI Configuration Assistant</strong> to ensure security and prevent malicious prompt injection.
+                        </p>
+                      </div>
+                    )}
+                  </Card>
+
+                  {/* Skills Section */}
+                  <Card className="p-6 space-y-4">
+                    <div>
+                      <h3 className="text-lg font-semibold mb-1">Available Skills</h3>
+                      <p className="text-xs text-muted-foreground mb-4">
+                        {isPreviewMode ? "Skills enabled for this agent" : "Select the skills this agent can use during execution"}
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {AVAILABLE_SKILLS.map((skill) => (
+                          <Card
+                            key={skill}
+                            className={`p-3 transition-colors ${
+                              isPreviewMode ? "cursor-default" : "cursor-pointer hover:bg-accent"
+                            } ${currentSkills.includes(skill) ? "border-primary bg-primary/5" : ""}`}
+                            onClick={() => {
+                              if (!isPreviewMode) {
+                                const newSkills = currentSkills.includes(skill)
+                                  ? currentSkills.filter((s) => s !== skill)
+                                  : [...currentSkills, skill]
+                                setCurrentSkills(newSkills)
+                                // Update the agent if editing
+                                if (editingAgent) {
+                                  setEditingAgent({ ...editingAgent, skills: newSkills })
+                                }
+                              }
+                            }}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={currentSkills.includes(skill)}
+                                onCheckedChange={() => {
+                                  if (!isPreviewMode) {
+                                    const newSkills = currentSkills.includes(skill)
+                                      ? currentSkills.filter((s) => s !== skill)
+                                      : [...currentSkills, skill]
+                                    setCurrentSkills(newSkills)
+                                    // Update the agent if editing
+                                    if (editingAgent) {
+                                      setEditingAgent({ ...editingAgent, skills: newSkills })
+                                    }
+                                  }
+                                }}
+                                className="cursor-pointer"
+                                disabled={isPreviewMode}
+                              />
+                              <span className="text-sm font-medium">{skill}</span>
+                            </div>
+                          </Card>
+                        ))}
+                      </div>
+                    </div>
+                  </Card>
+                </div>
               </div>
             )}
           </div>
