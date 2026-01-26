@@ -2250,6 +2250,18 @@ status: ${isActive ? "active" : "inactive"}`
           </Card>
         )}
         <div className="space-y-6">
+          {/* AI Configuration Assistant Chat */}
+          {!isPreview && (
+            <Card className="p-0 overflow-hidden flex flex-col" style={{ height: "800px" }}>
+              <ChatInterface
+                onPromptGenerated={handlePromptGenerated}
+                currentPrompt={prompt}
+                agentId={agent?.id || "new"}
+                currentAgent={currentAgent}
+              />
+            </Card>
+          )}
+
           {/* Configuration Section */}
           <Card className="p-6">
             <h3 className="text-lg font-medium mb-4">Configuration</h3>
@@ -2343,18 +2355,6 @@ status: ${isActive ? "active" : "inactive"}`
               </div>
             </div>
           </Card>
-
-          {/* AI Configuration Assistant Chat */}
-          {!isPreview && (
-            <Card className="p-0 overflow-hidden flex flex-col" style={{ height: "800px" }}>
-              <ChatInterface
-                onPromptGenerated={handlePromptGenerated}
-                currentPrompt={prompt}
-                agentId={agent?.id || "new"}
-                currentAgent={currentAgent}
-              />
-            </Card>
-          )}
 
           {/* Prompt and Skills are now rendered in the right sidebar in AgentBuilderPage */}
 
