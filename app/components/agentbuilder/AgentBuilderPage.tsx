@@ -52,22 +52,8 @@ export default function AgentBuilderPage() {
     }
   }, [])
 
-  // Load agents from localStorage on mount
-  const loadAgentsFromStorage = () => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('agents')
-      if (stored) {
-        try {
-          return JSON.parse(stored)
-        } catch (e) {
-          console.error('Failed to parse stored agents:', e)
-        }
-      }
-    }
-    return null
-  }
-
-  const [agents, setAgents] = useState<Agent[]>(loadAgentsFromStorage() || [
+  // Initialize agents with mock data (consistent for SSR)
+  const [agents, setAgents] = useState<Agent[]>([
     {
       id: "1",
       name: "Document Format",
@@ -499,7 +485,8 @@ ERROR HANDLING:
     return new Intl.NumberFormat("en-US").format(num)
   }
 
-  useState(() => {
+  // Generate metrics client-side only to avoid hydration issues
+  useEffect(() => {
     const metrics: Record<string, AgentMetrics> = {}
     const baseMultiplier = dateRange === "7days" ? 1 : dateRange === "30days" ? 4.3 : 13
 
@@ -544,7 +531,7 @@ ERROR HANDLING:
     })
 
     setAgentMetrics(metrics)
-  })
+  }, [agents, dateRange])
 
   const stages = [
     { id: "ingestion", name: "Ingestion" },
