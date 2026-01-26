@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Card } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
 import { Badge } from "@/app/components/ui/badge"
+import { Label } from "@/app/components/ui/label"
 import { DocumentUpload } from "./DocumentUpload"
 import { FileText, X, Link as LinkIcon, Upload, Plus, ExternalLink } from "lucide-react"
 import {
