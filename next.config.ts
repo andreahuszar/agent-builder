@@ -1,28 +1,16 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Skip type checking and linting during build for Railway deployment
+  // Skip type checking during build for Railway deployment
   // We handle these in CI/CD separately
   typescript: {
     ignoreBuildErrors: true,
   },
-  eslint: {
-    ignoreDuringBuilds: true,
-  },
-  // Standalone output for optimized Docker deployments
-  // output: 'standalone',
+  // Note: eslint config removed as it's deprecated in Next.js 16
+  // Use .eslintrc.json or run `next lint` separately instead
   
-  
-  // Webpack configuration
-  webpack: (config, { isServer }) => {
-    // Handle server-side configuration
-    if (isServer) {
-      // Don't try to bundle native modules
-      config.externalsPresets = { ...config.externalsPresets, node: true };
-    }
-
-    return config;
-  },
+  // Turbopack is now default in Next.js 16
+  turbopack: {},
   
   // Experimental features for better PDF handling
   experimental: {
