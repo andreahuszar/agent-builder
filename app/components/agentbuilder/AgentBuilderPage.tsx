@@ -31,6 +31,10 @@ export type AgentMetrics = {
   evaluated: number
   actedOn: number
   referred: number
+  createdDate: string
+  lastRunDate: string | null
+  avgRuntimeMs: number
+  invoicesProcessed: number
 }
 
 export default function AgentBuilderPage() {
@@ -505,10 +509,34 @@ ERROR HANDLING:
         const actedOn = Math.floor(baseEvaluated * actedOnPercent)
         const referred = baseEvaluated - actedOn
 
+        // Generate created date (30-90 days ago)
+        const daysAgo = Math.floor(Math.random() * 60) + 30
+        const createdDate = new Date()
+        createdDate.setDate(createdDate.getDate() - daysAgo)
+
+        // Generate last run date (within last 24 hours for active agents, null for inactive)
+        let lastRunDate: string | null = null
+        if (agent.active) {
+          const hoursAgo = Math.floor(Math.random() * 24)
+          const lastRun = new Date()
+          lastRun.setHours(lastRun.getHours() - hoursAgo)
+          lastRunDate = lastRun.toISOString()
+        }
+
+        // Generate average runtime (50ms-500ms range)
+        const avgRuntimeMs = Math.floor(Math.random() * 450) + 50
+
+        // Calculate invoices processed (assuming ~15 lines per invoice)
+        const invoicesProcessed = Math.floor(baseEvaluated / 15)
+
         metrics[agent.id] = {
           evaluated: baseEvaluated,
           actedOn: actedOn,
           referred: referred,
+          createdDate: createdDate.toISOString(),
+          lastRunDate: lastRunDate,
+          avgRuntimeMs: avgRuntimeMs,
+          invoicesProcessed: invoicesProcessed,
         }
       }
     })

@@ -29,6 +29,10 @@ type AgentMetrics = {
   evaluated: number
   actedOn: number
   referred: number
+  createdDate: string
+  lastRunDate: string | null
+  avgRuntimeMs: number
+  invoicesProcessed: number
 }
 
 export function WorkflowVisualizer({
@@ -86,6 +90,19 @@ export function WorkflowVisualizer({
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat("en-US").format(num)
+  }
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return null
+    const date = new Date(dateStr)
+    return date.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+  }
+
+  const formatRuntime = (ms: number) => {
+    if (ms < 1000) {
+      return `${ms}ms`
+    }
+    return `${(ms / 1000).toFixed(1)}s`
   }
 
   return (
@@ -152,42 +169,67 @@ export function WorkflowVisualizer({
                                 const metrics = agentMetrics[agent.id]
 
                                 return (
-                                  <div key={agent.id} className="flex items-center justify-between p-3 rounded-lg bg-muted">
-                                    <div className="flex items-center gap-3">
-                                      <div
-                                        className={`w-2 h-2 rounded-full ${
-                                          agent.active ? "bg-green-500" : "bg-muted-foreground/40"
-                                        }`}
-                                      />
-                                      <span
-                                        className="text-sm font-medium cursor-pointer hover:text-primary transition-colors"
-                                        onClick={(e) => {
-                                          e.stopPropagation()
-                                          onAgentClick?.(agent)
-                                        }}
-                                      >
-                                        {agent.name}
-                                      </span>
-                                    </div>
-                                    <div className="flex items-center gap-3">
-                                      <Badge variant={agent.active ? "default" : "secondary"} className="text-xs">
-                                        {agent.active ? "Active" : "Inactive"}
-                                      </Badge>
-                                      {agent.mode && (
-                                        <Badge
-                                          variant="outline"
-                                          className={`text-xs ${
-                                            agent.mode === "observe"
-                                              ? "bg-blue-500/10 text-blue-600 border-blue-500/20"
-                                              : agent.mode === "suggest"
-                                                ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
-                                                : "bg-red-500/10 text-red-600 border-red-500/20"
+                                  <div key={agent.id} className="p-3 rounded-lg bg-muted space-y-3">
+                                    {/* Row 1: Agent name and status badges */}
+                                    <div className="flex items-center justify-between">
+                                      <div className="flex items-center gap-3">
+                                        <div
+                                          className={`w-2 h-2 rounded-full ${
+                                            agent.active ? "bg-green-500" : "bg-muted-foreground/40"
                                           }`}
+                                        />
+                                        <span
+                                          className="text-sm font-medium cursor-pointer hover:text-primary transition-colors"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            onAgentClick?.(agent)
+                                          }}
                                         >
-                                          {agent.mode}
+                                          {agent.name}
+                                        </span>
+                                      </div>
+                                      <div className="flex items-center gap-3">
+                                        <Badge variant={agent.active ? "default" : "secondary"} className="text-xs">
+                                          {agent.active ? "Active" : "Inactive"}
                                         </Badge>
-                                      )}
+                                        {agent.mode && (
+                                          <Badge
+                                            variant="outline"
+                                            className={`text-xs ${
+                                              agent.mode === "observe"
+                                                ? "bg-blue-500/10 text-blue-600 border-blue-500/20"
+                                                : agent.mode === "suggest"
+                                                  ? "bg-amber-500/10 text-amber-600 border-amber-500/20"
+                                                  : "bg-red-500/10 text-red-600 border-red-500/20"
+                                            }`}
+                                          >
+                                            {agent.mode}
+                                          </Badge>
+                                        )}
+                                      </div>
                                     </div>
+
+                                    {/* Row 2: Metrics grid (only if metrics available) */}
+                                    {metrics && (
+                                      <div className="grid grid-cols-4 gap-3 text-xs">
+                                        <div>
+                                          <div className="text-muted-foreground">Created</div>
+                                          <div className="font-medium">{formatDate(metrics.createdDate)}</div>
+                                        </div>
+                                        <div>
+                                          <div className="text-muted-foreground">Last Run</div>
+                                          <div className="font-medium">{formatDate(metrics.lastRunDate) || "Never"}</div>
+                                        </div>
+                                        <div>
+                                          <div className="text-muted-foreground">Avg Runtime</div>
+                                          <div className="font-medium">{formatRuntime(metrics.avgRuntimeMs)}</div>
+                                        </div>
+                                        <div>
+                                          <div className="text-muted-foreground">Invoices</div>
+                                          <div className="font-medium">{formatNumber(metrics.invoicesProcessed)}</div>
+                                        </div>
+                                      </div>
+                                    )}
                                   </div>
                                 )
                               })}
