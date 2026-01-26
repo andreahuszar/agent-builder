@@ -3,7 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
+    "dev": "node scripts/dev-safe.js",
+    "dev:unsafe": "next dev --turbopack",
     "build": "prisma generate && next build",
     "start": "node scripts/force-sync-schema-v2.js && next start",
     "deploy": "node scripts/force-sync-schema-v2.js",
