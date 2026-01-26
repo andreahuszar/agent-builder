@@ -50,6 +50,19 @@ export default function AgentBuilderPage() {
     if (view === 'executive-dashboard') {
       setMode('executive-dashboard')
     }
+
+    // Load agents from localStorage on client mount
+    const stored = localStorage.getItem('agents')
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored)
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setAgents(parsed)
+        }
+      } catch (e) {
+        console.error('Failed to parse stored agents:', e)
+      }
+    }
   }, [])
 
   // Initialize agents with mock data (consistent for SSR)
