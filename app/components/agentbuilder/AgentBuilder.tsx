@@ -12,6 +12,7 @@ import { Checkbox } from "@/app/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 import { Save, Play, Edit, Power, X, Loader2, RefreshCw, Trash2, ChevronRight } from "lucide-react" // Added Trash2 icon and ChevronRight icon
 import { ChatInterface } from "./ChatInterface"
+import { AgentDocuments } from "./AgentDocuments"
 
 import type { Agent } from "./AgentBuilderPage"
 
@@ -2354,6 +2355,11 @@ status: ${isActive ? "active" : "inactive"}`
                 </div>
               </div>
             </div>
+          </Card>
+
+          {/* Reference Documents Section */}
+          <Card className="p-6">
+            <AgentDocuments agentId={agent?.id || null} disabled={isPreview} />
           </Card>
 
           {/* Prompt and Skills are now rendered in the right sidebar in AgentBuilderPage */}

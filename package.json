@@ -76,8 +76,10 @@
     "date-fns": "^4.1.0",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.539.0",
+    "mammoth": "^1.11.0",
     "next": "^15.4.10",
     "openai": "^5.16.0",
+    "pdf-parse": "^2.4.5",
     "pdfjs-dist": "^5.4.149",
     "pg": "^8.16.3",
     "prisma": "^6.15.0",
@@ -85,12 +87,13 @@
     "react-dom": "19.1.0",
     "recharts": "^3.1.2",
     "tailwind-merge": "^3.3.1",
-    "tailwindcss-animate": "^1.0.7"
+    "tailwindcss-animate": "^1.0.7",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@playwright/test": "^1.54.2",
-    "@types/node": "^20.19.11",
+    "@types/node": "^20.19.30",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "autoprefixer": "^10.4.21",

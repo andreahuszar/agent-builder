@@ -13,8 +13,9 @@ import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import ExecutiveDashboardClient from "@/app/components/executive-dashboard/ExecutiveDashboardClient"
+import { DocumentsLibrary } from "./DocumentsLibrary"
 
-type Mode = "chat" | "observe" | "build" | "executive-dashboard"
+type Mode = "chat" | "observe" | "build" | "executive-dashboard" | "documents"
 
 export type Agent = {
   id: string
@@ -25,6 +26,7 @@ export type Agent = {
   prompt?: string
   model?: string
   skills?: string[]
+  documents?: string[]
 }
 
 export type AgentMetrics = {
@@ -765,6 +767,17 @@ ERROR HANDLING:
                   >
                     Agent Builder
                   </button>
+                  <button
+                    onClick={() => setMode("documents")}
+                    className={`${
+                      mode === "documents"
+                        ? "bg-purple-900 text-white"
+                        : "text-gray-900 hover:bg-gray-100 hover:text-gray-950"
+                    } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
+                    aria-current={mode === "documents" ? "page" : undefined}
+                  >
+                    Documents
+                  </button>
                 </div>
               </nav>
 
@@ -902,6 +915,11 @@ ERROR HANDLING:
               {mode === "executive-dashboard" && (
                 <div className="w-full h-full overflow-y-auto">
                   <ExecutiveDashboardClient />
+                </div>
+              )}
+              {mode === "documents" && (
+                <div className="w-full h-full overflow-y-auto">
+                  <DocumentsLibrary />
                 </div>
               )}
             </div>
