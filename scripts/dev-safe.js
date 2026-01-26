@@ -46,8 +46,8 @@ try {
 
   console.log(`🚀 Starting Next.js dev server on port ${PORT}...`);
 
-  // Start the dev server
-  const devServer = spawn('next', ['dev', '--turbopack'], {
+  // Start the dev server (without --turbopack for stability)
+  const devServer = spawn('next', ['dev'], {
     stdio: 'inherit',
     env: { ...process.env, PORT }
   });
