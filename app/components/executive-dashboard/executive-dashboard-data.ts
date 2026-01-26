@@ -5,8 +5,7 @@ export interface ExecutiveDashboardData {
   kpis: {
     activeAgents: number
     invoicesImpacted: number
-    agentErrors: number
-    agentsRequiringReview: number
+    totalLinesEvaluated: number
     humanWorkPercentage: number
     agentWorkPercentage: number
     agentRuntimeHours: number
@@ -78,12 +77,11 @@ const generateDateRange = (days: number) => {
   return dates
 }
 
-export function generateExecutiveDashboardData(dateRangeDays: number = 30, activeAgentsCount?: number): ExecutiveDashboardData {
+export function generateExecutiveDashboardData(dateRangeDays: number = 30, activeAgentsCount?: number, totalLinesEvaluated?: number): ExecutiveDashboardData {
   // Base metrics - enterprise scale
   const activeAgents = activeAgentsCount !== undefined ? activeAgentsCount : randomBetween(75, 150)
   const totalInvoices = randomBetween(8500, 15000)
-  const agentErrors = randomBetween(8, 18)
-  const agentsRequiringReview = randomBetween(12, 25)
+  const linesEvaluated = totalLinesEvaluated !== undefined ? totalLinesEvaluated : randomBetween(50000, 250000)
   
   // Utilization metrics (60-80% automation target)
   const automationRate = randomBetween(65, 78) / 100
@@ -182,8 +180,7 @@ export function generateExecutiveDashboardData(dateRangeDays: number = 30, activ
     kpis: {
       activeAgents,
       invoicesImpacted: totalInvoices,
-      agentErrors,
-      agentsRequiringReview,
+      totalLinesEvaluated: linesEvaluated,
       humanWorkPercentage,
       agentWorkPercentage,
       agentRuntimeHours,

@@ -544,6 +544,13 @@ ERROR HANDLING:
     setAgentMetrics(metrics)
   }, [agents, dateRange])
 
+  // Save agent metrics to localStorage for Executive Dashboard
+  useEffect(() => {
+    if (Object.keys(agentMetrics).length > 0) {
+      localStorage.setItem('agentMetrics', JSON.stringify(agentMetrics))
+    }
+  }, [agentMetrics])
+
   const stages = [
     { id: "ingestion", name: "Ingestion" },
     { id: "data-capture", name: "Data Capture" },

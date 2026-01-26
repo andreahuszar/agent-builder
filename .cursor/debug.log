@@ -206,3 +206,39 @@
 {"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"agent-builder"},"timestamp":1769423008170,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
 {"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"agent-builder"},"timestamp":1769423008170,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
 {"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"agent-builder"},"timestamp":1769423008170,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:112","message":"MainApp component rendering","data":{"timestamp":1769431947602},"timestamp":1769431947602,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:115","message":"About to render AppLayout","data":{"activeModule":"invoice-processing"},"timestamp":1769431947603,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:112","message":"MainApp component rendering","data":{"timestamp":1769431947603},"timestamp":1769431947603,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"AppLayout.tsx:62","message":"Returning filtered pills","data":{"finalPillsCount":4,"pillIds":["dashboard","invoices","approvals","all-invoices"]},"timestamp":1769431947603,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"MainApp.tsx:115","message":"About to render AppLayout","data":{"activeModule":"invoice-processing"},"timestamp":1769431947603,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"AppLayout.tsx:29","message":"Computing currentPills","data":{"currentModule":"invoice-processing"},"timestamp":1769431947603,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:32","message":"Got pills from MODULE_PILLS","data":{"pillsCount":8,"currentModule":"invoice-processing"},"timestamp":1769431947603,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:29","message":"Computing currentPills","data":{"currentModule":"invoice-processing"},"timestamp":1769431947603,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:32","message":"Got pills from MODULE_PILLS","data":{"pillsCount":8,"currentModule":"invoice-processing"},"timestamp":1769431947603,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:62","message":"Returning filtered pills","data":{"finalPillsCount":4,"pillIds":["dashboard","invoices","approvals","all-invoices"]},"timestamp":1769431947603,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769431947826,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769431947826,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769431947826,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769431947826,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769431947855,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769431947855,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769431947856,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769431947856,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769431947860,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769431947861,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769431947861,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769431947861,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769431948022,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769431948022,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"invoices"},"timestamp":1769431948022,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"invoices"},"timestamp":1769431948022,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"AppLayout.tsx:29","message":"Computing currentPills","data":{"currentModule":"settings"},"timestamp":1769431951657,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:32","message":"Got pills from MODULE_PILLS","data":{"pillsCount":3,"currentModule":"settings"},"timestamp":1769431951657,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:62","message":"Returning filtered pills","data":{"finalPillsCount":3,"pillIds":["agent-builder","executive-dashboard","general"]},"timestamp":1769431951657,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:29","message":"Computing currentPills","data":{"currentModule":"settings"},"timestamp":1769431951657,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:32","message":"Got pills from MODULE_PILLS","data":{"pillsCount":3,"currentModule":"settings"},"timestamp":1769431951657,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"AppLayout.tsx:62","message":"Returning filtered pills","data":{"finalPillsCount":3,"pillIds":["agent-builder","executive-dashboard","general"]},"timestamp":1769431951657,"sessionId":"debug-session","runId":"run1","hypothesisId":"C"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"agent-builder"},"timestamp":1769431951662,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"agent-builder"},"timestamp":1769431951662,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:22","message":"InvoiceProcessingContent rendering","data":{"currentView":"agent-builder"},"timestamp":1769431951662,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
+{"location":"MainApp.tsx:65","message":"Rendering view content","data":{"currentView":"agent-builder"},"timestamp":1769431951662,"sessionId":"debug-session","runId":"run1","hypothesisId":"D"}
