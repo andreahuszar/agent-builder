@@ -1,12 +1,24 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
-import { Send, Bot, User, CheckCircle2 } from "lucide-react"
+import { Send, Bot, User, CheckCircle2, Paperclip, X, FileText, Loader2, AlertCircle } from "lucide-react"
 import { Card } from "@/app/components/ui/card"
 import { Textarea } from "@/app/components/ui/textarea"
 import type { Agent } from "./AgentBuilderPage"
+import { extractTextFromFile, formatFileSize } from "@/app/utils/documentExtractor"
+
+type Attachment = {
+  id: string
+  name: string
+  size: number
+  type: string
+  file: File
+  extractedText?: string
+  extractionError?: string
+  isExtracting?: boolean
+}
 
 type Message = {
   id: string
@@ -15,6 +27,7 @@ type Message = {
   timestamp: Date
   generatedPrompt?: string
   suggestedSkills?: string[]
+  attachments?: Attachment[]
 }
 
 interface ChatInterfaceProps {
@@ -52,6 +65,8 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
   const [input, setInput] = useState("")
   const [isProcessing, setIsProcessing] = useState(false)
   const [questionCount, setQuestionCount] = useState(0)
+  const [sessionDocuments, setSessionDocuments] = useState<Attachment[]>([])
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     console.log("[v0] Agent changed, clearing chat. Agent ID:", agentId)
@@ -66,7 +81,60 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
     ])
     setInput("")
     setQuestionCount(0)
+    setSessionDocuments([])
   }, [agentId])
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    // Process each file
+    for (const file of Array.from(files)) {
+      const tempId = `${Date.now()}-${Math.random()}`
+      
+      // Add file with loading state
+      const newDoc: Attachment = {
+        id: tempId,
+        name: file.name,
+        size: file.size,
+        type: file.type,
+        file,
+        isExtracting: true,
+      }
+      
+      setSessionDocuments((prev) => [...prev, newDoc])
+      
+      // Extract text asynchronously
+      const result = await extractTextFromFile(file)
+      
+      // Update with extracted text or error
+      setSessionDocuments((prev) =>
+        prev.map((doc) =>
+          doc.id === tempId
+            ? {
+                ...doc,
+                extractedText: result.text,
+                extractionError: result.error,
+                isExtracting: false,
+              }
+            : doc
+        )
+      )
+    }
+    
+    // Reset file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ""
+    }
+  }
+
+  const handleRemoveDocument = (id: string) => {
+    setSessionDocuments((prev) => prev.filter((doc) => doc.id !== id))
+  }
+
+  const handleClearAllDocuments = () => {
+    setSessionDocuments([])
+  }
 
   const handleSend = async () => {
     if (!input.trim() || isProcessing) return
@@ -86,18 +154,37 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
     try {
       console.log("[v0] Sending chat request")
       
+      // Build document context from session documents
+      const documentContext = sessionDocuments
+        .filter(doc => doc.extractedText && !doc.extractionError)
+        .map(doc => `\n\n--- ATTACHED DOCUMENT: ${doc.name} ---\n${doc.extractedText}\n--- END DOCUMENT ---`)
+        .join('')
+      
       // Count assistant messages that are questions (not prompts with generatedPrompt)
       const assistantQuestions = messages.filter(m => m.role === "assistant" && !m.generatedPrompt && m.id !== "1")
       const currentQuestionCount = assistantQuestions.length
+      
+      // Prepare messages for API - add document context to first user message
+      const allMessages = [...messages, userMessage]
+      const messagesWithContext = allMessages.map((msg, idx) => {
+        // Add document context to the first user message (after initial assistant message)
+        if (idx === 1 && msg.role === "user" && documentContext) {
+          return {
+            role: msg.role,
+            content: msg.content + documentContext
+          }
+        }
+        return {
+          role: msg.role,
+          content: msg.content
+        }
+      })
       
       const response = await fetch("/api/agent-builder/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [...messages, userMessage].map((m) => ({
-            role: m.role,
-            content: m.content,
-          })),
+          messages: messagesWithContext,
           questionCount: currentQuestionCount,
         }),
       })
@@ -331,9 +418,83 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
         )}
       </div>
 
+      {/* Session Documents - shown above input */}
+      {sessionDocuments.length > 0 && (
+        <div className="border-t border-border p-3 bg-muted/30">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs font-medium text-muted-foreground">Reference Documents for this session:</span>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={handleClearAllDocuments}
+              className="h-6 text-xs"
+            >
+              Clear All
+            </Button>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {sessionDocuments.map((doc) => (
+              <div
+                key={doc.id}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-xs ${
+                  doc.extractionError 
+                    ? 'bg-destructive/10 border border-destructive/20' 
+                    : doc.isExtracting 
+                    ? 'bg-muted border border-border' 
+                    : 'bg-background border border-border'
+                }`}
+              >
+                {doc.isExtracting ? (
+                  <Loader2 className="w-3 h-3 text-muted-foreground animate-spin" />
+                ) : doc.extractionError ? (
+                  <AlertCircle className="w-3 h-3 text-destructive" />
+                ) : (
+                  <FileText className="w-3 h-3 text-muted-foreground" />
+                )}
+                <span className="max-w-[150px] truncate" title={doc.name}>{doc.name}</span>
+                <span className="text-muted-foreground">{formatFileSize(doc.size)}</span>
+                {doc.extractionError && (
+                  <span className="text-destructive text-[10px]" title={doc.extractionError}>Error</span>
+                )}
+                {doc.isExtracting && (
+                  <span className="text-muted-foreground text-[10px]">Extracting...</span>
+                )}
+                <button
+                  onClick={() => handleRemoveDocument(doc.id)}
+                  className="ml-1 text-muted-foreground hover:text-destructive transition-colors"
+                  type="button"
+                  disabled={doc.isExtracting}
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Input */}
       <div className="border-t border-border p-3">
         <div className="flex gap-2">
+          <input
+            ref={fileInputRef}
+            type="file"
+            onChange={handleFileSelect}
+            multiple
+            accept=".pdf,.doc,.docx,.txt,.csv"
+            className="hidden"
+          />
+          <Button
+            onClick={() => fileInputRef.current?.click()}
+            size="icon"
+            variant="outline"
+            className="h-9 w-9"
+            disabled={isProcessing}
+            type="button"
+            title="Attach reference documents"
+          >
+            <Paperclip className="w-4 h-4" />
+          </Button>
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -342,7 +503,7 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
             className="flex-1 text-sm"
             disabled={isProcessing}
           />
-          <Button onClick={handleSend} size="icon" className="h-9 w-9" disabled={isProcessing}>
+          <Button onClick={handleSend} size="icon" className="h-9 w-9" disabled={isProcessing || !input.trim()}>
             <Send className="w-4 h-4" />
           </Button>
         </div>

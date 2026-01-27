@@ -51,7 +51,24 @@ WIZARD APPROACH - Follow these rules strictly:
 3. DETECTION:
    - If the user's initial request is already detailed and complete (includes stage, fields, validations, etc.), skip questions and go directly to generation
    - If the request is basic/vague, start with questions
-   - Track conversation context - if you've already asked questions, continue with questions until you have enough info or reach the 4-question limit`;
+   - Track conversation context - if you've already asked questions, continue with questions until you have enough info or reach the 4-question limit
+
+DOCUMENT CONTEXT:
+- Users may attach reference documents (SOW, contracts, procedures) for this session
+- Documents are marked with "--- ATTACHED DOCUMENT: filename ---" delimiters
+- When documents are provided, they remain available throughout the conversation
+- Reference document content when:
+  * Asking clarifying questions about requirements
+  * Generating the structured agent prompt
+  * Refining based on user feedback
+- Extract relevant details from documents:
+  * Business requirements and constraints
+  * Specific thresholds, amounts, or validation rules
+  * Process steps and workflows
+  * Field names and data structures
+- Incorporate document details naturally into your questions and generated prompts
+- If multiple documents are provided, synthesize information from all of them
+- When you see document content, analyze it carefully and extract key requirements`;
 
 export async function POST(req: Request) {
   try {
