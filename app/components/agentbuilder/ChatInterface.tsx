@@ -69,6 +69,7 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
   const [sessionDocuments, setSessionDocuments] = useState<Attachment[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     console.log("[v0] Agent changed, clearing chat. Agent ID:", agentId)
@@ -160,6 +161,9 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
     const userInput = input
     setInput("")
     setIsProcessing(true)
+    
+    // Keep input focused
+    setTimeout(() => inputRef.current?.focus(), 100)
 
     try {
       console.log("[v0] Sending chat request")
@@ -520,6 +524,7 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
             <Paperclip className="w-4 h-4" />
           </Button>
           <Input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
