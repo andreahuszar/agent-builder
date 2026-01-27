@@ -625,10 +625,10 @@ ERROR HANDLING:
       })
       setEditingAgent(updatedAgent)
     } else {
-      // Create new agent
+      // Create new agent (ID should already be set from handleCreateNewAgent)
       const newAgent = {
         ...updatedAgent,
-        id: updatedAgent.id || Date.now().toString(),
+        id: updatedAgent.id || `agent-${Date.now()}`,
         active: false,
       }
       console.log("[v0] Creating new agent:", newAgent.name, "Stage:", newAgent.stage, "ID:", newAgent.id)
@@ -654,14 +654,18 @@ ERROR HANDLING:
   }
 
   const handleCreateNewAgent = () => {
-    setEditingAgent({ id: "", name: "", stage: "", active: false, mode: "observe", prompt: "", model: "", skills: [] }) // Added mode field
+    // Generate ID upfront so documents can be stored immediately
+    const newAgentId = `agent-${Date.now()}`
+    setEditingAgent({ id: newAgentId, name: "", stage: "", active: false, mode: "observe", prompt: "", model: "", skills: [] }) // Added mode field
     setIsPreviewMode(false)
     setMode("build")
   }
 
   const handleCreateAgentForStage = (stageId: string) => {
+    // Generate ID upfront so documents can be stored immediately
+    const newAgentId = `agent-${Date.now()}`
     setEditingAgent({
-      id: "",
+      id: newAgentId,
       name: "",
       stage: stageId,
       active: false,
@@ -696,18 +700,21 @@ ERROR HANDLING:
   }
 
   const handlePromptGenerated = (generatedPrompt: string, skills: string[], documents?: AgentDocument[]) => {
-    console.log("[v0] Prompt generated, updating agent with skills:", skills)
-    console.log("[v0] Documents attached:", documents?.length || 0)
+    console.log("[AgentBuilderPage] Prompt generated, updating agent with skills:", skills)
+    console.log("[AgentBuilderPage] Documents attached:", documents?.length || 0)
+    console.log("[AgentBuilderPage] Documents data:", documents)
     setCurrentPrompt(generatedPrompt)
     setCurrentSkills(skills)
     if (editingAgent) {
       // Update the editing agent with the generated prompt, skills, and documents
-      setEditingAgent({
+      const updatedAgent = {
         ...editingAgent,
         prompt: generatedPrompt,
         skills: skills,
         documents: documents || editingAgent.documents || [],
-      })
+      }
+      console.log("[AgentBuilderPage] Updated agent:", updatedAgent)
+      setEditingAgent(updatedAgent)
     }
   }
 

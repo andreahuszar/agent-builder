@@ -306,13 +306,21 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
         doc.extractedText && !doc.extractionError
       )
       
+      console.log('[ChatInterface] Apply prompt clicked')
+      console.log('[ChatInterface] agentId:', agentId)
+      console.log('[ChatInterface] referencedDocs:', referencedDocs.length)
+      console.log('[ChatInterface] sessionDocuments:', sessionDocuments.length)
+      
       // Store documents if agent has an ID
       if (agentId && referencedDocs.length > 0) {
+        console.log('[ChatInterface] Storing documents for agent:', agentId)
         const storedDocs: AgentDocument[] = []
         
         for (const doc of referencedDocs) {
           try {
+            console.log('[ChatInterface] Storing document:', doc.name)
             const filePath = await storeDocument(doc.file, agentId)
+            console.log('[ChatInterface] Document stored at:', filePath)
             storedDocs.push({
               id: doc.id,
               name: doc.name,
@@ -322,12 +330,14 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
               filePath
             })
           } catch (error) {
-            console.error('Failed to store document:', error)
+            console.error('[ChatInterface] Failed to store document:', doc.name, error)
           }
         }
         
+        console.log('[ChatInterface] All documents stored:', storedDocs.length)
         onPromptGenerated(prompt, skills, storedDocs)
       } else {
+        console.log('[ChatInterface] Skipping document storage - agentId:', agentId, 'docs:', referencedDocs.length)
         onPromptGenerated(prompt, skills, [])
       }
     }
