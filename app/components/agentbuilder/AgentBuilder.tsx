@@ -303,12 +303,12 @@ export function AgentBuilder({
     setPrompt(text)
   }
 
-  const handlePromptGenerated = (generatedPrompt: string, skills: string[]) => {
+  const handlePromptGenerated = (generatedPrompt: string, skills: string[], documents?: any[]) => {
     setPrompt(generatedPrompt)
     setActiveSkills(skills)
     setSelectedSkills(skills)
     if (onPromptGenerated) {
-      onPromptGenerated(generatedPrompt, skills)
+      onPromptGenerated(generatedPrompt, skills, documents)
     }
     // Sync state with parent
     if (onStateChange) {
@@ -1009,11 +1009,6 @@ Items: Monthly Hosting, Cloud Storage`,
   const handleSave = () => {
     const changes: string[] = []
 
-    console.log('[AgentBuilder v4] ===== HANDLE SAVE CLICKED =====')
-    console.log('[AgentBuilder v4] agent prop:', agent)
-    console.log('[AgentBuilder v4] agent.documents:', agent?.documents)
-    console.log('[AgentBuilder v4] agent.documents length:', agent?.documents?.length || 0)
-
     if (originalAgentData) {
       if (agentName !== originalAgentData.name) changes.push(`Name: "${originalAgentData.name}" → "${agentName}"`)
       if (stage !== originalAgentData.stage) changes.push(`Stage: "${originalAgentData.stage}" → "${stage}"`)
@@ -1040,9 +1035,6 @@ Items: Monthly Hosting, Cloud Storage`,
       documents: agent?.documents || [],
     }
 
-    console.log('[AgentBuilder v4] config.documents:', config.documents)
-    console.log('[AgentBuilder v4] config.documents length:', config.documents?.length || 0)
-    console.log('[AgentBuilder v4] Final config:', config)
     onSave(config)
 
     addVersionEntry(agent?.id ? "edited" : "created", changes.length > 0 ? changes : ["Agent configuration saved"])
