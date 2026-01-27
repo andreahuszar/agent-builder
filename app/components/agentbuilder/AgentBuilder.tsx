@@ -1032,8 +1032,10 @@ Items: Monthly Hosting, Cloud Storage`,
       prompt,
       skills: activeSkills,
       active: isActive,
+      documents: agent?.documents || [],
     }
 
+    console.log('[AgentBuilder] Saving agent with documents:', config.documents?.length || 0)
     onSave(config)
 
     addVersionEntry(agent?.id ? "edited" : "created", changes.length > 0 ? changes : ["Agent configuration saved"])
