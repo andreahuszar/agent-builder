@@ -6,8 +6,9 @@ import { Input } from "@/app/components/ui/input"
 import { Send, Bot, User, CheckCircle2, Paperclip, X, FileText, Loader2, AlertCircle } from "lucide-react"
 import { Card } from "@/app/components/ui/card"
 import { Textarea } from "@/app/components/ui/textarea"
-import type { Agent } from "./AgentBuilderPage"
+import type { Agent, AgentDocument } from "./AgentBuilderPage"
 import { extractTextFromFile, formatFileSize } from "@/app/utils/documentExtractor"
+import { storeDocument } from "@/app/utils/documentStorage"
 
 type Attachment = {
   id: string
@@ -31,7 +32,7 @@ type Message = {
 }
 
 interface ChatInterfaceProps {
-  onPromptGenerated?: (prompt: string, skills: string[]) => void
+  onPromptGenerated?: (prompt: string, skills: string[], documents?: AgentDocument[]) => void
   currentPrompt?: string
   agentId?: string
   currentAgent?: Agent | null
@@ -299,9 +300,36 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
     }
   }
 
-  const handleApplyPrompt = (prompt: string, skills: string[]) => {
+  const handleApplyPrompt = async (prompt: string, skills: string[]) => {
     if (onPromptGenerated) {
-      onPromptGenerated(prompt, skills)
+      const referencedDocs = sessionDocuments.filter(doc => 
+        doc.extractedText && !doc.extractionError
+      )
+      
+      // Store documents if agent has an ID
+      if (agentId && referencedDocs.length > 0) {
+        const storedDocs: AgentDocument[] = []
+        
+        for (const doc of referencedDocs) {
+          try {
+            const filePath = await storeDocument(doc.file, agentId)
+            storedDocs.push({
+              id: doc.id,
+              name: doc.name,
+              size: doc.size,
+              type: doc.type,
+              uploadedAt: new Date().toISOString(),
+              filePath
+            })
+          } catch (error) {
+            console.error('Failed to store document:', error)
+          }
+        }
+        
+        onPromptGenerated(prompt, skills, storedDocs)
+      } else {
+        onPromptGenerated(prompt, skills, [])
+      }
     }
   }
 

@@ -5,16 +5,26 @@ import { useState } from "react"
 import { Button } from "@/app/components/ui/button"
 import { AgentBuilder } from "./AgentBuilder"
 import { WorkflowVisualizer } from "./WorkflowVisualizer"
+import { DocumentsLibrary } from "./DocumentsLibrary"
 import Navigation from "@/app/components/Navigation"
 import UserMenu from "@/app/components/UserMenu"
-import { Plus, Pencil, ChevronDown, ChevronRight, Power } from "lucide-react"
+import { Plus, Pencil, ChevronDown, ChevronRight, Power, FileText } from "lucide-react"
 import { Card } from "@/app/components/ui/card"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import ExecutiveDashboardClient from "@/app/components/executive-dashboard/ExecutiveDashboardClient"
 
-type Mode = "chat" | "observe" | "build" | "executive-dashboard"
+type Mode = "chat" | "observe" | "build" | "executive-dashboard" | "documents"
+
+export type AgentDocument = {
+  id: string
+  name: string
+  size: number
+  type: string
+  uploadedAt: string
+  filePath: string
+}
 
 export type Agent = {
   id: string
@@ -25,6 +35,7 @@ export type Agent = {
   prompt?: string
   model?: string
   skills?: string[]
+  documents?: AgentDocument[]
 }
 
 export type AgentMetrics = {
@@ -684,16 +695,18 @@ ERROR HANDLING:
     setIsPreviewMode(false)
   }
 
-  const handlePromptGenerated = (generatedPrompt: string, skills: string[]) => {
+  const handlePromptGenerated = (generatedPrompt: string, skills: string[], documents?: AgentDocument[]) => {
     console.log("[v0] Prompt generated, updating agent with skills:", skills)
+    console.log("[v0] Documents attached:", documents?.length || 0)
     setCurrentPrompt(generatedPrompt)
     setCurrentSkills(skills)
     if (editingAgent) {
-      // Update the editing agent with the generated prompt and skills
+      // Update the editing agent with the generated prompt, skills, and documents
       setEditingAgent({
         ...editingAgent,
         prompt: generatedPrompt,
         skills: skills,
+        documents: documents || editingAgent.documents || [],
       })
     }
   }
@@ -771,6 +784,17 @@ ERROR HANDLING:
                     aria-current={mode === "build" ? "page" : undefined}
                   >
                     Agent Builder
+                  </button>
+                  <button
+                    onClick={() => setMode("documents")}
+                    className={`${
+                      mode === "documents"
+                        ? "bg-purple-900 text-white"
+                        : "text-gray-900 hover:bg-gray-100 hover:text-gray-950"
+                    } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
+                    aria-current={mode === "documents" ? "page" : undefined}
+                  >
+                    Documents
                   </button>
                 </div>
               </nav>
@@ -911,6 +935,11 @@ ERROR HANDLING:
                   <ExecutiveDashboardClient />
                 </div>
               )}
+              {mode === "documents" && (
+                <div className="w-full h-full overflow-y-auto">
+                  <DocumentsLibrary agents={agents} />
+                </div>
+              )}
             </div>
 
             {/* Right: Prompt and Skills */}
@@ -953,6 +982,34 @@ ERROR HANDLING:
                         </Button>
                       )}
                     </div>
+
+                    {/* Referenced Documents Chips */}
+                    {editingAgent?.documents && editingAgent.documents.length > 0 && (
+                      <div className="mt-3 mb-3">
+                        <span className="text-xs text-muted-foreground mb-2 block">Referenced Documents:</span>
+                        <div className="flex flex-wrap gap-2">
+                          {editingAgent.documents.map((doc) => (
+                            <button
+                              key={doc.id}
+                              onClick={() => {
+                                const link = document.createElement('a')
+                                link.href = doc.filePath
+                                link.download = doc.name
+                                link.click()
+                              }}
+                              className="flex items-center gap-1.5 px-2 py-1 bg-background border border-border rounded-md text-xs hover:bg-accent transition-colors group"
+                              title="Click to download"
+                            >
+                              <FileText className="w-3 h-3 text-muted-foreground" />
+                              <span className="max-w-[120px] truncate">{doc.name}</span>
+                              <svg className="w-3 h-3 text-muted-foreground group-hover:text-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
+                              </svg>
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
 
                     {!showAdvanced ? (
                       <div className="space-y-2 flex-1 flex flex-col min-h-0">

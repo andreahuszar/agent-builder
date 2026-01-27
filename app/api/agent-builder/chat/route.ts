@@ -40,12 +40,16 @@ WIZARD APPROACH - Follow these rules strictly:
      - INPUTS: Specific data sources and requirements
      - STEPS: Detailed numbered steps with sub-steps
      - VALIDATIONS: Specific validation rules with thresholds
+     - REFERENCED_DOCUMENTS: List of documents that were referenced (if any)
+       * Format: "- [filename]: Brief description of how this document informed the prompt"
+       * Example: "- contract_2024.pdf: Extracted approval thresholds ($10k) and required approvers"
+       * Only include this section if you actually referenced document content
      - OUTPUT: Structured output format (ideally JSON schema)
      - ERROR HANDLING: Specific error scenarios with actions
    - Suggest appropriate skills from the available list
    - Include realistic business rules, thresholds, field names, and error codes
    - Be specific with percentages, amounts, field names, and technical details
-   - Use clear section headers (ROLE:, INPUTS:, STEPS:, VALIDATIONS:, OUTPUT:, ERROR HANDLING:)
+   - Use clear section headers (ROLE:, INPUTS:, STEPS:, VALIDATIONS:, REFERENCED_DOCUMENTS:, OUTPUT:, ERROR HANDLING:)
    - End with "SUGGESTED SKILLS:" followed by the relevant skills
 
 3. DETECTION:
@@ -68,7 +72,11 @@ DOCUMENT CONTEXT:
   * Field names and data structures
 - Incorporate document details naturally into your questions and generated prompts
 - If multiple documents are provided, synthesize information from all of them
-- When you see document content, analyze it carefully and extract key requirements`;
+- When you see document content, analyze it carefully and extract key requirements
+- When generating the prompt, if you referenced document content:
+  * Add a REFERENCED_DOCUMENTS section after VALIDATIONS
+  * List each document you referenced with a brief note on what information was extracted
+  * Be specific about which requirements, thresholds, or rules came from documents`;
 
 export async function POST(req: Request) {
   try {
