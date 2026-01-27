@@ -310,6 +310,8 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
       ])
     } finally {
       setIsProcessing(false)
+      // Refocus input after AI responds
+      setTimeout(() => inputRef.current?.focus(), 100)
     }
   }
 
