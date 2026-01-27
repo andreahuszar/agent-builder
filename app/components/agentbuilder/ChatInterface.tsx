@@ -86,6 +86,14 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
     setSessionDocuments([])
   }, [agentId])
 
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    // Small delay to ensure DOM has updated
+    setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth", block: "end" })
+    }, 100)
+  }, [messages, isProcessing])
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return
