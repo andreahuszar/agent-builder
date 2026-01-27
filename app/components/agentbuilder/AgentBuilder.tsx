@@ -2235,7 +2235,7 @@ status: ${isActive ? "active" : "inactive"}`
         <div className="space-y-6">
           {/* AI Configuration Assistant Chat */}
           {!isPreview && (
-            <Card className="p-0 overflow-hidden flex flex-col" style={{ height: "600px" }}>
+            <Card className="p-0 overflow-hidden flex flex-col" style={{ height: "500px" }}>
               <ChatInterface
                 onPromptGenerated={handlePromptGenerated}
                 currentPrompt={prompt}
