@@ -68,6 +68,7 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
   const [questionCount, setQuestionCount] = useState(0)
   const [sessionDocuments, setSessionDocuments] = useState<Attachment[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const messagesEndRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     console.log("[v0] Agent changed, clearing chat. Agent ID:", agentId)
@@ -444,6 +445,8 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
             </div>
           </div>
         )}
+        {/* Scroll anchor */}
+        <div ref={messagesEndRef} />
       </div>
 
       {/* Session Documents - shown above input */}
