@@ -306,21 +306,22 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
         doc.extractedText && !doc.extractionError
       )
       
-      console.log('[ChatInterface] Apply prompt clicked')
-      console.log('[ChatInterface] agentId:', agentId)
-      console.log('[ChatInterface] referencedDocs:', referencedDocs.length)
-      console.log('[ChatInterface] sessionDocuments:', sessionDocuments.length)
+      console.log('[ChatInterface v3] ===== APPLY PROMPT CLICKED =====')
+      console.log('[ChatInterface v3] agentId:', agentId)
+      console.log('[ChatInterface v3] referencedDocs:', referencedDocs.length)
+      console.log('[ChatInterface v3] sessionDocuments:', sessionDocuments.length)
+      console.log('[ChatInterface v3] sessionDocuments data:', sessionDocuments)
       
       // Store documents if agent has an ID
       if (agentId && referencedDocs.length > 0) {
-        console.log('[ChatInterface] Storing documents for agent:', agentId)
+        console.log('[ChatInterface v3] ✅ Storing documents for agent:', agentId)
         const storedDocs: AgentDocument[] = []
         
         for (const doc of referencedDocs) {
           try {
-            console.log('[ChatInterface] Storing document:', doc.name)
+            console.log('[ChatInterface v3] Storing document:', doc.name)
             const filePath = await storeDocument(doc.file, agentId)
-            console.log('[ChatInterface] Document stored at:', filePath)
+            console.log('[ChatInterface v3] Document stored at:', filePath)
             storedDocs.push({
               id: doc.id,
               name: doc.name,
@@ -330,14 +331,16 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
               filePath
             })
           } catch (error) {
-            console.error('[ChatInterface] Failed to store document:', doc.name, error)
+            console.error('[ChatInterface v3] ❌ Failed to store document:', doc.name, error)
           }
         }
         
-        console.log('[ChatInterface] All documents stored:', storedDocs.length)
+        console.log('[ChatInterface v3] ✅ All documents stored:', storedDocs.length)
+        console.log('[ChatInterface v3] Stored documents:', storedDocs)
+        console.log('[ChatInterface v3] Calling onPromptGenerated with documents:', storedDocs)
         onPromptGenerated(prompt, skills, storedDocs)
       } else {
-        console.log('[ChatInterface] Skipping document storage - agentId:', agentId, 'docs:', referencedDocs.length)
+        console.log('[ChatInterface v3] ⚠️ Skipping document storage - agentId:', agentId, 'docs:', referencedDocs.length)
         onPromptGenerated(prompt, skills, [])
       }
     }

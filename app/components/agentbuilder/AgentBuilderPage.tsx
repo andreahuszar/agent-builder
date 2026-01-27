@@ -603,13 +603,12 @@ ERROR HANDLING:
   }
 
   const handleSaveAgent = (updatedAgent: Agent) => {
-    console.log("[v0] handleSaveAgent called with:", {
-      id: updatedAgent.id,
-      name: updatedAgent.name,
-      stage: updatedAgent.stage,
-      hasId: !!updatedAgent.id,
-      idLength: updatedAgent.id?.length,
-    })
+    console.log("[AgentBuilderPage v5] ===== HANDLE SAVE AGENT =====")
+    console.log("[AgentBuilderPage v5] updatedAgent received:", updatedAgent)
+    console.log("[AgentBuilderPage v5] updatedAgent.documents:", updatedAgent.documents)
+    console.log("[AgentBuilderPage v5] documents count:", updatedAgent.documents?.length || 0)
+    console.log("[AgentBuilderPage v5] editingAgent BEFORE save:", editingAgent)
+    console.log("[AgentBuilderPage v5] editingAgent.documents BEFORE:", editingAgent?.documents)
 
     // Check if this is an existing agent by looking in the agents array
     const existingAgent = agents.find((a) => a.id === updatedAgent.id)
@@ -700,9 +699,9 @@ ERROR HANDLING:
   }
 
   const handlePromptGenerated = (generatedPrompt: string, skills: string[], documents?: AgentDocument[]) => {
-    console.log("[AgentBuilderPage] Prompt generated, updating agent with skills:", skills)
-    console.log("[AgentBuilderPage] Documents attached:", documents?.length || 0)
-    console.log("[AgentBuilderPage] Documents data:", documents)
+    console.log("[AgentBuilderPage v2] Prompt generated, updating agent with skills:", skills)
+    console.log("[AgentBuilderPage v2] Documents attached:", documents?.length || 0)
+    console.log("[AgentBuilderPage v2] Documents data:", documents)
     setCurrentPrompt(generatedPrompt)
     setCurrentSkills(skills)
     if (editingAgent) {
@@ -989,6 +988,11 @@ ERROR HANDLING:
                         </Button>
                       )}
                     </div>
+
+                    {/* Debug info */}
+                    {console.log('[AgentBuilderPage RENDER] editingAgent:', editingAgent?.id)}
+                    {console.log('[AgentBuilderPage RENDER] documents:', editingAgent?.documents)}
+                    {console.log('[AgentBuilderPage RENDER] documents length:', editingAgent?.documents?.length)}
 
                     {/* Referenced Documents Chips */}
                     {editingAgent?.documents && editingAgent.documents.length > 0 && (
