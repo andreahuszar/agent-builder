@@ -376,21 +376,16 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
               
               {/* Generated Prompt Display with Apply Button */}
               {message.role === "assistant" && message.generatedPrompt && message.generatedPrompt.length > 0 && (
-                <Card className="p-4 space-y-3 border-2 border-dashed border-primary/50 bg-primary/5">
-                  <h4 className="text-sm font-semibold text-primary">Generated Structured Prompt:</h4>
-                  <Textarea
-                    value={message.generatedPrompt}
-                    readOnly
-                    rows={10}
-                    className="font-mono text-xs bg-background/50 border-primary/30 cursor-not-allowed resize-none"
-                    disabled={true}
-                  />
+                <>
+                  <div className="p-3 rounded-lg bg-muted">
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap font-mono">{message.generatedPrompt}</p>
+                  </div>
                   {message.suggestedSkills && message.suggestedSkills.length > 0 && (
-                    <div>
-                      <h4 className="text-xs font-medium text-muted-foreground mb-1">Suggested Skills:</h4>
+                    <div className="p-3 rounded-lg bg-muted/50">
+                      <h4 className="text-xs font-medium text-muted-foreground mb-2">Suggested Skills:</h4>
                       <div className="flex flex-wrap gap-2">
                         {message.suggestedSkills.map((skill) => (
-                          <span key={skill} className="px-2 py-1 bg-primary/10 text-primary text-xs rounded-md">
+                          <span key={skill} className="px-2 py-1 bg-background border border-border text-xs rounded-md">
                             {skill}
                           </span>
                         ))}
@@ -405,7 +400,7 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
                     <CheckCircle2 className="w-4 h-4" />
                     Apply to Agent
                   </Button>
-                </Card>
+                </>
               )}
               
               {/* Fallback: Show apply button if response has structured content but extraction didn't work */}
@@ -416,24 +411,14 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
                 message.content.includes("STEPS:") || 
                 message.content.includes("OUTPUT:")) && 
                !message.content.trim().endsWith("?") && (
-                <Card className="p-4 space-y-3 border-2 border-dashed border-primary/50 bg-primary/5">
-                  <h4 className="text-sm font-semibold text-primary">Generated Prompt (Full Response):</h4>
-                  <Textarea
-                    value={message.content}
-                    readOnly
-                    rows={10}
-                    className="font-mono text-xs bg-background/50 border-primary/30 cursor-not-allowed resize-none"
-                    disabled={true}
-                  />
-                  <Button
-                    size="sm"
-                    className="w-full gap-2"
-                    onClick={() => handleApplyPrompt(message.content, message.suggestedSkills || [])}
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    Apply to Agent
-                  </Button>
-                </Card>
+                <Button
+                  size="sm"
+                  className="w-full gap-2"
+                  onClick={() => handleApplyPrompt(message.content, message.suggestedSkills || [])}
+                >
+                  <CheckCircle2 className="w-4 h-4" />
+                  Apply to Agent
+                </Button>
               )}
             </div>
             {message.role === "user" && (
