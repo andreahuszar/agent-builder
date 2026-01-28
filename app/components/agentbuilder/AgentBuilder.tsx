@@ -95,6 +95,7 @@ export function AgentBuilder({
   const [originalPrompt, setOriginalPrompt] = useState("")
   const [promptRules, setPromptRules] = useState<any[]>([{ id: "1", type: "if", condition: "", action: "" }])
   const lastAgentIdRef = useRef<string | null>(null)
+  const nameInputRef = useRef<HTMLInputElement>(null)
   const [liveInvoiceSource, setLiveInvoiceSource] = useState<"samples" | "uploaded" | "erp">("samples")
   const [liveInvoices, setLiveInvoices] = useState<any[]>([])
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("")
@@ -329,6 +330,14 @@ export function AgentBuilder({
       const yaml = showAdvanced ? generateCodeView() : ""
       onStateChange(generatedPrompt, skills, yaml)
     }
+    
+    // Scroll to and focus the name field in the configuration section
+    setTimeout(() => {
+      if (nameInputRef.current) {
+        nameInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        nameInputRef.current.focus()
+      }
+    }, 100)
   }
 
   // Sync state with parent component for right sidebar rendering
@@ -2334,6 +2343,7 @@ status: ${isActive ? "active" : "inactive"}`
                   Agent Name
                 </Label>
                 <Input
+                  ref={nameInputRef}
                   id="agent-name"
                   value={agentName}
                   onChange={(e) => setAgentName(e.target.value)}
