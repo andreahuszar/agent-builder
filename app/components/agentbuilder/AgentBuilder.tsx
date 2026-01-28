@@ -2254,6 +2254,7 @@ status: ${isActive ? "active" : "inactive"}`
             <Card className="p-0 overflow-hidden flex flex-col" style={{ height: "500px" }}>
               <ChatInterface
                 onPromptGenerated={handlePromptGenerated}
+                onStageDetected={(detectedStage) => setStage(detectedStage)}
                 currentPrompt={prompt}
                 agentId={agent?.id || "new"}
                 currentAgent={currentAgent}

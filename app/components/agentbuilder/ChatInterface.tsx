@@ -33,6 +33,7 @@ type Message = {
 
 interface ChatInterfaceProps {
   onPromptGenerated?: (prompt: string, skills: string[], documents?: AgentDocument[]) => void
+  onStageDetected?: (stage: string) => void
   currentPrompt?: string
   agentId?: string
   currentAgent?: Agent | null
@@ -269,18 +270,25 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
       }
 
       // Extract structured prompt and skills from response
-      const { prompt, skills, isQuestion } = extractPromptAndSkills(fullResponse)
+      const { prompt, skills, isQuestion, stage } = extractPromptAndSkills(fullResponse)
 
       console.log("[v0] Extraction result:", {
         promptLength: prompt.length,
         skillsCount: skills.length,
         isQuestion,
         hasPrompt: !!prompt,
+        stage,
       })
 
       // Update question count if this is a question (not a generated prompt)
       if (isQuestion && !prompt) {
         setQuestionCount((prev) => prev + 1)
+      }
+      
+      // If stage was detected, notify parent component
+      if (stage && onStageDetected) {
+        console.log("[v0] Calling onStageDetected with:", stage)
+        onStageDetected(stage)
       }
 
       // Update final message with extracted data
@@ -543,11 +551,19 @@ export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, curre
   )
 }
 
-function extractPromptAndSkills(response: string): { prompt: string; skills: string[]; isQuestion: boolean } {
+function extractPromptAndSkills(response: string): { prompt: string; skills: string[]; isQuestion: boolean; stage?: string } {
   let prompt = ""
   const skills: string[] = []
+  let stage: string | undefined = undefined
 
   console.log("[v0] Full AI response:", response.substring(0, 500))
+  
+  // Extract DETECTED_STAGE if present
+  const stageMatch = response.match(/DETECTED_STAGE:\s*(ingestion|data-capture|verification|matching|approval|posting)/i)
+  if (stageMatch) {
+    stage = stageMatch[1].toLowerCase()
+    console.log("[v0] Detected stage:", stage)
+  }
 
   const hasStructuredContent =
     response.includes("ROLE:") ||
@@ -662,6 +678,7 @@ function extractPromptAndSkills(response: string): { prompt: string; skills: str
   console.log("[v0] Extracted prompt length:", prompt.length, "chars")
   console.log("[v0] Extracted skills:", skills)
   console.log("[v0] Is question:", isQuestion)
+  console.log("[v0] Detected stage:", stage)
 
-  return { prompt, skills, isQuestion }
+  return { prompt, skills, isQuestion, stage }
 }

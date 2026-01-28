@@ -32,9 +32,14 @@ WIZARD APPROACH - Follow these rules strictly:
      * What are the success criteria or thresholds?
    - Format questions naturally and conversationally
    - DO NOT generate the structured prompt while in question phase
+   - IMPORTANT: When you determine the deployment stage from the user's answer, output it on a new line as:
+     DETECTED_STAGE: [stage_name]
+     Where stage_name is one of: ingestion, data-capture, verification, matching, approval, posting
 
 2. GENERATION PHASE:
    - After questions are answered (or if initial request is already complete), generate the structured prompt
+   - IMPORTANT: Start your response with DETECTED_STAGE: [stage_name] on its own line
+     Where stage_name is one of: ingestion, data-capture, verification, matching, approval, posting
    - Create a comprehensive, detailed prompt with these sections:
      - ROLE: Clear definition of the agent's purpose
      - INPUTS: Specific data sources and requirements
