@@ -988,9 +988,9 @@ ERROR HANDLING:
                   )}
                   
                   {/* Prompt Section */}
-                  <Card className="p-6 flex flex-col" style={{ height: "600px" }}>
-                    <div className="flex items-center justify-between mb-2">
-                      <Label htmlFor="system-prompt">System Prompt</Label>
+                  <Card className="p-6 flex flex-col" style={{ height: "500px" }}>
+                    <div className="flex items-center justify-between mb-3">
+                      <Label htmlFor="system-prompt" className="text-sm font-semibold">System Prompt</Label>
                       {!isPreviewMode && (
                         <Button type="button" variant="ghost" size="sm" onClick={() => setShowAdvanced(!showAdvanced)}>
                           {showAdvanced ? "Basic view" : "Advanced view"}
@@ -1057,55 +1057,44 @@ ERROR HANDLING:
                   </Card>
 
                   {/* Skills Section */}
-                  <Card className="p-6 space-y-4">
-                    <div>
-                      <h3 className="text-lg font-semibold mb-1">Available Skills</h3>
-                      <p className="text-xs text-muted-foreground mb-4">
-                        {isPreviewMode ? "Skills enabled for this agent" : "Select the skills this agent can use during execution"}
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
-                        {AVAILABLE_SKILLS.map((skill) => (
-                          <Card
+                  <Card className="p-6">
+                    <div className="flex items-center justify-between mb-3">
+                      <div>
+                        <h3 className="text-sm font-semibold">Skills & Capabilities</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {currentSkills.length} of {AVAILABLE_SKILLS.length} selected
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {AVAILABLE_SKILLS.map((skill) => {
+                        const isSelected = currentSkills.includes(skill)
+                        return (
+                          <button
                             key={skill}
-                            className={`p-3 transition-colors ${
-                              isPreviewMode ? "cursor-default" : "cursor-pointer hover:bg-accent"
-                            } ${currentSkills.includes(skill) ? "border-primary bg-primary/5" : ""}`}
                             onClick={() => {
                               if (!isPreviewMode) {
-                                const newSkills = currentSkills.includes(skill)
+                                const newSkills = isSelected
                                   ? currentSkills.filter((s) => s !== skill)
                                   : [...currentSkills, skill]
                                 setCurrentSkills(newSkills)
-                                // Update the agent if editing
                                 if (editingAgent) {
                                   setEditingAgent({ ...editingAgent, skills: newSkills })
                                 }
                               }
                             }}
+                            disabled={isPreviewMode}
+                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
+                              isSelected
+                                ? "bg-primary text-primary-foreground shadow-sm"
+                                : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
+                            } ${isPreviewMode ? "cursor-default" : "cursor-pointer"}`}
                           >
-                            <div className="flex items-center gap-2">
-                              <Checkbox
-                                checked={currentSkills.includes(skill)}
-                                onCheckedChange={() => {
-                                  if (!isPreviewMode) {
-                                    const newSkills = currentSkills.includes(skill)
-                                      ? currentSkills.filter((s) => s !== skill)
-                                      : [...currentSkills, skill]
-                                    setCurrentSkills(newSkills)
-                                    // Update the agent if editing
-                                    if (editingAgent) {
-                                      setEditingAgent({ ...editingAgent, skills: newSkills })
-                                    }
-                                  }
-                                }}
-                                className="cursor-pointer"
-                                disabled={isPreviewMode}
-                              />
-                              <span className="text-sm font-medium">{skill}</span>
-                            </div>
-                          </Card>
-                        ))}
-                      </div>
+                            {isSelected && <span className="mr-1">✓</span>}
+                            {skill}
+                          </button>
+                        )
+                      })}
                     </div>
                   </Card>
                 </div>
