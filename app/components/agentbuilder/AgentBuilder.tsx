@@ -332,7 +332,7 @@ export function AgentBuilder({
       const yaml = showAdvanced ? generateCodeView() : ""
       onStateChange(prompt, activeSkills, yaml)
     }
-  }, [prompt, activeSkills, showAdvanced, agentName, stage, model, agentMode, onStateChange])
+  }, [prompt, activeSkills, showAdvanced, agentName, stage, lane, agentMode, onStateChange])
 
   const extractErrorScenariosFromPrompt = (promptText: string): string[] => {
     if (!promptText) return []
