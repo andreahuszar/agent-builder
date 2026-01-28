@@ -495,7 +495,11 @@ export function AgentBuilder({
 
   // Auto-select first lane when stage changes
   useEffect(() => {
-    if (stage && STAGE_LANES[stage] && !agent?.lane) {
+    // Only auto-select first lane if:
+    // 1. Stage is set
+    // 2. Lane is currently empty (not already set by AI or user)
+    // 3. Agent doesn't already have a lane
+    if (stage && STAGE_LANES[stage] && !lane && !agent?.lane) {
       const firstLane = STAGE_LANES[stage][0]
       setLane(firstLane)
     }
