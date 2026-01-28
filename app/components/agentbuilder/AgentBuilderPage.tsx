@@ -623,6 +623,7 @@ ERROR HANDLING:
         console.log("[v0] Agents after update:", updated.map((a) => `${a.name} (${a.stage})`))
         return updated
       })
+      console.log("[AgentBuilderPage v7] About to setEditingAgent with documents:", updatedAgent.documents)
       setEditingAgent(updatedAgent)
     } else {
       // Create new agent (ID should already be set from handleCreateNewAgent)
@@ -632,12 +633,14 @@ ERROR HANDLING:
         active: false,
       }
       console.log("[v0] Creating new agent:", newAgent.name, "Stage:", newAgent.stage, "ID:", newAgent.id)
+      console.log("[AgentBuilderPage v7] New agent documents:", newAgent.documents)
       setAgents((prev) => {
         const updated = [...prev, newAgent]
         console.log("[v0] Agent count after creation:", updated.length)
         console.log("[v0] All agents:", updated.map((a) => `${a.name} (${a.stage})`))
         return updated
       })
+      console.log("[AgentBuilderPage v7] About to setEditingAgent (new) with documents:", newAgent.documents)
       setEditingAgent(newAgent)
       // Auto-expand the stage where the new agent was created
       if (newAgent.stage) {
@@ -1009,6 +1012,10 @@ ERROR HANDLING:
                     </div>
 
                     {/* Referenced Documents Chips */}
+                    {(() => {
+                      console.log("[AgentBuilderPage v7] Rendering documents section. editingAgent?.documents:", editingAgent?.documents)
+                      return null
+                    })()}
                     {editingAgent?.documents && editingAgent.documents.length > 0 && (
                       <div className="mt-3 mb-3">
                         <span className="text-xs text-muted-foreground mb-2 block">Referenced Documents:</span>
