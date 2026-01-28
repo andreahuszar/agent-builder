@@ -61,7 +61,7 @@ const STAGE_LANES: Record<string, string[]> = {
   ingestion: ["Source Intake", "File Triage", "Duplicate Detection", "Supplier Routing"],
   "data-capture": ["OCR Extraction", "Field Normalisation", "Header vs Line Split", "Currency/Tax Parsing"],
   verification: ["Confidence Scoring", "Anomaly Checks", "Supplier Master Validation", "Policy Checks"],
-  matching: ["PO Match", "GRN Match", "Contract Match", "Tolerance Application"],
+  matching: ["PO Match", "GRN Match", "Contract Match", "Unit Conversion", "Tolerance Application"],
   approval: ["Approver Routing", "Reminder Nudges", "Exception Pack Creation", "Escalation"],
   posting: ["Coding Suggestion", "ERP Payload Creation", "Posting Validation", "Reconciliation"]
 }
