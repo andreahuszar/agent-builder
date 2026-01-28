@@ -54,7 +54,7 @@ const AVAILABLE_SKILLS = [
   "Find Vendor Information",
 ]
 
-export function ChatInterface({ onPromptGenerated, currentPrompt, agentId, currentAgent }: ChatInterfaceProps) {
+export function ChatInterface({ onPromptGenerated, onStageDetected, currentPrompt, agentId, currentAgent }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
