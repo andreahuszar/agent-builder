@@ -17,7 +17,7 @@ import type { Agent } from "./AgentBuilderPage"
 
 // AgentConfig matches Agent type from AgentBuilderPage
 type AgentConfig = Agent & {
-  model: string
+  lane: string
 }
 
 type VersionHistoryEntry = {
@@ -829,7 +829,7 @@ export function AgentBuilder({
     const currentData = {
       name: agentName,
       stage,
-      model,
+      lane,
       mode: agentMode,
       prompt,
       skills: activeSkills,
@@ -1734,8 +1734,8 @@ status: ${isActive ? "active" : "inactive"}`
                         <span className="font-medium capitalize">{stage}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Model:</span>
-                        <span className="font-medium">{model}</span>
+                        <span className="text-muted-foreground">Lane:</span>
+                        <span className="font-medium">{lane}</span>
                       </div>
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Skills:</span>
