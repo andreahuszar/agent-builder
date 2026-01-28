@@ -57,6 +57,15 @@ const stages = [
   { id: "posting", name: "Posting" },
 ]
 
+const STAGE_LANES: Record<string, string[]> = {
+  ingestion: ["Source Intake", "File Triage", "Duplicate Detection", "Supplier Routing"],
+  "data-capture": ["OCR Extraction", "Field Normalisation", "Header vs Line Split", "Currency/Tax Parsing"],
+  verification: ["Confidence Scoring", "Anomaly Checks", "Supplier Master Validation", "Policy Checks"],
+  matching: ["PO Match", "GRN Match", "Contract Match", "Tolerance Application"],
+  approval: ["Approver Routing", "Reminder Nudges", "Exception Pack Creation", "Escalation"],
+  posting: ["Coding Suggestion", "ERP Payload Creation", "Posting Validation", "Reconciliation"]
+}
+
 export function AgentBuilder({
   agent,
   onSave,
@@ -77,7 +86,7 @@ export function AgentBuilder({
 }: AgentBuilderProps) {
   const [agentName, setAgentName] = useState("")
   const [stage, setStage] = useState("ingestion")
-  const [model, setModel] = useState("gpt-4")
+  const [lane, setLane] = useState<string>("")
   const [agentMode, setAgentMode] = useState<"observe" | "suggest" | "auto-apply">("observe") // Added agent mode state
   const [prompt, setPrompt] = useState("")
   const [activeSkills, setActiveSkills] = useState<string[]>([])
@@ -167,7 +176,7 @@ export function AgentBuilder({
     const snapshot = version.snapshot
     setAgentName(snapshot.name || "")
     setStage(snapshot.stage || "ingestion")
-    setModel(snapshot.model || "gpt-4")
+    setLane(snapshot.lane || "")
     setAgentMode(snapshot.mode || "observe")
     setPrompt(snapshot.prompt || "")
     setActiveSkills(snapshot.skills || [])
@@ -402,7 +411,7 @@ export function AgentBuilder({
       console.log("[v0] Loading different agent:", agent.id)
       setAgentName(agent.name)
       setStage(agent.stage || "ingestion")
-      setModel(agent.model || "gpt-4")
+      setLane(agent.lane || STAGE_LANES[agent.stage || "ingestion"]?.[0] || "")
       setAgentMode(agent.mode || "observe")
       setPrompt(agent.prompt || "")
       setOriginalPrompt(agent.prompt || "")
@@ -417,7 +426,7 @@ export function AgentBuilder({
       setOriginalAgentData({
         name: agent.name,
         stage: agent.stage || "ingestion",
-        model: agent.model || "gpt-4",
+        lane: agent.lane || "",
         mode: agent.mode || "observe",
         prompt: agent.prompt || "",
         skills: agent.skills || [],
@@ -432,7 +441,7 @@ export function AgentBuilder({
         id: agent.id,
         name: agent.name,
         stage: agent.stage || "ingestion",
-        model: agent.model || "gpt-4",
+        lane: agent.lane || "",
         mode: agent.mode || "observe",
         prompt: agent.prompt || "",
         skills: agent.skills || [],
@@ -452,7 +461,7 @@ export function AgentBuilder({
       console.log("[v0] Creating new agent")
       setAgentName("")
       setStage("ingestion")
-      setModel("gpt-4")
+      setLane("")
       setAgentMode("observe")
       setPrompt("")
       setOriginalPrompt("")
@@ -483,6 +492,14 @@ export function AgentBuilder({
       }
     }
   }, [agent])
+
+  // Auto-select first lane when stage changes
+  useEffect(() => {
+    if (stage && STAGE_LANES[stage] && !agent?.lane) {
+      const firstLane = STAGE_LANES[stage][0]
+      setLane(firstLane)
+    }
+  }, [stage, agent?.lane])
 
   // Check if we already have metrics for this agent
   // REMOVED: This logic is now handled by the parent component passing agentMetrics as a prop.
@@ -1012,7 +1029,7 @@ Items: Monthly Hosting, Cloud Storage`,
     if (originalAgentData) {
       if (agentName !== originalAgentData.name) changes.push(`Name: "${originalAgentData.name}" → "${agentName}"`)
       if (stage !== originalAgentData.stage) changes.push(`Stage: "${originalAgentData.stage}" → "${stage}"`)
-      if (model !== originalAgentData.model) changes.push(`Model: "${originalAgentData.model}" → "${model}"`)
+      if (lane !== originalAgentData.lane) changes.push(`Lane: "${originalAgentData.lane}" → "${lane}"`)
       if (agentMode !== originalAgentData.mode) changes.push(`Mode: "${originalAgentData.mode}" → "${agentMode}"`)
       if (prompt !== originalAgentData.prompt) changes.push("Prompt updated")
       if (JSON.stringify(activeSkills) !== JSON.stringify(originalAgentData.skills)) changes.push("Skills modified")
@@ -1027,7 +1044,7 @@ Items: Monthly Hosting, Cloud Storage`,
       id: agent?.id || Date.now().toString(),
       name: agentName,
       stage,
-      model,
+      lane,
       mode: agentMode,
       prompt,
       skills: activeSkills,
@@ -1410,10 +1427,9 @@ audit:
     - final_recommendation
     - execution_time_ms
 
-model:
-  provider: ${model || "openai/gpt-4"}
-  temperature: 0.1
-  max_tokens: 2000
+configuration:
+  lane: ${lane || "N/A"}
+  stage: ${stage || "ingestion"}
   
 status: ${isActive ? "active" : "inactive"}`
   }
@@ -2283,17 +2299,19 @@ status: ${isActive ? "active" : "inactive"}`
                 </div>
 
                 <div>
-                  <Label htmlFor="model" className="text-sm font-medium">
-                    Model
+                  <Label htmlFor="lane" className="text-sm font-medium">
+                    Lane
                   </Label>
-                  <Select value={model} onValueChange={setModel} disabled={isPreview}>
-                    <SelectTrigger id="model" className="mt-1.5">
-                      <SelectValue />
+                  <Select value={lane} onValueChange={setLane} disabled={isPreview}>
+                    <SelectTrigger id="lane" className="mt-1.5">
+                      <SelectValue placeholder="Select a lane" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="gpt-4">GPT-4</SelectItem>
-                      <SelectItem value="gpt-3.5">GPT-3.5</SelectItem>
-                      <SelectItem value="claude-3">Claude 3</SelectItem>
+                      {stage && STAGE_LANES[stage]?.map((laneOption) => (
+                        <SelectItem key={laneOption} value={laneOption}>
+                          {laneOption}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>

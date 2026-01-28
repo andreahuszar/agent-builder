@@ -33,7 +33,7 @@ export type Agent = {
   active: boolean
   mode?: "observe" | "suggest" | "auto-apply"
   prompt?: string
-  model?: string
+  lane?: string
   skills?: string[]
   documents?: AgentDocument[]
 }
@@ -121,7 +121,7 @@ ERROR HANDLING:
 - If file type unsupported (other than Word) → Reject with supported format list
 - If file corrupted → Request resubmission
 - If virus detected → Quarantine and alert security team`,
-      model: "gpt-4",
+      lane: "File Triage",
       skills: ["Process Documents", "Send Messages"],
     },
     {
@@ -217,7 +217,7 @@ ERROR HANDLING:
 - If total mismatch > $5 or 1% → Flag calculation error for review
 - If line item totals don't sum to invoice total → Flag for verification
 - If date formats are inconsistent → Attempt normalization, flag if ambiguous`,
-      model: "gpt-4",
+      lane: "OCR Extraction",
       skills: ["Extract text", "Verify Data"],
     },
     {
@@ -263,7 +263,7 @@ ERROR HANDLING:
 - If invoice total cannot be determined → Flag for manual review
 - If currency conversion fails → Use invoice currency and flag for manual conversion
 - If exception raised → Ensure invoice is routed to review queue and approver is notified`,
-      model: "gpt-3.5",
+      lane: "Policy Checks",
       skills: ["Verify Data", "Flag Issues"],
     },
     {
@@ -315,7 +315,7 @@ ERROR HANDLING:
 - If perishable goods identification is ambiguous → Apply conservative tolerance (+/- 3%)
 - If conversion factor is unknown → Flag line item for manual conversion
 - If matching fails due to conversion errors → Route to manual matching queue`,
-      model: "gpt-4",
+      lane: "Tolerance Application",
       skills: ["Find Purchase Orders", "Intelligent Matching", "Verify Data"],
     },
     {
@@ -372,7 +372,7 @@ ERROR HANDLING:
 - If approver email invalid → Flag for manual routing
 - If routing fails → Retry routing, escalate if persistent failure
 - If PO status unclear → Check PO lookup service, route to IT approver if non-PO`,
-      model: "gpt-4",
+      lane: "Approver Routing",
       skills: ["Route for Approval", "Run Workflows", "Find Vendor Information", "Find Purchase Orders"],
     },
     {
@@ -413,7 +413,7 @@ ERROR HANDLING:
 - If posting period closed → Hold until next period
 - If GL account invalid → Route to accounting for correction
 - If posting fails → Retry 3 times, then escalate`,
-      model: "gpt-4",
+      lane: "ERP Payload Creation",
       skills: ["Connect to ERP System", "Map to General Ledger"],
     },
     {
@@ -454,7 +454,7 @@ ERROR HANDLING:
 - If bank details missing → Hold and request update
 - If insufficient funds → Delay payment, notify treasury
 - If payment rejected by bank → Try alternative method`,
-      model: "gpt-3.5",
+      lane: "Reconciliation",
       skills: ["Send Messages", "Run Workflows", "Connect to ERP System"],
     },
   ])
@@ -908,7 +908,7 @@ ERROR HANDLING:
                 <AgentBuilder
                   agent={testingAgent || editingAgent ? {
                     ...(testingAgent || editingAgent)!,
-                    model: (testingAgent || editingAgent)?.model || "gpt-4"
+                    lane: (testingAgent || editingAgent)?.lane || ""
                   } : null}
                   onSave={handleSaveAgent}
                   isPreview={isPreviewMode}
