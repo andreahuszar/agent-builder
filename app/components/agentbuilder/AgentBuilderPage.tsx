@@ -693,6 +693,7 @@ ERROR HANDLING:
   }
 
   const handlePromptGenerated = (generatedPrompt: string, skills: string[], documents?: AgentDocument[]) => {
+    console.log("[AgentBuilderPage v7] handlePromptGenerated called with documents:", documents)
     setCurrentPrompt(generatedPrompt)
     setCurrentSkills(skills)
     if (editingAgent) {
@@ -703,6 +704,7 @@ ERROR HANDLING:
         skills: skills,
         documents: documents || editingAgent.documents || [],
       }
+      console.log("[AgentBuilderPage v7] Updated agent documents:", updatedAgent.documents)
       setEditingAgent(updatedAgent)
     }
   }

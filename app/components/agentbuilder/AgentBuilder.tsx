@@ -1160,7 +1160,7 @@ Items: Monthly Hosting, Cloud Storage`,
     const output = {
       agent: agentName || "Unnamed Agent",
       stage,
-      model,
+      lane,
       input: testInput || "Sample invoice data",
       processing: {
         skills_used: activeSkills,
