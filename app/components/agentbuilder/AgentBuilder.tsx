@@ -158,7 +158,7 @@ export function AgentBuilder({
         id: agent?.id || "",
         name: agentName,
         stage,
-        model,
+        lane,
         mode: agentMode,
         prompt,
         skills: activeSkills,
@@ -838,13 +838,13 @@ export function AgentBuilder({
     const changed =
       currentData.name !== originalAgentData.name ||
       currentData.stage !== originalAgentData.stage ||
-      currentData.model !== originalAgentData.model ||
+      currentData.lane !== originalAgentData.lane ||
       currentData.mode !== originalAgentData.mode ||
       currentData.prompt !== originalAgentData.prompt ||
       JSON.stringify(currentData.skills) !== JSON.stringify(originalAgentData.skills)
 
     setHasChanges(changed)
-  }, [agentName, stage, model, agentMode, prompt, activeSkills, originalAgentData, isPreview])
+  }, [agentName, stage, lane, agentMode, prompt, activeSkills, originalAgentData, isPreview])
 
   // Removed the old useEffect for agentMetrics and kept the new one
 
@@ -1060,7 +1060,7 @@ Items: Monthly Hosting, Cloud Storage`,
     setOriginalAgentData({
       name: agentName,
       stage,
-      model,
+      lane,
       mode: agentMode,
       prompt,
       skills: activeSkills,
