@@ -48,9 +48,8 @@ export default function ExecutiveDashboardClient() {
       await new Promise(resolve => setTimeout(resolve, 500))
       const days = parseInt(dateRange) || 30
       
-      // Get real agent count and total lines evaluated from localStorage
+      // Get real agent count from localStorage
       let activeAgentsCount = 8 // fallback default
-      let totalLinesEvaluated = 0
       if (typeof window !== 'undefined') {
         const storedAgents = localStorage.getItem('agents')
         if (storedAgents) {
@@ -61,22 +60,10 @@ export default function ExecutiveDashboardClient() {
             console.error('Failed to parse stored agents:', e)
           }
         }
-        
-        // Get agent metrics to calculate total lines evaluated
-        const storedMetrics = localStorage.getItem('agentMetrics')
-        if (storedMetrics) {
-          try {
-            const metrics = JSON.parse(storedMetrics)
-            totalLinesEvaluated = Object.values(metrics).reduce((sum: number, metric: any) => {
-              return sum + (metric.evaluated || 0)
-            }, 0)
-          } catch (e) {
-            console.error('Failed to parse stored metrics:', e)
-          }
-        }
       }
       
-      const dashboardData = generateExecutiveDashboardData(days, activeAgentsCount, totalLinesEvaluated)
+      // Don't pass totalLinesEvaluated - let the formula calculate it based on invoices (5x multiplier)
+      const dashboardData = generateExecutiveDashboardData(days, activeAgentsCount)
       setData(dashboardData)
     } catch (err) {
       console.error('Error loading dashboard:', err)
