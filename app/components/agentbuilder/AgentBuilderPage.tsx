@@ -692,7 +692,6 @@ ERROR HANDLING:
   }
 
   const handlePromptGenerated = (generatedPrompt: string, skills: string[], documents?: AgentDocument[]) => {
-    console.log("[AgentBuilderPage v7] handlePromptGenerated called with documents:", documents)
     setCurrentPrompt(generatedPrompt)
     setCurrentSkills(skills)
     if (editingAgent) {
@@ -703,7 +702,6 @@ ERROR HANDLING:
         skills: skills,
         documents: documents || editingAgent.documents || [],
       }
-      console.log("[AgentBuilderPage v7] Updated agent documents:", updatedAgent.documents)
       setEditingAgent(updatedAgent)
     }
   }
@@ -1001,10 +999,6 @@ ERROR HANDLING:
                     </div>
 
                     {/* Referenced Documents Chips */}
-                    {(() => {
-                      console.log("[AgentBuilderPage v7] Rendering documents section. editingAgent?.documents:", editingAgent?.documents)
-                      return null
-                    })()}
                     {editingAgent?.documents && editingAgent.documents.length > 0 && (
                       <div className="mt-3 mb-3">
                         <span className="text-xs text-muted-foreground mb-2 block">Referenced Documents:</span>

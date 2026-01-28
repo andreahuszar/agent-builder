@@ -81,7 +81,8 @@ export function generateExecutiveDashboardData(dateRangeDays: number = 30, activ
   // Base metrics - enterprise scale
   const activeAgents = activeAgentsCount !== undefined ? activeAgentsCount : randomBetween(75, 150)
   const totalInvoices = randomBetween(8500, 15000)
-  const linesEvaluated = totalLinesEvaluated !== undefined ? totalLinesEvaluated : randomBetween(50000, 250000)
+  // Lines evaluated should be ~5x invoices impacted (each invoice has multiple line items)
+  const linesEvaluated = totalLinesEvaluated !== undefined ? totalLinesEvaluated : Math.floor(totalInvoices * 5 * (0.9 + Math.random() * 0.2)) // 4.5x - 5.5x variance
   
   // Utilization metrics (60-80% automation target)
   const automationRate = randomBetween(65, 78) / 100
