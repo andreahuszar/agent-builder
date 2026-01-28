@@ -2195,15 +2195,33 @@ status: ${isActive ? "active" : "inactive"}`
           </div>
         </div>
         {(agent || editingAgent || agentName) && (
-          <div className={`${currentModeStyles.bg} ${currentModeStyles.border} border-2 rounded-lg p-4`}>
+          <div className={`border-2 rounded-lg p-4 ${
+            agentMode === "observe" 
+              ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900" 
+              : agentMode === "suggest"
+              ? "bg-yellow-50 dark:bg-yellow-950/20 border-yellow-300 dark:border-yellow-900"
+              : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900"
+          }`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <div
-                  className={`${currentModeStyles.badge} px-3 py-1 rounded-full text-sm font-semibold uppercase tracking-wide`}
+                  className={`px-3 py-1 rounded-full text-sm font-semibold uppercase tracking-wide ${
+                    agentMode === "observe"
+                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100"
+                      : agentMode === "suggest"
+                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
+                      : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100"
+                  }`}
                 >
                   {agentMode === "auto-apply" ? "Auto-Apply" : agentMode}
                 </div>
-                <p className={`text-sm ${currentModeStyles.text} font-medium`}>{getModeDescription(agentMode)}</p>
+                <p className={`text-sm font-medium ${
+                  agentMode === "observe"
+                    ? "text-blue-700 dark:text-blue-300"
+                    : agentMode === "suggest"
+                    ? "text-yellow-800 dark:text-yellow-300"
+                    : "text-red-700 dark:text-red-300"
+                }`}>{getModeDescription(agentMode)}</p>
               </div>
             </div>
           </div>
