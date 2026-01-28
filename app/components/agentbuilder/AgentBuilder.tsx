@@ -1474,10 +1474,10 @@ status: ${isActive ? "active" : "inactive"}`
         }
       case "suggest":
         return {
-          bg: "bg-amber-50",
-          border: "border-amber-200",
-          text: "text-amber-700",
-          badge: "bg-amber-100 text-amber-700",
+          bg: "bg-yellow-50",
+          border: "border-yellow-300",
+          text: "text-yellow-800",
+          badge: "bg-yellow-100 text-yellow-800",
         }
       case "auto-apply":
         return {
