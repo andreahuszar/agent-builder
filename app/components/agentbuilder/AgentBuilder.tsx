@@ -2138,14 +2138,44 @@ status: ${isActive ? "active" : "inactive"}`
         {" "}
         {/* CHANGED max-w-6xl to max-w-4xl */}
         {/* Header */}
-        <div className={isPreview ? "space-y-4" : "flex items-center justify-between"}>
+        <div className={isPreview ? "space-y-4" : "flex items-center justify-between mb-6"}>
           <div>
             <h2 className="text-2xl font-bold">
               {!agent?.id && !isPreview ? "Create Agent" : agent?.name || "Agent Configuration"}
             </h2>
-            <p className="text-muted-foreground">
-              {isPreview ? "Review agent configuration" : "Build and test your agent"}
-            </p>
+            <div className="flex items-center gap-2 mt-1.5">
+              {(agent || editingAgent || agentName) && (
+                <span className={`inline-flex items-center gap-1.5 text-sm ${
+                  agentMode === "observe"
+                    ? "text-blue-600 dark:text-blue-400"
+                    : agentMode === "suggest"
+                    ? "text-yellow-700 dark:text-yellow-400"
+                    : "text-red-600 dark:text-red-400"
+                }`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${
+                    agentMode === "observe" ? "bg-blue-500" : agentMode === "suggest" ? "bg-yellow-400" : "bg-red-500"
+                  }`} />
+                  {agentMode === "auto-apply" ? "Auto-Apply" : agentMode.charAt(0).toUpperCase() + agentMode.slice(1)}
+                </span>
+              )}
+              {stage && (agent || editingAgent || agentName) && (
+                <>
+                  <span className="text-muted-foreground text-sm">•</span>
+                  <span className="text-sm text-muted-foreground">{stages.find(s => s.id === stage)?.name}</span>
+                </>
+              )}
+              {lane && (agent || editingAgent || agentName) && (
+                <>
+                  <span className="text-muted-foreground text-sm">•</span>
+                  <span className="text-sm text-muted-foreground">{lane}</span>
+                </>
+              )}
+              {!(agent || editingAgent || agentName) && (
+                <p className="text-sm text-muted-foreground">
+                  {isPreview ? "Review agent configuration" : "Build and test your agent"}
+                </p>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2">
             {isPreview && agent?.id && (
