@@ -313,6 +313,11 @@ export function AgentBuilder({
   }
 
   const handlePromptGenerated = (generatedPrompt: string, skills: string[], documents?: any[]) => {
+    console.log("[AgentBuilder] Prompt generation complete")
+    
+    // Mark that AI generation is complete
+    isAIGeneratingRef.current = false
+    
     setPrompt(generatedPrompt)
     setActiveSkills(skills)
     setSelectedSkills(skills)
