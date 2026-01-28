@@ -682,3 +682,5 @@ function extractPromptAndSkills(response: string): { prompt: string; skills: str
 
   return { prompt, skills, isQuestion, stage }
 }
+
+export default ChatInterface
