@@ -574,8 +574,8 @@ function extractPromptAndSkills(response: string): { prompt: string; skills: str
     console.log("[v0] Detected stage:", stage)
   }
   
-  // Extract DETECTED_LANE if present (match any lane name with spaces, hyphens, etc.)
-  const laneMatch = response.match(/DETECTED_LANE:\s*([A-Za-z\s\-\/]+)/i)
+  // Extract DETECTED_LANE if present (match until end of line, not including newline)
+  const laneMatch = response.match(/DETECTED_LANE:\s*([^\n\r]+)/i)
   if (laneMatch) {
     lane = laneMatch[1].trim()
     console.log("[v0] Detected lane:", lane)
