@@ -2194,38 +2194,6 @@ status: ${isActive ? "active" : "inactive"}`
             )}
           </div>
         </div>
-        {(agent || editingAgent || agentName) && (
-          <div className={`border-2 rounded-lg p-4 ${
-            agentMode === "observe" 
-              ? "bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900" 
-              : agentMode === "suggest"
-              ? "bg-yellow-50 dark:bg-yellow-950/20 border-yellow-300 dark:border-yellow-900"
-              : "bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900"
-          }`}>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div
-                  className={`px-3 py-1 rounded-full text-sm font-semibold uppercase tracking-wide ${
-                    agentMode === "observe"
-                      ? "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100"
-                      : agentMode === "suggest"
-                      ? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100"
-                      : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100"
-                  }`}
-                >
-                  {agentMode === "auto-apply" ? "Auto-Apply" : agentMode}
-                </div>
-                <p className={`text-sm font-medium ${
-                  agentMode === "observe"
-                    ? "text-blue-700 dark:text-blue-300"
-                    : agentMode === "suggest"
-                    ? "text-yellow-800 dark:text-yellow-300"
-                    : "text-red-700 dark:text-red-300"
-                }`}>{getModeDescription(agentMode)}</p>
-              </div>
-            </div>
-          </div>
-        )}
         {conflicts.length > 0 && (
           <Card className="p-4 border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900">
             <div className="space-y-3">
@@ -2304,8 +2272,9 @@ status: ${isActive ? "active" : "inactive"}`
 
           {/* Configuration Section */}
           <Card className="p-6">
-            <h3 className="text-lg font-medium mb-4">Configuration</h3>
-            <div className="space-y-4">
+            <h3 className="text-lg font-medium mb-6">Configuration</h3>
+            <div className="space-y-6">
+              {/* Agent Identity */}
               <div>
                 <Label htmlFor="agent-name" className="text-sm font-medium">
                   Agent Name
@@ -2316,53 +2285,61 @@ status: ${isActive ? "active" : "inactive"}`
                   onChange={(e) => setAgentName(e.target.value)}
                   placeholder="e.g., Invoice Ingestion Agent"
                   disabled={isPreview}
-                  className="mt-1.5"
+                  className="mt-2"
                 />
               </div>
 
-              <div className="grid grid-cols-3 gap-4">
-                <div>
-                  <Label htmlFor="stage" className="text-sm font-medium">
-                    Deployment Stage
-                  </Label>
-                  <Select value={stage} onValueChange={setStage} disabled={isPreview}>
-                    <SelectTrigger id="stage" className="mt-1.5">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {stages.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
+              {/* Deployment Configuration */}
+              <div className="space-y-4">
+                <div className="text-sm font-medium text-muted-foreground">Deployment</div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="stage" className="text-sm font-medium">
+                      Stage
+                    </Label>
+                    <Select value={stage} onValueChange={setStage} disabled={isPreview}>
+                      <SelectTrigger id="stage" className="mt-2">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stages.map((s) => (
+                          <SelectItem key={s.id} value={s.id}>
+                            {s.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <div>
-                  <Label htmlFor="lane" className="text-sm font-medium">
-                    Lane
-                  </Label>
-                  <Select value={lane} onValueChange={setLane} disabled={isPreview}>
-                    <SelectTrigger id="lane" className="mt-1.5">
-                      <SelectValue placeholder="Select a lane" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {stage && STAGE_LANES[stage]?.map((laneOption) => (
-                        <SelectItem key={laneOption} value={laneOption}>
-                          {laneOption}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div>
+                    <Label htmlFor="lane" className="text-sm font-medium">
+                      Lane
+                    </Label>
+                    <Select value={lane} onValueChange={setLane} disabled={isPreview}>
+                      <SelectTrigger id="lane" className="mt-2">
+                        <SelectValue placeholder="Select a lane" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {stage && STAGE_LANES[stage]?.map((laneOption) => (
+                          <SelectItem key={laneOption} value={laneOption}>
+                            {laneOption}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
+              </div>
 
+              {/* Behavior Configuration */}
+              <div className="space-y-3">
+                <div className="text-sm font-medium text-muted-foreground">Behavior</div>
                 <div>
                   <Label htmlFor="agent-mode" className="text-sm font-medium">
-                    Agent Mode
+                    Mode
                   </Label>
                   <Select value={agentMode} onValueChange={(value: any) => setAgentMode(value)} disabled={isPreview}>
-                    <SelectTrigger id="agent-mode" className="mt-1.5">
+                    <SelectTrigger id="agent-mode" className="mt-2">
                       <SelectValue>
                         <div className="flex items-center gap-2">
                           <div
@@ -2393,6 +2370,18 @@ status: ${isActive ? "active" : "inactive"}`
                       </SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className={`text-xs mt-2 flex items-center gap-1.5 ${
+                    agentMode === "observe"
+                      ? "text-blue-600 dark:text-blue-400"
+                      : agentMode === "suggest"
+                      ? "text-yellow-700 dark:text-yellow-400"
+                      : "text-red-600 dark:text-red-400"
+                  }`}>
+                    <div
+                      className={`w-1.5 h-1.5 rounded-full ${agentMode === "observe" ? "bg-blue-500" : agentMode === "suggest" ? "bg-yellow-400" : "bg-red-500"}`}
+                    />
+                    {getModeDescription(agentMode)}
+                  </p>
                 </div>
               </div>
             </div>
