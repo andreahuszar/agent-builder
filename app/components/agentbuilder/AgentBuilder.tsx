@@ -2279,10 +2279,20 @@ status: ${isActive ? "active" : "inactive"}`
           </Card>
         )}
         <div className="space-y-6">
-          {/* AI Configuration Assistant Chat */}
+          {/* Step 1: Design with AI */}
           {!isPreview && (
-            <Card className="p-0 overflow-hidden flex flex-col" style={{ height: "600px" }}>
-              <ChatInterface
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground font-semibold text-sm">
+                  1
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Design with AI Assistant</h3>
+                  <p className="text-sm text-muted-foreground">Describe what you want your agent to do</p>
+                </div>
+              </div>
+              <Card className="p-0 overflow-hidden flex flex-col" style={{ height: "600px" }}>
+                <ChatInterface
                 onPromptGenerated={handlePromptGenerated}
                 onStageDetected={(detectedStage) => {
                   console.log("[AgentBuilder] Stage detected by AI:", detectedStage)
@@ -2298,10 +2308,24 @@ status: ${isActive ? "active" : "inactive"}`
                 currentAgent={currentAgent}
               />
             </Card>
+            </div>
           )}
 
-          {/* Configuration Section */}
-          <Card className="p-6">
+          {/* Step 2: Configure */}
+          {!isPreview && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm ${
+                  prompt ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100" : "bg-muted text-muted-foreground"
+                }`}>
+                  {prompt ? "✓" : "2"}
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Configure Agent</h3>
+                  <p className="text-sm text-muted-foreground">Set deployment stage, lane, and behavior mode</p>
+                </div>
+              </div>
+              <Card className="p-6">
             <h3 className="text-lg font-medium mb-6">Configuration</h3>
             <div className="space-y-6">
               {/* Agent Identity */}
@@ -2416,6 +2440,23 @@ status: ${isActive ? "active" : "inactive"}`
               </div>
             </div>
           </Card>
+            </div>
+          )}
+
+          {/* Step 3: Review (shown in preview mode) */}
+          {isPreview && (
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100 font-semibold text-sm">
+                  ✓
+                </div>
+                <div>
+                  <h3 className="text-lg font-semibold">Agent Active</h3>
+                  <p className="text-sm text-muted-foreground">Review configuration and monitor performance</p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Prompt and Skills are now rendered in the right sidebar in AgentBuilderPage */}
 
