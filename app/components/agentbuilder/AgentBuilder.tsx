@@ -1467,24 +1467,24 @@ status: ${isActive ? "active" : "inactive"}`
     switch (mode) {
       case "observe":
         return {
-          bg: "bg-blue-50",
-          border: "border-blue-200",
-          text: "text-blue-700",
-          badge: "bg-blue-100 text-blue-700",
+          bg: "bg-blue-50 dark:bg-blue-950/20",
+          border: "border-blue-200 dark:border-blue-900",
+          text: "text-blue-700 dark:text-blue-300",
+          badge: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-100",
         }
       case "suggest":
         return {
-          bg: "bg-yellow-50",
-          border: "border-yellow-300",
-          text: "text-yellow-800",
-          badge: "bg-yellow-100 text-yellow-800",
+          bg: "bg-yellow-50 dark:bg-yellow-950/20",
+          border: "border-yellow-300 dark:border-yellow-900",
+          text: "text-yellow-800 dark:text-yellow-300",
+          badge: "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-100",
         }
       case "auto-apply":
         return {
-          bg: "bg-red-50",
-          border: "border-red-200",
-          text: "text-red-700",
-          badge: "bg-red-100 text-red-700",
+          bg: "bg-red-50 dark:bg-red-950/20",
+          border: "border-red-200 dark:border-red-900",
+          text: "text-red-700 dark:text-red-300",
+          badge: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-100",
         }
     }
   }
@@ -2348,7 +2348,7 @@ status: ${isActive ? "active" : "inactive"}`
                       <SelectValue>
                         <div className="flex items-center gap-2">
                           <div
-                            className={`w-2 h-2 rounded-full ${agentMode === "observe" ? "bg-blue-500" : agentMode === "suggest" ? "bg-amber-500" : "bg-red-500"}`}
+                            className={`w-2 h-2 rounded-full ${agentMode === "observe" ? "bg-blue-500" : agentMode === "suggest" ? "bg-yellow-400" : "bg-red-500"}`}
                           />
                           <span className="capitalize">{agentMode === "auto-apply" ? "Auto-Apply" : agentMode}</span>
                         </div>
@@ -2363,7 +2363,7 @@ status: ${isActive ? "active" : "inactive"}`
                       </SelectItem>
                       <SelectItem value="suggest">
                         <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-amber-500" />
+                          <div className="w-2 h-2 rounded-full bg-yellow-400" />
                           <span>Suggest</span>
                         </div>
                       </SelectItem>
