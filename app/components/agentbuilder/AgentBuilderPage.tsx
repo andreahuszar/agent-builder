@@ -603,14 +603,6 @@ ERROR HANDLING:
   }
 
   const handleSaveAgent = (updatedAgent: Agent) => {
-    console.log("[AgentBuilderPage v7] handleSaveAgent called with:", {
-      id: updatedAgent.id,
-      name: updatedAgent.name,
-      stage: updatedAgent.stage,
-      documentsCount: updatedAgent.documents?.length || 0,
-      documents: updatedAgent.documents
-    })
-
     // Check if this is an existing agent by looking in the agents array
     const existingAgent = agents.find((a) => a.id === updatedAgent.id)
     console.log("[v0] Existing agent found:", !!existingAgent)
@@ -623,7 +615,6 @@ ERROR HANDLING:
         console.log("[v0] Agents after update:", updated.map((a) => `${a.name} (${a.stage})`))
         return updated
       })
-      console.log("[AgentBuilderPage v7] About to setEditingAgent with documents:", updatedAgent.documents)
       setEditingAgent(updatedAgent)
     } else {
       // Create new agent (ID should already be set from handleCreateNewAgent)
@@ -633,14 +624,12 @@ ERROR HANDLING:
         active: false,
       }
       console.log("[v0] Creating new agent:", newAgent.name, "Stage:", newAgent.stage, "ID:", newAgent.id)
-      console.log("[AgentBuilderPage v7] New agent documents:", newAgent.documents)
       setAgents((prev) => {
         const updated = [...prev, newAgent]
         console.log("[v0] Agent count after creation:", updated.length)
         console.log("[v0] All agents:", updated.map((a) => `${a.name} (${a.stage})`))
         return updated
       })
-      console.log("[AgentBuilderPage v7] About to setEditingAgent (new) with documents:", newAgent.documents)
       setEditingAgent(newAgent)
       // Auto-expand the stage where the new agent was created
       if (newAgent.stage) {
