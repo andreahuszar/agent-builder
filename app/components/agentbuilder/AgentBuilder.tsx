@@ -494,16 +494,21 @@ export function AgentBuilder({
   }, [agent])
 
   // Auto-select first lane when stage changes
+  // Use a ref to track if we're in the middle of AI generation (to avoid race conditions)
+  const isAIGeneratingRef = useRef(false)
+  
   useEffect(() => {
     // Only auto-select first lane if:
     // 1. Stage is set
     // 2. Lane is currently empty (not already set by AI or user)
     // 3. Agent doesn't already have a lane
-    if (stage && STAGE_LANES[stage] && !lane && !agent?.lane) {
+    // 4. Not in the middle of AI generation (to avoid race with AI lane detection)
+    if (stage && STAGE_LANES[stage] && !lane && !agent?.lane && !isAIGeneratingRef.current) {
+      console.log("[AgentBuilder] Auto-selecting first lane for stage:", stage)
       const firstLane = STAGE_LANES[stage][0]
       setLane(firstLane)
     }
-  }, [stage, agent?.lane])
+  }, [stage, agent?.lane, lane])
 
   // Check if we already have metrics for this agent
   // REMOVED: This logic is now handled by the parent component passing agentMetrics as a prop.
@@ -2258,8 +2263,15 @@ status: ${isActive ? "active" : "inactive"}`
             <Card className="p-0 overflow-hidden flex flex-col" style={{ height: "500px" }}>
               <ChatInterface
                 onPromptGenerated={handlePromptGenerated}
-                onStageDetected={(detectedStage) => setStage(detectedStage)}
-                onLaneDetected={(detectedLane) => setLane(detectedLane)}
+                onStageDetected={(detectedStage) => {
+                  console.log("[AgentBuilder] Stage detected by AI:", detectedStage)
+                  isAIGeneratingRef.current = true // Mark AI generation in progress
+                  setStage(detectedStage)
+                }}
+                onLaneDetected={(detectedLane) => {
+                  console.log("[AgentBuilder] Lane detected by AI:", detectedLane)
+                  setLane(detectedLane)
+                }}
                 currentPrompt={prompt}
                 agentId={agent?.id || "new"}
                 currentAgent={currentAgent}
