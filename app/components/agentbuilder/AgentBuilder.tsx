@@ -2194,7 +2194,7 @@ status: ${isActive ? "active" : "inactive"}`
             )}
           </div>
         </div>
-        {(agent || editingAgent) && (
+        {(agent || editingAgent || agentName) && (
           <div className={`${currentModeStyles.bg} ${currentModeStyles.border} border-2 rounded-lg p-4`}>
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
