@@ -943,29 +943,26 @@ ERROR HANDLING:
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   {/* Agent Statistics - show for agents with metrics */}
                   {editingAgent?.id && agentMetrics[editingAgent.id] && (
-                    <div className="grid grid-cols-3 gap-4">
-                      <Card className="p-4">
-                        <div className="space-y-1">
-                          <div className="text-sm text-muted-foreground">Lines Evaluated</div>
-                          <div className="text-2xl font-bold">{formatNumber(agentMetrics[editingAgent.id].evaluated)}</div>
-                          <div className="text-xs text-muted-foreground">Last 24 hours</div>
+                    <Card className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <h4 className="text-sm font-semibold">Performance</h4>
+                        <span className="text-xs text-muted-foreground">Last 24 hours</span>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">Evaluated</span>
+                          <span className="text-sm font-semibold">{formatNumber(agentMetrics[editingAgent.id].evaluated)}</span>
                         </div>
-                      </Card>
-                      <Card className="p-4">
-                        <div className="space-y-1">
-                          <div className="text-sm text-muted-foreground">Lines Acted On</div>
-                          <div className="text-2xl font-bold">{formatNumber(agentMetrics[editingAgent.id].actedOn)}</div>
-                          <div className="text-xs text-muted-foreground">Last 24 hours</div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">Acted On</span>
+                          <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatNumber(agentMetrics[editingAgent.id].actedOn)}</span>
                         </div>
-                      </Card>
-                      <Card className="p-4">
-                        <div className="space-y-1">
-                          <div className="text-sm text-muted-foreground">Lines Referred</div>
-                          <div className="text-2xl font-bold">{formatNumber(agentMetrics[editingAgent.id].referred)}</div>
-                          <div className="text-xs text-muted-foreground">Last 24 hours</div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs text-muted-foreground">Referred</span>
+                          <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{formatNumber(agentMetrics[editingAgent.id].referred)}</span>
                         </div>
-                      </Card>
-                    </div>
+                      </div>
+                    </Card>
                   )}
                   
                   {/* Show stats pending message for saved agents without metrics */}
