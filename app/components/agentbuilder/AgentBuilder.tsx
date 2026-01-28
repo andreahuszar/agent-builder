@@ -2447,12 +2447,22 @@ status: ${isActive ? "active" : "inactive"}`
           {isPreview && (
             <div className="space-y-4">
               <div className="flex items-center gap-3">
-                <div className="flex items-center justify-center w-8 h-8 rounded-full bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100 font-semibold text-sm">
-                  ✓
+                <div className={`flex items-center justify-center w-8 h-8 rounded-full font-semibold text-sm ${
+                  agent?.active 
+                    ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-100"
+                    : "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400"
+                }`}>
+                  {agent?.active ? "✓" : "○"}
                 </div>
                 <div>
-                  <h3 className="text-lg font-semibold">Agent Active</h3>
-                  <p className="text-sm text-muted-foreground">Review configuration and monitor performance</p>
+                  <h3 className="text-lg font-semibold">
+                    {agent?.active ? "Agent Active" : "Agent Inactive"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground">
+                    {agent?.active 
+                      ? "Review configuration and monitor performance" 
+                      : "This agent is saved but not yet activated"}
+                  </p>
                 </div>
               </div>
             </div>
