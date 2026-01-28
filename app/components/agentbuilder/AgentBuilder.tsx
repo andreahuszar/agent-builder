@@ -2255,6 +2255,7 @@ status: ${isActive ? "active" : "inactive"}`
               <ChatInterface
                 onPromptGenerated={handlePromptGenerated}
                 onStageDetected={(detectedStage) => setStage(detectedStage)}
+                onLaneDetected={(detectedLane) => setLane(detectedLane)}
                 currentPrompt={prompt}
                 agentId={agent?.id || "new"}
                 currentAgent={currentAgent}

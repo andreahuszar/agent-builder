@@ -34,6 +34,7 @@ type Message = {
 interface ChatInterfaceProps {
   onPromptGenerated?: (prompt: string, skills: string[], documents?: AgentDocument[]) => void
   onStageDetected?: (stage: string) => void
+  onLaneDetected?: (lane: string) => void
   currentPrompt?: string
   agentId?: string
   currentAgent?: Agent | null
@@ -54,7 +55,7 @@ const AVAILABLE_SKILLS = [
   "Find Vendor Information",
 ]
 
-export function ChatInterface({ onPromptGenerated, onStageDetected, currentPrompt, agentId, currentAgent }: ChatInterfaceProps) {
+export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetected, currentPrompt, agentId, currentAgent }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -270,7 +271,7 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, currentPromp
       }
 
       // Extract structured prompt and skills from response
-      const { prompt, skills, isQuestion, stage } = extractPromptAndSkills(fullResponse)
+      const { prompt, skills, isQuestion, stage, lane } = extractPromptAndSkills(fullResponse)
 
       console.log("[v0] Extraction result:", {
         promptLength: prompt.length,
@@ -278,6 +279,7 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, currentPromp
         isQuestion,
         hasPrompt: !!prompt,
         stage,
+        lane,
       })
 
       // Update question count if this is a question (not a generated prompt)
@@ -285,10 +287,16 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, currentPromp
         setQuestionCount((prev) => prev + 1)
       }
       
-      // If stage was detected, notify parent component
+      // If stage was detected, notify parent component to update Stage dropdown
       if (stage && onStageDetected) {
         console.log("[v0] Calling onStageDetected with:", stage)
         onStageDetected(stage)
+      }
+      
+      // If lane was detected, notify parent component to update Lane dropdown
+      if (lane && onLaneDetected) {
+        console.log("[v0] Calling onLaneDetected with:", lane)
+        onLaneDetected(lane)
       }
 
       // Update final message with extracted data
@@ -551,10 +559,11 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, currentPromp
   )
 }
 
-function extractPromptAndSkills(response: string): { prompt: string; skills: string[]; isQuestion: boolean; stage?: string } {
+function extractPromptAndSkills(response: string): { prompt: string; skills: string[]; isQuestion: boolean; stage?: string; lane?: string } {
   let prompt = ""
   const skills: string[] = []
   let stage: string | undefined = undefined
+  let lane: string | undefined = undefined
 
   console.log("[v0] Full AI response:", response.substring(0, 500))
   
@@ -563,6 +572,13 @@ function extractPromptAndSkills(response: string): { prompt: string; skills: str
   if (stageMatch) {
     stage = stageMatch[1].toLowerCase()
     console.log("[v0] Detected stage:", stage)
+  }
+  
+  // Extract DETECTED_LANE if present (match any lane name with spaces, hyphens, etc.)
+  const laneMatch = response.match(/DETECTED_LANE:\s*([A-Za-z\s\-\/]+)/i)
+  if (laneMatch) {
+    lane = laneMatch[1].trim()
+    console.log("[v0] Detected lane:", lane)
   }
 
   const hasStructuredContent =
@@ -679,8 +695,9 @@ function extractPromptAndSkills(response: string): { prompt: string; skills: str
   console.log("[v0] Extracted skills:", skills)
   console.log("[v0] Is question:", isQuestion)
   console.log("[v0] Detected stage:", stage)
+  console.log("[v0] Detected lane:", lane)
 
-  return { prompt, skills, isQuestion, stage }
+  return { prompt, skills, isQuestion, stage, lane }
 }
 
 export default ChatInterface
