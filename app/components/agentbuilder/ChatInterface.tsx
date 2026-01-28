@@ -209,6 +209,7 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
 
       if (!response.ok) {
         const errorData = await response.json().catch(() => null)
+        // Use the specific error message from the API (e.g., rate limit details)
         const errorMessage = errorData?.error || errorData?.details || `Server returned ${response.status}`
         throw new Error(errorMessage)
       }
@@ -315,12 +316,20 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
     } catch (error) {
       console.error("[v0] Chat error:", error)
       const errorMessage = error instanceof Error ? error.message : "Unknown error occurred"
+      
+      // Display the specific error message (rate limit, auth, etc.)
+      // Only add generic help text for non-specific errors
+      const shouldShowGenericHelp = !errorMessage.toLowerCase().includes('rate limit') && 
+                                     !errorMessage.toLowerCase().includes('api key');
+      const helpText = shouldShowGenericHelp ? 
+        '\n\nPlease check that your GROQ_API_KEY environment variable is configured correctly.' : '';
+      
       setMessages((prev) => [
         ...prev,
         {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: `Error: ${errorMessage}\n\nPlease check that your GROQ_API_KEY environment variable is configured correctly.`,
+          content: `Error: ${errorMessage}${helpText}`,
           timestamp: new Date(),
         },
       ])

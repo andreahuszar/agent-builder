@@ -184,10 +184,41 @@ export async function POST(req: Request) {
     });
   } catch (error) {
     console.error("[v0] Chat API error:", error);
+    
+    // Parse Groq-specific error messages for better user feedback
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    
+    // Check for rate limit error
+    if (errorMessage.includes('429') || errorMessage.toLowerCase().includes('rate limit')) {
+      // Extract wait time if available (e.g., "3m41.184s")
+      const waitTimeMatch = errorMessage.match(/try again in ([\d]+[msh.]+)/i);
+      const waitTime = waitTimeMatch ? waitTimeMatch[1] : 'a few minutes';
+      
+      return new Response(
+        JSON.stringify({
+          error: `Rate limit exceeded. You've reached Groq's daily token limit. Please try again in ${waitTime}.`,
+          details: errorMessage,
+        }),
+        { status: 429, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    
+    // Check for authentication errors
+    if (errorMessage.includes('401') || errorMessage.toLowerCase().includes('authentication')) {
+      return new Response(
+        JSON.stringify({
+          error: "Invalid API key. Please check your GROQ_API_KEY environment variable.",
+          details: errorMessage,
+        }),
+        { status: 401, headers: { "Content-Type": "application/json" } },
+      );
+    }
+    
+    // Generic error fallback
     return new Response(
       JSON.stringify({
         error: "Failed to process request",
-        details: error instanceof Error ? error.message : String(error),
+        details: errorMessage,
       }),
       { status: 500, headers: { "Content-Type": "application/json" } },
     );
