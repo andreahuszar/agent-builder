@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/app/components/ui/input';
 import { Checkbox } from '@/app/components/ui/checkbox';
 import {
@@ -65,6 +65,28 @@ export default function APAutomationGeneralSettings() {
 
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(false);
+
+  // Load settings from localStorage on mount
+  useEffect(() => {
+    const stored = localStorage.getItem('apAutomationSettings');
+    if (stored) {
+      try {
+        const parsed = JSON.parse(stored);
+        setSettings(parsed);
+      } catch (e) {
+        console.error('Failed to parse stored settings:', e);
+      }
+    }
+    setIsLoaded(true);
+  }, []);
+
+  // Auto-save settings to localStorage whenever they change
+  useEffect(() => {
+    if (isLoaded) {
+      localStorage.setItem('apAutomationSettings', JSON.stringify(settings));
+    }
+  }, [settings, isLoaded]);
 
   const handleSave = () => {
     setIsSaving(true);
@@ -114,7 +136,7 @@ export default function APAutomationGeneralSettings() {
   };
 
   return (
-    <div className="p-8">
+    <div className="p-8 pb-24">
       <h2 className="text-2xl font-bold text-gray-950 mb-6">AP Automation Settings</h2>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -465,15 +487,22 @@ export default function APAutomationGeneralSettings() {
         </div>
       </div>
 
-      {/* Save Button */}
-      <div className="mt-8 flex justify-end">
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          className="px-4 py-2 text-sm font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isSaving ? 'Saving...' : saveSuccess ? 'Saved!' : 'Save changes'}
-        </button>
+      {/* Sticky Footer - Save Button */}
+      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+        <div className="max-w-7xl mx-auto py-4 flex items-center justify-end gap-3 px-8">
+          {saveSuccess && (
+            <span className="text-sm text-green-600 font-medium">
+              ✓ Changes saved successfully
+            </span>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            className="px-4 py-2 text-sm font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed mr-6"
+          >
+            {isSaving ? 'Saving...' : 'Save Changes'}
+          </button>
+        </div>
       </div>
     </div>
   );
