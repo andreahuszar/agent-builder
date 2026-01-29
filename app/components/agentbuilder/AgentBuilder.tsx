@@ -2091,7 +2091,10 @@ status: ${isActive ? "active" : "inactive"}`
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
+                        <Select value={statusFilter} onValueChange={(value: any) => {
+                          setStatusFilter(value)
+                          setCurrentPage(1) // Reset to page 1 when filter changes
+                        }}>
                           <SelectTrigger className="w-32">
                             <SelectValue placeholder="Filter by status" />
                           </SelectTrigger>
@@ -2126,6 +2129,19 @@ status: ${isActive ? "active" : "inactive"}`
                               if (statusFilter === "fail") return comparison.hasIssue
                               return true
                             })
+                            
+                            // Show empty state if no results match filter
+                            if (filteredResults.length === 0) {
+                              return (
+                                <tr>
+                                  <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                                    <p className="text-sm">No invoices match the current filter.</p>
+                                    <p className="text-xs mt-1">Try selecting a different filter option.</p>
+                                  </td>
+                                </tr>
+                              )
+                            }
+                            
                             const startIndex = (currentPage - 1) * rowsPerPage
                             const endIndex = startIndex + rowsPerPage
                             const paginatedResults = filteredResults.slice(startIndex, endIndex)
@@ -2195,24 +2211,30 @@ status: ${isActive ? "active" : "inactive"}`
                         if (statusFilter === "fail") return comparison.hasIssue
                         return true
                       })
-                      const totalPages = Math.ceil(filteredResults.length / rowsPerPage)
-                      const startIndex = (currentPage - 1) * rowsPerPage + 1
+                      const totalPages = Math.max(1, Math.ceil(filteredResults.length / rowsPerPage))
+                      const startIndex = filteredResults.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0
                       const endIndex = Math.min(currentPage * rowsPerPage, filteredResults.length)
 
                       return (
                         <>
                           <div className="flex items-center justify-between mt-3">
                             <p className="text-xs text-muted-foreground">
-                              Showing {startIndex.toLocaleString()} - {endIndex.toLocaleString()} of{" "}
-                              {filteredResults.length.toLocaleString()} invoices
-                              {statusFilter !== "all" && ` (${statusFilter === "pass" ? "improved" : "with issues"})`}
+                              {filteredResults.length > 0 ? (
+                                <>
+                                  Showing {startIndex.toLocaleString()} - {endIndex.toLocaleString()} of{" "}
+                                  {filteredResults.length.toLocaleString()} invoices
+                                  {statusFilter !== "all" && ` (${statusFilter === "pass" ? "improved" : "with issues"})`}
+                                </>
+                              ) : (
+                                <>No invoices match the selected filter</>
+                              )}
                             </p>
                             <div className="flex items-center gap-2">
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setCurrentPage(1)}
-                                disabled={currentPage === 1}
+                                disabled={currentPage === 1 || filteredResults.length === 0}
                               >
                                 First
                               </Button>
@@ -2220,18 +2242,18 @@ status: ${isActive ? "active" : "inactive"}`
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
+                                disabled={currentPage === 1 || filteredResults.length === 0}
                               >
                                 Previous
                               </Button>
                               <span className="text-xs text-muted-foreground px-2">
-                                Page {currentPage} of {totalPages}
+                                Page {filteredResults.length > 0 ? currentPage : 0} of {filteredResults.length > 0 ? totalPages : 0}
                               </span>
                               <Button
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages}
+                                disabled={currentPage === totalPages || filteredResults.length === 0}
                               >
                                 Next
                               </Button>
@@ -2239,7 +2261,7 @@ status: ${isActive ? "active" : "inactive"}`
                                 variant="outline"
                                 size="sm"
                                 onClick={() => setCurrentPage(totalPages)}
-                                disabled={currentPage === totalPages}
+                                disabled={currentPage === totalPages || filteredResults.length === 0}
                               >
                                 Last
                               </Button>
