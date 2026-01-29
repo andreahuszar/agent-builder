@@ -132,6 +132,26 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                 General Settings
               </button>
               <button
+                onClick={() => handleSubTabChange('dashboard')}
+                className={`${
+                  activeSubTab === 'dashboard'
+                    ? 'border-purple-900 text-purple-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
+              >
+                Dashboard
+              </button>
+              <button
+                onClick={() => handleSubTabChange('workflow')}
+                className={`${
+                  activeSubTab === 'workflow'
+                    ? 'border-purple-900 text-purple-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
+              >
+                Workflow
+              </button>
+              <button
                 onClick={() => handleSubTabChange('agent-builder')}
                 className={`${
                   activeSubTab === 'agent-builder'
@@ -141,16 +161,26 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
               >
                 Agent Builder
               </button>
+              <button
+                onClick={() => handleSubTabChange('documents')}
+                className={`${
+                  activeSubTab === 'documents'
+                    ? 'border-purple-900 text-purple-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
+              >
+                Documents
+              </button>
             </nav>
           </div>
 
           {/* Sub-tab Content */}
           <div className="flex-1 overflow-auto">
-            {activeSubTab === 'agent-builder' ? (
-              <AgentBuilderPage hideNavigation={true} defaultMode="observe" />
-            ) : (
-              <APAutomationGeneralSettings />
-            )}
+            {activeSubTab === 'general-settings' && <APAutomationGeneralSettings />}
+            {activeSubTab === 'dashboard' && <AgentBuilderPage hideNavigation={true} defaultMode="executive-dashboard" />}
+            {activeSubTab === 'workflow' && <AgentBuilderPage hideNavigation={true} defaultMode="observe" />}
+            {activeSubTab === 'agent-builder' && <AgentBuilderPage hideNavigation={true} defaultMode="build" />}
+            {activeSubTab === 'documents' && <AgentBuilderPage hideNavigation={true} defaultMode="documents" />}
           </div>
         </div>
       );
