@@ -138,6 +138,6 @@ export const MODULE_PILLS: Record<string, TabItem[]> = {
     { id: 'vendors', label: 'Vendors', href: '/settings#vendors' },
     { id: 'helpdesk', label: 'Helpdesk', href: '/settings#helpdesk' },
     { id: 'accounts', label: 'Accounts', href: '/settings#accounts' },
-    { id: 'automation', label: 'Automation', href: '/settings#automation' },
+    { id: 'automation', label: 'AP Automation', href: '/settings#automation' },
   ],
 };
