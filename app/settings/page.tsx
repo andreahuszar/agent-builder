@@ -92,7 +92,7 @@ function SettingsContent() {
         {activeTab === 'accounts' && <PlaceholderContent tabName="Accounts" />}
         {activeTab === 'ap-automation' && (
           <div className="w-full">
-            <AgentBuilderPage />
+            <AgentBuilderPage hideNavigation={true} defaultMode="observe" />
           </div>
         )}
       </div>

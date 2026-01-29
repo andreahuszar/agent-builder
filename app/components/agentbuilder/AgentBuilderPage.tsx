@@ -48,8 +48,13 @@ export type AgentMetrics = {
   invoicesProcessed: number
 }
 
-export default function AgentBuilderPage() {
-  const [mode, setMode] = useState<Mode>("observe")
+interface AgentBuilderPageProps {
+  hideNavigation?: boolean;
+  defaultMode?: Mode;
+}
+
+export default function AgentBuilderPage({ hideNavigation = false, defaultMode = "observe" }: AgentBuilderPageProps = {}) {
+  const [mode, setMode] = useState<Mode>(defaultMode)
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   // Check URL for view parameter on mount
@@ -735,72 +740,74 @@ ERROR HANDLING:
   }
 
   return (
-    <div className="flex h-screen bg-background text-foreground">
+    <div className={`flex ${hideNavigation ? 'w-full' : 'h-screen'} bg-background text-foreground`}>
       {/* Main App Navigation Sidebar */}
-      <Navigation activeModule="settings" />
+      {!hideNavigation && <Navigation activeModule="settings" />}
 
       <div className="flex-1 flex flex-col overflow-hidden">
         {/* Top Navigation Bar - Matching main app styling */}
-        <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/90 shadow-sm backdrop-blur-md">
-          <div className="w-full px-4 sm:px-6 lg:px-8">
-            <div className="flex h-16 items-center">
-              {/* Navigation Tabs */}
-              <nav className="flex flex-1 justify-start" aria-label="Tabs">
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => setMode("executive-dashboard")}
-                    className={`${
-                      mode === "executive-dashboard"
-                        ? "bg-purple-900 text-white"
-                        : "text-gray-900 hover:bg-gray-100 hover:text-gray-950"
-                    } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
-                    aria-current={mode === "executive-dashboard" ? "page" : undefined}
-                  >
-                    Dashboard
-                  </button>
-                  <button
-                    onClick={() => setMode("observe")}
-                    className={`${
-                      mode === "observe"
-                        ? "bg-purple-900 text-white"
-                        : "text-gray-900 hover:bg-gray-100 hover:text-gray-950"
-                    } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
-                    aria-current={mode === "observe" ? "page" : undefined}
-                  >
-                    Workflow
-                  </button>
-                  <button
-                    onClick={() => setMode("build")}
-                    className={`${
-                      mode === "build"
-                        ? "bg-purple-900 text-white"
-                        : "text-gray-900 hover:bg-gray-100 hover:text-gray-950"
-                    } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
-                    aria-current={mode === "build" ? "page" : undefined}
-                  >
-                    Agent Builder
-                  </button>
-                  <button
-                    onClick={() => setMode("documents")}
-                    className={`${
-                      mode === "documents"
-                        ? "bg-purple-900 text-white"
-                        : "text-gray-900 hover:bg-gray-100 hover:text-gray-950"
-                    } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
-                    aria-current={mode === "documents" ? "page" : undefined}
-                  >
-                    Documents
-                  </button>
-                </div>
-              </nav>
+        {!hideNavigation && (
+          <div className="sticky top-0 z-10 border-b border-gray-200 bg-white/90 shadow-sm backdrop-blur-md">
+            <div className="w-full px-4 sm:px-6 lg:px-8">
+              <div className="flex h-16 items-center">
+                {/* Navigation Tabs */}
+                <nav className="flex flex-1 justify-start" aria-label="Tabs">
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => setMode("executive-dashboard")}
+                      className={`${
+                        mode === "executive-dashboard"
+                          ? "bg-purple-900 text-white"
+                          : "text-gray-900 hover:bg-gray-100 hover:text-gray-950"
+                      } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
+                      aria-current={mode === "executive-dashboard" ? "page" : undefined}
+                    >
+                      Dashboard
+                    </button>
+                    <button
+                      onClick={() => setMode("observe")}
+                      className={`${
+                        mode === "observe"
+                          ? "bg-purple-900 text-white"
+                          : "text-gray-900 hover:bg-gray-100 hover:text-gray-950"
+                      } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
+                      aria-current={mode === "observe" ? "page" : undefined}
+                    >
+                      Workflow
+                    </button>
+                    <button
+                      onClick={() => setMode("build")}
+                      className={`${
+                        mode === "build"
+                          ? "bg-purple-900 text-white"
+                          : "text-gray-900 hover:bg-gray-100 hover:text-gray-950"
+                      } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
+                      aria-current={mode === "build" ? "page" : undefined}
+                    >
+                      Agent Builder
+                    </button>
+                    <button
+                      onClick={() => setMode("documents")}
+                      className={`${
+                        mode === "documents"
+                          ? "bg-purple-900 text-white"
+                          : "text-gray-900 hover:bg-gray-100 hover:text-gray-950"
+                      } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
+                      aria-current={mode === "documents" ? "page" : undefined}
+                    >
+                      Documents
+                    </button>
+                  </div>
+                </nav>
 
-              {/* User Menu */}
-              <div className="flex items-center">
-                <UserMenu />
+                {/* User Menu */}
+                <div className="flex items-center">
+                  <UserMenu />
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-hidden flex bg-background">
