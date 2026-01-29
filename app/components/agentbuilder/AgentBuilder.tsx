@@ -2069,7 +2069,12 @@ status: ${isActive ? "active" : "inactive"}`
 
                   <Card className="p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold">Invoice-by-Invoice Comparison</h4>
+                      <div>
+                        <h4 className="font-semibold">Invoice-by-Invoice Comparison</h4>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Agent actions: <span className="text-purple-700">✓ No human needed</span> • <span className="text-yellow-700">→ Review needed</span> • <span className="text-gray-600">○ Flagged only</span> • <span className="text-yellow-700">↑ Manual required</span>
+                        </p>
+                      </div>
                       <div className="flex gap-2">
                         <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
                           <SelectTrigger className="w-32">
@@ -2142,10 +2147,10 @@ status: ${isActive ? "active" : "inactive"}`
                                       comparison.withAgent.outcome === "escalated" ? "bg-yellow-100 text-yellow-700" :
                                       "bg-gray-100 text-gray-700"
                                     }`}>
-                                      {comparison.withAgent.agentAction === "auto_resolved" ? "Auto-resolved" : 
-                                       comparison.withAgent.agentAction === "suggested_resolution" ? "Suggested" : 
-                                       comparison.withAgent.agentAction === "observed" ? "Observed" : 
-                                       "Escalated"}
+                                      {comparison.withAgent.agentAction === "auto_resolved" ? "✓ Auto-resolved (no human)" : 
+                                       comparison.withAgent.agentAction === "suggested_resolution" ? "→ Suggested (needs review)" : 
+                                       comparison.withAgent.agentAction === "observed" ? "○ Observed (flagged only)" : 
+                                       "↑ Escalated to human"}
                                     </span>
                                     <span className="text-xs text-muted-foreground">{comparison.withAgent.processingTimeMinutes.toFixed(0)}min • {comparison.withAgent.manualTouches} touch{comparison.withAgent.manualTouches !== 1 ? 'es' : ''}</span>
                                   </div>
