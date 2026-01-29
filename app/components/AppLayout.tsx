@@ -19,9 +19,10 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
   const [launchpadVisibility, setLaunchpadVisibility] = useState(false);
   const [exceptionNavigation, setExceptionNavigation] = useState(true);
 
-  // Initialize with default view - Invoices for invoice-processing, first pill for others
+  // Initialize with default view - Invoices for invoice-processing, Automation for settings, first pill for others
   const pills = MODULE_PILLS[activeModule];
   const defaultView = activeModule === 'invoice-processing' ? 'invoices' :
+                      activeModule === 'settings' ? 'automation' :
                       (pills && pills.length > 0 ? pills[0].id : '');
   const [currentView, setCurrentView] = useState<string>(defaultView);
 
