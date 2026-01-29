@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import AppLayout from '@/app/components/AppLayout';
 import AgentBuilderPage from '@/app/components/agentbuilder/AgentBuilderPage';
+import APAutomationGeneralSettings from '@/app/components/settings/APAutomationGeneralSettings';
 
 interface SettingsContentProps {
   currentView?: string;
@@ -141,14 +142,11 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
           </div>
 
           {/* Sub-tab Content */}
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-auto">
             {activeSubTab === 'agent-builder' ? (
               <AgentBuilderPage hideNavigation={true} defaultMode="observe" />
             ) : (
-              <div className="p-8">
-                <h2 className="text-2xl font-bold text-gray-950 mb-4">General Settings</h2>
-                <p className="text-gray-600">AP Automation general settings will be available soon.</p>
-              </div>
+              <APAutomationGeneralSettings />
             )}
           </div>
         </div>
