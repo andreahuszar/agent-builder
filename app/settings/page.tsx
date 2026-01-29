@@ -10,15 +10,21 @@ interface SettingsContentProps {
 }
 
 function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
-  const [activeSubTab, setActiveSubTab] = useState('agent-builder');
+  const [activeSubTab, setActiveSubTab] = useState('workflow');
 
   // Check hash on mount for sub-tab navigation
   useEffect(() => {
     const hash = window.location.hash;
     if (hash.includes('general-settings')) {
       setActiveSubTab('general-settings');
+    } else if (hash.includes('dashboard')) {
+      setActiveSubTab('dashboard');
+    } else if (hash.includes('workflow')) {
+      setActiveSubTab('workflow');
     } else if (hash.includes('agent-builder')) {
       setActiveSubTab('agent-builder');
+    } else if (hash.includes('documents')) {
+      setActiveSubTab('documents');
     }
   }, []);
 
