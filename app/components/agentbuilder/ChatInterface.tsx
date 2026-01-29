@@ -29,6 +29,8 @@ type Message = {
   generatedPrompt?: string
   suggestedSkills?: string[]
   attachments?: Attachment[]
+  isSettingsRecommendation?: boolean
+  settingsLink?: string
 }
 
 interface ChatInterfaceProps {
@@ -279,7 +281,7 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
       }
 
       // Extract structured prompt and skills from response
-      const { prompt, skills, isQuestion, stage, lane } = extractPromptAndSkills(fullResponse)
+      const { prompt, skills, isQuestion, stage, lane, isSettingsRecommendation, settingsLink } = extractPromptAndSkills(fullResponse)
 
       console.log("[v0] Extraction result:", {
         promptLength: prompt.length,
@@ -288,6 +290,8 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
         hasPrompt: !!prompt,
         stage,
         lane,
+        isSettingsRecommendation,
+        settingsLink,
       })
 
       // Update question count if this is a question (not a generated prompt)
@@ -316,6 +320,8 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
                 content: fullResponse,
                 generatedPrompt: prompt || undefined, // Only set if prompt exists
                 suggestedSkills: skills.length > 0 ? skills : undefined,
+                isSettingsRecommendation: isSettingsRecommendation || undefined,
+                settingsLink: settingsLink || undefined,
               }
             : msg,
         ),
@@ -392,8 +398,44 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
               </div>
             )}
             <div className="max-w-[85%] space-y-2">
-              {/* Regular message content - show only if not a generated prompt */}
-              {!(message.role === "assistant" && message.generatedPrompt) && (
+              {/* Settings Recommendation Display */}
+              {message.role === "assistant" && message.isSettingsRecommendation && (
+                <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-50 dark:bg-blue-950/20">
+                  <div className="flex items-start gap-3">
+                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                      <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                          d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                      </svg>
+                    </div>
+                    <div className="flex-1">
+                      <p className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-2">
+                        Settings Recommendation
+                      </p>
+                      <p className="text-sm text-blue-800 dark:text-blue-200 whitespace-pre-wrap">
+                        {message.content.replace(/SETTINGS_RECOMMENDATION\n/, '').replace(/SETTINGS_LINK:.*/, '').trim()}
+                      </p>
+                      {message.settingsLink && (
+                        <a
+                          href={message.settingsLink}
+                          className="inline-flex items-center gap-2 mt-3 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors"
+                        >
+                          <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} 
+                              d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                          </svg>
+                          Go to Settings
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Regular message content - show only if not a generated prompt or settings recommendation */}
+              {!(message.role === "assistant" && message.generatedPrompt) && !message.isSettingsRecommendation && (
                 <div
                   className={`p-3 rounded-lg ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
                 >
@@ -564,13 +606,31 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
   )
 }
 
-function extractPromptAndSkills(response: string): { prompt: string; skills: string[]; isQuestion: boolean; stage?: string; lane?: string } {
+function extractPromptAndSkills(response: string): { prompt: string; skills: string[]; isQuestion: boolean; stage?: string; lane?: string; isSettingsRecommendation?: boolean; settingsLink?: string } {
   let prompt = ""
   const skills: string[] = []
   let stage: string | undefined = undefined
   let lane: string | undefined = undefined
+  let isSettingsRecommendation: boolean = false
+  let settingsLink: string | undefined = undefined
 
   console.log("[v0] Full AI response:", response.substring(0, 500))
+  
+  // Check for SETTINGS_RECOMMENDATION
+  if (response.includes('SETTINGS_RECOMMENDATION')) {
+    isSettingsRecommendation = true
+    console.log("[v0] Detected settings recommendation")
+    
+    // Extract settings link if present
+    const linkMatch = response.match(/SETTINGS_LINK:\s*([^\n\r]+)/i)
+    if (linkMatch) {
+      settingsLink = linkMatch[1].trim()
+      console.log("[v0] Detected settings link:", settingsLink)
+    } else {
+      // Default to General Settings page
+      settingsLink = '/settings#automation-general-settings'
+    }
+  }
   
   // Extract DETECTED_STAGE if present
   const stageMatch = response.match(/DETECTED_STAGE:\s*(ingestion|data-capture|verification|matching|approval|posting)/i)
@@ -701,8 +761,10 @@ function extractPromptAndSkills(response: string): { prompt: string; skills: str
   console.log("[v0] Is question:", isQuestion)
   console.log("[v0] Detected stage:", stage)
   console.log("[v0] Detected lane:", lane)
+  console.log("[v0] Is settings recommendation:", isSettingsRecommendation)
+  console.log("[v0] Settings link:", settingsLink)
 
-  return { prompt, skills, isQuestion, stage, lane }
+  return { prompt, skills, isQuestion, stage, lane, isSettingsRecommendation, settingsLink }
 }
 
 export default ChatInterface

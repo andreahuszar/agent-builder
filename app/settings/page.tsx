@@ -12,20 +12,33 @@ interface SettingsContentProps {
 function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
   const [activeSubTab, setActiveSubTab] = useState('workflow');
 
-  // Check hash on mount for sub-tab navigation
+  // Check hash on mount and when hash changes
   useEffect(() => {
-    const hash = window.location.hash;
-    if (hash.includes('general-settings')) {
-      setActiveSubTab('general-settings');
-    } else if (hash.includes('dashboard')) {
-      setActiveSubTab('dashboard');
-    } else if (hash.includes('workflow')) {
-      setActiveSubTab('workflow');
-    } else if (hash.includes('agent-builder')) {
-      setActiveSubTab('agent-builder');
-    } else if (hash.includes('documents')) {
-      setActiveSubTab('documents');
-    }
+    const updateSubTabFromHash = () => {
+      const hash = window.location.hash;
+      if (hash.includes('general-settings')) {
+        setActiveSubTab('general-settings');
+      } else if (hash.includes('dashboard')) {
+        setActiveSubTab('dashboard');
+      } else if (hash.includes('workflow')) {
+        setActiveSubTab('workflow');
+      } else if (hash.includes('agent-builder')) {
+        setActiveSubTab('agent-builder');
+      } else if (hash.includes('documents')) {
+        setActiveSubTab('documents');
+      }
+    };
+
+    // Run on mount
+    updateSubTabFromHash();
+
+    // Listen for hash changes
+    window.addEventListener('hashchange', updateSubTabFromHash);
+
+    // Cleanup
+    return () => {
+      window.removeEventListener('hashchange', updateSubTabFromHash);
+    };
   }, []);
 
   const handleSubTabChange = (subTab: string) => {
