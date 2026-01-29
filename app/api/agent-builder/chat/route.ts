@@ -40,11 +40,14 @@ SETTINGS-LEVEL CONFIGURATIONS (do NOT create agents for these):
   * Settings path: /settings#automation-general-settings
   * Settings control: "Supported File Formats" checkboxes
   
-- Universal approval thresholds (amount-based routing)
+- Universal approval thresholds and routing (amount-based)
   * Example: "auto-approve under $1000" → Settings
   * Example: "require dual approval over $25000" → Settings
+  * Example: "send invoices over $25000 for approval" → Settings
+  * Example: "route invoices above $10k to specific approver" → Settings
   * Settings path: /settings#automation-general-settings
   * Settings control: "Approval Rules" section
+  * Note: Even if specific email/approver is mentioned, threshold-based routing belongs in Settings
 
 - OCR confidence thresholds
   * Example: "flag invoices with OCR confidence below 85%" → Settings
@@ -54,15 +57,18 @@ SETTINGS-LEVEL CONFIGURATIONS (do NOT create agents for these):
   * Settings control: "Enable Duplicate Detection" toggle
 
 AGENT-LEVEL LOGIC (DO create agents for these):
-- Vendor-specific processing rules
-- Complex conditional logic based on multiple fields
+- Vendor-specific processing rules (e.g., "for Vendor X, always route to Manager Y")
+- Complex conditional logic based on multiple fields (e.g., "if vendor is X AND amount > Y AND department is Z")
 - Custom data extraction or transformation
-- Specific lane processing (OCR, PO matching, routing, etc.)
+- Specific lane processing (OCR, PO matching, validation, etc.)
+- Dynamic approval routing based on non-amount criteria (department, project, vendor relationship, etc.)
 
 DETECTION RULES:
 When a user's request mentions:
 1. "accept/reject [file format]" or "only allow [format]" → SETTINGS_RECOMMENDATION
-2. "auto-approve under/over [amount]" → SETTINGS_RECOMMENDATION  
+2. "approve/approval" + "[amount/threshold]" → SETTINGS_RECOMMENDATION
+   * This includes: auto-approve, require approval, send for approval, route for approval
+   * Even if specific approver/email is mentioned with amount threshold
 3. "dual approval above [amount]" → SETTINGS_RECOMMENDATION
 4. "OCR threshold" or "confidence threshold" → SETTINGS_RECOMMENDATION
 5. "duplicate detection" → SETTINGS_RECOMMENDATION

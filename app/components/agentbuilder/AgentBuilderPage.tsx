@@ -190,7 +190,7 @@ Flag high value invoices for review
 
 AGENT INSTRUCTIONS:
 
-1. If any invoice is above $10m, raise it as an exception for review
+1. If any invoice is above $100k, raise it as an exception for review
 
 INPUTS:
 - Extracted invoice data from OCR Agent stage
@@ -200,19 +200,19 @@ INPUTS:
 STEPS:
 1. Retrieve invoice total amount from extracted data
 2. Convert to USD if invoice is in different currency (using current exchange rates)
-3. Compare invoice total against $10,000,000 threshold
-4. If invoice total exceeds $10,000,000, raise exception flag
+3. Compare invoice total against $100,000 threshold
+4. If invoice total exceeds $100,000, raise exception flag
 5. Create exception record with invoice details and reason
 6. Route invoice to exception review queue
 
 VALIDATIONS:
 - Invoice total must be a valid numeric value
 - Currency conversion must use accurate exchange rates
-- Exception flag must be raised for any invoice above $10,000,000 USD
+- Exception flag must be raised for any invoice above $100,000 USD
 
 OUTPUT:
 - Exception status: Exception Raised / No Exception
-- Exception reason: "Invoice value exceeds $10m threshold"
+- Exception reason: "Invoice value exceeds $100k threshold"
 - Invoice total amount (in USD)
 - Routing to exception review queue
 

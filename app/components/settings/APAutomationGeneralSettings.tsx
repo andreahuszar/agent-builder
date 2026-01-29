@@ -24,6 +24,7 @@ interface APSettings {
   approvalThreshold: number;
   autoApproveUnder: number;
   dualApprovalOver: number;
+  approverEmails: string[];
   escalationTime: string;
   paymentTerms: string;
   earlyPaymentDiscounts: boolean;
@@ -47,6 +48,7 @@ export default function APAutomationGeneralSettings() {
     approvalThreshold: 5000,
     autoApproveUnder: 1000,
     dualApprovalOver: 25000,
+    approverEmails: [],
     escalationTime: '48h',
     paymentTerms: 'net30',
     earlyPaymentDiscounts: false,
@@ -87,6 +89,27 @@ export default function APAutomationGeneralSettings() {
         ...prev[parent],
         [key]: value,
       },
+    }));
+  };
+
+  const addApproverEmail = () => {
+    setSettings((prev) => ({
+      ...prev,
+      approverEmails: [...prev.approverEmails, ''],
+    }));
+  };
+
+  const updateApproverEmail = (index: number, value: string) => {
+    setSettings((prev) => ({
+      ...prev,
+      approverEmails: prev.approverEmails.map((email, i) => (i === index ? value : email)),
+    }));
+  };
+
+  const removeApproverEmail = (index: number) => {
+    setSettings((prev) => ({
+      ...prev,
+      approverEmails: prev.approverEmails.filter((_, i) => i !== index),
     }));
   };
 
@@ -239,6 +262,39 @@ export default function APAutomationGeneralSettings() {
                   />
                 </div>
                 <p className="text-xs text-gray-500 mt-1">High-value invoices need two approvers</p>
+              </div>
+
+              {/* Invoice Approver Emails */}
+              <div>
+                <label className="text-sm font-medium text-gray-950 mb-2 block">
+                  Invoice Approver Email Addresses
+                </label>
+                <p className="text-xs text-gray-500 mb-3">Add email addresses for invoice approval notifications</p>
+                <div className="space-y-2">
+                  {settings.approverEmails.map((email, index) => (
+                    <div key={index} className="flex items-center gap-2">
+                      <Input
+                        type="email"
+                        placeholder="approver@company.com"
+                        value={email}
+                        onChange={(e) => updateApproverEmail(index, e.target.value)}
+                        className="flex-1"
+                      />
+                      <button
+                        onClick={() => removeApproverEmail(index)}
+                        className="px-3 py-2 text-sm text-red-600 hover:text-red-700 hover:bg-red-50 rounded-md transition-colors"
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={addApproverEmail}
+                    className="px-3 py-1.5 text-sm bg-gray-100 text-gray-950 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    + Add Approver Email
+                  </button>
+                </div>
               </div>
 
               {/* Escalation timeframe */}
