@@ -524,6 +524,13 @@ export function AgentBuilder({
     }
   }, [stage, agent?.lane, lane])
 
+  // Scroll chat card into view on mount
+  useEffect(() => {
+    setTimeout(() => {
+      chatCardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" })
+    }, 300)
+  }, [])
+
   // Check if we already have metrics for this agent
   // REMOVED: This logic is now handled by the parent component passing agentMetrics as a prop.
   // The initial check and generation of metrics will happen there.
