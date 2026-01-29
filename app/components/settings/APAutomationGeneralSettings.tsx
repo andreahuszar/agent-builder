@@ -489,7 +489,7 @@ export default function APAutomationGeneralSettings() {
 
       {/* Sticky Footer - Save Button */}
       <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-gray-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
-        <div className="max-w-7xl mx-auto py-4 flex items-center justify-end gap-3 px-8">
+        <div className="max-w-7xl mx-auto py-4 flex items-center justify-end gap-3 pl-8 pr-0">
           {saveSuccess && (
             <span className="text-sm text-green-600 font-medium">
               ✓ Changes saved successfully
