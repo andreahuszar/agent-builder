@@ -382,17 +382,6 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
 
   return (
     <div className="flex flex-col h-full bg-card">
-      <div className="border-b border-border p-4">
-        <div className="flex items-center gap-2">
-          <Bot className="w-5 h-5 text-primary" />
-          <div>
-            <h3 className="font-semibold text-sm">AI Configuration Assistant</h3>
-            <p className="text-xs text-muted-foreground">Invoice Processing Specialist</p>
-          </div>
-        </div>
-
-      </div>
-
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message) => (

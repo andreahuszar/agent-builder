@@ -2231,14 +2231,6 @@ status: ${isActive ? "active" : "inactive"}`
                 </Button>
               </>
             )}
-            {!isPreview && (
-              <>
-                <Button onClick={handleSave} disabled={!agentName || !stage || !prompt}>
-                  <Save className="w-4 h-4" />
-                  Save Agent
-                </Button>
-              </>
-            )}
           </div>
         </div>
         {conflicts.length > 0 && (
@@ -2454,6 +2446,16 @@ status: ${isActive ? "active" : "inactive"}`
                     />
                     {getModeDescription(agentMode)}
                   </p>
+                </div>
+              </div>
+
+              {/* Save Button */}
+              <div className="pt-6 border-t border-border">
+                <div className="flex justify-end">
+                  <Button onClick={handleSave} disabled={!agentName || !stage || !prompt} className="gap-2">
+                    <Save className="w-4 h-4" />
+                    Save Agent
+                  </Button>
                 </div>
               </div>
             </div>
