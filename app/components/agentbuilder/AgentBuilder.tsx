@@ -1204,6 +1204,9 @@ Items: Monthly Hosting, Cloud Storage`,
       // Create invoice comparisons for display
       const batchComparisons = createInvoiceComparisons(batchScenarios, baselineResults, agentResults)
       setInvoiceComparisons(prev => [...prev, ...batchComparisons])
+      
+      // Also update testResults for backward compatibility with progress display
+      setTestResults(prev => [...prev, ...batchComparisons])
     }
 
     // Calculate final statistics
@@ -1783,7 +1786,7 @@ status: ${isActive ? "active" : "inactive"}`
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
-              {!isTesting && testResults.length === 0 ? (
+              {!isTesting && invoiceComparisons.length === 0 ? (
                 <div className="space-y-6">
                   <div>
                     <Label className="text-base font-semibold mb-3 block">Select Time Period</Label>
@@ -1903,21 +1906,21 @@ status: ${isActive ? "active" : "inactive"}`
                     </div>
                   </div>
 
-                  {testResults.length > 0 && (
+                  {invoiceComparisons.length > 0 && (
                     <Card className="p-4">
                       <h4 className="font-semibold mb-3">Recent Results</h4>
                       <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {testResults
+                        {invoiceComparisons
                           .slice(-10)
                           .reverse()
-                          .map((result, idx) => (
+                          .map((comparison, idx) => (
                             <div
                               key={idx}
                               className="flex items-center justify-between text-xs p-2 bg-muted/50 rounded"
                             >
-                              <span className="font-mono">{result.id}</span>
-                              <span className={result.passed ? "text-green-600" : "text-red-600"}>
-                                {result.passed ? "✓ Passed" : "✗ Failed"}
+                              <span className="font-mono">{comparison.invoiceId}</span>
+                              <span className={comparison.improvement.outcome === "better" ? "text-green-600" : "text-gray-600"}>
+                                {comparison.improvement.outcome === "better" ? "✓ Improved" : "○ No change"}
                               </span>
                             </div>
                           ))}
@@ -2227,23 +2230,33 @@ status: ${isActive ? "active" : "inactive"}`
                     })()}
                   </Card>
 
-                  <Button
-                    onClick={() => {
-                      setTestResults([])
-                      setTestSummary(null)
-                      setComparisonMetrics(null)
-                      setInvoiceComparisons([])
-                      setBaselineStats(null)
-                      setAgentStats(null)
-                      setStatusFilter("all")
-                      setCurrentPage(1)
-                    }}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    <RefreshCw className="w-4 h-4 mr-2" />
-                    Run New Test
-                  </Button>
+                  <div className="flex gap-3">
+                    <Button
+                      onClick={() => {
+                        setTestResults([])
+                        setTestSummary(null)
+                        setComparisonMetrics(null)
+                        setInvoiceComparisons([])
+                        setBaselineStats(null)
+                        setAgentStats(null)
+                        setStatusFilter("all")
+                        setCurrentPage(1)
+                      }}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      <RefreshCw className="w-4 h-4 mr-2" />
+                      Run New Test
+                    </Button>
+                    <Button
+                      onClick={exportComparisonToCSV}
+                      disabled={!comparisonMetrics}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Export Full Report
+                    </Button>
+                  </div>
                 </div>
               )}
             </div>
