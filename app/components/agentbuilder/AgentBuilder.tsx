@@ -96,6 +96,7 @@ export function AgentBuilder({
   const [promptRules, setPromptRules] = useState<any[]>([{ id: "1", type: "if", condition: "", action: "" }])
   const lastAgentIdRef = useRef<string | null>(null)
   const nameInputRef = useRef<HTMLInputElement>(null)
+  const chatCardRef = useRef<HTMLDivElement>(null)
   const [liveInvoiceSource, setLiveInvoiceSource] = useState<"samples" | "uploaded" | "erp">("samples")
   const [liveInvoices, setLiveInvoices] = useState<any[]>([])
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("")
