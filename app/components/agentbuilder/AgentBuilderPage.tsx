@@ -692,7 +692,7 @@ ERROR HANDLING:
   }
 
   return (
-    <div className={`flex ${hideNavigation ? 'w-full' : 'h-screen'} bg-background text-foreground`}>
+    <div className={`flex ${hideNavigation ? 'w-full h-full' : 'h-screen'} bg-background text-foreground`}>
       {/* Main App Navigation Sidebar */}
       {!hideNavigation && <Navigation activeModule="settings" />}
 
