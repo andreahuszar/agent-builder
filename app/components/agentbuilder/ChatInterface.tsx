@@ -97,6 +97,13 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
     }, 100)
   }, [messages, isProcessing])
 
+  // Auto-focus input on mount
+  useEffect(() => {
+    setTimeout(() => {
+      inputRef.current?.focus()
+    }, 200)
+  }, [])
+
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
     if (!files) return

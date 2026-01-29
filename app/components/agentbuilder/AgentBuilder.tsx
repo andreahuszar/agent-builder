@@ -2300,7 +2300,7 @@ status: ${isActive ? "active" : "inactive"}`
                   <p className="text-sm text-muted-foreground">Describe what you want your agent to do</p>
                 </div>
               </div>
-              <Card className="p-0 overflow-hidden flex flex-col" style={{ height: "600px" }}>
+              <Card ref={chatCardRef} className="p-0 overflow-hidden flex flex-col" style={{ height: "600px" }}>
                 <ChatInterface
                 onPromptGenerated={handlePromptGenerated}
                 onStageDetected={(detectedStage) => {
