@@ -68,7 +68,7 @@ export const SETTINGS_NAV_ITEM: NavItem = {
   id: 'settings',
   label: 'Settings',
   icon: Settings,
-  href: '/agent-builder',
+  href: '/settings',
 };
 
 // Tab Navigation Items (for top navigation)
@@ -131,10 +131,5 @@ export const MODULE_PILLS: Record<string, TabItem[]> = {
   'helpdesk': [
     { id: 'inbox', label: 'Inbox', href: '/helpdesk' },
     { id: 'kanban', label: 'Kanban', href: '/helpdesk/kanban' },
-  ],
-  'settings': [
-    { id: 'agent-builder', label: 'Agent Builder', href: '/agent-builder' },
-    { id: 'executive-dashboard', label: 'Dashboard', href: '/agent-builder?view=executive-dashboard' },
-    { id: 'general', label: 'General', href: '/settings#general' },
   ],
 };
