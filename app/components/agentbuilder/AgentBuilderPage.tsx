@@ -82,54 +82,6 @@ export default function AgentBuilderPage({ hideNavigation = false, defaultMode =
   // Initialize agents with mock data (consistent for SSR)
   const [agents, setAgents] = useState<Agent[]>([
     {
-      id: "1",
-      name: "Document Format",
-      stage: "ingestion",
-      active: true,
-      mode: "auto-apply",
-      prompt: `ROLE: Document Format Validation Agent - rejects invoices in Microsoft Word format
-
-AGENT DESCRIPTION:
-Reject invoices in Word format
-
-AGENT INSTRUCTIONS:
-
-1. If any invoice is received in Microsoft Word format (docx) format, automatically reject the invoice.
-2. Send the following reject email:
-3. Email template: <Incorrect invoice format>
-
-INPUTS:
-- Raw invoice documents (PDF, XLSX, CSV, PNG/JPG, DOCX)
-- Document metadata (filename, sender, timestamp, file size, file extension)
-
-STEPS:
-1. Receive incoming document and check file format/extension
-2. If document is in Microsoft Word format (.docx or .doc), immediately reject the invoice
-3. Send rejection email using template "Incorrect invoice format"
-4. Log rejection reason in audit trail
-5. For all other supported formats (PDF, XLSX, CSV, PNG/JPG), proceed with normal processing
-6. Assign unique document ID and timestamp for accepted documents
-7. Route accepted documents to Data Capture stage
-
-VALIDATIONS:
-- File format must NOT be Microsoft Word (.docx or .doc)
-- File size must not exceed 25MB
-- Document must pass virus scan
-- Document must not be corrupted or unreadable
-
-OUTPUT:
-- For Word format: Rejection email sent with "Incorrect invoice format" template
-- For accepted formats: Document intake record with unique ID and routing to Data Capture stage
-
-ERROR HANDLING:
-- If file is Word format (.docx or .doc) → Automatically reject and send "Incorrect invoice format" email
-- If file type unsupported (other than Word) → Reject with supported format list
-- If file corrupted → Request resubmission
-- If virus detected → Quarantine and alert security team`,
-      lane: "File Triage",
-      skills: ["Process Documents", "Send Messages"],
-    },
-    {
       id: "2",
       name: "OCR Agent",
       stage: "data-capture",
