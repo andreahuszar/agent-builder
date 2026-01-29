@@ -8,7 +8,7 @@ import { WorkflowVisualizer } from "./WorkflowVisualizer"
 import { DocumentsLibrary } from "./DocumentsLibrary"
 import Navigation from "@/app/components/Navigation"
 import UserMenu from "@/app/components/UserMenu"
-import { Plus, Pencil, ChevronDown, ChevronRight, Power, FileText } from "lucide-react"
+import { Plus, Pencil, ChevronDown, ChevronRight, ChevronLeft, Power, FileText, PanelLeftClose, PanelLeftOpen } from "lucide-react"
 import { Card } from "@/app/components/ui/card"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
@@ -55,7 +55,7 @@ interface AgentBuilderPageProps {
 
 export default function AgentBuilderPage({ hideNavigation = false, defaultMode = "observe" }: AgentBuilderPageProps = {}) {
   const [mode, setMode] = useState<Mode>(defaultMode)
-  const [sidebarOpen, setSidebarOpen] = useState(true)
+  const [sidebarOpen, setSidebarOpen] = useState(false)
 
   // Check URL for view parameter on mount
   useEffect(() => {
@@ -764,10 +764,19 @@ ERROR HANDLING:
         {/* Main Content Area */}
         <main className="flex-1 overflow-hidden flex bg-background">
           {/* Left Panel: Agent List/Sidebar */}
-          {mode === "build" && (
+          {mode === "build" && sidebarOpen && (
             <aside className="w-80 border-r border-border bg-card flex flex-col overflow-hidden">
-              <div className="p-4 border-b border-border">
-                <h2 className="text-sm font-semibold text-foreground/80 uppercase tracking-wide">Agents</h2>
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <h2 className="text-base font-bold text-foreground uppercase tracking-wide">Agents</h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSidebarOpen(false)}
+                  className="h-8 w-8 p-0"
+                  title="Collapse sidebar"
+                >
+                  <PanelLeftClose className="h-4 w-4" />
+                </Button>
               </div>
 
               <div className="flex-1 overflow-y-auto p-4">
@@ -849,6 +858,21 @@ ERROR HANDLING:
             </aside>
           )}
 
+          {/* Collapsed Sidebar Toggle Button */}
+          {mode === "build" && !sidebarOpen && (
+            <div className="border-r border-border bg-card flex flex-col items-center py-4">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setSidebarOpen(true)}
+                className="h-10 w-10 p-0"
+                title="Expand sidebar"
+              >
+                <PanelLeftOpen className="h-4 w-4" />
+              </Button>
+            </div>
+          )}
+
           {/* Center: Main Content */}
           <div className="flex-1 overflow-hidden flex">
             <div className="flex-1 overflow-hidden">
@@ -898,8 +922,9 @@ ERROR HANDLING:
 
             {/* Right: Prompt and Skills */}
             {mode === "build" && (
-              <div className="w-[480px] border-l border-border bg-card flex flex-col overflow-hidden">
+              <div className="w-[480px] bg-card flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <h2 className="text-lg font-bold text-foreground">Agent Summary</h2>
                   {/* Agent Statistics - show for agents with metrics */}
                   {editingAgent?.id && agentMetrics[editingAgent.id] && (
                     <Card className="p-4">
