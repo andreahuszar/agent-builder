@@ -10,10 +10,16 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { Card } from "@/app/components/ui/card"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Save, Play, Edit, Power, X, Loader2, RefreshCw, Trash2, ChevronRight } from "lucide-react" // Added Trash2 icon and ChevronRight icon
+import { Save, Play, Edit, Power, X, Loader2, RefreshCw, Trash2, ChevronRight, TrendingUp, TrendingDown } from "lucide-react" // Added Trash2 icon and ChevronRight icon
 import { ChatInterface } from "./ChatInterface"
 
 import type { Agent } from "./AgentBuilderPage"
+
+// Import new simulation modules
+import { generateTestScenarios, type ScenarioConfig, type TimePeriod, type Stage } from './testScenarioGenerator'
+import { simulateBaselineProcessingBatch, type BaselineStats } from './baselineSimulator'
+import { simulateAgentProcessingBatch, type AgentStats, type AgentConfig as SimAgentConfig } from './agentSimulator'
+import { calculateComparisonMetrics, createInvoiceComparisons, formatMetricsForDisplay, generateExecutiveSummary, type ComparisonMetrics, type InvoiceComparison } from './comparisonMetrics'
 
 // AgentConfig matches Agent type from AgentBuilderPage
 type AgentConfig = Agent & {
@@ -116,6 +122,13 @@ export function AgentBuilder({
   const [statusFilter, setStatusFilter] = useState<"all" | "pass" | "fail">("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage] = useState(50)
+  
+  // New state for scenario configuration and comparison
+  const [scenarioMix, setScenarioMix] = useState<number>(40) // 40% issues by default
+  const [comparisonMetrics, setComparisonMetrics] = useState<ComparisonMetrics | null>(null)
+  const [invoiceComparisons, setInvoiceComparisons] = useState<InvoiceComparison[]>([])
+  const [baselineStats, setBaselineStats] = useState<BaselineStats | null>(null)
+  const [agentStats, setAgentStats] = useState<AgentStats | null>(null)
 
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null)
   const [showDecisionLog, setShowDecisionLog] = useState(false)
@@ -883,51 +896,6 @@ export function AgentBuilder({
     return new Intl.NumberFormat("en-US").format(num)
   }
 
-  const generateBulkInvoiceData = (timePeriod: "7days" | "30days" | "3months" | "6months") => {
-    const daysBack = timePeriod === "7days" ? 7 : timePeriod === "30days" ? 30 : timePeriod === "3months" ? 90 : 180
-    const invoiceCount =
-      timePeriod === "7days" ? 1500 : timePeriod === "30days" ? 6200 : timePeriod === "3months" ? 18500 : 37000
-
-    const vendors = [
-      "Acme Corporation",
-      "TechSupply Inc",
-      "Global Services Ltd",
-      "Office Depot",
-      "CloudHost Services",
-      "SecurePay Systems",
-      "DataFlow Solutions",
-      "Prime Vendor Co",
-      "Mega Supplies LLC",
-      "Quick Logistics",
-      "Elite Services",
-      "ProTech Industries",
-    ]
-
-    const statuses = ["valid", "missing_po", "amount_mismatch", "duplicate", "vendor_issue", "date_error"]
-
-    const invoices = []
-    for (let i = 0; i < invoiceCount; i++) {
-      const daysAgo = Math.floor(Math.random() * daysBack)
-      const date = new Date()
-      date.setDate(date.getDate() - daysAgo)
-
-      // 85% should pass, 15% should fail
-      const willPass = Math.random() > 0.15
-      const status = willPass ? "valid" : statuses[Math.floor(Math.random() * (statuses.length - 1)) + 1]
-
-      invoices.push({
-        id: `INV-2024-${String(10000 + i).padStart(5, "0")}`,
-        vendor: vendors[Math.floor(Math.random() * vendors.length)],
-        amount: (Math.random() * 10000 + 100).toFixed(2),
-        date: date.toISOString().split("T")[0],
-        status,
-        willPass,
-        processingTime: Math.floor(Math.random() * 500 + 100),
-      })
-    }
-
-    return invoices
-  }
 
   const loadLiveInvoices = async () => {
     await new Promise((resolve) => setTimeout(resolve, 1500))
@@ -1098,73 +1066,175 @@ Items: Monthly Hosting, Cloud Storage`,
     })
   }
 
+  const exportComparisonToCSV = () => {
+    if (!comparisonMetrics || invoiceComparisons.length === 0) return
+
+    // Build CSV content
+    const headers = [
+      "Invoice ID",
+      "Vendor", 
+      "Amount",
+      "Has Issue",
+      "Issue Description",
+      "Without Agent - Outcome",
+      "Without Agent - Time (min)",
+      "Without Agent - Manual Touches",
+      "With Agent - Action",
+      "With Agent - Time (min)", 
+      "With Agent - Manual Touches",
+      "With Agent - Confidence",
+      "Time Reduction (%)",
+      "Touch Reduction",
+      "Improvement Highlights",
+    ]
+
+    const rows = invoiceComparisons.map(comp => [
+      comp.invoiceId,
+      comp.vendor,
+      comp.amount.toFixed(2),
+      comp.hasIssue ? "Yes" : "No",
+      comp.issueDescription || "None",
+      comp.withoutAgent.outcome,
+      comp.withoutAgent.processingTimeMinutes.toFixed(1),
+      comp.withoutAgent.manualTouches,
+      comp.withAgent.agentAction,
+      comp.withAgent.processingTimeMinutes.toFixed(1),
+      comp.withAgent.manualTouches,
+      (comp.withAgent.agentConfidence * 100).toFixed(0) + "%",
+      comp.improvement.timeReductionPercentage.toFixed(1) + "%",
+      comp.improvement.manualTouchReduction,
+      comp.improvement.highlights.join("; "),
+    ])
+
+    // Add summary rows
+    rows.push([]) // Empty row
+    rows.push(["SUMMARY"])
+    rows.push(["Total Invoices", comparisonMetrics.exceptionsWithout + comparisonMetrics.exceptionsWith])
+    rows.push(["Avg Time Without Agent", comparisonMetrics.avgProcessingTimeWithout.toFixed(1) + " min"])
+    rows.push(["Avg Time With Agent", comparisonMetrics.avgProcessingTimeWith.toFixed(1) + " min"])
+    rows.push(["Time Reduction", comparisonMetrics.timeReductionPercentage.toFixed(1) + "%"])
+    rows.push(["Exceptions Without Agent", comparisonMetrics.exceptionsWithout])
+    rows.push(["Exceptions With Agent", comparisonMetrics.exceptionsWith])
+    rows.push(["Exception Reduction", comparisonMetrics.exceptionReductionPercentage.toFixed(1) + "%"])
+    rows.push(["Auto-Resolved Count", comparisonMetrics.autoResolvedCount])
+    rows.push(["Annual FTE Savings", comparisonMetrics.annualFTESavings.toFixed(2)])
+    rows.push(["Annual Cost Savings", "$" + comparisonMetrics.annualCostSavings.toLocaleString()])
+
+    // Convert to CSV
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => {
+        // Escape quotes and wrap in quotes if needed
+        const cellStr = String(cell)
+        if (cellStr.includes(",") || cellStr.includes('"') || cellStr.includes("\n")) {
+          return '"' + cellStr.replace(/"/g, '""') + '"'
+        }
+        return cellStr
+      }).join(","))
+    ].join("\n")
+
+    // Download
+    const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" })
+    const link = document.createElement("a")
+    const url = URL.createObjectURL(blob)
+    link.setAttribute("href", url)
+    link.setAttribute("download", `agent-comparison-${agentName.replace(/\s+/g, "-")}-${new Date().toISOString().split("T")[0]}.csv`)
+    link.style.visibility = "hidden"
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+  }
+
   const runBulkTest = async () => {
     setIsTesting(true)
     setTestProgress(0)
     setTestResults([])
     setTestSummary(null)
+    setComparisonMetrics(null)
+    setInvoiceComparisons([])
     setCurrentPage(1)
 
-    const invoices = generateBulkInvoiceData(selectedTimePeriod)
-    const errorScenarios = extractErrorScenariosFromPrompt(prompt)
-    const errorActions = extractErrorActionsFromPrompt(prompt)
-    const batchSize = 50
-    const results: any[] = []
-
-    // Simulate processing in batches
-    for (let i = 0; i < invoices.length; i += batchSize) {
-      const batch = invoices.slice(i, i + batchSize)
-
-      // Simulate processing delay
-      await new Promise((resolve) => setTimeout(resolve, 300))
-
-      batch.forEach((invoice) => {
-        const failureReason = invoice.willPass
-          ? "All validations passed"
-          : errorScenarios[Math.floor(Math.random() * errorScenarios.length)]
-
-        const action = invoice.willPass
-          ? "Processed successfully"
-          : errorActions[failureReason] || "Flag for manual review"
-
-        results.push({
-          ...invoice,
-          processed: true,
-          passed: invoice.willPass,
-          confidence: invoice.willPass
-            ? (0.9 + Math.random() * 0.1).toFixed(2)
-            : (0.3 + Math.random() * 0.4).toFixed(2),
-          reason: failureReason,
-          action: action,
-          skillsUsed: activeSkills.slice(0, Math.floor(Math.random() * 3) + 2),
-        })
-      })
-
-      setTestProgress(Math.min(((i + batchSize) / invoices.length) * 100, 100))
-      setTestResults([...results])
+    // Configure scenario generation
+    const scenarioConfig: ScenarioConfig = {
+      scenarioTypes: ["all"],
+      issueMix: scenarioMix,
+      stage: stage as Stage,
+      lane: lane,
     }
 
-    // Calculate summary
-    const passed = results.filter((r) => r.passed).length
-    const failed = results.filter((r) => !r.passed).length
-    const avgProcessingTime = results.reduce((sum, r) => sum + r.processingTime, 0) / results.length
-    const avgConfidence = results.reduce((sum, r) => sum + Number.parseFloat(r.confidence), 0) / results.length
+    // Generate test scenarios
+    const scenarios = generateTestScenarios(selectedTimePeriod as TimePeriod, scenarioConfig)
+    
+    // Configure agent for simulation
+    const agentConfig: SimAgentConfig = {
+      name: agentName,
+      stage,
+      lane,
+      mode: agentMode,
+      prompt,
+      skills: activeSkills,
+    }
 
-    const failureReasons: Record<string, number> = {}
-    results
-      .filter((r) => !r.passed)
-      .forEach((r) => {
-        failureReasons[r.reason] = (failureReasons[r.reason] || 0) + 1
-      })
+    const batchSize = 50
+    const totalBatches = Math.ceil(scenarios.length / batchSize)
+    
+    let allBaselineResults: any[] = []
+    let allAgentResults: any[] = []
 
+    // Process in batches for UI responsiveness
+    for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+      const batchStart = batchIndex * batchSize
+      const batchEnd = Math.min(batchStart + batchSize, scenarios.length)
+      const batchScenarios = scenarios.slice(batchStart, batchEnd)
+
+      // Simulate processing delay for realism
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      // Run both baseline and agent simulations
+      const { results: baselineResults } = simulateBaselineProcessingBatch(batchScenarios)
+      const { results: agentResults } = simulateAgentProcessingBatch(batchScenarios, agentConfig)
+
+      allBaselineResults = [...allBaselineResults, ...baselineResults]
+      allAgentResults = [...allAgentResults, ...agentResults]
+
+      // Update progress
+      const progress = ((batchEnd) / scenarios.length) * 100
+      setTestProgress(progress)
+
+      // Create invoice comparisons for display
+      const batchComparisons = createInvoiceComparisons(batchScenarios, baselineResults, agentResults)
+      setInvoiceComparisons(prev => [...prev, ...batchComparisons])
+    }
+
+    // Calculate final statistics
+    const { stats: finalBaselineStats } = simulateBaselineProcessingBatch(scenarios)
+    const { stats: finalAgentStats } = simulateAgentProcessingBatch(scenarios, agentConfig)
+    
+    setBaselineStats(finalBaselineStats)
+    setAgentStats(finalAgentStats)
+
+    // Calculate comparison metrics
+    const metrics = calculateComparisonMetrics(finalBaselineStats, finalAgentStats, scenarios.length)
+    setComparisonMetrics(metrics)
+
+    // Build summary for backward compatibility (if needed)
     setTestSummary({
-      total: results.length,
-      passed,
-      failed,
-      passRate: ((passed / results.length) * 100).toFixed(1),
-      avgProcessingTime: avgProcessingTime.toFixed(0),
-      avgConfidence: avgConfidence.toFixed(2),
-      failureReasons,
+      total: scenarios.length,
+      passed: finalAgentStats.passed,
+      failed: finalAgentStats.escalated + finalAgentStats.blocked,
+      passRate: ((finalAgentStats.passed / scenarios.length) * 100).toFixed(1),
+      avgProcessingTime: finalAgentStats.avgProcessingTimeMinutes.toFixed(0),
+      avgConfidence: (finalAgentStats.avgConfidence * 100).toFixed(0),
+      
+      // Baseline comparison
+      baselinePassed: finalBaselineStats.passed,
+      baselineFailed: finalBaselineStats.blocked + finalBaselineStats.delayed + finalBaselineStats.errors,
+      
+      // Value metrics
+      timeReduction: metrics.timeReductionPercentage.toFixed(0),
+      exceptionReduction: metrics.exceptionReductionPercentage.toFixed(0),
+      fteHoursSaved: metrics.fteHoursSaved.toFixed(1),
+      annualFTESavings: metrics.annualFTESavings.toFixed(2),
     })
 
     setIsTesting(false)
@@ -1769,8 +1839,44 @@ status: ${isActive ? "active" : "inactive"}`
                         <span className="font-medium">{lane}</span>
                       </div>
                       <div className="flex justify-between">
+                        <span className="text-muted-foreground">Mode:</span>
+                        <span className="font-medium capitalize">{agentMode === "auto-apply" ? "Auto-Apply" : agentMode}</span>
+                      </div>
+                      <div className="flex justify-between">
                         <span className="text-muted-foreground">Skills:</span>
                         <span className="font-medium">{activeSkills.length} selected</span>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Card className="p-4">
+                    <div className="space-y-3">
+                      <div>
+                        <Label className="text-sm font-semibold">Scenario Mix</Label>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Adjust the percentage of invoices with issues to test agent effectiveness
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">
+                            {scenarioMix}% with issues, {100 - scenarioMix}% clean
+                          </span>
+                        </div>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          step="5"
+                          value={scenarioMix}
+                          onChange={(e) => setScenarioMix(parseInt(e.target.value))}
+                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-900"
+                        />
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>All Clean</span>
+                          <span>Balanced</span>
+                          <span>All Issues</span>
+                        </div>
                       </div>
                     </div>
                   </Card>
@@ -1821,82 +1927,159 @@ status: ${isActive ? "active" : "inactive"}`
                 </div>
               ) : (
                 <div className="space-y-6">
-                  <div className="grid grid-cols-4 gap-4">
-                    <Card className="p-4">
-                      <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">Lines Evaluated</p>
-                        <p className="text-2xl font-bold">{testSummary.total.toLocaleString()}</p>
-                        <p className="text-xs text-muted-foreground">Last 24 hours</p>
-                      </div>
+                  {/* Executive Summary */}
+                  {comparisonMetrics && (
+                    <Card className="p-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+                      <h4 className="text-lg font-semibold mb-2">Agent Value Summary</h4>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {generateExecutiveSummary(comparisonMetrics)}
+                      </p>
                     </Card>
-                    <Card className="p-4 border-green-200 bg-green-50">
-                      <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">Lines Passed</p>
-                        <p className="text-2xl font-bold text-green-700">{testSummary.passed.toLocaleString()}</p>
-                        <p className="text-xs text-green-600"> ({testSummary.passRate}%)</p>
-                      </div>
-                    </Card>
-                    <Card className="p-4 border-red-200 bg-red-50">
-                      <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">Lines Failed</p>
-                        <p className="text-2xl font-bold text-red-700">{testSummary.failed.toLocaleString()}</p>
-                        <p className="text-xs text-red-600">
-                          {" "}
-                          ({(100 - Number.parseFloat(testSummary.passRate)).toFixed(1)}%)
-                        </p>
-                      </div>
-                    </Card>
-                    <Card className="p-4">
-                      <div className="space-y-1">
-                        <p className="text-sm text-muted-foreground">Avg Processing Time</p>
-                        <p className="text-2xl font-bold">{testSummary.avgProcessingTime}ms</p>
-                        <p className="text-xs text-muted-foreground">Per invoice</p>
-                      </div>
-                    </Card>
-                  </div>
+                  )}
 
-                  <Card className="p-4">
-                    <h4 className="font-semibold mb-3">Failure Breakdown</h4>
-                    <div className="space-y-2">
-                      {Object.entries(testSummary.failureReasons).map(([reason, count]: [string, any]) => (
-                        <div key={reason} className="flex items-center justify-between text-sm">
-                          <span className="text-muted-foreground">{reason}</span>
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-32 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-red-500"
-                                style={{ width: `${(count / testSummary.failed) * 100}%` }}
-                              />
+                  {/* Comparison Metrics - Side by Side */}
+                  {comparisonMetrics && (
+                    <>
+                      <div className="grid grid-cols-3 gap-4">
+                        {/* WITHOUT Agent Column */}
+                        <Card className="p-4 bg-gray-50">
+                          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">Without Agent</p>
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-xs text-gray-500">Avg Time</p>
+                              <p className="text-xl font-bold text-gray-900">{comparisonMetrics.avgProcessingTimeWithout.toFixed(1)} min</p>
                             </div>
-                            <span className="font-medium w-12 text-right">{count}</span>
+                            <div>
+                              <p className="text-xs text-gray-500">Exceptions</p>
+                              <p className="text-xl font-bold text-gray-900">{comparisonMetrics.exceptionsWithout.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Manual Touches</p>
+                              <p className="text-xl font-bold text-gray-900">{comparisonMetrics.manualTouchesWithout.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Cost/Invoice</p>
+                              <p className="text-xl font-bold text-gray-900">${comparisonMetrics.costPerInvoiceWithout.toFixed(2)}</p>
+                            </div>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                  </Card>
+                        </Card>
+
+                        {/* WITH Agent Column */}
+                        <Card className="p-4 bg-purple-50 border-purple-200">
+                          <p className="text-xs font-semibold text-purple-900 uppercase tracking-wide mb-3">With Agent</p>
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-xs text-purple-700">Avg Time</p>
+                              <p className="text-xl font-bold text-purple-900">{comparisonMetrics.avgProcessingTimeWith.toFixed(1)} min</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-purple-700">Exceptions</p>
+                              <p className="text-xl font-bold text-purple-900">{comparisonMetrics.exceptionsWith.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-purple-700">Manual Touches</p>
+                              <p className="text-xl font-bold text-purple-900">{comparisonMetrics.manualTouchesWith.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-purple-700">Cost/Invoice</p>
+                              <p className="text-xl font-bold text-purple-900">${comparisonMetrics.costPerInvoiceWith.toFixed(2)}</p>
+                            </div>
+                          </div>
+                        </Card>
+
+                        {/* Improvement Column */}
+                        <Card className="p-4 bg-green-50 border-green-200">
+                          <p className="text-xs font-semibold text-green-900 uppercase tracking-wide mb-3">Improvement</p>
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <TrendingDown className="w-4 h-4 text-green-600" />
+                              <div>
+                                <p className="text-xs text-green-700">Time Saved</p>
+                                <p className="text-xl font-bold text-green-900">{comparisonMetrics.timeReductionPercentage.toFixed(0)}%</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <TrendingDown className="w-4 h-4 text-green-600" />
+                              <div>
+                                <p className="text-xs text-green-700">Fewer Exceptions</p>
+                                <p className="text-xl font-bold text-green-900">{comparisonMetrics.exceptionReductionPercentage.toFixed(0)}%</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <TrendingDown className="w-4 h-4 text-green-600" />
+                              <div>
+                                <p className="text-xs text-green-700">Fewer Touches</p>
+                                <p className="text-xl font-bold text-green-900">{comparisonMetrics.manualTouchReductionPercentage.toFixed(0)}%</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <TrendingDown className="w-4 h-4 text-green-600" />
+                              <div>
+                                <p className="text-xs text-green-700">Cost Savings</p>
+                                <p className="text-xl font-bold text-green-900">${comparisonMetrics.costSavingsPerInvoice.toFixed(2)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+
+                      {/* ROI Metrics */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <Card className="p-4">
+                          <p className="text-sm font-semibold mb-3">FTE Savings</p>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Hours Saved:</span>
+                              <span className="font-medium">{comparisonMetrics.fteHoursSaved.toFixed(1)} hours</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Annual FTE Savings:</span>
+                              <span className="font-medium text-green-600">{comparisonMetrics.annualFTESavings.toFixed(2)} FTE</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Annual Cost Savings:</span>
+                              <span className="font-medium text-green-600">${comparisonMetrics.annualCostSavings.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                            </div>
+                          </div>
+                        </Card>
+
+                        <Card className="p-4">
+                          <p className="text-sm font-semibold mb-3">Processing Efficiency</p>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Speedup Factor:</span>
+                              <span className="font-medium">{comparisonMetrics.processingSpeedupFactor.toFixed(1)}x faster</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Auto-Resolved:</span>
+                              <span className="font-medium">{comparisonMetrics.autoResolvedCount.toLocaleString()} invoices</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Accuracy:</span>
+                              <span className="font-medium">{comparisonMetrics.accuracyWith.toFixed(1)}% (+{comparisonMetrics.accuracyImprovement.toFixed(1)}%)</span>
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+                    </>
+                  )}
 
                   <Card className="p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <h4 className="font-semibold">Detailed Results</h4>
+                      <h4 className="font-semibold">Invoice-by-Invoice Comparison</h4>
                       <div className="flex gap-2">
                         <Select value={statusFilter} onValueChange={(value: any) => setStatusFilter(value)}>
                           <SelectTrigger className="w-32">
                             <SelectValue placeholder="Filter by status" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="all">All Status</SelectItem>
-                            <SelectItem value="pass">Pass Only</SelectItem>
-                            <SelectItem value="fail">Fail Only</SelectItem>
+                            <SelectItem value="all">All Invoices</SelectItem>
+                            <SelectItem value="pass">Improved Only</SelectItem>
+                            <SelectItem value="fail">Issues Only</SelectItem>
                           </SelectContent>
                         </Select>
-                        <Button variant="outline" size="sm">
+                        <Button variant="outline" size="sm" onClick={exportComparisonToCSV} disabled={!comparisonMetrics}>
                           Export CSV
-                        </Button>
-                        <Button variant="outline" size="sm" onClick={() => setShowDecisionLog(true)}>
-                          View All Decision Logs
-                        </Button>
-                        <Button variant="outline" size="sm">
-                          View All
                         </Button>
                       </div>
                     </div>
@@ -1907,53 +2090,75 @@ status: ${isActive ? "active" : "inactive"}`
                             <th className="text-left p-2">Invoice ID</th>
                             <th className="text-left p-2">Vendor</th>
                             <th className="text-right p-2">Amount</th>
-                            <th className="text-center p-2">Status</th>
-                            <th className="text-right p-2">Confidence</th>
-                            <th className="text-left p-2">Reason</th>
-                            <th className="text-left p-2">Action Taken</th>
+                            <th className="text-left p-2">Without Agent</th>
+                            <th className="text-left p-2">With Agent</th>
+                            <th className="text-left p-2">Improvement</th>
                           </tr>
                         </thead>
                         <tbody>
                           {(() => {
-                            const filteredResults = testResults.filter((result) => {
+                            const filteredResults = invoiceComparisons.filter((comparison) => {
                               if (statusFilter === "all") return true
-                              if (statusFilter === "pass") return result.passed
-                              if (statusFilter === "fail") return !result.passed
+                              if (statusFilter === "pass") return comparison.improvement.outcome === "better"
+                              if (statusFilter === "fail") return comparison.hasIssue
                               return true
                             })
                             const startIndex = (currentPage - 1) * rowsPerPage
                             const endIndex = startIndex + rowsPerPage
                             const paginatedResults = filteredResults.slice(startIndex, endIndex)
 
-                            return paginatedResults.map((result, idx) => (
+                            return paginatedResults.map((comparison, idx) => (
                               <tr
                                 key={idx}
-                                className="border-t cursor-pointer hover:bg-muted/50 transition-colors"
-                                onClick={() => {
-                                  setSelectedInvoice(result)
-                                  setShowDecisionLog(true)
-                                }}
+                                className="border-t hover:bg-muted/50 transition-colors"
                               >
                                 <td className="p-2 font-mono">
                                   <div className="flex items-center gap-1">
-                                    {result.id}
-                                    <ChevronRight className="w-3 h-3 text-muted-foreground" />
+                                    {comparison.invoiceId}
                                   </div>
                                 </td>
-                                <td className="p-2">{result.vendor}</td>
-                                <td className="p-2 text-right font-medium">${result.amount}</td>
-                                <td className="p-2 text-center">
-                                  <span
-                                    className={`inline-block px-2 py-0.5 rounded-full text-xs ${
-                                      result.passed ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"
-                                    }`}
-                                  >
-                                    {result.passed ? "Pass" : "Fail"}
-                                  </span>
+                                <td className="p-2">{comparison.vendor}</td>
+                                <td className="p-2 text-right font-medium">${comparison.amount.toFixed(2)}</td>
+                                <td className="p-2">
+                                  <div className="flex flex-col gap-1">
+                                    <span className={`text-xs px-1.5 py-0.5 rounded inline-block ${
+                                      comparison.withoutAgent.outcome === "passed" ? "bg-green-100 text-green-700" : 
+                                      comparison.withoutAgent.outcome === "blocked" ? "bg-red-100 text-red-700" :
+                                      comparison.withoutAgent.outcome === "delayed" ? "bg-yellow-100 text-yellow-700" :
+                                      "bg-gray-100 text-gray-700"
+                                    }`}>
+                                      {comparison.withoutAgent.outcome}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">{comparison.withoutAgent.processingTimeMinutes.toFixed(0)}min • {comparison.withoutAgent.manualTouches} touch{comparison.withoutAgent.manualTouches !== 1 ? 'es' : ''}</span>
+                                  </div>
                                 </td>
-                                <td className="p-2 text-right">{result.confidence}</td>
-                                <td className="p-2 text-muted-foreground">{result.reason}</td>
-                                <td className="p-2 text-muted-foreground">{result.action}</td>
+                                <td className="p-2">
+                                  <div className="flex flex-col gap-1">
+                                    <span className={`text-xs px-1.5 py-0.5 rounded inline-block ${
+                                      comparison.withAgent.outcome === "passed" ? "bg-purple-100 text-purple-700" : 
+                                      comparison.withAgent.outcome === "escalated" ? "bg-yellow-100 text-yellow-700" :
+                                      "bg-gray-100 text-gray-700"
+                                    }`}>
+                                      {comparison.withAgent.agentAction === "auto_resolved" ? "Auto-resolved" : 
+                                       comparison.withAgent.agentAction === "suggested_resolution" ? "Suggested" : 
+                                       comparison.withAgent.agentAction === "observed" ? "Observed" : 
+                                       "Escalated"}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">{comparison.withAgent.processingTimeMinutes.toFixed(0)}min • {comparison.withAgent.manualTouches} touch{comparison.withAgent.manualTouches !== 1 ? 'es' : ''}</span>
+                                  </div>
+                                </td>
+                                <td className="p-2">
+                                  <div className="flex flex-wrap gap-1">
+                                    {comparison.improvement.highlights.map((highlight, hidx) => (
+                                      <span key={hidx} className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
+                                        {highlight}
+                                      </span>
+                                    ))}
+                                    {comparison.improvement.highlights.length === 0 && (
+                                      <span className="text-xs text-muted-foreground">No change</span>
+                                    )}
+                                  </div>
+                                </td>
                               </tr>
                             ))
                           })()}
@@ -1961,10 +2166,10 @@ status: ${isActive ? "active" : "inactive"}`
                       </table>
                     </div>
                     {(() => {
-                      const filteredResults = testResults.filter((result) => {
+                      const filteredResults = invoiceComparisons.filter((comparison) => {
                         if (statusFilter === "all") return true
-                        if (statusFilter === "pass") return result.passed
-                        if (statusFilter === "fail") return !result.passed
+                        if (statusFilter === "pass") return comparison.improvement.outcome === "better"
+                        if (statusFilter === "fail") return comparison.hasIssue
                         return true
                       })
                       const totalPages = Math.ceil(filteredResults.length / rowsPerPage)
@@ -1976,8 +2181,8 @@ status: ${isActive ? "active" : "inactive"}`
                           <div className="flex items-center justify-between mt-3">
                             <p className="text-xs text-muted-foreground">
                               Showing {startIndex.toLocaleString()} - {endIndex.toLocaleString()} of{" "}
-                              {filteredResults.length.toLocaleString()} results
-                              {statusFilter !== "all" && ` (${statusFilter === "pass" ? "passed" : "failed"})`}
+                              {filteredResults.length.toLocaleString()} invoices
+                              {statusFilter !== "all" && ` (${statusFilter === "pass" ? "improved" : "with issues"})`}
                             </p>
                             <div className="flex items-center gap-2">
                               <Button
@@ -2026,6 +2231,10 @@ status: ${isActive ? "active" : "inactive"}`
                     onClick={() => {
                       setTestResults([])
                       setTestSummary(null)
+                      setComparisonMetrics(null)
+                      setInvoiceComparisons([])
+                      setBaselineStats(null)
+                      setAgentStats(null)
                       setStatusFilter("all")
                       setCurrentPage(1)
                     }}
