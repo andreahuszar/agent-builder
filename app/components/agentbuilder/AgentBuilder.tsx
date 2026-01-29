@@ -2698,7 +2698,7 @@ status: ${isActive ? "active" : "inactive"}`
                       </SelectItem>
                     </SelectContent>
                   </Select>
-                  <p className={`text-xs mt-2 flex items-center gap-1.5 ${
+                  <div className={`text-xs mt-2 flex items-center gap-1.5 ${
                     agentMode === "observe"
                       ? "text-blue-600 dark:text-blue-400"
                       : agentMode === "suggest"
@@ -2709,7 +2709,7 @@ status: ${isActive ? "active" : "inactive"}`
                       className={`w-1.5 h-1.5 rounded-full ${agentMode === "observe" ? "bg-blue-500" : agentMode === "suggest" ? "bg-yellow-400" : "bg-red-500"}`}
                     />
                     {getModeDescription(agentMode)}
-                  </p>
+                  </div>
                 </div>
               </div>
 
