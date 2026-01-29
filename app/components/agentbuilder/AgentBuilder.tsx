@@ -1290,6 +1290,21 @@ Items: Monthly Hosting, Cloud Storage`,
   const handleCloseTestModal = () => {
     setInternalShowTestModal(false)
     setSelectedInvoice(null) // Clear selected invoice when closing modal
+    
+    // Reset all test state so parameters need to be selected again
+    setTestResults([])
+    setTestSummary(null)
+    setComparisonMetrics(null)
+    setInvoiceComparisons([])
+    setBaselineStats(null)
+    setAgentStats(null)
+    setSelectedTimePeriod("7days")
+    setScenarioMix(40)
+    setStatusFilter("all")
+    setCurrentPage(1)
+    setIsTesting(false)
+    setTestProgress(0)
+    
     if (onCloseTest) {
       onCloseTest()
     }
