@@ -2098,7 +2098,7 @@ status: ${isActive ? "active" : "inactive"}`
                           <SelectTrigger className="w-32">
                             <SelectValue placeholder="Filter by status" />
                           </SelectTrigger>
-                          <SelectContent>
+                          <SelectContent className="z-[10001]">
                             <SelectItem value="all">All Invoices</SelectItem>
                             <SelectItem value="pass">Improved Only</SelectItem>
                             <SelectItem value="fail">Issues Only</SelectItem>
