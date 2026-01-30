@@ -120,6 +120,8 @@ export function AgentBuilder({
   const [hasChanges, setHasChanges] = useState(false)
   const [originalAgentData, setOriginalAgentData] = useState<any>(null)
   const [statusFilter, setStatusFilter] = useState<"all" | "pass" | "fail">("all")
+  const [withoutAgentFilter, setWithoutAgentFilter] = useState<"all" | "passed" | "blocked" | "delayed" | "error">("all")
+  const [withAgentFilter, setWithAgentFilter] = useState<"all" | "auto_resolved" | "suggested_resolution" | "observed" | "escalated_to_human">("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage] = useState(50)
   
@@ -1299,6 +1301,8 @@ Items: Monthly Hosting, Cloud Storage`,
     setAgentStats(null)
     setSelectedTimePeriod("7days")
     setStatusFilter("all")
+    setWithoutAgentFilter("all")
+    setWithAgentFilter("all")
     setCurrentPage(1)
     setIsTesting(false)
     setTestProgress(0)
@@ -2057,19 +2061,52 @@ status: ${isActive ? "active" : "inactive"}`
                         </p>
                       </div>
                       <div className="flex gap-2">
-                        <Select value={statusFilter} onValueChange={(value: any) => {
-                          setStatusFilter(value)
-                          setCurrentPage(1) // Reset to page 1 when filter changes
+                        <Select value={withoutAgentFilter} onValueChange={(value: any) => {
+                          setWithoutAgentFilter(value)
+                          setCurrentPage(1)
                         }}>
-                          <SelectTrigger className="w-32">
-                            <SelectValue placeholder="Filter by status" />
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="Without Agent" />
                           </SelectTrigger>
                           <SelectContent className="z-[10001]">
-                            <SelectItem value="all">All Invoices</SelectItem>
-                            <SelectItem value="pass">Improved Only</SelectItem>
-                            <SelectItem value="fail">Issues Only</SelectItem>
+                            <SelectItem value="all">All Outcomes</SelectItem>
+                            <SelectItem value="passed">Passed</SelectItem>
+                            <SelectItem value="blocked">Blocked</SelectItem>
+                            <SelectItem value="delayed">Delayed</SelectItem>
+                            <SelectItem value="error">Error</SelectItem>
                           </SelectContent>
                         </Select>
+                        
+                        <Select value={withAgentFilter} onValueChange={(value: any) => {
+                          setWithAgentFilter(value)
+                          setCurrentPage(1)
+                        }}>
+                          <SelectTrigger className="w-[140px]">
+                            <SelectValue placeholder="With Agent" />
+                          </SelectTrigger>
+                          <SelectContent className="z-[10001]">
+                            <SelectItem value="all">All Actions</SelectItem>
+                            <SelectItem value="auto_resolved">Auto-resolved</SelectItem>
+                            <SelectItem value="suggested_resolution">Suggested</SelectItem>
+                            <SelectItem value="observed">Observed</SelectItem>
+                            <SelectItem value="escalated_to_human">Escalated</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
+                        <Select value={statusFilter} onValueChange={(value: any) => {
+                          setStatusFilter(value)
+                          setCurrentPage(1)
+                        }}>
+                          <SelectTrigger className="w-[120px]">
+                            <SelectValue placeholder="Improvement" />
+                          </SelectTrigger>
+                          <SelectContent className="z-[10001]">
+                            <SelectItem value="all">All</SelectItem>
+                            <SelectItem value="pass">Improved</SelectItem>
+                            <SelectItem value="fail">With Issues</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        
                         <Button variant="outline" size="sm" onClick={exportComparisonToCSV} disabled={!comparisonMetrics}>
                           Export CSV
                         </Button>
@@ -2090,9 +2127,24 @@ status: ${isActive ? "active" : "inactive"}`
                         <tbody>
                           {(() => {
                             const filteredResults = invoiceComparisons.filter((comparison) => {
-                              if (statusFilter === "all") return true
-                              if (statusFilter === "pass") return comparison.improvement.outcome === "better"
-                              if (statusFilter === "fail") return comparison.hasIssue
+                              // Without Agent filter
+                              if (withoutAgentFilter !== "all" && comparison.withoutAgent.outcome !== withoutAgentFilter) {
+                                return false
+                              }
+                              
+                              // With Agent filter
+                              if (withAgentFilter !== "all" && comparison.withAgent.agentAction !== withAgentFilter) {
+                                return false
+                              }
+                              
+                              // Improvement filter
+                              if (statusFilter === "pass" && comparison.improvement.outcome !== "better") {
+                                return false
+                              }
+                              if (statusFilter === "fail" && !comparison.hasIssue) {
+                                return false
+                              }
+                              
                               return true
                             })
                             
@@ -2172,14 +2224,35 @@ status: ${isActive ? "active" : "inactive"}`
                     </div>
                     {(() => {
                       const filteredResults = invoiceComparisons.filter((comparison) => {
-                        if (statusFilter === "all") return true
-                        if (statusFilter === "pass") return comparison.improvement.outcome === "better"
-                        if (statusFilter === "fail") return comparison.hasIssue
+                        // Without Agent filter
+                        if (withoutAgentFilter !== "all" && comparison.withoutAgent.outcome !== withoutAgentFilter) {
+                          return false
+                        }
+                        
+                        // With Agent filter
+                        if (withAgentFilter !== "all" && comparison.withAgent.agentAction !== withAgentFilter) {
+                          return false
+                        }
+                        
+                        // Improvement filter
+                        if (statusFilter === "pass" && comparison.improvement.outcome !== "better") {
+                          return false
+                        }
+                        if (statusFilter === "fail" && !comparison.hasIssue) {
+                          return false
+                        }
+                        
                         return true
                       })
                       const totalPages = Math.max(1, Math.ceil(filteredResults.length / rowsPerPage))
                       const startIndex = filteredResults.length > 0 ? (currentPage - 1) * rowsPerPage + 1 : 0
                       const endIndex = Math.min(currentPage * rowsPerPage, filteredResults.length)
+                      
+                      // Build filter description
+                      const activeFilters = []
+                      if (withoutAgentFilter !== "all") activeFilters.push(withoutAgentFilter)
+                      if (withAgentFilter !== "all") activeFilters.push(withAgentFilter.replace(/_/g, ' '))
+                      if (statusFilter !== "all") activeFilters.push(statusFilter === "pass" ? "improved" : "with issues")
 
                       return (
                         <>
@@ -2189,10 +2262,10 @@ status: ${isActive ? "active" : "inactive"}`
                                 <>
                                   Showing {startIndex.toLocaleString()} - {endIndex.toLocaleString()} of{" "}
                                   {filteredResults.length.toLocaleString()} invoices
-                                  {statusFilter !== "all" && ` (${statusFilter === "pass" ? "improved" : "with issues"})`}
+                                  {activeFilters.length > 0 && ` (${activeFilters.join(', ')})`}
                                 </>
                               ) : (
-                                <>No invoices match the selected filter</>
+                                <>No invoices match the selected filters</>
                               )}
                             </p>
                             <div className="flex items-center gap-2">
