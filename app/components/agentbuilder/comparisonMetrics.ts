@@ -258,11 +258,11 @@ export function createInvoiceComparisons(
       highlights.push(`${timeReductionPercentage.toFixed(0)}% faster`);
     }
     
-    if (baseline.outcome === "blocked" && agent.outcome === "passed") {
+    if (baseline.outcome === "blocked" && agent.outcome === "pass") {
       highlights.push("Unblocked");
     }
     
-    if (baseline.outcome === "delayed" && agent.outcome === "passed") {
+    if (baseline.outcome === "delayed" && agent.outcome === "pass") {
       highlights.push("No delay");
     }
     

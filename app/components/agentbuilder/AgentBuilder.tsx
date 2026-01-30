@@ -120,7 +120,7 @@ export function AgentBuilder({
   const [hasChanges, setHasChanges] = useState(false)
   const [originalAgentData, setOriginalAgentData] = useState<any>(null)
   const [statusFilter, setStatusFilter] = useState<"all" | "pass" | "fail">("all")
-  const [withoutAgentFilter, setWithoutAgentFilter] = useState<"all" | "passed" | "blocked" | "delayed" | "error">("all")
+  const [withoutAgentFilter, setWithoutAgentFilter] = useState<"all" | "pass" | "blocked" | "delayed" | "error">("all")
   const [withAgentFilter, setWithAgentFilter] = useState<"all" | "auto_resolved" | "suggested_resolution" | "observed" | "escalated_to_human">("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage] = useState(50)
@@ -2070,7 +2070,7 @@ status: ${isActive ? "active" : "inactive"}`
                           </SelectTrigger>
                           <SelectContent className="z-[10001]">
                             <SelectItem value="all">All Outcomes</SelectItem>
-                            <SelectItem value="passed">Passed</SelectItem>
+                            <SelectItem value="pass">Passed</SelectItem>
                             <SelectItem value="blocked">Blocked</SelectItem>
                             <SelectItem value="delayed">Delayed</SelectItem>
                             <SelectItem value="error">Error</SelectItem>
@@ -2179,12 +2179,12 @@ status: ${isActive ? "active" : "inactive"}`
                                 <td className="p-2">
                                   <div className="flex flex-col gap-1">
                                     <span className={`text-xs px-1.5 py-0.5 rounded inline-block ${
-                                      comparison.withoutAgent.outcome === "passed" ? "bg-green-100 text-green-700" : 
+                                      comparison.withoutAgent.outcome === "pass" ? "bg-green-100 text-green-700" : 
                                       comparison.withoutAgent.outcome === "blocked" ? "bg-red-100 text-red-700" :
                                       comparison.withoutAgent.outcome === "delayed" ? "bg-yellow-100 text-yellow-700" :
                                       "bg-gray-100 text-gray-700"
                                     }`}>
-                                      {comparison.withoutAgent.outcome}
+                                      {comparison.withoutAgent.outcome === "pass" ? "passed" : comparison.withoutAgent.outcome}
                                     </span>
                                     <span className="text-xs text-muted-foreground">{comparison.withoutAgent.processingTimeMinutes.toFixed(0)}min • {comparison.withoutAgent.manualTouches} touch{comparison.withoutAgent.manualTouches !== 1 ? 'es' : ''}</span>
                                   </div>
@@ -2192,7 +2192,7 @@ status: ${isActive ? "active" : "inactive"}`
                                 <td className="p-2">
                                   <div className="flex flex-col gap-1">
                                     <span className={`text-xs px-1.5 py-0.5 rounded inline-block ${
-                                      comparison.withAgent.outcome === "passed" ? "bg-purple-100 text-purple-700" : 
+                                      comparison.withAgent.outcome === "pass" ? "bg-purple-100 text-purple-700" : 
                                       comparison.withAgent.outcome === "escalated" ? "bg-yellow-100 text-yellow-700" :
                                       "bg-gray-100 text-gray-700"
                                     }`}>
