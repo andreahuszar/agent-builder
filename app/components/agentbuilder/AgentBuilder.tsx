@@ -123,8 +123,7 @@ export function AgentBuilder({
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage] = useState(50)
   
-  // New state for scenario configuration and comparison
-  const [scenarioMix, setScenarioMix] = useState<number>(40) // 40% issues by default
+  // New state for comparison results
   const [comparisonMetrics, setComparisonMetrics] = useState<ComparisonMetrics | null>(null)
   const [invoiceComparisons, setInvoiceComparisons] = useState<InvoiceComparison[]>([])
   const [baselineStats, setBaselineStats] = useState<BaselineStats | null>(null)
@@ -1157,7 +1156,7 @@ Items: Monthly Hosting, Cloud Storage`,
     // Configure scenario generation
     const scenarioConfig: ScenarioConfig = {
       scenarioTypes: ["all"],
-      issueMix: scenarioMix,
+      issueMix: 40, // Fixed 40% issue rate for realistic testing
       stage: stage as Stage,
       lane: lane,
     }
@@ -1299,7 +1298,6 @@ Items: Monthly Hosting, Cloud Storage`,
     setBaselineStats(null)
     setAgentStats(null)
     setSelectedTimePeriod("7days")
-    setScenarioMix(40)
     setStatusFilter("all")
     setCurrentPage(1)
     setIsTesting(false)
@@ -1863,38 +1861,6 @@ status: ${isActive ? "active" : "inactive"}`
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Skills:</span>
                         <span className="font-medium">{activeSkills.length} selected</span>
-                      </div>
-                    </div>
-                  </Card>
-
-                  <Card className="p-4">
-                    <div className="space-y-3">
-                      <div>
-                        <Label className="text-sm font-semibold">Scenario Mix</Label>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          Adjust the percentage of invoices with issues to test agent effectiveness
-                        </p>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm text-muted-foreground">
-                            {scenarioMix}% with issues, {100 - scenarioMix}% clean
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min="0"
-                          max="100"
-                          step="5"
-                          value={scenarioMix}
-                          onChange={(e) => setScenarioMix(parseInt(e.target.value))}
-                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-900"
-                        />
-                        <div className="flex justify-between text-xs text-muted-foreground">
-                          <span>All Clean</span>
-                          <span>Balanced</span>
-                          <span>All Issues</span>
-                        </div>
                       </div>
                     </div>
                   </Card>
