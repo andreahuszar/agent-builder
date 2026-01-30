@@ -1792,9 +1792,9 @@ status: ${isActive ? "active" : "inactive"}`
           <Card className="w-full h-full overflow-hidden flex flex-col border-0 rounded-none shadow-none">
             <div className="p-6 border-b border-border flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-semibold">Test Agent on historic ERP Data</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Simulate running {agentName || "this agent"} against historical invoice data
+                <h3 className="text-xl font-semibold">Test Agent: {agentName || "Untitled Agent"}</h3>
+                <p className="text-base text-gray-950 mt-2">
+                  Simulate against historical invoice data to measure agent impact
                 </p>
               </div>
               <Button variant="ghost" size="icon" onClick={handleCloseTestModal}>
