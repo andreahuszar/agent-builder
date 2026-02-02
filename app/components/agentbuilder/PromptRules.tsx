@@ -14,27 +14,90 @@ interface Rule {
   type: "threshold" | "validation" | "escalation" | "general"
 }
 
+function isComplexAgent(prompt: string): boolean {
+  const lower = prompt.toLowerCase()
+  
+  // Agents that are too complex for rules view
+  const complexityIndicators = [
+    // Too many detailed steps
+    (prompt.match(/\d+\./g) || []).length > 10,
+    // Extensive field listings
+    lower.includes('fields to extract') && lower.includes('line items'),
+    // Complex data transformations
+    (lower.includes('convert') || lower.includes('transform')) && 
+    (lower.includes('calculate') || lower.includes('sum') || lower.includes('normalize')),
+    // ERP/technical integration steps
+    (lower.includes('erp') || lower.includes('api') || lower.includes('post')) && 
+    (lower.includes('journal entry') || lower.includes('document number')),
+    // Payment/banking complexity
+    lower.includes('payment') && lower.includes('bank') && lower.includes('ach'),
+  ]
+  
+  return complexityIndicators.filter(Boolean).length >= 2
+}
+
 function parsePromptToRules(prompt: string, mode?: string): Rule[] {
   const rules: Rule[] = []
   const lines = prompt.split('\n')
+  
+  // Check for AGENT INSTRUCTIONS section (simpler rules)
+  const hasInstructionsSection = prompt.includes('AGENT INSTRUCTIONS')
   
   lines.forEach((line, index) => {
     const trimmed = line.trim()
     const lower = trimmed.toLowerCase()
     
+    // Skip empty lines and section headers
+    if (!trimmed || trimmed.endsWith(':') || trimmed.startsWith('ROLE:')) {
+      return
+    }
+    
+    // Look for numbered instructions (1., 2., etc) in AGENT INSTRUCTIONS section
+    if (hasInstructionsSection && trimmed.match(/^\d+\./)) {
+      const instruction = trimmed.replace(/^\d+\.\s*/, '').trim()
+      const instrLower = instruction.toLowerCase()
+      
+      // Parse instruction into condition and action
+      if (instrLower.startsWith('if ')) {
+        const parts = instruction.split(/,\s*(?:then\s+)?/i)
+        if (parts.length >= 2) {
+          const condition = parts[0].replace(/^if /i, '').trim()
+          const action = parts.slice(1).join(', ').trim()
+          
+          let type: Rule['type'] = "general"
+          if (instrLower.includes('above') || instrLower.includes('exceeds') || instrLower.includes('threshold')) {
+            type = "threshold"
+          } else if (instrLower.includes('route') || instrLower.includes('approval')) {
+            type = "escalation"
+          } else if (instrLower.includes('increase') || instrLower.includes('adjust')) {
+            type = "validation"
+          }
+          
+          rules.push({
+            id: `rule-${index}`,
+            condition,
+            action,
+            type
+          })
+          return
+        }
+      }
+    }
+    
     // Look for IF-THEN patterns
-    if (lower.includes('if ') && (lower.includes('then ') || lower.includes(':'))) {
-      const parts = trimmed.split(/then |:/i)
-      if (parts.length >= 2) {
-        const condition = parts[0].replace(/^if /i, '').trim()
-        const action = parts.slice(1).join(' ').trim()
+    if (lower.includes('if ') && (lower.includes('then ') || lower.includes(', '))) {
+      // Handle "If X, Y" pattern (common in instructions)
+      const ifMatch = trimmed.match(/if\s+(.+?),\s*(.+)/i)
+      if (ifMatch && ifMatch[1] && ifMatch[2]) {
+        const condition = ifMatch[1].trim()
+        const action = ifMatch[2].trim()
         
         let type: Rule['type'] = "general"
-        if (lower.includes('threshold') || lower.includes('confidence') || lower.includes('%') || lower.includes('score')) {
+        if (lower.includes('above') || lower.includes('exceeds') || lower.includes('$')) {
           type = "threshold"
-        } else if (lower.includes('escalate') || lower.includes('flag') || lower.includes('review')) {
+        } else if (lower.includes('route') || lower.includes('flag') || lower.includes('raise') || lower.includes('escalate')) {
           type = "escalation"
-        } else if (lower.includes('validate') || lower.includes('verify') || lower.includes('check')) {
+        } else if (lower.includes('increase') || lower.includes('adjust') || lower.includes('apply')) {
           type = "validation"
         }
         
@@ -44,53 +107,46 @@ function parsePromptToRules(prompt: string, mode?: string): Rule[] {
           action,
           type
         })
+        return
       }
-    }
-    
-    // Look for WHEN patterns
-    else if (lower.includes('when ') && !lower.startsWith('when ')) {
-      const parts = trimmed.split(/when /i)
+      
+      // Handle "If X then Y" pattern
+      const parts = trimmed.split(/\s+then\s+/i)
       if (parts.length >= 2) {
-        const beforeWhen = parts[0].trim()
-        const condition = parts[1].trim()
+        const condition = parts[0].replace(/^if /i, '').trim()
+        const action = parts.slice(1).join(' ').trim()
         
         let type: Rule['type'] = "general"
-        if (lower.includes('escalate') || lower.includes('flag')) {
+        if (lower.includes('confidence') || lower.includes('%') || lower.includes('threshold')) {
+          type = "threshold"
+        } else if (lower.includes('escalate') || lower.includes('flag') || lower.includes('review')) {
           type = "escalation"
+        } else if (lower.includes('validate') || lower.includes('verify')) {
+          type = "validation"
         }
         
         rules.push({
           id: `rule-${index}`,
           condition,
-          action: beforeWhen,
+          action,
           type
         })
+        return
       }
     }
     
-    // Look for threshold patterns like "< 85%" or "> threshold"
-    else if ((lower.includes('<') || lower.includes('>') || lower.includes('=')) && 
-             (lower.includes('%') || lower.includes('threshold') || lower.includes('confidence'))) {
-      const parts = trimmed.split(/[:,]/i)
+    // Look for threshold patterns with → symbol
+    if (trimmed.includes('→') || trimmed.includes('->')) {
+      const parts = trimmed.split(/→|->/)
       if (parts.length >= 2) {
         rules.push({
           id: `rule-${index}`,
           condition: parts[0].trim(),
           action: parts[1].trim(),
-          type: "threshold"
+          type: lower.includes('flag') || lower.includes('review') ? "escalation" : "threshold"
         })
+        return
       }
-    }
-    
-    // Look for "must" or "should" patterns
-    else if ((lower.includes('must ') || lower.includes('should ')) && trimmed.length > 20) {
-      const action = trimmed.replace(/^[-\d.]\s*/, '').trim()
-      rules.push({
-        id: `rule-${index}`,
-        condition: "Always",
-        action,
-        type: "validation"
-      })
     }
   })
   
@@ -115,7 +171,7 @@ function parsePromptToRules(prompt: string, mode?: string): Rule[] {
     } else if (mode === "auto-apply") {
       defaultRule = {
         id: "default-auto",
-        condition: "Issue can be auto-fixed",
+        condition: "High confidence resolution available",
         action: "Apply fix automatically",
         type: "general"
       }
@@ -180,6 +236,22 @@ export function PromptRules({ prompt, mode }: PromptRulesProps) {
     return (
       <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
         <p>No prompt defined yet</p>
+      </div>
+    )
+  }
+  
+  // Check if agent is too complex for rules view
+  if (isComplexAgent(prompt)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full text-center p-6">
+        <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mb-4">
+          <AlertTriangle className="w-8 h-8 text-muted-foreground" />
+        </div>
+        <p className="text-sm font-medium text-gray-950 mb-2">Too complex for rules view</p>
+        <p className="text-xs text-muted-foreground max-w-xs">
+          This agent uses sophisticated processing logic with multiple data transformations. 
+          View the <strong>Text</strong> or <strong>Flowchart</strong> for better understanding.
+        </p>
       </div>
     )
   }

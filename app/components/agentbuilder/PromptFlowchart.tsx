@@ -35,33 +35,54 @@ function parsePromptToFlowchart(prompt: string, stage?: string, mode?: string): 
   let outputs: string[] = []
   let decisions: string[] = []
   
+  // Check for simplified AGENT INSTRUCTIONS section
+  const hasInstructionsSection = prompt.includes('AGENT INSTRUCTIONS')
+  
   lines.forEach(line => {
     const trimmed = line.trim()
+    const lower = trimmed.toLowerCase()
+    
     if (trimmed.startsWith('INPUTS:')) {
       currentSection = "inputs"
     } else if (trimmed.startsWith('STEPS:') || trimmed.startsWith('PROCESS:') || trimmed.startsWith('LOGIC:')) {
       currentSection = "steps"
-    } else if (trimmed.startsWith('OUTPUTS:') || trimmed.startsWith('RETURNS:')) {
+    } else if (trimmed.startsWith('AGENT INSTRUCTIONS:')) {
+      currentSection = "instructions"
+    } else if (trimmed.startsWith('OUTPUTS:') || trimmed.startsWith('OUTPUT:') || trimmed.startsWith('RETURNS:')) {
       currentSection = "outputs"
     } else if (trimmed.startsWith('-') || trimmed.match(/^\d+\./)) {
       const content = trimmed.replace(/^[-\d.]\s*/, '').trim()
       if (content) {
-        if (currentSection === "inputs") inputs.push(content)
-        else if (currentSection === "steps") {
-          steps.push(content)
-          // Extract decision points
-          if (content.toLowerCase().includes('if ') || 
-              content.toLowerCase().includes('when ') ||
-              content.toLowerCase().includes('check ') ||
-              content.toLowerCase().includes('validate ') ||
-              content.toLowerCase().includes('escalate') ||
-              content.toLowerCase().includes('flag') ||
-              content.toLowerCase().includes('review') ||
-              content.toLowerCase().includes('confidence')) {
+        if (currentSection === "inputs") {
+          inputs.push(content)
+        } else if (currentSection === "steps" || currentSection === "instructions") {
+          // For instructions, prioritize them as key steps
+          if (currentSection === "instructions") {
+            steps.unshift(content) // Put instructions at front
+          } else {
+            steps.push(content)
+          }
+          
+          // Extract decision points - look for key decision indicators
+          if (lower.includes('if ') || 
+              lower.includes('when ') ||
+              lower.includes('above ') ||
+              lower.includes('exceeds ') ||
+              lower.includes('compare ') ||
+              lower.includes('check ') ||
+              lower.includes('validate ') ||
+              lower.includes('escalate') ||
+              lower.includes('route') ||
+              lower.includes('flag') ||
+              lower.includes('raise') ||
+              lower.includes('review') ||
+              lower.includes('confidence') ||
+              lower.includes('threshold')) {
             decisions.push(content)
           }
+        } else if (currentSection === "outputs") {
+          outputs.push(content)
         }
-        else if (currentSection === "outputs") outputs.push(content)
       }
     }
   })
@@ -93,20 +114,58 @@ function parsePromptToFlowchart(prompt: string, stage?: string, mode?: string): 
     })
   }
   
-  // Add decision nodes from extracted decisions
-  decisions.forEach((decision, i) => {
+  // Add decision nodes from extracted decisions (max 3 key decisions)
+  const keyDecisions = decisions.slice(0, 3)
+  keyDecisions.forEach((decision, i) => {
     let label = "Check Condition"
-    let desc = decision.substring(0, 50) + (decision.length > 50 ? "..." : "")
+    let desc = decision.substring(0, 45) + (decision.length > 45 ? "..." : "")
+    const lower = decision.toLowerCase()
     
-    if (decision.toLowerCase().includes('confidence') || decision.toLowerCase().includes('threshold')) {
-      label = "Check Quality"
-      desc = "Confidence threshold"
-    } else if (decision.toLowerCase().includes('escalate') || decision.toLowerCase().includes('flag')) {
+    // Extract key decision logic for better labeling
+    if (lower.includes('above') || lower.includes('exceeds') || lower.includes('> ')) {
+      label = "Above Threshold?"
+      // Try to extract the actual threshold
+      const match = decision.match(/above\s+\$?([\d,]+k?)|exceeds\s+\$?([\d,]+k?)|>\s+\$?([\d,]+k?)/i)
+      if (match) {
+        desc = `Value ${match[0]}`
+      }
+    } else if (lower.includes('confidence') || lower.includes('< ') || lower.includes('quality')) {
+      label = "Quality Check"
+      const match = decision.match(/<\s*(\d+)%|confidence\s*<\s*(\d+)/i)
+      if (match) {
+        desc = `< ${match[1] || match[2]}%`
+      } else {
+        desc = "Confidence threshold"
+      }
+    } else if (lower.includes('route') || lower.includes('approval')) {
+      label = "Route to?"
+      const match = decision.match(/route.*?to\s+([^(,]+)/i)
+      if (match) {
+        desc = match[1].trim().substring(0, 40)
+      } else {
+        desc = "Determine approver"
+      }
+    } else if (lower.includes('escalate') || lower.includes('flag') || lower.includes('raise')) {
       label = "Escalate?"
-      desc = "Review required"
-    } else if (decision.toLowerCase().includes('validate') || decision.toLowerCase().includes('verify')) {
+      if (lower.includes('review')) {
+        desc = "Flag for review"
+      } else {
+        desc = "Requires attention"
+      }
+    } else if (lower.includes('non-po') || lower.includes('non po')) {
+      label = "Has PO?"
+      desc = "Check PO status"
+    } else if (lower.includes('perishable') || lower.includes('relates to')) {
+      label = "Type Check"
+      const match = decision.match(/relates to\s+([^,]+)/i)
+      if (match) {
+        desc = `Is ${match[1].trim()}?`
+      } else {
+        desc = "Category check"
+      }
+    } else if (lower.includes('validate') || lower.includes('verify') || lower.includes('check ')) {
       label = "Validate"
-      desc = "Check accuracy"
+      desc = "Data validation"
     }
     
     nodes.push({
