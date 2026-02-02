@@ -398,7 +398,7 @@ export function PromptFlowchart({ prompt, stage, mode }: PromptFlowchartProps) {
         {/* Detail Panel - Positioned aligned with selected node */}
         {selectedNode && selectedNode.details && (
           <div 
-            className="absolute right-4 w-80 bg-white border border-gray-200 rounded-lg p-4 shadow-lg"
+            className="absolute right-4 w-80 bg-white border border-gray-200 rounded-lg p-4 shadow-lg z-50"
             style={{ top: `${detailPanelTop}px` }}
           >
             <div className="flex items-center justify-between mb-3">
