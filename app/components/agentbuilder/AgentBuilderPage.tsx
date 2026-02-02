@@ -922,7 +922,7 @@ ERROR HANDLING:
 
             {/* Right: Prompt and Skills */}
             {mode === "build" && (
-              <div className="w-[480px] bg-card flex flex-col overflow-hidden">
+              <div className="w-[580px] bg-card flex flex-col overflow-hidden">
                 <div className="flex-1 overflow-y-auto p-4 space-y-4">
                   <h2 className="text-lg font-bold text-foreground">Agent Summary</h2>
                   {/* Agent Statistics - show for agents with metrics */}
