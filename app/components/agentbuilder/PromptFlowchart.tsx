@@ -193,34 +193,53 @@ function FlowNodeComponent({ node }: { node: FlowNode }) {
     }
   }
   
-  const getShape = () => {
-    if (node.type === "decision") {
-      return "rotate-45"
-    }
-    if (node.type === "start" || node.type === "end") {
-      return "rounded-full"
-    }
-    return "rounded-lg"
+  // Decision nodes get diamond shape using clip-path
+  if (node.type === "decision") {
+    return (
+      <div className="flex flex-col items-center">
+        <div className="relative w-[160px] h-[160px] flex items-center justify-center">
+          <div 
+            className={`
+              absolute inset-0
+              ${getNodeStyle()}
+              border-2 shadow-sm
+            `}
+            style={{
+              clipPath: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)'
+            }}
+          />
+          <div className="relative z-10 text-center px-6">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              {getIcon()}
+              <p className="text-xs font-semibold">{node.label}</p>
+            </div>
+            {node.description && (
+              <p className="text-xs">{node.description}</p>
+            )}
+          </div>
+        </div>
+      </div>
+    )
   }
+  
+  // All other nodes use standard shapes
+  const shapeClass = (node.type === "start" || node.type === "end") ? "rounded-full" : "rounded-lg"
   
   return (
     <div className="flex flex-col items-center">
       <div
         className={`
-          ${getShape()}
+          ${shapeClass}
           ${getNodeStyle()}
           border-2 p-3 min-w-[140px] max-w-[200px] text-center shadow-sm
-          ${node.type === "decision" ? "p-6" : ""}
         `}
       >
-        <div className={`flex items-center justify-center gap-2 ${node.type === "decision" ? "-rotate-45" : ""}`}>
+        <div className="flex items-center justify-center gap-2">
           {getIcon()}
           <p className="text-xs font-semibold">{node.label}</p>
         </div>
         {node.description && (
-          <p className={`text-xs mt-1 ${node.type === "decision" ? "-rotate-45" : ""}`}>
-            {node.description}
-          </p>
+          <p className="text-xs mt-1">{node.description}</p>
         )}
       </div>
     </div>
