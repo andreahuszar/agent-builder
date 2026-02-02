@@ -2192,8 +2192,9 @@ status: ${isActive ? "active" : "inactive"}`
                                 <td className="p-2">
                                   <div className="flex flex-col gap-1">
                                     <span className={`text-xs px-1.5 py-0.5 rounded inline-block ${
-                                      comparison.withAgent.outcome === "pass" ? "bg-purple-100 text-purple-700" : 
-                                      comparison.withAgent.outcome === "escalated" ? "bg-yellow-100 text-yellow-700" :
+                                      comparison.withAgent.agentAction === "auto_resolved" ? "bg-purple-100 text-purple-700" : 
+                                      comparison.withAgent.agentAction === "suggested_resolution" ? "bg-yellow-100 text-yellow-700" :
+                                      comparison.withAgent.agentAction === "observed" ? "bg-blue-100 text-blue-700" :
                                       "bg-gray-100 text-gray-700"
                                     }`}>
                                       {comparison.withAgent.agentAction === "auto_resolved" ? "✓ Auto-resolved (no human)" : 
