@@ -2454,9 +2454,7 @@ status: ${isActive ? "active" : "inactive"}`
         </div>
       )}
 
-      <div className="max-w-4xl mx-auto space-y-6">
-        {" "}
-        {/* CHANGED max-w-6xl to max-w-4xl */}
+      <div className="max-w-5xl mx-auto space-y-6">
         {/* Header */}
         <div className={isPreview ? "space-y-4" : "flex items-center justify-between mb-6"}>
           <div>
