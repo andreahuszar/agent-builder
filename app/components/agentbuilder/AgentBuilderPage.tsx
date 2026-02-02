@@ -6,6 +6,7 @@ import { Button } from "@/app/components/ui/button"
 import { AgentBuilder } from "./AgentBuilder"
 import { WorkflowVisualizer } from "./WorkflowVisualizer"
 import { DocumentsLibrary } from "./DocumentsLibrary"
+import { PromptFlowchart } from "./PromptFlowchart"
 import Navigation from "@/app/components/Navigation"
 import UserMenu from "@/app/components/UserMenu"
 import { Plus, Pencil, ChevronDown, ChevronRight, ChevronLeft, Power, FileText, PanelLeftClose, PanelLeftOpen } from "lucide-react"
@@ -441,6 +442,7 @@ ERROR HANDLING:
   const [currentPrompt, setCurrentPrompt] = useState<string>("")
   const [currentSkills, setCurrentSkills] = useState<string[]>([])
   const [showAdvanced, setShowAdvanced] = useState(false)
+  const [promptView, setPromptView] = useState<"text" | "flowchart">("text")
   const [advancedYaml, setAdvancedYaml] = useState<string>("")
   
   const AVAILABLE_SKILLS = [
@@ -972,11 +974,35 @@ ERROR HANDLING:
                   <Card className="p-6 flex flex-col" style={{ height: "500px" }}>
                     <div className="flex items-center justify-between mb-3">
                       <Label htmlFor="system-prompt" className="text-sm font-semibold">System Prompt</Label>
-                      {!isPreviewMode && (
-                        <Button type="button" variant="ghost" size="sm" onClick={() => setShowAdvanced(!showAdvanced)}>
-                          {showAdvanced ? "Basic view" : "Advanced view"}
-                        </Button>
-                      )}
+                      <div className="flex gap-2">
+                        <div className="flex rounded-md border border-border overflow-hidden">
+                          <button
+                            onClick={() => setPromptView("text")}
+                            className={`px-3 py-1 text-xs font-medium transition-colors ${
+                              promptView === "text"
+                                ? "bg-purple-900 text-white"
+                                : "bg-background text-muted-foreground hover:bg-muted"
+                            }`}
+                          >
+                            Text
+                          </button>
+                          <button
+                            onClick={() => setPromptView("flowchart")}
+                            className={`px-3 py-1 text-xs font-medium transition-colors ${
+                              promptView === "flowchart"
+                                ? "bg-purple-900 text-white"
+                                : "bg-background text-muted-foreground hover:bg-muted"
+                            }`}
+                          >
+                            Flowchart
+                          </button>
+                        </div>
+                        {!isPreviewMode && promptView === "text" && (
+                          <Button type="button" variant="ghost" size="sm" onClick={() => setShowAdvanced(!showAdvanced)}>
+                            {showAdvanced ? "Basic" : "Advanced"}
+                          </Button>
+                        )}
+                      </div>
                     </div>
 
                     {/* Referenced Documents Chips */}
@@ -1007,7 +1033,13 @@ ERROR HANDLING:
                       </div>
                     )}
 
-                    {!showAdvanced ? (
+                    {promptView === "flowchart" ? (
+                      <PromptFlowchart 
+                        prompt={currentPrompt} 
+                        stage={editingAgent?.stage}
+                        mode={editingAgent?.mode}
+                      />
+                    ) : !showAdvanced ? (
                       <div className="space-y-2 flex-1 flex flex-col min-h-0">
                         <Textarea
                           id="system-prompt"
