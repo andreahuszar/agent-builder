@@ -10,7 +10,7 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { Card } from "@/app/components/ui/card"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
-import { Save, Play, Edit, Power, X, Loader2, RefreshCw, Trash2, ChevronRight, TrendingUp, TrendingDown } from "lucide-react" // Added Trash2 icon and ChevronRight icon
+import { Save, Play, Edit, Power, X, Loader2, RefreshCw, Trash2, ChevronRight, TrendingUp, TrendingDown, AlertTriangle } from "lucide-react" // Added Trash2 icon and ChevronRight icon
 import { ChatInterface } from "./ChatInterface"
 
 import type { Agent } from "./AgentBuilderPage"
@@ -130,6 +130,10 @@ export function AgentBuilder({
   const [invoiceComparisons, setInvoiceComparisons] = useState<InvoiceComparison[]>([])
   const [baselineStats, setBaselineStats] = useState<BaselineStats | null>(null)
   const [agentStats, setAgentStats] = useState<AgentStats | null>(null)
+  
+  // State for invoice detail modal
+  const [selectedComparison, setSelectedComparison] = useState<InvoiceComparison | null>(null)
+  const [showInvoiceDetail, setShowInvoiceDetail] = useState(false)
 
   const [selectedInvoice, setSelectedInvoice] = useState<any>(null)
   const [showDecisionLog, setShowDecisionLog] = useState(false)
@@ -2167,7 +2171,11 @@ status: ${isActive ? "active" : "inactive"}`
                             return paginatedResults.map((comparison, idx) => (
                               <tr
                                 key={idx}
-                                className="border-t hover:bg-muted/50 transition-colors"
+                                className="border-t hover:bg-muted/50 transition-colors cursor-pointer"
+                                onClick={() => {
+                                  setSelectedComparison(comparison)
+                                  setShowInvoiceDetail(true)
+                                }}
                               >
                                 <td className="p-2 font-mono">
                                   <div className="flex items-center gap-1">
@@ -2341,6 +2349,174 @@ status: ${isActive ? "active" : "inactive"}`
                   </div>
                 </div>
               )}
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Invoice Detail Modal */}
+      {showInvoiceDetail && selectedComparison && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[10002] p-4">
+          <Card className="w-full max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+            <div className="p-4 border-b flex items-center justify-between bg-muted/30">
+              <div>
+                <h3 className="font-semibold text-lg">Invoice Processing Details</h3>
+                <p className="text-sm text-gray-950 mt-1">
+                  {selectedComparison.invoiceId} • {selectedComparison.vendor} • ${selectedComparison.amount.toFixed(2)}
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={() => setShowInvoiceDetail(false)}>
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6 space-y-6">
+              {/* Issue Banner */}
+              {selectedComparison.hasIssue && selectedComparison.issueDescription && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <h4 className="font-semibold text-sm text-amber-900">Issue Detected</h4>
+                      <p className="text-sm text-amber-800 mt-1">{selectedComparison.issueDescription}</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Side-by-side comparison */}
+              <div className="grid grid-cols-2 gap-6">
+                {/* Without Agent */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 border-b pb-2">
+                    <h4 className="font-semibold text-gray-950">Without Agent</h4>
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      selectedComparison.withoutAgent.outcome === "pass" ? "bg-green-100 text-green-700" : 
+                      selectedComparison.withoutAgent.outcome === "blocked" ? "bg-red-100 text-red-700" :
+                      selectedComparison.withoutAgent.outcome === "delayed" ? "bg-yellow-100 text-yellow-700" :
+                      "bg-gray-100 text-gray-700"
+                    }`}>
+                      {selectedComparison.withoutAgent.outcome === "pass" ? "passed" : selectedComparison.withoutAgent.outcome}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Processing Time</label>
+                      <p className="text-gray-950">{selectedComparison.withoutAgent.processingTimeMinutes.toFixed(1)} minutes</p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Manual Touches</label>
+                      <p className="text-gray-950">{selectedComparison.withoutAgent.manualTouches} touch{selectedComparison.withoutAgent.manualTouches !== 1 ? 'es' : ''}</p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Required Manual Review</label>
+                      <p className="text-gray-950">{selectedComparison.withoutAgent.requiresManualReview ? "Yes" : "No"}</p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Status</label>
+                      <p className="text-gray-950">{selectedComparison.withoutAgent.status}</p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground block mb-1">Details</label>
+                      <p className="text-gray-700 text-xs bg-muted/30 p-3 rounded border">{selectedComparison.withoutAgent.details}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* With Agent */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 border-b pb-2">
+                    <h4 className="font-semibold text-gray-950">With Agent</h4>
+                    <span className={`text-xs px-2 py-1 rounded ${
+                      selectedComparison.withAgent.agentAction === "auto_resolved" ? "bg-purple-100 text-purple-700" : 
+                      selectedComparison.withAgent.agentAction === "suggested_resolution" ? "bg-yellow-100 text-yellow-700" :
+                      selectedComparison.withAgent.agentAction === "observed" ? "bg-blue-100 text-blue-700" :
+                      "bg-gray-100 text-gray-700"
+                    }`}>
+                      {selectedComparison.withAgent.agentAction === "auto_resolved" ? "Auto-resolved" : 
+                       selectedComparison.withAgent.agentAction === "suggested_resolution" ? "Suggested" : 
+                       selectedComparison.withAgent.agentAction === "observed" ? "Observed" : 
+                       "Escalated"}
+                    </span>
+                  </div>
+
+                  <div className="space-y-3 text-sm">
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Processing Time</label>
+                      <p className="text-gray-950">
+                        {selectedComparison.withAgent.processingTimeMinutes.toFixed(1)} minutes
+                        {selectedComparison.improvement.timeReductionPercentage > 0 && (
+                          <span className="text-green-600 text-xs ml-2">
+                            ↓ {selectedComparison.improvement.timeReductionPercentage.toFixed(0)}%
+                          </span>
+                        )}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Manual Touches</label>
+                      <p className="text-gray-950">
+                        {selectedComparison.withAgent.manualTouches} touch{selectedComparison.withAgent.manualTouches !== 1 ? 'es' : ''}
+                        {selectedComparison.improvement.manualTouchReduction > 0 && (
+                          <span className="text-green-600 text-xs ml-2">
+                            ↓ {selectedComparison.improvement.manualTouchReduction}
+                          </span>
+                        )}
+                      </p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Agent Confidence</label>
+                      <p className="text-gray-950">{(selectedComparison.withAgent.agentConfidence * 100).toFixed(0)}%</p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Required Manual Review</label>
+                      <p className="text-gray-950">{selectedComparison.withAgent.requiresManualReview ? "Yes" : "No"}</p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground">Status</label>
+                      <p className="text-gray-950">{selectedComparison.withAgent.status}</p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground block mb-1">Agent Reasoning</label>
+                      <p className="text-gray-700 text-xs bg-purple-50 border border-purple-200 p-3 rounded">{selectedComparison.withAgent.agentReasoning}</p>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-medium text-muted-foreground block mb-1">Details</label>
+                      <p className="text-gray-700 text-xs bg-muted/30 p-3 rounded border">{selectedComparison.withAgent.details}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Improvements */}
+              {selectedComparison.improvement.highlights.length > 0 && (
+                <div className="border-t pt-4">
+                  <h4 className="font-semibold text-sm text-gray-950 mb-3">Key Improvements</h4>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedComparison.improvement.highlights.map((highlight, idx) => (
+                      <span key={idx} className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded">
+                        ✓ {highlight}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="p-4 border-t bg-muted/30 flex justify-end">
+              <Button variant="outline" onClick={() => setShowInvoiceDetail(false)}>
+                Close
+              </Button>
             </div>
           </Card>
         </div>
