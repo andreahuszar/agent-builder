@@ -17,13 +17,14 @@ interface FlowNode {
 
 function parsePromptToFlowchart(prompt: string, stage?: string, mode?: string): FlowNode[] {
   const nodes: FlowNode[] = []
+  const lowerPrompt = prompt.toLowerCase()
   
   // Start node
   nodes.push({
     id: "start",
     type: "start",
-    label: "Invoice Received",
-    description: stage ? `Stage: ${stage}` : undefined
+    label: "Start",
+    description: stage ? `${stage.replace(/-/g, ' ')}` : undefined
   })
   
   // Parse prompt sections
@@ -32,6 +33,7 @@ function parsePromptToFlowchart(prompt: string, stage?: string, mode?: string): 
   let inputs: string[] = []
   let steps: string[] = []
   let outputs: string[] = []
+  let decisions: string[] = []
   
   lines.forEach(line => {
     const trimmed = line.trim()
@@ -45,101 +47,115 @@ function parsePromptToFlowchart(prompt: string, stage?: string, mode?: string): 
       const content = trimmed.replace(/^[-\d.]\s*/, '').trim()
       if (content) {
         if (currentSection === "inputs") inputs.push(content)
-        else if (currentSection === "steps") steps.push(content)
+        else if (currentSection === "steps") {
+          steps.push(content)
+          // Extract decision points
+          if (content.toLowerCase().includes('if ') || 
+              content.toLowerCase().includes('when ') ||
+              content.toLowerCase().includes('check ') ||
+              content.toLowerCase().includes('validate ') ||
+              content.toLowerCase().includes('escalate') ||
+              content.toLowerCase().includes('flag') ||
+              content.toLowerCase().includes('review') ||
+              content.toLowerCase().includes('confidence')) {
+            decisions.push(content)
+          }
+        }
         else if (currentSection === "outputs") outputs.push(content)
       }
     }
   })
   
-  // Add input nodes
+  // Single combined input node
   if (inputs.length > 0) {
-    inputs.slice(0, 3).forEach((input, i) => {
-      nodes.push({
-        id: `input-${i}`,
-        type: "input",
-        label: "Input",
-        description: input.substring(0, 60) + (input.length > 60 ? "..." : "")
-      })
+    nodes.push({
+      id: "input",
+      type: "input",
+      label: "Receive Inputs",
+      description: `${inputs.length} input${inputs.length !== 1 ? 's' : ''}`
     })
-    if (inputs.length > 3) {
-      nodes.push({
-        id: "input-more",
-        type: "input",
-        label: "Input",
-        description: `+${inputs.length - 3} more inputs...`
-      })
-    }
   }
   
-  // Add decision node based on mode
-  if (mode) {
+  // Main process node (simplified from all steps)
+  const keySteps = steps.filter(s => 
+    !s.toLowerCase().includes('if ') && 
+    !s.toLowerCase().includes('escalate') && 
+    !s.toLowerCase().includes('flag') &&
+    !s.toLowerCase().includes('confidence')
+  )
+  
+  if (keySteps.length > 0) {
+    nodes.push({
+      id: "process",
+      type: "process",
+      label: "Process Data",
+      description: `Execute ${keySteps.length} step${keySteps.length !== 1 ? 's' : ''}`
+    })
+  }
+  
+  // Add decision nodes from extracted decisions
+  decisions.forEach((decision, i) => {
+    let label = "Check Condition"
+    let desc = decision.substring(0, 50) + (decision.length > 50 ? "..." : "")
+    
+    if (decision.toLowerCase().includes('confidence') || decision.toLowerCase().includes('threshold')) {
+      label = "Check Quality"
+      desc = "Confidence threshold"
+    } else if (decision.toLowerCase().includes('escalate') || decision.toLowerCase().includes('flag')) {
+      label = "Escalate?"
+      desc = "Review required"
+    } else if (decision.toLowerCase().includes('validate') || decision.toLowerCase().includes('verify')) {
+      label = "Validate"
+      desc = "Check accuracy"
+    }
+    
+    nodes.push({
+      id: `decision-${i}`,
+      type: "decision",
+      label,
+      description: desc
+    })
+  })
+  
+  // If no explicit decisions found, add mode-based decision
+  if (decisions.length === 0 && mode) {
     let decisionLabel = "Evaluate"
     let decisionDesc = ""
     
     if (mode === "observe") {
-      decisionLabel = "Observe & Flag"
-      decisionDesc = "Monitor for issues"
+      decisionLabel = "Issue Found?"
+      decisionDesc = "Flag for review"
     } else if (mode === "suggest") {
-      decisionLabel = "Analyze & Suggest"
-      decisionDesc = "Propose resolution"
+      decisionLabel = "Can Resolve?"
+      decisionDesc = "Suggest solution"
     } else if (mode === "auto-apply") {
-      decisionLabel = "Analyze & Decide"
-      decisionDesc = "Auto-resolve if possible"
+      decisionLabel = "Can Auto-Fix?"
+      decisionDesc = "Apply or escalate"
     }
     
     nodes.push({
-      id: "decision",
+      id: "decision-mode",
       type: "decision",
       label: decisionLabel,
       description: decisionDesc
     })
   }
   
-  // Add process steps
-  if (steps.length > 0) {
-    steps.slice(0, 4).forEach((step, i) => {
-      nodes.push({
-        id: `step-${i}`,
-        type: "process",
-        label: `Step ${i + 1}`,
-        description: step.substring(0, 60) + (step.length > 60 ? "..." : "")
-      })
-    })
-    if (steps.length > 4) {
-      nodes.push({
-        id: "step-more",
-        type: "process",
-        label: "Process",
-        description: `+${steps.length - 4} more steps...`
-      })
-    }
-  }
-  
-  // Add output nodes
+  // Single combined output node
   if (outputs.length > 0) {
-    outputs.slice(0, 2).forEach((output, i) => {
-      nodes.push({
-        id: `output-${i}`,
-        type: "output",
-        label: "Output",
-        description: output.substring(0, 60) + (output.length > 60 ? "..." : "")
-      })
+    nodes.push({
+      id: "output",
+      type: "output",
+      label: "Return Results",
+      description: `${outputs.length} output${outputs.length !== 1 ? 's' : ''}`
     })
-    if (outputs.length > 2) {
-      nodes.push({
-        id: "output-more",
-        type: "output",
-        label: "Output",
-        description: `+${outputs.length - 2} more outputs...`
-      })
-    }
   }
   
   // End node
   nodes.push({
     id: "end",
     type: "end",
-    label: "Processing Complete"
+    label: "Complete"
   })
   
   return nodes
