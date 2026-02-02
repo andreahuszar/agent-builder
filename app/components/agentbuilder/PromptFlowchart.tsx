@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef, useEffect } from "react"
 import { ArrowDown, Circle, Square, Diamond, ChevronRight } from "lucide-react"
 
 interface PromptFlowchartProps {
@@ -341,6 +341,9 @@ function FlowNodeComponent({ node, onClick, isSelected }: { node: FlowNode, onCl
 
 export function PromptFlowchart({ prompt, stage, mode }: PromptFlowchartProps) {
   const [selectedNode, setSelectedNode] = useState<FlowNode | null>(null)
+  const [detailPanelTop, setDetailPanelTop] = useState<number>(0)
+  const nodeRefs = useRef<{ [key: string]: HTMLDivElement | null }>({})
+  const scrollContainerRef = useRef<HTMLDivElement>(null)
   
   if (!prompt) {
     return (
@@ -352,18 +355,39 @@ export function PromptFlowchart({ prompt, stage, mode }: PromptFlowchartProps) {
   
   const nodes = parsePromptToFlowchart(prompt, stage, mode)
   
+  const handleNodeClick = (node: FlowNode) => {
+    if (!node.details) return
+    
+    setSelectedNode(node)
+    
+    // Calculate position of the clicked node
+    const nodeElement = nodeRefs.current[node.id]
+    const container = scrollContainerRef.current
+    
+    if (nodeElement && container) {
+      const nodeRect = nodeElement.getBoundingClientRect()
+      const containerRect = container.getBoundingClientRect()
+      
+      // Position relative to container
+      const topPosition = nodeRect.top - containerRect.top + container.scrollTop
+      setDetailPanelTop(topPosition)
+    }
+  }
+  
   return (
-    <div className="flex-1 overflow-y-auto p-4 bg-muted/20 rounded-lg">
+    <div ref={scrollContainerRef} className="flex-1 overflow-y-auto p-4 bg-muted/20 rounded-lg relative">
       <div className="flex gap-4">
         {/* Flowchart */}
         <div className="flex-1 flex flex-col items-center gap-3 min-h-full">
           {nodes.map((node, index) => (
             <div key={node.id} className="flex flex-col items-center">
-              <FlowNodeComponent 
-                node={node} 
-                onClick={() => node.details ? setSelectedNode(node) : null}
-                isSelected={selectedNode?.id === node.id}
-              />
+              <div ref={(el) => { nodeRefs.current[node.id] = el }}>
+                <FlowNodeComponent 
+                  node={node} 
+                  onClick={() => handleNodeClick(node)}
+                  isSelected={selectedNode?.id === node.id}
+                />
+              </div>
               {index < nodes.length - 1 && (
                 <ArrowDown className="w-5 h-5 text-muted-foreground my-2" />
               )}
@@ -371,14 +395,17 @@ export function PromptFlowchart({ prompt, stage, mode }: PromptFlowchartProps) {
           ))}
         </div>
         
-        {/* Detail Panel */}
+        {/* Detail Panel - Positioned aligned with selected node */}
         {selectedNode && selectedNode.details && (
-          <div className="w-80 bg-white border border-gray-200 rounded-lg p-4 shadow-sm">
+          <div 
+            className="absolute right-4 w-80 bg-white border border-gray-200 rounded-lg p-4 shadow-lg"
+            style={{ top: `${detailPanelTop}px` }}
+          >
             <div className="flex items-center justify-between mb-3">
               <h4 className="text-sm font-semibold text-gray-950">{selectedNode.label}</h4>
               <button
                 onClick={() => setSelectedNode(null)}
-                className="text-gray-400 hover:text-gray-600 transition-colors"
+                className="text-gray-400 hover:text-gray-600 transition-colors text-xl leading-none"
               >
                 ×
               </button>
@@ -388,7 +415,7 @@ export function PromptFlowchart({ prompt, stage, mode }: PromptFlowchartProps) {
               <p className="text-xs text-muted-foreground mb-3">{selectedNode.description}</p>
             )}
             
-            <div className="space-y-2">
+            <div className="space-y-2 max-h-[400px] overflow-y-auto">
               {selectedNode.details.map((detail, i) => (
                 <div 
                   key={i}
