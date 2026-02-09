@@ -2802,6 +2802,7 @@ export function DetailsTab({
               invoiceVendor={invoiceData.vendor_name_snapshot}
               onErrorCountChange={setLineItemsErrorCount}
               onValidationStateChange={setLineItemsValidationState}
+              autoCorrections={invoiceData.auto_corrections || []}
             />
           </div>
           )}

@@ -140,6 +140,31 @@ export function getAgentProcessedInvoiceById(id: string): Invoice | null {
 }
 
 /**
+ * Detect if line item is a perishable good/foodstuff
+ */
+function isPerishableGood(description: string): boolean {
+  const perishableKeywords = [
+    // Produce
+    'fresh', 'produce', 'vegetable', 'fruit', 'organic',
+    // Dairy
+    'dairy', 'milk', 'cheese', 'yogurt', 'butter', 'cream',
+    // Meat
+    'meat', 'beef', 'pork', 'chicken', 'turkey', 'lamb', 'steak', 'poultry',
+    // Seafood
+    'seafood', 'fish', 'salmon', 'tuna', 'shrimp', 'shellfish',
+    // Frozen
+    'frozen',
+    // Beverages
+    'juice', 'beverage', 'drink',
+    // Other
+    'bread', 'bakery', 'pastry', 'eggs', 'perishable', 'foodstuff', 'catering'
+  ];
+  
+  const descLower = description.toLowerCase();
+  return perishableKeywords.some(keyword => descLower.includes(keyword));
+}
+
+/**
  * Transform test scenario and agent results into invoice format
  */
 function transformScenarioToInvoice(
@@ -384,19 +409,6 @@ function transformScenarioToInvoice(
         });
       }
       
-      // Bulk Commodities agent adjusting quantities (20% of invoices)
-      if (agent.name.toLowerCase().includes('commodit') && Math.random() < 0.2) {
-        auto_corrections.push({
-          field: 'line_1_qty',
-          original_value: '10.0',
-          corrected_value: '10.4',
-          reason: 'Quantity variance within bulk commodities tolerance (+/- 5%) - perishable goods',
-          agent_name: agent.name,
-          agent_id: agent.name.toLowerCase().replace(/\s+/g, '-'),
-          timestamp: now.toISOString()
-        });
-      }
-      
       // GL Posting agent auto-assigning GL codes (15% of invoices)
       if (agent.name.toLowerCase().includes('gl posting') && Math.random() < 0.15) {
         auto_corrections.push({
@@ -552,7 +564,14 @@ function transformScenarioToInvoice(
     { sku: 'MNT-556', description: 'HVAC System Maintenance', qty: 1, uom: 'EA' },
     // Telecommunications
     { sku: 'TEL-334', description: 'Internet & Broadband Services', qty: 1, uom: 'MO' },
-    { sku: 'MOB-667', description: 'Mobile Phone Plans', qty: 35, uom: 'EA' }
+    { sku: 'MOB-667', description: 'Mobile Phone Plans', qty: 35, uom: 'EA' },
+    // Food & Perishables
+    { sku: 'FOD-001', description: 'Fresh Produce - Organic Vegetables', qty: 50, uom: 'KG' },
+    { sku: 'FOD-002', description: 'Dairy Products - Milk & Cheese', qty: 25, uom: 'KG' },
+    { sku: 'FOD-003', description: 'Fresh Meat - Beef & Poultry', qty: 30, uom: 'KG' },
+    { sku: 'FOD-004', description: 'Frozen Foods - Ready Meals', qty: 40, uom: 'KG' },
+    { sku: 'FOD-005', description: 'Beverages - Fresh Juices', qty: 100, uom: 'L' },
+    { sku: 'FOD-006', description: 'Bakery Items - Fresh Bread', qty: 20, uom: 'KG' }
   ];
   
   const lineItem = lineItemVarieties[invoiceIndex % lineItemVarieties.length];
@@ -575,6 +594,65 @@ function transformScenarioToInvoice(
       ses_line_id: null
     }
   ];
+  
+  // Bulk Commodities agent - detect foodstuffs and apply tolerance
+  const bulkCommoditiesAgent = agents.find(a => 
+    a.name.toLowerCase().includes('commodit') && a.mode === 'auto-apply'
+  );
+
+  if (bulkCommoditiesAgent) {
+    let appliedToleranceCount = 0;
+    
+    lines.forEach((line) => {
+      if (isPerishableGood(line.description)) {
+        appliedToleranceCount++;
+        
+        // Simulate variance (3-5% variance for perishables)
+        const variancePercent = 0.03 + (Math.random() * 0.02);
+        const hasVariance = Math.random() < 0.7; // 70% of foodstuff items have variance
+        
+        if (hasVariance) {
+          const originalQty = line.qty;
+          const adjustedQty = Math.round(originalQty * (1 + variancePercent) * 10) / 10;
+          
+          auto_corrections.push({
+            field: `line_${line.line_no}_qty`,
+            original_value: originalQty.toString(),
+            corrected_value: adjustedQty.toString(),
+            reason: `Quantity variance of ${(variancePercent * 100).toFixed(1)}% within bulk commodities tolerance (+/- 5%) - detected perishable goods`,
+            agent_name: bulkCommoditiesAgent.name,
+            agent_id: bulkCommoditiesAgent.name.toLowerCase().replace(/\s+/g, '-'),
+            timestamp: now.toISOString(),
+            confidence: 0.95
+          });
+        }
+      }
+    });
+    
+    // Create agent insight if tolerance was applied to any items
+    if (appliedToleranceCount > 0) {
+      const foodstuffItems = lines.filter(l => isPerishableGood(l.description));
+      const itemDescriptions = foodstuffItems.map(l => l.description).join(', ');
+      
+      agent_insights.push({
+        type: 'observation',
+        agent_name: bulkCommoditiesAgent.name,
+        agent_id: bulkCommoditiesAgent.name.toLowerCase().replace(/\s+/g, '-'),
+        message: `Applied +/- 5% matching tolerance for ${appliedToleranceCount} perishable goods line item(s)`,
+        severity: 'info',
+        timestamp: now.toISOString(),
+        details: {
+          perishableItemsDetected: appliedToleranceCount,
+          items: itemDescriptions,
+          toleranceLevel: '5%',
+          standardTolerance: '1-2%',
+          reason: 'Perishable goods require higher tolerance due to natural variance in bulk commodities',
+          unitConversion: 'KG',
+          skillsUsed: bulkCommoditiesAgent.skills || []
+        }
+      });
+    }
+  }
   
   // Vary vendor details based on currency
   const vendorDetails = {

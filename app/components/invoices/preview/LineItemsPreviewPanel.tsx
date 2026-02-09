@@ -124,6 +124,17 @@ interface LineItemsPreviewPanelProps {
   onErrorCountChange?: (errorCount: number) => void;
   // Callback to report validation state changes (for reactive validation results)
   onValidationStateChange?: (state: LineItemsValidationState) => void;
+  // Auto-corrections data for agent-applied changes
+  autoCorrections?: Array<{
+    field: string;
+    original_value: string;
+    corrected_value: string;
+    reason: string;
+    agent_name: string;
+    agent_id: string;
+    timestamp: string;
+    confidence?: number;
+  }>;
 }
 
 // Interface for validation state reported to parent
@@ -304,6 +315,7 @@ export function LineItemsPreviewPanel({
   invoiceVendor,
   onErrorCountChange,
   onValidationStateChange,
+  autoCorrections = [],
 }: LineItemsPreviewPanelProps) {
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(!startExpanded); // Start expanded if startExpanded is true
@@ -403,6 +415,12 @@ export function LineItemsPreviewPanel({
 
     // Return the original usage from the PO line data
     return poLine.usage || { state: 'unused' };
+  };
+
+  // Helper function to get quantity correction for a specific line
+  const getQuantityCorrection = (lineNo: number) => {
+    const fieldName = `line_${lineNo}_qty`;
+    return autoCorrections.find(correction => correction.field === fieldName);
   };
 
   // Find the assigned PO line for an invoice line based on usage metadata
@@ -2425,9 +2443,42 @@ export function LineItemsPreviewPanel({
                                     : 'border border-gray-300'
                                 }`}
                               />
-                            ) : (
-                              line.qty
-                            )}
+                            ) : (() => {
+                              const qtyCorrection = getQuantityCorrection(line.line_no);
+                              if (qtyCorrection) {
+                                return (
+                                  <div className="flex items-center justify-end gap-1">
+                                    <span className="text-gray-400 line-through text-xs">
+                                      {qtyCorrection.original_value}
+                                    </span>
+                                    <span className="text-gray-950 font-medium">
+                                      {qtyCorrection.corrected_value}
+                                    </span>
+                                    <Tooltip.Provider>
+                                      <Tooltip.Root delayDuration={200}>
+                                        <Tooltip.Trigger asChild>
+                                          <Zap className="h-3 w-3 text-amber-500 fill-amber-500 flex-shrink-0" />
+                                        </Tooltip.Trigger>
+                                        <Tooltip.Portal>
+                                          <Tooltip.Content
+                                            side="top"
+                                            className="z-50 max-w-xs rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-lg"
+                                            sideOffset={5}
+                                          >
+                                            <div className="space-y-1">
+                                              <div className="font-semibold">{qtyCorrection.agent_name}</div>
+                                              <div>{qtyCorrection.reason}</div>
+                                            </div>
+                                            <Tooltip.Arrow className="fill-gray-900" />
+                                          </Tooltip.Content>
+                                        </Tooltip.Portal>
+                                      </Tooltip.Root>
+                                    </Tooltip.Provider>
+                                  </div>
+                                );
+                              }
+                              return line.qty;
+                            })()}
                           </td>
                           <td className="px-1 py-2 text-xs text-center text-gray-950 w-10">
                             {isEditMode ? (
@@ -3522,9 +3573,42 @@ export function LineItemsPreviewPanel({
                                   : 'border border-gray-300'
                               }`}
                             />
-                          ) : (
-                            line.qty
-                          )}
+                          ) : (() => {
+                            const qtyCorrection = getQuantityCorrection(line.line_no);
+                            if (qtyCorrection) {
+                              return (
+                                <div className="flex items-center justify-end gap-1">
+                                  <span className="text-gray-400 line-through text-xs">
+                                    {qtyCorrection.original_value}
+                                  </span>
+                                  <span className="text-gray-950 font-medium">
+                                    {qtyCorrection.corrected_value}
+                                  </span>
+                                  <Tooltip.Provider>
+                                    <Tooltip.Root delayDuration={200}>
+                                      <Tooltip.Trigger asChild>
+                                        <Zap className="h-3 w-3 text-amber-500 fill-amber-500 flex-shrink-0" />
+                                      </Tooltip.Trigger>
+                                      <Tooltip.Portal>
+                                        <Tooltip.Content
+                                          side="top"
+                                          className="z-50 max-w-xs rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-lg"
+                                          sideOffset={5}
+                                        >
+                                          <div className="space-y-1">
+                                            <div className="font-semibold">{qtyCorrection.agent_name}</div>
+                                            <div>{qtyCorrection.reason}</div>
+                                          </div>
+                                          <Tooltip.Arrow className="fill-gray-900" />
+                                        </Tooltip.Content>
+                                      </Tooltip.Portal>
+                                    </Tooltip.Root>
+                                  </Tooltip.Provider>
+                                </div>
+                              );
+                            }
+                            return line.qty;
+                          })()}
                         </td>
                         <td className="px-1.5 py-2 text-xs text-center text-gray-950">
                           {isEditMode ? (
