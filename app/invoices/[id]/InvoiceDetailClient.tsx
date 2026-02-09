@@ -903,6 +903,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         onAgentToggle={() => setIsAgentPanelOpen(!isAgentPanelOpen)}
       />
 
+
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden">
         {renderContent()}

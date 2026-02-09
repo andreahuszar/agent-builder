@@ -3,7 +3,8 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   MessageSquare, Mail, Upload, Edit, Check, X,
-  RefreshCw, Link, FileCheck, Clock, Send, User, ChevronDown
+  RefreshCw, Link, FileCheck, Clock, Send, User, ChevronDown,
+  Bot, Zap, Info, AlertTriangle
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -15,7 +16,7 @@ import {
 // Unified timeline item type
 interface TimelineItem {
   id: string;
-  type: 'system_event' | 'user_comment' | 'email';
+  type: 'system_event' | 'user_comment' | 'email' | 'agent_activity';
   timestamp: string;
   user: string;
   userInitials?: string;
@@ -29,6 +30,16 @@ interface TimelineItem {
   subject?: string;
   ticketRef?: string;
 
+  // For agent activities
+  agentName?: string;
+  agentAction?: 'observation' | 'auto_correction' | 'auto_extraction';
+  severity?: 'info' | 'warning' | 'error';
+  fieldName?: string;
+  correctedValue?: string;
+  originalValue?: string;
+  confidence?: number;
+  isExtraction?: boolean;
+
   // Common
   message: string;
   payload?: any;
@@ -38,13 +49,14 @@ interface UnifiedActivityTabProps {
   invoiceId: string;
   invoiceNumber?: string;
   onCommentsCountChange?: (count: number) => void;
+  invoiceData?: any;
 }
 
-export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountChange }: UnifiedActivityTabProps) {
+export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountChange, invoiceData }: UnifiedActivityTabProps) {
   const [timelineItems, setTimelineItems] = useState<TimelineItem[]>([]);
   const [newComment, setNewComment] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'comments' | 'email' | 'system'>('all');
+  const [filter, setFilter] = useState<'all' | 'comments' | 'email' | 'system' | 'agents'>('all');
   const [isInitialLoad, setIsInitialLoad] = useState(true);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -64,6 +76,8 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
         return timelineItems.filter(item => item.type === 'email');
       case 'system':
         return timelineItems.filter(item => item.type === 'system_event');
+      case 'agents':
+        return timelineItems.filter(item => item.type === 'agent_activity');
       default:
         return timelineItems;
     }
@@ -76,6 +90,7 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
       comments: timelineItems.filter(item => item.type === 'user_comment').length,
       email: timelineItems.filter(item => item.type === 'email').length,
       system: timelineItems.filter(item => item.type === 'system_event').length,
+      agents: timelineItems.filter(item => item.type === 'agent_activity').length,
     };
   }, [timelineItems]);
 
@@ -86,6 +101,7 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
       comments: 'Comments',
       email: 'Email',
       system: 'System',
+      agents: 'Agent Activity',
     };
     const count = filterCounts[filterType];
     return `${labels[filterType]} (${count})`;
@@ -101,7 +117,7 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
   useEffect(() => {
     setIsInitialLoad(true); // Reset on invoice change
     fetchUnifiedTimeline();
-  }, [invoiceId]);
+  }, [invoiceId, invoiceData]);
 
   // Scroll to bottom when data loads or new comment is added
   useEffect(() => {
@@ -127,6 +143,68 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
       console.error('Error fetching timeline:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Helper function to add agent activities to timeline
+  const addAgentActivities = (events: TimelineItem[]): void => {
+    if (invoiceData) {
+      // Transform agent insights into timeline items
+      if (invoiceData.agent_insights && Array.isArray(invoiceData.agent_insights)) {
+        invoiceData.agent_insights.forEach((insight: any, idx: number) => {
+          if (insight.timestamp) {
+            events.push({
+              id: `agent-insight-${idx}`,
+              type: 'agent_activity',
+              user: insight.agent_name || 'Agent',
+              agentName: insight.agent_name,
+              agentAction: 'observation',
+              severity: insight.severity,
+              timestamp: insight.timestamp,
+              message: insight.message,
+              payload: insight.details
+            });
+          }
+        });
+      }
+
+      // Transform auto_corrections into timeline items
+      if (invoiceData.auto_corrections && Array.isArray(invoiceData.auto_corrections)) {
+        invoiceData.auto_corrections.forEach((correction: any, idx: number) => {
+          if (correction.timestamp) {
+            const fieldName = correction.field?.split('_').map((w: string) => 
+              w.charAt(0).toUpperCase() + w.slice(1)
+            ).join(' ');
+            
+            const actionType = correction.is_extraction ? 'auto_extraction' : 'auto_correction';
+            const actionVerb = correction.is_extraction ? 'extracted' : 'corrected';
+            
+            let message = `${correction.agent_name || 'Agent'} ${actionVerb} ${fieldName}`;
+            if (correction.corrected_value) {
+              message += `: ${correction.corrected_value}`;
+            }
+            
+            events.push({
+              id: `agent-correction-${idx}`,
+              type: 'agent_activity',
+              user: correction.agent_name || 'Agent',
+              agentName: correction.agent_name,
+              agentAction: actionType,
+              fieldName: correction.field,
+              originalValue: correction.original_value,
+              correctedValue: correction.corrected_value,
+              confidence: correction.confidence,
+              isExtraction: correction.is_extraction,
+              timestamp: correction.timestamp,
+              message: message,
+              payload: {
+                reason: correction.reason,
+                source_field: correction.source_field
+              }
+            });
+          }
+        });
+      }
     }
   };
 
@@ -250,6 +328,9 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
         },
       ];
 
+      // Add agent activities before returning
+      addAgentActivities(events);
+
       return events.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
     }
 
@@ -359,6 +440,9 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
         message: 'Mike Chen approved the invoice',
       },
     ];
+
+    // Add agent activity events from invoiceData if available
+    addAgentActivities(events);
 
     // Sort by timestamp (oldest first, newest last at bottom)
     return events.sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime());
@@ -581,6 +665,97 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
     );
   };
 
+  const renderAgentActivity = (item: TimelineItem) => {
+    const getAgentIcon = () => {
+      if (item.agentAction === 'auto_extraction' || item.agentAction === 'auto_correction') {
+        return <Zap className="h-4 w-4 text-purple-700" fill="currentColor" />;
+      }
+      if (item.severity === 'warning') {
+        return <AlertTriangle className="h-4 w-4 text-amber-600" />;
+      }
+      if (item.severity === 'error') {
+        return <AlertTriangle className="h-4 w-4 text-red-600" />;
+      }
+      return <Bot className="h-4 w-4 text-purple-700" />;
+    };
+
+    const getBgColor = () => {
+      if (item.agentAction === 'auto_extraction' || item.agentAction === 'auto_correction') {
+        return 'bg-purple-100';
+      }
+      if (item.severity === 'warning') {
+        return 'bg-amber-100';
+      }
+      if (item.severity === 'error') {
+        return 'bg-red-100';
+      }
+      return 'bg-blue-100';
+    };
+
+    return (
+      <div key={item.id} className="relative pb-6">
+        {/* Timeline connector */}
+        <span className="absolute left-4 top-10 -ml-px h-full w-0.5 bg-gray-200" aria-hidden="true" />
+
+        <div className="relative flex space-x-3">
+          {/* Icon */}
+          <div>
+            <span className={`h-8 w-8 rounded-full ${getBgColor()} flex items-center justify-center ring-8 ring-white`}>
+              {getAgentIcon()}
+            </span>
+          </div>
+
+          {/* Content */}
+          <div className="flex-1 min-w-0 pt-1.5">
+            {/* Agent name and timestamp at top */}
+            <div className="flex items-center gap-2 mb-1">
+              <span className="text-sm font-medium text-gray-950">{item.agentName || item.user}</span>
+              <span className="text-xs text-gray-500">{formatTimestamp(item.timestamp)}</span>
+            </div>
+            
+            {/* Message bubble */}
+            <div className={`${getBgColor()} rounded-lg px-4 py-3`}>
+              <p className="text-sm text-gray-950">{item.message}</p>
+              
+              {/* Additional details for corrections */}
+              {(item.agentAction === 'auto_extraction' || item.agentAction === 'auto_correction') && (
+                <div className="mt-2 space-y-1 text-xs">
+                  {item.confidence !== undefined && (
+                    <div>
+                      <span className="font-medium text-gray-700">Confidence: </span>
+                      <span className="text-gray-950">{Math.round(item.confidence * 100)}%</span>
+                    </div>
+                  )}
+                  {item.payload?.reason && (
+                    <div className="text-gray-700 italic mt-1">
+                      {item.payload.reason}
+                    </div>
+                  )}
+                </div>
+              )}
+              
+              {/* Additional details for observations */}
+              {item.agentAction === 'observation' && item.payload && (
+                <div className="mt-2 space-y-1 text-xs">
+                  {item.payload.flaggedIssues && item.payload.flaggedIssues.length > 0 && (
+                    <div>
+                      <span className="font-medium">Flagged issues:</span>
+                      <ul className="list-disc list-inside ml-2 mt-0.5">
+                        {item.payload.flaggedIssues.map((issue: string, i: number) => (
+                          <li key={i}>{issue}</li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderTimelineItem = (item: TimelineItem, index: number) => {
     const isLast = index === timelineItems.length - 1;
 
@@ -593,6 +768,8 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
           return renderUserComment(item);
         case 'email':
           return renderEmail(item);
+        case 'agent_activity':
+          return renderAgentActivity(item);
         default:
           return null;
       }
@@ -675,6 +852,12 @@ export function UnifiedActivityTab({ invoiceId, invoiceNumber, onCommentsCountCh
                 className={`cursor-pointer ${filter === 'system' ? 'bg-purple-50 text-purple-900 font-medium' : ''}`}
               >
                 {getFilterLabel('system')}
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                onClick={() => setFilter('agents')}
+                className={`cursor-pointer ${filter === 'agents' ? 'bg-purple-50 text-purple-900 font-medium' : ''}`}
+              >
+                {getFilterLabel('agents')}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>

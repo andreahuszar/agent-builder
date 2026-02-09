@@ -497,6 +497,7 @@ export function InvoiceTabs({
             invoiceId={invoiceId}
             invoiceNumber={invoiceData?.invoice_number}
             onCommentsCountChange={setCommentsCount}
+            invoiceData={invoiceData}
           />
         )}
       </div>
