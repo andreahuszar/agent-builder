@@ -16,6 +16,7 @@ import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import ExecutiveDashboardClient from "@/app/components/executive-dashboard/ExecutiveDashboardClient"
+import { clearInvoiceCache } from "@/app/services/agentInvoiceService"
 
 type Mode = "chat" | "observe" | "build" | "executive-dashboard" | "documents"
 
@@ -59,30 +60,27 @@ export default function AgentBuilderPage({ hideNavigation = false, defaultMode =
   const [mode, setMode] = useState<Mode>(defaultMode)
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
-  // Check URL for view parameter on mount
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search)
-    const view = params.get('view')
-    if (view === 'executive-dashboard') {
-      setMode('executive-dashboard')
-    }
-
-    // Load agents from localStorage on client mount
-    const stored = localStorage.getItem('agents')
-    if (stored) {
+  // Initialize agents from localStorage if available, otherwise use default agents
+  const getInitialAgents = (): Agent[] => {
+    // Client-side only
+    if (typeof window !== 'undefined') {
       try {
-        const parsed = JSON.parse(stored)
-        if (Array.isArray(parsed) && parsed.length > 0) {
-          setAgents(parsed)
+        const stored = localStorage.getItem('agents')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            console.log('[AgentBuilderPage] Loaded agents from localStorage:', parsed.length)
+            return parsed
+          }
         }
       } catch (e) {
-        console.error('Failed to parse stored agents:', e)
+        console.error('[AgentBuilderPage] Failed to load agents from localStorage:', e)
       }
     }
-  }, [])
-
-  // Initialize agents with mock data (consistent for SSR)
-  const [agents, setAgents] = useState<Agent[]>([
+    
+    // Return default agents if localStorage is empty or on server
+    console.log('[AgentBuilderPage] Using default agents')
+    return [
     {
       id: "2",
       name: "OCR Agent",
@@ -416,12 +414,56 @@ ERROR HANDLING:
       lane: "Reconciliation",
       skills: ["Send Messages", "Run Workflows", "Connect to ERP System"],
     },
-  ])
+    ]
+  }
 
-  // Save agents to localStorage whenever they change
+  const [agents, setAgents] = useState<Agent[]>(getInitialAgents())
+
+  // Check URL for view parameter on mount
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search)
+    const view = params.get('view')
+    if (view === 'executive-dashboard') {
+      setMode('executive-dashboard')
+    }
+  }, [])
+
+  // Save agents to localStorage and sync to server whenever they change
   useEffect(() => {
     if (typeof window !== 'undefined' && agents.length > 0) {
+      console.log('[AgentBuilderPage] Saving agents to localStorage:', agents.length, 'agents')
       localStorage.setItem('agents', JSON.stringify(agents))
+      
+      // Clear invoice cache when agents change (force regeneration)
+      try {
+        clearInvoiceCache()
+        console.log('[AgentBuilderPage] Invoice cache cleared after agent update')
+      } catch (e) {
+        console.warn('[AgentBuilderPage] Could not clear invoice cache:', e)
+      }
+      
+      // Sync active agents to server for invoice generation
+      const activeAgents = agents
+        .filter(a => a.active)
+        .map(a => ({
+          name: a.name,
+          stage: a.stage,
+          lane: a.lane,
+          mode: a.mode || 'observe',
+          prompt: a.prompt || '',
+          skills: a.skills || []
+        }))
+      
+      console.log('[AgentBuilderPage] Syncing active agents to server:', activeAgents.length)
+      
+      // Fire-and-forget sync to server
+      fetch('/api/agents/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ agents: activeAgents })
+      })
+        .then(() => console.log('[AgentBuilderPage] Successfully synced agents to server'))
+        .catch(err => console.error('[AgentBuilderPage] Failed to sync agents to server:', err))
     }
   }, [agents])
 
@@ -442,9 +484,7 @@ ERROR HANDLING:
   // State for Prompt and Skills to render in right sidebar
   const [currentPrompt, setCurrentPrompt] = useState<string>("")
   const [currentSkills, setCurrentSkills] = useState<string[]>([])
-  const [showAdvanced, setShowAdvanced] = useState(false)
   const [promptView, setPromptView] = useState<"text" | "flowchart" | "rules">("text")
-  const [advancedYaml, setAdvancedYaml] = useState<string>("")
   
   const AVAILABLE_SKILLS = [
     "Extract text",
@@ -563,41 +603,49 @@ ERROR HANDLING:
   }
 
   const handleSaveAgent = (updatedAgent: Agent) => {
+    console.log("[AgentBuilderPage] handleSaveAgent called with:", {
+      id: updatedAgent.id,
+      name: updatedAgent.name,
+      stage: updatedAgent.stage,
+      active: updatedAgent.active
+    })
+    
     // Check if this is an existing agent by looking in the agents array
     const existingAgent = agents.find((a) => a.id === updatedAgent.id)
-    console.log("[v0] Existing agent found:", !!existingAgent)
+    console.log("[AgentBuilderPage] Existing agent found:", !!existingAgent, "Current agents:", agents.length)
 
     if (updatedAgent.id && existingAgent) {
       // Update existing agent
-      console.log("[v0] Updating existing agent:", updatedAgent.id, updatedAgent.name, "Stage:", updatedAgent.stage)
+      console.log("[AgentBuilderPage] Updating existing agent:", updatedAgent.id, updatedAgent.name, "Stage:", updatedAgent.stage)
       setAgents((prev) => {
         const updated = prev.map((a) => (a.id === updatedAgent.id ? updatedAgent : a))
-        console.log("[v0] Agents after update:", updated.map((a) => `${a.name} (${a.stage})`))
+        console.log("[AgentBuilderPage] Agents after update:", updated.map((a) => `${a.name} (${a.stage})`))
         return updated
       })
       setEditingAgent(updatedAgent)
     } else {
       // Create new agent (ID should already be set from handleCreateNewAgent)
+      // Set active: true by default so new agents are immediately synced and used
       const newAgent = {
         ...updatedAgent,
         id: updatedAgent.id || `agent-${Date.now()}`,
-        active: false,
+        active: true,
       }
-      console.log("[v0] Creating new agent:", newAgent.name, "Stage:", newAgent.stage, "ID:", newAgent.id)
+      console.log("[AgentBuilderPage] Creating new agent:", newAgent.name, "Stage:", newAgent.stage, "ID:", newAgent.id, "Active:", newAgent.active)
       setAgents((prev) => {
         const updated = [...prev, newAgent]
-        console.log("[v0] Agent count after creation:", updated.length)
-        console.log("[v0] All agents:", updated.map((a) => `${a.name} (${a.stage})`))
+        console.log("[AgentBuilderPage] Agent count after creation:", updated.length)
+        console.log("[AgentBuilderPage] All agents:", updated.map((a) => `${a.name} (${a.stage}) [${a.active ? 'active' : 'inactive'}]`))
         return updated
       })
       setEditingAgent(newAgent)
       // Auto-expand the stage where the new agent was created
       if (newAgent.stage) {
-        console.log("[v0] Auto-expanding stage:", newAgent.stage)
+        console.log("[AgentBuilderPage] Auto-expanding stage:", newAgent.stage)
         setExpandedStages((prev) => {
           const newSet = new Set(prev)
           newSet.add(newAgent.stage)
-          console.log("[v0] Expanded stages:", Array.from(newSet))
+          console.log("[AgentBuilderPage] Expanded stages:", Array.from(newSet))
           return newSet
         })
       }
@@ -666,12 +714,9 @@ ERROR HANDLING:
     }
   }
 
-  const handlePromptAndSkillsUpdate = (prompt: string, skills: string[], advancedYaml?: string) => {
+  const handlePromptAndSkillsUpdate = (prompt: string, skills: string[]) => {
     setCurrentPrompt(prompt)
     setCurrentSkills(skills)
-    if (advancedYaml !== undefined) {
-      setAdvancedYaml(advancedYaml)
-    }
   }
 
   // Sync state when editing agent changes
@@ -1008,11 +1053,6 @@ ERROR HANDLING:
                             Rules
                           </button>
                         </div>
-                        {!isPreviewMode && promptView === "text" && (
-                          <Button type="button" variant="ghost" size="sm" onClick={() => setShowAdvanced(!showAdvanced)}>
-                            {showAdvanced ? "Basic" : "Advanced"}
-                          </Button>
-                        )}
                       </div>
                     </div>
 
@@ -1055,7 +1095,7 @@ ERROR HANDLING:
                         prompt={currentPrompt}
                         mode={editingAgent?.mode}
                       />
-                    ) : !showAdvanced ? (
+                    ) : (
                       <div className="space-y-2 flex-1 flex flex-col min-h-0">
                         <Textarea
                           id="system-prompt"
@@ -1067,19 +1107,6 @@ ERROR HANDLING:
                         />
                         <p className="text-xs text-muted-foreground">
                           This prompt defines how the agent will process data at its deployment stage. <strong>This field can only be updated using the "Apply to Prompt" button in the AI Configuration Assistant</strong> to ensure security and prevent malicious prompt injection.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 flex-1 flex flex-col min-h-0">
-                        <Textarea
-                          value={advancedYaml}
-                          readOnly
-                          className="border rounded-lg p-4 bg-slate-950 text-green-400 font-mono text-xs whitespace-pre overflow-x-auto flex-1 resize-none cursor-not-allowed opacity-75"
-                          disabled={true}
-                          placeholder="# No prompt defined yet"
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          Advanced view shows detailed YAML configuration. <strong>This field can only be updated using the "Apply to Prompt" button in the AI Configuration Assistant</strong> to ensure security and prevent malicious prompt injection.
                         </p>
                       </div>
                     )}

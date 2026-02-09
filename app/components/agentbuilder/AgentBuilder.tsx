@@ -51,7 +51,7 @@ interface AgentBuilderProps {
   agentMetrics?: { evaluated: number; actedOn: number; referred: number } // Added agentMetrics prop
   onPromptGenerated?: (prompt: string, skills: string[]) => void // Added for prompt generation from chat
   currentAgent?: Agent | null // Added for passing agent context to chat
-  onStateChange?: (prompt: string, skills: string[], advancedYaml?: string) => void // Callback to sync state with parent
+  onStateChange?: (prompt: string, skills: string[]) => void // Callback to sync state with parent
 }
 
 const stages = [
@@ -346,8 +346,7 @@ export function AgentBuilder({
     }
     // Sync state with parent
     if (onStateChange) {
-      const yaml = showAdvanced ? generateCodeView() : ""
-      onStateChange(generatedPrompt, skills, yaml)
+      onStateChange(generatedPrompt, skills)
     }
     
     // Scroll to and focus the name field in the configuration section
@@ -362,10 +361,9 @@ export function AgentBuilder({
   // Sync state with parent component for right sidebar rendering
   useEffect(() => {
     if (onStateChange) {
-      const yaml = showAdvanced ? generateCodeView() : ""
-      onStateChange(prompt, activeSkills, yaml)
+      onStateChange(prompt, activeSkills)
     }
-  }, [prompt, activeSkills, showAdvanced, agentName, stage, lane, agentMode, onStateChange])
+  }, [prompt, activeSkills, agentName, stage, lane, agentMode, onStateChange])
 
   const extractErrorScenariosFromPrompt = (promptText: string): string[] => {
     if (!promptText) return []
