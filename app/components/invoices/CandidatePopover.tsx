@@ -1,13 +1,16 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { Check, X, Sparkles } from 'lucide-react';
+import { Check, X, Sparkles, Bot } from 'lucide-react';
 
 interface Candidate {
   value: string;
   confidence: number;
   source: string;
   reason?: string;
+  agent_name?: string;
+  agent_id?: string;
+  agent_reasoning?: string;
 }
 
 interface CandidatePopoverProps {
@@ -63,6 +66,8 @@ export function CandidatePopover({
     confidencePercent >= 60 ? 'text-yellow-600' :
     'text-orange-600';
 
+  const isAgentSuggestion = candidate.source === 'agent';
+
   return (
     <div
       ref={popoverRef}
@@ -71,8 +76,19 @@ export function CandidatePopover({
     >
       {/* Header */}
       <div className="flex items-center gap-2 mb-3 pb-3 border-b border-gray-200">
-        <Sparkles className="h-4 w-4 text-purple-600" />
-        <h3 className="text-sm font-semibold text-gray-950">AI Suggestion</h3>
+        {isAgentSuggestion ? (
+          <Bot className="h-4 w-4 text-purple-600" />
+        ) : (
+          <Sparkles className="h-4 w-4 text-purple-600" />
+        )}
+        <h3 className="text-sm font-semibold text-gray-950">
+          {isAgentSuggestion ? 'Agent Suggestion' : 'AI Suggestion'}
+        </h3>
+        {isAgentSuggestion && candidate.agent_name && (
+          <span className="ml-auto text-xs font-medium text-purple-700 bg-purple-100 px-2 py-0.5 rounded">
+            {candidate.agent_name}
+          </span>
+        )}
       </div>
 
       {/* Candidate Value */}
@@ -97,8 +113,19 @@ export function CandidatePopover({
         </div>
       </div>
 
-      {/* Reason (if provided) */}
-      {candidate.reason && (
+      {/* Agent Reasoning (if provided) */}
+      {isAgentSuggestion && candidate.agent_reasoning && (
+        <div className="mb-4 p-3 bg-purple-50 rounded border border-purple-200">
+          <div className="flex items-center gap-1.5 mb-1">
+            <Bot className="h-3.5 w-3.5 text-purple-600" />
+            <span className="text-xs font-medium text-purple-900">Agent Reasoning</span>
+          </div>
+          <p className="text-xs text-gray-700">{candidate.agent_reasoning}</p>
+        </div>
+      )}
+
+      {/* Reason (if provided for non-agent suggestions) */}
+      {!isAgentSuggestion && candidate.reason && (
         <div className="mb-4 p-2 bg-gray-50 rounded text-xs text-gray-700">
           <span className="font-medium">Note:</span> {candidate.reason}
         </div>

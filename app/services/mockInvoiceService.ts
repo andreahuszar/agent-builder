@@ -11,6 +11,7 @@ import { UnifiedInvoice } from '@/types/invoice';
 import { POLineUsage, ResolvedPOLine } from '@/types/api';
 import { enrichInvoiceWithDemoData } from './invoiceDataService';
 import { getMockPOByNumber } from './mockPOService';
+import { generateAgentProcessedInvoices, getAgentProcessedInvoiceById } from './agentInvoiceService';
 
 // Type alias for backward compatibility
 type Invoice = Partial<UnifiedInvoice>;
@@ -2209,7 +2210,7 @@ export const isMockInvoice = (id: string): boolean => {
   }
 
   // Updated prefixes for baseline approach and other mock scenarios
-  const mockPrefixes = ['baseline-', 'missing-po-', 'fraud-risk-', 'auto-reject-', 'sla-'];
+  const mockPrefixes = ['baseline-', 'missing-po-', 'fraud-risk-', 'auto-reject-', 'sla-', 'agent-processed-'];
   const isMock = mockPrefixes.some(prefix => id.startsWith(prefix));
 
   if (DEBUG_MOCK) {
@@ -2221,13 +2222,37 @@ export const isMockInvoice = (id: string): boolean => {
 };
 
 /**
- * Get all mock invoices (currently just 3 baseline invoices)
+ * Get all mock invoices (baseline + agent-processed)
  * NOTE: All invoices are transformed through transformToFullInvoice to ensure
  * vendor snapshot fields, payment fields, and other enriched data are populated
  */
 export const getAllMockInvoices = (): Invoice[] => {
-  const allMocks = generateBaselineInvoices();
-  console.log('[MockService] Total mock invoices:', allMocks.length);
+  const baselineMocks = generateBaselineInvoices();
+  
+  // Load agents and generate agent-processed invoices
+  let agentProcessedMocks: Invoice[] = [];
+  
+  // Server-side: load from cache file
+  if (typeof window === 'undefined') {
+    try {
+      console.log('[MockService] Attempting to load server agents...');
+      // Dynamically import server-only module
+      const { loadActiveAgentsServer } = require('./agentInvoiceService.server');
+      console.log('[MockService] loadActiveAgentsServer function loaded:', typeof loadActiveAgentsServer);
+      const serverAgents = loadActiveAgentsServer();
+      console.log('[MockService] Server agents loaded:', serverAgents.length);
+      agentProcessedMocks = generateAgentProcessedInvoices(serverAgents);
+      console.log('[MockService] Agent-processed invoices generated:', agentProcessedMocks.length);
+    } catch (e) {
+      console.error('[MockService] Failed to load server agents:', e);
+    }
+  } else {
+    // Client-side: load from localStorage
+    agentProcessedMocks = generateAgentProcessedInvoices();
+  }
+  
+  const allMocks = [...baselineMocks, ...agentProcessedMocks];
+  console.log('[MockService] Total mock invoices:', allMocks.length, '(baseline:', baselineMocks.length, ', agent-processed:', agentProcessedMocks.length, ')');
 
   // Transform each invoice to ensure all fields are properly enriched
   const enrichedMocks = allMocks.map(invoice => transformToFullInvoice(invoice));
@@ -2256,9 +2281,12 @@ export const getMockInvoiceById = (id: string): Invoice | null => {
     if (demoInvoicesWithTeaching.includes(id)) {
       mockInvoiceCache.delete(id);
       if (DEBUG_MOCK) {
-        console.log('[MockService] Cleared cache for demo invoice (teaching workflow):', id);
+        console.log('[MockService] Cleared cache for demo invoice:', id);
       }
     }
+    
+    // Note: Agent-processed invoices use module-level cache in agentInvoiceService.ts
+    // so we don't need to clear cache here - they're managed separately
 
     // Check cache first - return cached version if it exists
     if (mockInvoiceCache.has(id)) {
@@ -2780,7 +2808,8 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
     dueStatus: dueStatus,
     payment_terms_id: 'NET30',
     terms_text: 'Net 30 days',
-    assigned_to_name: invoice.approver || null,
+    assigned_to_name: invoice.assigned_to_name || invoice.approver || null,
+    assigned_to_email: invoice.assigned_to_email || undefined,
     ledger: 'Accounts Payable',
     cost_center: invoice.cost_center || 'CC-1001',
     cost_center_name: invoice.cost_center_name || 'Operations',

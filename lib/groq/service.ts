@@ -102,7 +102,8 @@ export class GroqService {
 
       return response;
     } catch (error: any) {
-      throw new Error(`Groq Chat Stream Error: ${error.message}`);
+      console.error('[Groq] Full error details:', error);
+      throw new Error(`Groq Chat Stream Error: ${error.message} (Status: ${error.status || 'unknown'})`);
     }
   }
 

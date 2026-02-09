@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Zap, X, ArrowRight, ChevronRight, ChevronDown, Check } from 'lucide-react';
+import { Zap, X, ArrowRight, ChevronRight, ChevronDown, Check, Bot } from 'lucide-react';
 import { AnimatedPopover } from '../ui/AnimatedPopover';
 
 interface RecentDocument {
@@ -22,6 +22,10 @@ interface AutoCorrectionIndicatorProps {
   documentType?: 'invoice' | 'po'; // Determines the label for recent documents
   fieldName?: string;
   onFieldFocus?: (fieldName: string | null) => void;
+  agentName?: string; // Name of agent that made the correction
+  agentId?: string; // ID of agent that made the correction
+  timestamp?: string; // When the correction was made
+  isExtraction?: boolean; // True if this is an OCR extraction, false if it's a correction
 }
 
 export function AutoCorrectionIndicator({
@@ -33,7 +37,11 @@ export function AutoCorrectionIndicator({
   recentDocuments = [],
   documentType = 'invoice',
   fieldName,
-  onFieldFocus
+  onFieldFocus,
+  agentName,
+  agentId,
+  timestamp,
+  isExtraction = false
 }: AutoCorrectionIndicatorProps) {
   const [open, setOpen] = useState(false);
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
@@ -42,6 +50,9 @@ export function AutoCorrectionIndicator({
   const recentDocsLabel = documentType === 'po'
     ? `Recent POs${vendorName ? ` from ${vendorName}` : ''}`
     : `Recent Invoices${vendorName ? ` from ${vendorName}` : ''}`;
+
+  const popoverTitle = isExtraction ? "Auto-Extracted Field" : "Auto-Corrected Field";
+  const buttonTitle = isExtraction ? "Auto-extracted field - click for details" : "Auto-corrected field - click for details";
 
   return (
     <Popover.Root open={open} onOpenChange={(isOpen) => {
@@ -53,7 +64,7 @@ export function AutoCorrectionIndicator({
       <Popover.Trigger asChild>
         <button
           className="inline-flex items-center justify-center ml-1.5 p-0.5 rounded hover:bg-purple-100 transition-colors group"
-          title="Auto-corrected field - click for details"
+          title={buttonTitle}
           onClick={(e) => {
             e.stopPropagation();
             setOpen(true);
@@ -72,7 +83,7 @@ export function AutoCorrectionIndicator({
             {/* Header */}
             <div className="flex items-center gap-2 mb-3">
               <Zap className="h-4 w-4 text-purple-600" fill="currentColor" />
-              <span className="text-sm font-semibold text-purple-900">Auto-Corrected Field</span>
+              <span className="text-sm font-semibold text-purple-900">{popoverTitle}</span>
               <button
                 onClick={() => setOpen(false)}
                 className="ml-auto p-0.5 rounded hover:bg-purple-100 transition-colors"
@@ -81,6 +92,25 @@ export function AutoCorrectionIndicator({
                 <X className="h-3.5 w-3.5 text-gray-600" />
               </button>
             </div>
+
+            {/* Agent Attribution */}
+            {agentName && (
+              <div className="bg-purple-100 rounded-md px-3 py-2 mb-3 border border-purple-200">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-purple-600" />
+                  <div className="flex-1">
+                    <p className="text-xs font-semibold text-purple-900">
+                      Applied by {agentName}
+                    </p>
+                    {timestamp && (
+                      <p className="text-xs text-purple-700 mt-0.5">
+                        {new Date(timestamp).toLocaleString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Explanation */}
             <div className="bg-purple-100 rounded-md px-3 py-2 mb-3 border border-purple-200">
@@ -94,22 +124,33 @@ export function AutoCorrectionIndicator({
               {fieldLabel}
             </div>
 
-            {/* Value Correction Display - Arrow now vertically centered */}
-            <div className="flex items-center gap-2 mb-3">
-              <div className="flex-1">
-                <div className="text-xs text-gray-900 mb-0.5">On Document</div>
-                <div className="text-xs text-gray-950 bg-red-50 px-2 py-1.5 rounded border border-red-200 line-through">
-                  {originalValue}
-                </div>
-              </div>
-              <ArrowRight className="h-4 w-4 text-purple-600 flex-shrink-0 mt-3" />
-              <div className="flex-1">
-                <div className="text-xs text-gray-900 mb-0.5">Corrected To</div>
+            {/* Value Display - Different for extraction vs correction */}
+            {isExtraction ? (
+              // Extraction: Just show the extracted value
+              <div className="mb-3">
+                <div className="text-xs text-gray-900 mb-0.5">Extracted Value</div>
                 <div className="text-xs text-gray-950 bg-green-50 px-2 py-1.5 rounded border border-green-200 font-medium">
                   {correctedValue}
                 </div>
               </div>
-            </div>
+            ) : (
+              // Correction: Show before/after with arrow
+              <div className="flex items-center gap-2 mb-3">
+                <div className="flex-1">
+                  <div className="text-xs text-gray-900 mb-0.5">On Document</div>
+                  <div className="text-xs text-gray-950 bg-red-50 px-2 py-1.5 rounded border border-red-200 line-through">
+                    {originalValue}
+                  </div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-purple-600 flex-shrink-0 mt-3" />
+                <div className="flex-1">
+                  <div className="text-xs text-gray-900 mb-0.5">Corrected To</div>
+                  <div className="text-xs text-gray-950 bg-green-50 px-2 py-1.5 rounded border border-green-200 font-medium">
+                    {correctedValue}
+                  </div>
+                </div>
+              </div>
+            )}
 
             {/* Recent Documents (Collapsible) */}
             {recentDocuments.length > 0 && (

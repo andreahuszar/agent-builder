@@ -52,13 +52,13 @@ import { TeachingCard } from '../TeachingCard';
 import { PendingConfirmationIndicator } from '../PendingConfirmationIndicator';
 import { useToast } from '@/app/components/ui/Toast';
 import { FieldConfidencePill } from '../FieldConfidencePill';
-import { AutoCorrectionIndicator } from '../AutoCorrectionIndicator';
 import { CustomFieldIndicator } from '../CustomFieldIndicator';
 import { CloseMatchPopover } from '../CloseMatchPopover';
 import { BankDetailsVerificationPopover } from '../BankDetailsVerificationPopover';
 import { VendorSwapPopover } from '../VendorSwapPopover';
 import { AccountingAutoCodingPopover } from '../AccountingAutoCodingPopover';
 import { FraudRiskBanner } from '../FraudRiskBanner';
+import { AutoCorrectionIndicator } from '../AutoCorrectionIndicator';
 import { AutoRejectBanner } from '../AutoRejectBanner';
 import { PolicyDocumentDrawer } from '../PolicyDocumentDrawer';
 import { LineItemsPreviewPanel, LineItemsValidationState } from '../preview/LineItemsPreviewPanel';
@@ -193,6 +193,32 @@ export function DetailsTab({
       default:
         return 'sm:col-span-2 md:col-span-3';
     }
+  };
+
+  // Debug log for invoice 2026/00003
+  useEffect(() => {
+    if (invoiceData.invoice_number === '2026/00003') {
+      console.log('[DetailsTab] Invoice 2026/00003 loaded');
+      console.log('[DetailsTab] Has auto_corrections?', !!invoiceData.auto_corrections);
+      console.log('[DetailsTab] auto_corrections:', invoiceData.auto_corrections);
+      console.log('[DetailsTab] assigned_to_name:', invoiceData.assigned_to_name);
+      console.log('[DetailsTab] assigned_to_email:', invoiceData.assigned_to_email);
+    }
+  }, [invoiceData.invoice_number, invoiceData.auto_corrections]);
+
+  // Helper to get auto-correction for a field
+  const getAutoCorrection = (fieldName: string) => {
+    if (!invoiceData.auto_corrections) {
+      return null;
+    }
+    const correction = invoiceData.auto_corrections.find((c: any) => c.field === fieldName);
+    if (invoiceData.invoice_number === '2026/00003' && fieldName === 'assigned_to_name') {
+      console.log('[DetailsTab] Looking for assigned_to_name correction - Found:', !!correction);
+      if (correction) {
+        console.log('[DetailsTab] Correction data:', correction);
+      }
+    }
+    return correction;
   };
 
   // Determine initial edit state based on props
@@ -607,9 +633,11 @@ export function DetailsTab({
   }, [validationIssues, lineItemsValidationState]);
 
   // Check if all FILTERED validations passed (reactive)
+  // Also check if invoice has any issues (from agent processing)
+  const hasInvoiceIssues = invoiceData?.issues && invoiceData.issues.length > 0;
   const filteredAllValidationsPassed = Object.values(filteredValidationIssues).every(
     categoryIssues => categoryIssues.length === 0
-  );
+  ) && !hasInvoiceIssues;
 
   // Update workflow status to 'posted' when all validations pass
   useEffect(() => {
@@ -732,14 +760,6 @@ export function DetailsTab({
     return candidates.length > 0 && onFieldAccept && onFieldReject;
   };
 
-  // Helper function to get auto-correction info for a field
-  const getAutoCorrection = (fieldName: string) => {
-    if (!invoiceData?.auto_corrections || !Array.isArray(invoiceData.auto_corrections)) {
-      return null;
-    }
-    return invoiceData.auto_corrections.find((correction: any) => correction.field === fieldName);
-  };
-
   // Helper to get read-only field styling with error highlighting
   const getReadOnlyFieldClass = (fieldName: string, defaultValue?: string) => {
     const baseClass = 'text-sm font-medium';
@@ -752,57 +772,26 @@ export function DetailsTab({
   // Render a field - either as editable or read-only with click-to-edit
   const renderField = (fieldName: string, fieldValue: any, fieldType: 'text' | 'date' | 'currency' | 'select', label: string, options?: any[]) => {
     const shouldAllowEdit = showFieldErrors && hasFieldError(fieldName) && !forceReadOnly;
-    const autoCorrection = getAutoCorrection(fieldName);
 
     if (shouldAllowEdit) {
       return (
-        <div className="flex items-center">
-          <p
-            className={getReadOnlyFieldClass(fieldName)}
-            onClick={() => {
-              setFieldToFocus(fieldName);
-              setIsEditing(true);
-            }}
-            title="Click to edit all fields"
-          >
-            {fieldValue || '--'}
-          </p>
-          {autoCorrection && (
-            <AutoCorrectionIndicator
-              fieldLabel={label}
-              originalValue={autoCorrection.original_value}
-              correctedValue={autoCorrection.corrected_value}
-              reason={autoCorrection.reason}
-              vendorName={autoCorrection.vendor_name}
-              recentDocuments={autoCorrection.recent_documents}
-              documentType={autoCorrection.document_type}
-              fieldName={fieldName}
-              onFieldFocus={onFieldFocus}
-            />
-          )}
-        </div>
+        <p
+          className={getReadOnlyFieldClass(fieldName)}
+          onClick={() => {
+            setFieldToFocus(fieldName);
+            setIsEditing(true);
+          }}
+          title="Click to edit all fields"
+        >
+          {fieldValue || '--'}
+        </p>
       );
     }
 
     return (
-      <div className="flex items-center">
-        <p className={getReadOnlyFieldClass(fieldName)}>
-          {fieldValue || '--'}
-        </p>
-        {autoCorrection && (
-          <AutoCorrectionIndicator
-            fieldLabel={label}
-            originalValue={autoCorrection.original_value}
-            correctedValue={autoCorrection.corrected_value}
-            reason={autoCorrection.reason}
-            vendorName={autoCorrection.vendor_name}
-            recentDocuments={autoCorrection.recent_documents}
-            documentType={autoCorrection.document_type}
-            fieldName={fieldName}
-            onFieldFocus={onFieldFocus}
-          />
-        )}
-      </div>
+      <p className={getReadOnlyFieldClass(fieldName)}>
+        {fieldValue || '--'}
+      </p>
     );
   };
 
@@ -1318,26 +1307,10 @@ export function DetailsTab({
 
                     // Show value without purple dot (purple dot only shown when in agentPendingFields)
                     if (hasValue) {
-                      const autoCorrection = getAutoCorrection('invoice_number');
                       return (
-                        <div className="flex items-center">
-                          <p className="text-sm font-medium text-gray-950">
-                            {invoiceData.invoice_number}
-                          </p>
-                          {autoCorrection && (
-                            <AutoCorrectionIndicator
-                              fieldLabel="Invoice Number"
-                              originalValue={autoCorrection.original_value}
-                              correctedValue={autoCorrection.corrected_value}
-                              reason={autoCorrection.reason}
-                              vendorName={autoCorrection.vendor_name}
-                              recentDocuments={autoCorrection.recent_documents}
-                              documentType={autoCorrection.document_type}
-                              fieldName="invoice_number"
-                              onFieldFocus={onFieldFocus}
-                            />
-                          )}
-                        </div>
+                        <p className="text-sm font-medium text-gray-950">
+                          {invoiceData.invoice_number}
+                        </p>
                       );
                     }
 
@@ -1721,23 +1694,6 @@ export function DetailsTab({
 
                           return poDisplay;
                         })()}
-                        {/* Add auto-correction indicator if field was auto-corrected */}
-                        {(() => {
-                          const autoCorrection = getAutoCorrection('po_numbers_cached');
-                          return autoCorrection && (
-                            <AutoCorrectionIndicator
-                              fieldLabel="PO Number"
-                              originalValue={autoCorrection.original_value}
-                              correctedValue={autoCorrection.corrected_value}
-                              reason={autoCorrection.reason}
-                              vendorName={autoCorrection.vendor_name}
-                              recentDocuments={autoCorrection.recent_documents}
-                              documentType={autoCorrection.document_type}
-                              fieldName="po_numbers_cached"
-                              onFieldFocus={onFieldFocus}
-                            />
-                          );
-                        })()}
                         {isReprocessingField === 'po_numbers_cached' && (
                           <Loader2 className="h-3 w-3 ml-1.5 animate-spin text-purple-600" />
                         )}
@@ -1948,9 +1904,50 @@ export function DetailsTab({
                       </div>
                     </div>
                   ) : (
-                    <p className="text-sm font-medium text-gray-950">
-                      {invoiceData.assigned_to_name || '--'}
-                    </p>
+                    <div>
+                      <p className="text-sm font-medium text-gray-950">
+                        {invoiceData.assigned_to_name || '--'}
+                        {(() => {
+                          const autoCorrection = getAutoCorrection('assigned_to_name');
+                          return autoCorrection ? (
+                            <AutoCorrectionIndicator
+                              fieldLabel="Approver"
+                              originalValue={autoCorrection.original_value || '(Not set)'}
+                              correctedValue={autoCorrection.corrected_value}
+                              reason={autoCorrection.reason}
+                              vendorName={invoiceData.vendor_name_snapshot}
+                              fieldName="assigned_to_name"
+                              onFieldFocus={onFieldFocus}
+                              agentName={autoCorrection.agent_name}
+                              timestamp={autoCorrection.timestamp}
+                              isExtraction={false}
+                            />
+                          ) : null;
+                        })()}
+                      </p>
+                      {invoiceData.assigned_to_email && (
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {invoiceData.assigned_to_email}
+                          {(() => {
+                            const emailCorrection = getAutoCorrection('assigned_to_email');
+                            return emailCorrection ? (
+                              <AutoCorrectionIndicator
+                                fieldLabel="Approver Email"
+                                originalValue={emailCorrection.original_value || '(Not set)'}
+                                correctedValue={emailCorrection.corrected_value}
+                                reason={emailCorrection.reason}
+                                vendorName={invoiceData.vendor_name_snapshot}
+                                fieldName="assigned_to_email"
+                                onFieldFocus={onFieldFocus}
+                                agentName={emailCorrection.agent_name}
+                                timestamp={emailCorrection.timestamp}
+                                isExtraction={false}
+                              />
+                            ) : null;
+                          })()}
+                        </p>
+                      )}
+                    </div>
                   )}
                   {expandedSuggestion === 'assigned_to_name' && invoiceData.suggested_approver && (
                     <div ref={suggestionCardRef} className="absolute top-full left-0 mt-2 z-50 w-full min-w-[320px] max-w-md">

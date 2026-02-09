@@ -155,23 +155,44 @@ export function calculateInvoiceExceptions(
     });
   }
 
-  // 6. Check approval limit (only for non-approved, non-PO invoices)
+  // 6. Check approval requirements for Non-PO invoices
   // Note: PO-backed invoices already have approval workflow through PO approval process
   const approvedStatuses = ['approved', 'paid', 'completed', 'closed', 'ready_for_payment', 'approved_ready_for_payment'];
   const isAlreadyApproved = invoiceData?.status && approvedStatuses.includes(invoiceData.status.toLowerCase());
 
-  if (invoiceData?.total && invoiceData.total > approvalLimit && !isAlreadyApproved && !hasPO) {
-    const formatter = new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: invoiceData.currency || 'USD',
-    });
-    exceptions.push({
-      severity: 'info',
-      message: 'Requires approval',
-      context: `Amount exceeds ${formatter.format(approvalLimit)} limit`,
-      type: 'approval',
-      field: 'total',
-    });
+  if (!hasPO && !isAlreadyApproved) {
+    // Check if invoice requires approval (exceeds limit)
+    const requiresApproval = invoiceData?.total && invoiceData.total > approvalLimit;
+    
+    if (requiresApproval) {
+      const formatter = new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: invoiceData.currency || 'USD',
+      });
+      
+      // Check if approver is assigned
+      const hasApprover = invoiceData?.assigned_to_name && invoiceData.assigned_to_name.trim() !== '';
+      
+      if (!hasApprover) {
+        // Missing approver - this is an error
+        exceptions.push({
+          severity: 'error',
+          message: 'Approver required',
+          context: `Amount exceeds ${formatter.format(approvalLimit)} limit - awaiting approval routing`,
+          type: 'missing_approver',
+          field: 'assigned_to_name',
+        });
+      } else {
+        // Has approver but pending approval - this is just info
+        exceptions.push({
+          severity: 'info',
+          message: 'Requires approval',
+          context: `Amount exceeds ${formatter.format(approvalLimit)} limit`,
+          type: 'approval',
+          field: 'total',
+        });
+      }
+    }
   }
 
   // 7. Check for uninvoiced PO lines

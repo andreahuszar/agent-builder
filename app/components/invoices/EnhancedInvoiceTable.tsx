@@ -22,7 +22,8 @@ import {
   Info,
   Mail,
   Database,
-  Upload
+  Upload,
+  Bot
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -1436,9 +1437,15 @@ export function EnhancedInvoiceTable({
                           const listParam = encodeURIComponent(JSON.stringify(invoiceIds));
                           router.push(`/invoices/${invoice.id}?list=${listParam}&index=${currentIndex}`);
                         }}
-                        className="text-sm text-purple-600 hover:text-purple-700 font-medium"
+                        className="text-sm text-purple-600 hover:text-purple-700 font-medium flex items-center gap-1.5"
                       >
                         {invoice.invoice_number || 'Missing No.'}
+                        {(invoice.id?.startsWith('agent-processed-') || (invoice as any)._agent_processed) && (
+                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 text-xs font-medium bg-purple-100 text-purple-700 rounded" title="Agent Processed">
+                            <Bot className="w-3 h-3" />
+                            Agent
+                          </span>
+                        )}
                       </button>
                     </div>
                   </td>
