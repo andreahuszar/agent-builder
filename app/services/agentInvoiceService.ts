@@ -575,6 +575,9 @@ function transformScenarioToInvoice(
   ];
   
   const lineItem = lineItemVarieties[invoiceIndex % lineItemVarieties.length];
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agentInvoiceService.ts:591',message:'Line item selection',data:{invoiceIndex,arrayLength:lineItemVarieties.length,modulo:invoiceIndex%lineItemVarieties.length,selectedSku:lineItem.sku,selectedDescription:lineItem.description,invoiceNumber:scenario.invoice_number},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+  // #endregion
   const unitPrice = Math.round((calculatedSubtotal / lineItem.qty) * 100) / 100;
   
   const lines = [
@@ -599,12 +602,19 @@ function transformScenarioToInvoice(
   const bulkCommoditiesAgent = agents.find(a => 
     a.name.toLowerCase().includes('commodit') && a.mode === 'auto-apply'
   );
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agentInvoiceService.ts:614',message:'Bulk commodities agent check',data:{found:!!bulkCommoditiesAgent,agentName:bulkCommoditiesAgent?.name,agentMode:bulkCommoditiesAgent?.mode,invoiceIndex,invoiceNumber:scenario.invoice_number,lineDescription:lines[0]?.description},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
+  // #endregion
 
   if (bulkCommoditiesAgent) {
     let appliedToleranceCount = 0;
     
     lines.forEach((line) => {
-      if (isPerishableGood(line.description)) {
+      const isPerishable = isPerishableGood(line.description);
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agentInvoiceService.ts:625',message:'Line item perishable check',data:{invoiceNumber:scenario.invoice_number,lineNo:line.line_no,description:line.description,isPerishable,invoiceIndex},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
+      // #endregion
+      if (isPerishable) {
         appliedToleranceCount++;
         
         // Simulate variance (3-5% variance for perishables)
