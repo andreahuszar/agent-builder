@@ -62,9 +62,6 @@ function loadActiveAgents(): AgentConfig[] {
  * Generate agent-processed invoices (with optional server-side agents)
  */
 export function generateAgentProcessedInvoices(serverAgents?: AgentConfig[]): Invoice[] {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agentInvoiceService.ts:65',message:'generateAgentProcessedInvoices called',data:{hasServerAgents:!!serverAgents,serverAgentCount:serverAgents?.length||0},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
   // Check cache first (client-side only, short TTL)
   const now = Date.now();
   if (typeof window !== 'undefined' && cachedInvoices && (now - cacheTimestamp) < CACHE_TTL) {
@@ -76,16 +73,10 @@ export function generateAgentProcessedInvoices(serverAgents?: AgentConfig[]): In
   const agents = serverAgents || loadActiveAgents();
 
   console.log('[AgentInvoiceService] Generating invoices with agents:', agents.length);
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agentInvoiceService.ts:79',message:'Agents loaded for generation',data:{agentCount:agents.length,hasAgents:agents.length>0},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
 
   // If no agents, return cached or empty array
   if (agents.length === 0) {
     console.warn('[AgentInvoiceService] No active agents found');
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'agentInvoiceService.ts:86',message:'No agents found - returning empty',data:{hasCachedInvoices:!!cachedInvoices,cachedCount:cachedInvoices?.length||0},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     if (cachedInvoices) {
       console.log('[AgentInvoiceService] Returning stale cache:', cachedInvoices.length);
       return cachedInvoices;

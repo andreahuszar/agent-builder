@@ -2228,9 +2228,6 @@ export const isMockInvoice = (id: string): boolean => {
  */
 export const getAllMockInvoices = (): Invoice[] => {
   const baselineMocks = generateBaselineInvoices();
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'mockInvoiceService.ts:2231',message:'getAllMockInvoices called',data:{baselineCount:baselineMocks.length,isServer:typeof window==='undefined'},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
   
   // Load agents and generate agent-processed invoices
   let agentProcessedMocks: Invoice[] = [];
@@ -2239,27 +2236,15 @@ export const getAllMockInvoices = (): Invoice[] => {
   if (typeof window === 'undefined') {
     try {
       console.log('[MockService] Attempting to load server agents...');
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'mockInvoiceService.ts:2240',message:'Server-side agent loading',data:{isServer:true},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
       // Dynamically import server-only module
       const { loadActiveAgentsServer } = require('./agentInvoiceService.server');
       console.log('[MockService] loadActiveAgentsServer function loaded:', typeof loadActiveAgentsServer);
       const serverAgents = loadActiveAgentsServer();
       console.log('[MockService] Server agents loaded:', serverAgents.length);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'mockInvoiceService.ts:2248',message:'Server agents loaded',data:{agentCount:serverAgents.length},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       agentProcessedMocks = generateAgentProcessedInvoices(serverAgents);
       console.log('[MockService] Agent-processed invoices generated:', agentProcessedMocks.length);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'mockInvoiceService.ts:2253',message:'Agent invoices generated',data:{invoiceCount:agentProcessedMocks.length},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
     } catch (e) {
       console.error('[MockService] Failed to load server agents:', e);
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'mockInvoiceService.ts:2258',message:'Server agent loading failed',data:{error:String(e),message:e instanceof Error?e.message:'unknown'},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-      // #endregion
     }
   } else {
     // Client-side: load from localStorage
@@ -2268,9 +2253,6 @@ export const getAllMockInvoices = (): Invoice[] => {
   
   const allMocks = [...baselineMocks, ...agentProcessedMocks];
   console.log('[MockService] Total mock invoices:', allMocks.length, '(baseline:', baselineMocks.length, ', agent-processed:', agentProcessedMocks.length, ')');
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'mockInvoiceService.ts:2268',message:'Total invoices',data:{total:allMocks.length,baseline:baselineMocks.length,agentProcessed:agentProcessedMocks.length},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
 
   // Transform each invoice to ensure all fields are properly enriched
   const enrichedMocks = allMocks.map(invoice => transformToFullInvoice(invoice));
