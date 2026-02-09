@@ -82,7 +82,7 @@ export interface AgentStats {
 /**
  * Parse agent prompt to extract decision rules and capabilities
  */
-function parseAgentPrompt(prompt: string): {
+export function parseAgentPrompt(prompt: string): {
   hasAutoApprovalRules: boolean;
   hasToleranceRules: boolean;
   hasRoutingRules: boolean;
@@ -90,6 +90,10 @@ function parseAgentPrompt(prompt: string): {
   toleranceThreshold?: number;
   amountThreshold?: number;
   handlesExceptions: boolean;
+  routingApprover?: {
+    name: string;
+    email: string;
+  };
 } {
   const promptLower = prompt.toLowerCase();
   
@@ -114,6 +118,32 @@ function parseAgentPrompt(prompt: string): {
     amountThreshold = parseFloat(amountMatch[1].replace(/,/g, ''));
   }
   
+  // Extract approver information for routing agents
+  let routingApprover: { name: string; email: string } | undefined;
+  
+  // Pattern 1: "route to [Name] ([email])" or "route for approval to [Name] ([email])"
+  // Example: "route for approval to Thomas Eaton (thomas.eaton@xx.com)"
+  const routeToPattern = /route\s+(?:for\s+approval\s+)?to\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*\(([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\)/i;
+  const routeToMatch = prompt.match(routeToPattern);
+  
+  if (routeToMatch) {
+    routingApprover = {
+      name: routeToMatch[1].trim(),
+      email: routeToMatch[2].trim()
+    };
+  } else {
+    // Pattern 2: "Assigned approver: [Name] ([email])"
+    const assignedPattern = /Assigned\s+approver:\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*\(([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\)/i;
+    const assignedMatch = prompt.match(assignedPattern);
+    
+    if (assignedMatch) {
+      routingApprover = {
+        name: assignedMatch[1].trim(),
+        email: assignedMatch[2].trim()
+      };
+    }
+  }
+  
   return {
     hasAutoApprovalRules,
     hasToleranceRules,
@@ -122,6 +152,7 @@ function parseAgentPrompt(prompt: string): {
     toleranceThreshold,
     amountThreshold,
     handlesExceptions,
+    routingApprover,
   };
 }
 

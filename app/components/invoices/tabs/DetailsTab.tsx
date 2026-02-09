@@ -195,30 +195,12 @@ export function DetailsTab({
     }
   };
 
-  // Debug log for invoice 2026/00003
-  useEffect(() => {
-    if (invoiceData.invoice_number === '2026/00003') {
-      console.log('[DetailsTab] Invoice 2026/00003 loaded');
-      console.log('[DetailsTab] Has auto_corrections?', !!invoiceData.auto_corrections);
-      console.log('[DetailsTab] auto_corrections:', invoiceData.auto_corrections);
-      console.log('[DetailsTab] assigned_to_name:', invoiceData.assigned_to_name);
-      console.log('[DetailsTab] assigned_to_email:', invoiceData.assigned_to_email);
-    }
-  }, [invoiceData.invoice_number, invoiceData.auto_corrections]);
-
   // Helper to get auto-correction for a field
   const getAutoCorrection = (fieldName: string) => {
     if (!invoiceData.auto_corrections) {
       return null;
     }
-    const correction = invoiceData.auto_corrections.find((c: any) => c.field === fieldName);
-    if (invoiceData.invoice_number === '2026/00003' && fieldName === 'assigned_to_name') {
-      console.log('[DetailsTab] Looking for assigned_to_name correction - Found:', !!correction);
-      if (correction) {
-        console.log('[DetailsTab] Correction data:', correction);
-      }
-    }
-    return correction;
+    return invoiceData.auto_corrections.find((c: any) => c.field === fieldName);
   };
 
   // Determine initial edit state based on props

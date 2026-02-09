@@ -4,7 +4,7 @@
  */
 
 import { UnifiedInvoice } from '@/types/invoice';
-import { simulateAgentProcessing, AgentConfig } from '@/app/components/agentbuilder/agentSimulator';
+import { simulateAgentProcessing, AgentConfig, parseAgentPrompt } from '@/app/components/agentbuilder/agentSimulator';
 import { generateTestScenarios, TestScenario } from '@/app/components/agentbuilder/testScenarioGenerator';
 
 // Type alias for backward compatibility
@@ -158,11 +158,21 @@ function transformScenarioToInvoice(
     a.name.toLowerCase().includes('ocr') && a.mode === 'auto-apply'
   );
   
-  // Determine if IT routing agent exists
-  const hasITRoutingAgent = agents.some(a => 
-    a.name.toLowerCase().includes('it spend') && 
-    a.name.toLowerCase().includes('routing')
+  // Find routing agent and parse approver from prompt
+  const routingAgent = agents.find(a => 
+    a.name.toLowerCase().includes('routing') && 
+    a.stage === 'approval' &&
+    a.mode === 'auto-apply'
   );
+  
+  // Parse routing rules from agent prompt
+  let routingApprover: { name: string; email: string } | null = null;
+  if (routingAgent) {
+    const parsedRules = parseAgentPrompt(routingAgent.prompt);
+    routingApprover = parsedRules.routingApprover || null;
+  }
+  
+  const hasRoutingAgent = !!routingAgent && !!routingApprover;
   
   // Determine invoice characteristics (compute once for consistency)
   const isNonPO = !scenario.stageData.matching?.hasPO;
@@ -225,11 +235,7 @@ function transformScenarioToInvoice(
   // Invoices at index 1, 3, 6, 8, 11, 13 are IT-related (internet, software, cloud services, etc.)
   const itRelatedIndices = [1, 3, 6, 8, 11, 13]; // ~40% of invoices
   const isITSpend = itRelatedIndices.includes(invoiceIndex);
-  const shouldRouteToIT = hasITRoutingAgent && isNonPO && isITSpend;
-  
-  if (id === 'agent-processed-4') {
-    console.log('[AgentInvoiceService] Invoice', id, '- invoiceIndex:', invoiceIndex, 'isITSpend:', isITSpend, 'hasITRoutingAgent:', hasITRoutingAgent, 'isNonPO:', isNonPO, 'shouldRouteToIT:', shouldRouteToIT);
-  }
+  const shouldRouteToIT = hasRoutingAgent && isNonPO && isITSpend;
   
   // Vary currency based on invoice index
   const currencies = ['USD', 'GBP', 'EUR', 'CAD', 'AUD'];
@@ -406,40 +412,32 @@ function transformScenarioToInvoice(
     }
   });
   
-  // IT Routing agent (auto-apply mode) - add corrections for approver routing
-  agents.forEach((agent) => {
-    if (agent.name.toLowerCase().includes('it spend') && 
-        agent.name.toLowerCase().includes('routing') &&
-        agent.mode === 'auto-apply' &&
-        shouldRouteToIT) {
-      
-      console.log('[AgentInvoiceService] Adding IT routing auto_corrections for invoice:', id);
-      
-      auto_corrections.push({
-        field: 'assigned_to_name',
-        original_value: '',
-        corrected_value: 'Thomas Eaton',
-        reason: 'Non-PO invoice for software/IT services - routed to IT approver',
-        agent_name: agent.name,
-        agent_id: agent.name.toLowerCase().replace(/\s+/g, '-'),
-        timestamp: now.toISOString(),
-        confidence: 1.0
-      });
-      
-      auto_corrections.push({
-        field: 'assigned_to_email',
-        original_value: '',
-        corrected_value: 'thomas.eaton@xx.com',
-        reason: 'Approver email assigned based on invoice category (IT/Software)',
-        agent_name: agent.name,
-        agent_id: agent.name.toLowerCase().replace(/\s+/g, '-'),
-        timestamp: now.toISOString(),
-        confidence: 1.0
-      });
-      
-      console.log('[AgentInvoiceService] Total auto_corrections after IT routing:', auto_corrections.length);
-    }
-  });
+  // Routing agent (auto-apply mode) - add corrections for approver routing
+  if (routingAgent && shouldRouteToIT && routingApprover) {
+    const categoryLabel = routingAgent.name.includes('IT') ? 'software/IT services' : 'category match';
+    
+    auto_corrections.push({
+      field: 'assigned_to_name',
+      original_value: '',
+      corrected_value: routingApprover.name,
+      reason: `Non-PO invoice for ${categoryLabel} - routed to designated approver`,
+      agent_name: routingAgent.name,
+      agent_id: routingAgent.name.toLowerCase().replace(/\s+/g, '-'),
+      timestamp: now.toISOString(),
+      confidence: 1.0
+    });
+    
+    auto_corrections.push({
+      field: 'assigned_to_email',
+      original_value: '',
+      corrected_value: routingApprover.email,
+      reason: 'Approver email assigned based on routing agent configuration',
+      agent_name: routingAgent.name,
+      agent_id: routingAgent.name.toLowerCase().replace(/\s+/g, '-'),
+      timestamp: now.toISOString(),
+      confidence: 1.0
+    });
+  }
   
   // Build agent_insights from observe-mode agents and flagging agents
   const agent_insights: any[] = [];
@@ -481,24 +479,8 @@ function transformScenarioToInvoice(
       });
     }
     
-    // IT Routing agent (routes software/IT invoices)
-    if (agent.name.toLowerCase().includes('it spend') && 
-        agent.name.toLowerCase().includes('routing') &&
-        shouldRouteToIT) {
-      agent_insights.push({
-        type: 'observation',
-        agent_name: agent.name,
-        agent_id: agent.name.toLowerCase().replace(/\s+/g, '-'),
-        message: 'Non-PO invoice for software/IT services - routed to Thomas Eaton for approval',
-        severity: 'info',
-        timestamp: now.toISOString(),
-        details: {
-          approver: 'Thomas Eaton (thomas.eaton@xx.com)',
-          category: 'Software/IT Services',
-          skillsUsed: ['Route for Approval']
-        }
-      });
-    }
+    // Routing agent insights (moved outside loop below)
+    // Note: This is now handled separately after the forEach loop
     
     // GL Posting agent
     if (agent.name.toLowerCase().includes('gl posting') && 
@@ -520,6 +502,25 @@ function transformScenarioToInvoice(
       });
     }
   });
+  
+  // Routing agent insights (add after the forEach loop)
+  if (routingAgent && shouldRouteToIT && routingApprover) {
+    const categoryLabel = routingAgent.name.includes('IT') ? 'Software/IT Services' : 'Category Match';
+    
+    agent_insights.push({
+      type: 'observation',
+      agent_name: routingAgent.name,
+      agent_id: routingAgent.name.toLowerCase().replace(/\s+/g, '-'),
+      message: `Non-PO invoice routed to ${routingApprover.name} for approval`,
+      severity: 'info',
+      timestamp: now.toISOString(),
+      details: {
+        approver: `${routingApprover.name} (${routingApprover.email})`,
+        category: categoryLabel,
+        skillsUsed: routingAgent.skills || []
+      }
+    });
+  }
   
   // Determine match_status based on PO data
   let match_status = 'unmatched';
@@ -647,10 +648,10 @@ function transformScenarioToInvoice(
     vendor_requires_po: scenario.stageData.matching?.hasPO || false,
     vendor_is_verified: true,
     approval_status: 'pending',
-    // Only assign approver if IT routing agent routed it
-    assigned_to_name: shouldRouteToIT ? 'Thomas Eaton' : null,
-    assigned_to_email: shouldRouteToIT ? 'thomas.eaton@xx.com' : undefined,
-    assigned_to_user_id: shouldRouteToIT ? 'user-thomas-eaton' : null,
+    // Only assign approver if routing agent routed it and parsed approver from prompt
+    assigned_to_name: shouldRouteToIT && routingApprover ? routingApprover.name : null,
+    assigned_to_email: shouldRouteToIT && routingApprover ? routingApprover.email : undefined,
+    assigned_to_user_id: shouldRouteToIT && routingApprover ? `user-${routingApprover.email.split('@')[0].replace(/\./g, '-')}` : null,
     
     po_numbers_cached: scenario.stageData.matching?.hasPO ? [scenario.stageData.matching.poNumber!] : [],
     gr_numbers: [],
@@ -739,11 +740,6 @@ function transformScenarioToInvoice(
     _agent_processed: true,
     _processed_agents: agents.map(a => a.name)
   };
-  
-  if (id === 'agent-processed-4') {
-    console.log('[AgentInvoiceService] Invoice', id, '- auto_corrections:', auto_corrections.length, 'fields:', auto_corrections.map(c => c.field));
-    console.log('[AgentInvoiceService] Invoice', id, '- assigned_to_name:', invoice.assigned_to_name, 'assigned_to_email:', invoice.assigned_to_email);
-  }
   
   return invoice;
 }
