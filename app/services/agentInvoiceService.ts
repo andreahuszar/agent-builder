@@ -543,6 +543,7 @@ function transformScenarioToInvoice(
   }
   
   // Create invoice lines with variety based on invoice index
+  // Note: Foodstuff items at specific indices to ensure bulk commodities agent is demonstrated
   const lineItemVarieties = [
     // Software & IT
     { sku: 'SW-001', description: 'Microsoft Office 365 Subscription', qty: 25, uom: 'EA' },
@@ -553,25 +554,21 @@ function transformScenarioToInvoice(
     { sku: 'STA-889', description: 'Printer Paper & Stationery Bundle', qty: 50, uom: 'BX' },
     // Professional Services
     { sku: 'CON-567', description: 'Management Consulting Services', qty: 80, uom: 'HR' },
-    { sku: 'LEG-234', description: 'Legal Review & Documentation', qty: 15, uom: 'HR' },
-    { sku: 'ACC-112', description: 'Annual Audit Services', qty: 1, uom: 'EA' },
+    // Food & Perishables (placed within first 15 to ensure they appear in generated invoices)
+    { sku: 'FOD-001', description: 'Fresh Produce - Organic Vegetables', qty: 50, uom: 'KG' },
+    { sku: 'FOD-002', description: 'Dairy Products - Milk & Cheese', qty: 75, uom: 'KG' },
     // Marketing & Events
     { sku: 'MKT-778', description: 'Digital Marketing Campaign', qty: 1, uom: 'MO' },
     { sku: 'EVT-445', description: 'Corporate Event Catering', qty: 150, uom: 'EA' },
     // Facilities & Maintenance
     { sku: 'FAC-223', description: 'Office Cleaning Services', qty: 4, uom: 'WK' },
     { sku: 'UTL-889', description: 'Electricity & Utilities', qty: 1, uom: 'MO' },
-    { sku: 'MNT-556', description: 'HVAC System Maintenance', qty: 1, uom: 'EA' },
+    // Food & Perishables (more items)
+    { sku: 'FOD-003', description: 'Fresh Meat - Beef & Poultry', qty: 120, uom: 'KG' },
     // Telecommunications
     { sku: 'TEL-334', description: 'Internet & Broadband Services', qty: 1, uom: 'MO' },
-    { sku: 'MOB-667', description: 'Mobile Phone Plans', qty: 35, uom: 'EA' },
-    // Food & Perishables
-    { sku: 'FOD-001', description: 'Fresh Produce - Organic Vegetables', qty: 50, uom: 'KG' },
-    { sku: 'FOD-002', description: 'Dairy Products - Milk & Cheese', qty: 25, uom: 'KG' },
-    { sku: 'FOD-003', description: 'Fresh Meat - Beef & Poultry', qty: 30, uom: 'KG' },
-    { sku: 'FOD-004', description: 'Frozen Foods - Ready Meals', qty: 40, uom: 'KG' },
-    { sku: 'FOD-005', description: 'Beverages - Fresh Juices', qty: 100, uom: 'L' },
-    { sku: 'FOD-006', description: 'Bakery Items - Fresh Bread', qty: 20, uom: 'KG' }
+    // Food & Perishables (invoice F2600014 will be index 14, needs qty ~150)
+    { sku: 'FOD-004', description: 'Frozen Foods - Ready Meals', qty: 150, uom: 'KG' }
   ];
   
   const lineItem = lineItemVarieties[invoiceIndex % lineItemVarieties.length];
@@ -607,16 +604,19 @@ function transformScenarioToInvoice(
       if (isPerishableGood(line.description)) {
         appliedToleranceCount++;
         
-        // Simulate variance (3-5% variance for perishables)
+        // Simulate variance (3-4.5% variance for perishables) - deterministic based on invoice index
         // The INVOICE has a slightly different quantity than the PO due to natural variance
-        const variancePercent = 0.03 + (Math.random() * 0.02);
-        const hasVariance = Math.random() < 0.7; // 70% of foodstuff items have variance
+        
+        // Use invoice index to determine variance (deterministic, not random)
+        const variancePercent = 0.03 + ((invoiceIndex % 5) * 0.003); // 3.0% to 4.2%
+        const hasVariance = (invoiceIndex % 3) !== 0; // ~67% have variance, deterministic
         
         if (hasVariance) {
           // PO quantity (baseline/expected)
           const poQty = line.qty;
-          // Invoice quantity (with natural variance - can be higher or lower)
-          const invoiceQtyWithVariance = Math.random() < 0.5 
+          // Invoice quantity (with natural variance - higher for even indices, lower for odd)
+          const isHigher = (invoiceIndex % 2) === 0;
+          const invoiceQtyWithVariance = isHigher
             ? Math.round(poQty * (1 + variancePercent) * 10) / 10  // Invoice is slightly higher
             : Math.round(poQty * (1 - variancePercent) * 10) / 10; // Invoice is slightly lower
           
