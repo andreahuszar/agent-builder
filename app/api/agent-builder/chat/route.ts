@@ -195,12 +195,51 @@ export async function POST(req: Request) {
   try {
     console.log("[v0] Chat API called");
 
-    const { messages, questionCount } = await req.json();
+    const { messages, questionCount, currentPrompt, agentName } = await req.json();
     
-    // Add context about question count to system prompt
-    const contextualSystemPrompt = questionCount !== undefined && questionCount > 0
-      ? `${systemPrompt}\n\nIMPORTANT CONTEXT: You have already asked ${questionCount} question(s). Maximum is 4 questions. ${questionCount >= 4 ? "You MUST now generate the structured prompt - no more questions allowed." : "You may ask one more clarifying question if needed, or proceed to generate the prompt if you have enough information."}`
-      : systemPrompt;
+    // Determine if we're in edit mode (existing prompt) or creation mode
+    const isEditMode = !!currentPrompt && currentPrompt.length > 0;
+    
+    // Add context about question count and edit mode to system prompt
+    let contextualSystemPrompt = systemPrompt;
+    
+    if (isEditMode) {
+      contextualSystemPrompt += `\n\n=== EDIT MODE ===
+You are now in EDIT MODE. The user has an existing agent prompt and wants to make targeted changes to it.
+
+CURRENT AGENT: ${agentName || 'Unknown'}
+
+CURRENT PROMPT:
+\`\`\`
+${currentPrompt}
+\`\`\`
+
+EDIT MODE INSTRUCTIONS:
+1. When the user asks to modify something (e.g., "change the approver to John Doe", "add PDF to the inputs", "remove the email notification step"), you should:
+   - Understand what they want to change
+   - Make SURGICAL EDITS to the existing prompt (don't regenerate from scratch)
+   - Preserve the structure and all other content
+   - Only modify the specific section they mentioned
+
+2. For simple edits (changing a value, adding/removing a line), do it immediately without asking questions
+
+3. For complex changes that might affect multiple sections, ask ONE clarifying question if needed
+
+4. After making edits, output the COMPLETE updated prompt (with all sections intact)
+
+5. Start your response with "DETECTED_STAGE: [stage]" and "DETECTED_LANE: [lane]" based on the current prompt
+
+6. Common edit patterns:
+   - "Change approver to X" → Update the approver name/email in relevant sections
+   - "Add [file type] to inputs" → Add to INPUTS section
+   - "Remove step about [X]" → Remove that step from STEPS section
+   - "Increase threshold to [Y]" → Update threshold values
+   - "Add error handling for [Z]" → Add to ERROR HANDLING section
+
+IMPORTANT: Preserve the exact formatting, section headers, and structure of the original prompt. Only change what the user explicitly requested.`;
+    } else if (questionCount !== undefined && questionCount > 0) {
+      contextualSystemPrompt += `\n\nIMPORTANT CONTEXT: You have already asked ${questionCount} question(s). Maximum is 4 questions. ${questionCount >= 4 ? "You MUST now generate the structured prompt - no more questions allowed." : "You may ask one more clarifying question if needed, or proceed to generate the prompt if you have enough information."}`;
+    }
 
     // Check if API key is configured
     if (!process.env.GROQ_API_KEY) {

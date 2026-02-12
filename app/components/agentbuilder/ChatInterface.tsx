@@ -211,6 +211,8 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
         body: JSON.stringify({
           messages: messagesWithContext,
           questionCount: currentQuestionCount,
+          currentPrompt: currentPrompt || undefined,
+          agentName: currentAgent?.name || undefined,
         }),
       })
 
