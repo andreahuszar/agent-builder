@@ -10,7 +10,7 @@ interface SettingsContentProps {
 }
 
 function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
-  const [activeSubTab, setActiveSubTab] = useState('workflow');
+  const [activeSubTab, setActiveSubTab] = useState('dashboard');
 
   // Check hash on mount and when hash changes
   useEffect(() => {
@@ -55,16 +55,6 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
           <div className="border-b border-gray-200 bg-white px-6">
             <nav className="flex space-x-8" aria-label="Sub navigation">
               <button
-                onClick={() => handleSubTabChange('general-settings')}
-                className={`${
-                  activeSubTab === 'general-settings'
-                    ? 'border-purple-900 text-purple-900'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
-              >
-                General Settings
-              </button>
-              <button
                 onClick={() => handleSubTabChange('dashboard')}
                 className={`${
                   activeSubTab === 'dashboard'
@@ -103,6 +93,16 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                 } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
               >
                 Documents
+              </button>
+              <button
+                onClick={() => handleSubTabChange('general-settings')}
+                className={`${
+                  activeSubTab === 'general-settings'
+                    ? 'border-purple-900 text-purple-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
+              >
+                General Settings
               </button>
             </nav>
           </div>
