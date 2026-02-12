@@ -7,7 +7,6 @@ import { AgentBuilder } from "./AgentBuilder"
 import { WorkflowVisualizer } from "./WorkflowVisualizer"
 import { DocumentsLibrary } from "./DocumentsLibrary"
 import { PromptFlowchart } from "./PromptFlowchart"
-import { PromptRules } from "./PromptRules"
 import Navigation from "@/app/components/Navigation"
 import UserMenu from "@/app/components/UserMenu"
 import { Plus, Pencil, ChevronDown, ChevronRight, ChevronLeft, Power, FileText, PanelLeftClose, PanelLeftOpen, Copy, Check } from "lucide-react"
@@ -484,7 +483,7 @@ ERROR HANDLING:
   // State for Prompt and Skills to render in right sidebar
   const [currentPrompt, setCurrentPrompt] = useState<string>("")
   const [currentSkills, setCurrentSkills] = useState<string[]>([])
-  const [promptView, setPromptView] = useState<"text" | "flowchart" | "rules">("text")
+  const [promptView, setPromptView] = useState<"basic" | "advanced" | "flowchart">("basic")
   const [promptCopied, setPromptCopied] = useState(false)
   
   const AVAILABLE_SKILLS = [
@@ -748,6 +747,59 @@ ERROR HANDLING:
     } catch (err) {
       console.error('Failed to copy prompt:', err)
     }
+  }
+  
+  /**
+   * Generate a simplified/basic version of the prompt for easier reading
+   */
+  const generateBasicPrompt = (fullPrompt: string): string => {
+    if (!fullPrompt) return ""
+    
+    // Extract main sections
+    const roleMatch = fullPrompt.match(/ROLE:([^]*?)(?=\n\n[A-Z]+:|$)/i)
+    const inputsMatch = fullPrompt.match(/INPUTS?:([^]*?)(?=\n\n[A-Z]+:|$)/i)
+    const outputMatch = fullPrompt.match(/OUTPUTS?:([^]*?)(?=\n\n[A-Z]+:|$)/i)
+    
+    // Build simplified prompt with just the essentials
+    let basicPrompt = ""
+    
+    if (roleMatch) {
+      basicPrompt += `ROLE:${roleMatch[1].trim()}\n\n`
+    }
+    
+    if (inputsMatch) {
+      const inputs = inputsMatch[1].trim()
+      // Keep only the bullet points, remove sub-details
+      const simplifiedInputs = inputs.split('\n')
+        .filter(line => line.trim().startsWith('-') && !line.trim().startsWith('  '))
+        .slice(0, 5) // Limit to first 5 items
+        .join('\n')
+      basicPrompt += `INPUTS:\n${simplifiedInputs}\n\n`
+    }
+    
+    // Extract key actions (from STEPS or AGENT INSTRUCTIONS)
+    const stepsMatch = fullPrompt.match(/(?:STEPS?|AGENT INSTRUCTIONS):([^]*?)(?=\n\n[A-Z]+:|$)/i)
+    if (stepsMatch) {
+      const steps = stepsMatch[1].trim()
+      // Extract only top-level numbered steps, no sub-steps
+      const keyActions = steps.split('\n')
+        .filter(line => /^\d+\./.test(line.trim()))
+        .slice(0, 5) // Limit to first 5 steps
+        .join('\n')
+      basicPrompt += `KEY ACTIONS:\n${keyActions}\n\n`
+    }
+    
+    if (outputMatch) {
+      const output = outputMatch[1].trim()
+      // Keep only the bullet points
+      const simplifiedOutput = output.split('\n')
+        .filter(line => line.trim().startsWith('-') && !line.trim().startsWith('  '))
+        .slice(0, 5) // Limit to first 5 items
+        .join('\n')
+      basicPrompt += `OUTPUT:\n${simplifiedOutput}`
+    }
+    
+    return basicPrompt || "No simplified version available"
   }
 
   return (
@@ -1047,14 +1099,24 @@ ERROR HANDLING:
                       <div className="flex gap-2">
                         <div className="flex rounded-md border border-border overflow-hidden">
                           <button
-                            onClick={() => setPromptView("text")}
+                            onClick={() => setPromptView("basic")}
                             className={`px-3 py-1 text-xs font-medium transition-colors ${
-                              promptView === "text"
+                              promptView === "basic"
                                 ? "bg-purple-900 text-white"
                                 : "bg-background text-muted-foreground hover:bg-muted"
                             }`}
                           >
-                            Text
+                            Basic
+                          </button>
+                          <button
+                            onClick={() => setPromptView("advanced")}
+                            className={`px-3 py-1 text-xs font-medium transition-colors ${
+                              promptView === "advanced"
+                                ? "bg-purple-900 text-white"
+                                : "bg-background text-muted-foreground hover:bg-muted"
+                            }`}
+                          >
+                            Advanced
                           </button>
                           <button
                             onClick={() => setPromptView("flowchart")}
@@ -1065,16 +1127,6 @@ ERROR HANDLING:
                             }`}
                           >
                             Flowchart
-                          </button>
-                          <button
-                            onClick={() => setPromptView("rules")}
-                            className={`px-3 py-1 text-xs font-medium transition-colors ${
-                              promptView === "rules"
-                                ? "bg-purple-900 text-white"
-                                : "bg-background text-muted-foreground hover:bg-muted"
-                            }`}
-                          >
-                            Rules
                           </button>
                         </div>
                       </div>
@@ -1114,11 +1166,20 @@ ERROR HANDLING:
                         stage={editingAgent?.stage}
                         mode={editingAgent?.mode}
                       />
-                    ) : promptView === "rules" ? (
-                      <PromptRules 
-                        prompt={currentPrompt}
-                        mode={editingAgent?.mode}
-                      />
+                    ) : promptView === "basic" ? (
+                      <div className="space-y-2 flex-1 flex flex-col min-h-0">
+                        <Textarea
+                          id="system-prompt-basic"
+                          value={generateBasicPrompt(currentPrompt)}
+                          readOnly
+                          placeholder="Simplified view of the agent's key instructions..."
+                          className="font-mono text-sm bg-muted/50 cursor-not-allowed flex-1 resize-none"
+                          disabled={true}
+                        />
+                        <p className="text-xs text-muted-foreground">
+                          This is a simplified view showing only the essential instructions. Switch to <strong>Advanced</strong> to see the complete prompt with all details, validations, and error handling.
+                        </p>
+                      </div>
                     ) : (
                       <div className="space-y-2 flex-1 flex flex-col min-h-0">
                         <Textarea
