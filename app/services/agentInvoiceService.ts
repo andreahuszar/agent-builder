@@ -12,7 +12,7 @@ type Invoice = Partial<UnifiedInvoice>;
 
 // Module-level cache to persist invoices across client-side navigations
 // Cache version: increment this to bust cache when invoice generation logic changes
-const CACHE_VERSION = 2; // Updated for foodstuff tolerance fix
+const CACHE_VERSION = 5; // Production ready - invoiceIndex fix complete
 let cachedInvoices: Invoice[] | null = null;
 let cacheTimestamp: number = 0;
 let cacheVersion: number = 0;
@@ -125,7 +125,8 @@ export function generateAgentProcessedInvoices(serverAgents?: AgentConfig[]): In
     console.log('[AgentInvoiceService] Agent results for scenario', index + 1, ':', agentResults.length);
     
     // Transform scenario and agent results into invoice format
-    const invoice = transformScenarioToInvoice(invoiceId, scenario, agentResults, agents);
+    // Pass the actual index (0-14) for deterministic line item assignment
+    const invoice = transformScenarioToInvoice(invoiceId, scenario, agentResults, agents, index);
     console.log('[AgentInvoiceService] Transformed invoice:', invoice.id, invoice.invoice_number, 'Issues:', invoice.issues);
     processedInvoices.push(invoice);
   });
@@ -183,7 +184,8 @@ function transformScenarioToInvoice(
   id: string,
   scenario: TestScenario,
   agentResults: any[],
-  agents: AgentConfig[]
+  agents: AgentConfig[],
+  processingIndex?: number
 ): Invoice {
   const now = new Date();
   const invoiceDate = new Date(scenario.date);
@@ -216,9 +218,9 @@ function transformScenarioToInvoice(
   
   // Generate clean job_number by default since OCR agent auto-resolves issues
   // Use a simple incrementing sequence matching the WO-2025-XXX pattern on documents
-  // Extract the last digits from invoice ID (e.g., INV-2024-10000 -> 00, INV-2024-10001 -> 01)
-  const invoiceNum = parseInt((scenario.id.match(/\d+$/) || ['0'])[0]);
-  const workOrderNumber = 450 + (invoiceNum % 100); // Maps 10000->450, 10001->451, etc. Avoids conflict with WO-2025-445
+  // Use processing index if provided (for deterministic generation), otherwise extract from scenario ID
+  const invoiceNum = processingIndex !== undefined ? processingIndex : parseInt((scenario.id.match(/\d+$/) || ['0'])[0]);
+  const workOrderNumber = 450 + (invoiceNum % 100); // Maps 0->450, 1->451, etc. Avoids conflict with WO-2025-445
   let finalJobNumber: string | null = hasOCRAgent ? `WO-2025-${workOrderNumber}` : null;
   
   // Determine status based on agent actions
