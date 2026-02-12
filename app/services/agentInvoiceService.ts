@@ -11,8 +11,11 @@ import { generateTestScenarios, TestScenario } from '@/app/components/agentbuild
 type Invoice = Partial<UnifiedInvoice>;
 
 // Module-level cache to persist invoices across client-side navigations
+// Cache version: increment this to bust cache when invoice generation logic changes
+const CACHE_VERSION = 2; // Updated for foodstuff tolerance fix
 let cachedInvoices: Invoice[] | null = null;
 let cacheTimestamp: number = 0;
+let cacheVersion: number = 0;
 const CACHE_TTL = 60000; // 1 minute cache
 
 /**
@@ -64,9 +67,17 @@ function loadActiveAgents(): AgentConfig[] {
 export function generateAgentProcessedInvoices(serverAgents?: AgentConfig[]): Invoice[] {
   // Check cache first (client-side only, short TTL)
   const now = Date.now();
-  if (typeof window !== 'undefined' && cachedInvoices && (now - cacheTimestamp) < CACHE_TTL) {
+  const isCacheValid = cachedInvoices && 
+                       (now - cacheTimestamp) < CACHE_TTL && 
+                       cacheVersion === CACHE_VERSION;
+  
+  if (typeof window !== 'undefined' && isCacheValid) {
     console.log('[AgentInvoiceService] Returning cached invoices:', cachedInvoices.length);
     return cachedInvoices;
+  }
+  
+  if (cachedInvoices && cacheVersion !== CACHE_VERSION) {
+    console.log('[AgentInvoiceService] Cache version mismatch, regenerating invoices');
   }
 
   // Load active agents (use provided server agents or load from client)
@@ -125,7 +136,8 @@ export function generateAgentProcessedInvoices(serverAgents?: AgentConfig[]): In
   if (typeof window !== 'undefined') {
     cachedInvoices = processedInvoices;
     cacheTimestamp = Date.now();
-    console.log('[AgentInvoiceService] Cached invoices for future requests');
+    cacheVersion = CACHE_VERSION;
+    console.log('[AgentInvoiceService] Cached invoices for future requests (version:', CACHE_VERSION, ')');
   }
   
   return processedInvoices;
