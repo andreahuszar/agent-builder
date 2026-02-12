@@ -608,18 +608,27 @@ function transformScenarioToInvoice(
         appliedToleranceCount++;
         
         // Simulate variance (3-5% variance for perishables)
+        // The INVOICE has a slightly different quantity than the PO due to natural variance
         const variancePercent = 0.03 + (Math.random() * 0.02);
         const hasVariance = Math.random() < 0.7; // 70% of foodstuff items have variance
         
         if (hasVariance) {
-          const originalQty = line.qty;
-          const adjustedQty = Math.round(originalQty * (1 + variancePercent) * 10) / 10;
+          // PO quantity (baseline/expected)
+          const poQty = line.qty;
+          // Invoice quantity (with natural variance - can be higher or lower)
+          const invoiceQtyWithVariance = Math.random() < 0.5 
+            ? Math.round(poQty * (1 + variancePercent) * 10) / 10  // Invoice is slightly higher
+            : Math.round(poQty * (1 - variancePercent) * 10) / 10; // Invoice is slightly lower
           
+          // Update the line's qty to reflect the invoice's actual quantity (with variance)
+          line.qty = invoiceQtyWithVariance;
+          
+          // Create correction showing: invoice qty (with variance) → PO qty (acceptable match)
           auto_corrections.push({
             field: `line_${line.line_no}_qty`,
-            original_value: originalQty.toString(),
-            corrected_value: adjustedQty.toString(),
-            reason: `Quantity variance of ${(variancePercent * 100).toFixed(1)}% within bulk commodities tolerance (+/- 5%) - detected perishable goods`,
+            original_value: invoiceQtyWithVariance.toString(),
+            corrected_value: poQty.toString(),
+            reason: `Quantity variance of ${(variancePercent * 100).toFixed(1)}% within bulk commodities tolerance (+/- 5%) - detected perishable goods, variance acceptable`,
             agent_name: bulkCommoditiesAgent.name,
             agent_id: bulkCommoditiesAgent.name.toLowerCase().replace(/\s+/g, '-'),
             timestamp: now.toISOString(),
