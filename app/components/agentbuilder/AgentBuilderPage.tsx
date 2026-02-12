@@ -751,30 +751,19 @@ ERROR HANDLING:
   
   /**
    * Generate a simplified/basic version of the prompt for easier reading
+   * Shows only ROLE and KEY ACTIONS
    */
   const generateBasicPrompt = (fullPrompt: string): string => {
     if (!fullPrompt) return ""
     
     // Extract main sections
     const roleMatch = fullPrompt.match(/ROLE:([^]*?)(?=\n\n[A-Z]+:|$)/i)
-    const inputsMatch = fullPrompt.match(/INPUTS?:([^]*?)(?=\n\n[A-Z]+:|$)/i)
-    const outputMatch = fullPrompt.match(/OUTPUTS?:([^]*?)(?=\n\n[A-Z]+:|$)/i)
     
     // Build simplified prompt with just the essentials
     let basicPrompt = ""
     
     if (roleMatch) {
       basicPrompt += `ROLE:${roleMatch[1].trim()}\n\n`
-    }
-    
-    if (inputsMatch) {
-      const inputs = inputsMatch[1].trim()
-      // Keep only the bullet points, remove sub-details
-      const simplifiedInputs = inputs.split('\n')
-        .filter(line => line.trim().startsWith('-') && !line.trim().startsWith('  '))
-        .slice(0, 5) // Limit to first 5 items
-        .join('\n')
-      basicPrompt += `INPUTS:\n${simplifiedInputs}\n\n`
     }
     
     // Extract key actions (from STEPS or AGENT INSTRUCTIONS)
@@ -786,17 +775,7 @@ ERROR HANDLING:
         .filter(line => /^\d+\./.test(line.trim()))
         .slice(0, 5) // Limit to first 5 steps
         .join('\n')
-      basicPrompt += `KEY ACTIONS:\n${keyActions}\n\n`
-    }
-    
-    if (outputMatch) {
-      const output = outputMatch[1].trim()
-      // Keep only the bullet points
-      const simplifiedOutput = output.split('\n')
-        .filter(line => line.trim().startsWith('-') && !line.trim().startsWith('  '))
-        .slice(0, 5) // Limit to first 5 items
-        .join('\n')
-      basicPrompt += `OUTPUT:\n${simplifiedOutput}`
+      basicPrompt += `KEY ACTIONS:\n${keyActions}`
     }
     
     return basicPrompt || "No simplified version available"
