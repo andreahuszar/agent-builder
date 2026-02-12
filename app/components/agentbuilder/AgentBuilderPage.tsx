@@ -10,7 +10,7 @@ import { PromptFlowchart } from "./PromptFlowchart"
 import { PromptRules } from "./PromptRules"
 import Navigation from "@/app/components/Navigation"
 import UserMenu from "@/app/components/UserMenu"
-import { Plus, Pencil, ChevronDown, ChevronRight, ChevronLeft, Power, FileText, PanelLeftClose, PanelLeftOpen } from "lucide-react"
+import { Plus, Pencil, ChevronDown, ChevronRight, ChevronLeft, Power, FileText, PanelLeftClose, PanelLeftOpen, Copy, Check } from "lucide-react"
 import { Card } from "@/app/components/ui/card"
 import { Label } from "@/app/components/ui/label"
 import { Textarea } from "@/app/components/ui/textarea"
@@ -485,6 +485,7 @@ ERROR HANDLING:
   const [currentPrompt, setCurrentPrompt] = useState<string>("")
   const [currentSkills, setCurrentSkills] = useState<string[]>([])
   const [promptView, setPromptView] = useState<"text" | "flowchart" | "rules">("text")
+  const [promptCopied, setPromptCopied] = useState(false)
   
   const AVAILABLE_SKILLS = [
     "Extract text",
@@ -736,6 +737,16 @@ ERROR HANDLING:
     if (editingAgent?.id === agentId) {
       setEditingAgent(null)
       setIsPreviewMode(false)
+    }
+  }
+
+  const handleCopyPrompt = async () => {
+    try {
+      await navigator.clipboard.writeText(currentPrompt)
+      setPromptCopied(true)
+      setTimeout(() => setPromptCopied(false), 2000)
+    } catch (err) {
+      console.error('Failed to copy prompt:', err)
     }
   }
 
@@ -1019,7 +1030,20 @@ ERROR HANDLING:
                   {/* Prompt Section */}
                   <Card className="p-6 flex flex-col" style={{ height: "500px" }}>
                     <div className="flex items-center justify-between mb-3">
-                      <Label htmlFor="system-prompt" className="text-sm font-semibold">System Prompt</Label>
+                      <div className="flex items-center gap-2">
+                        <Label htmlFor="system-prompt" className="text-sm font-semibold">System Prompt</Label>
+                        <button
+                          onClick={handleCopyPrompt}
+                          className="p-1.5 rounded hover:bg-gray-100 transition-colors"
+                          title="Copy prompt to clipboard"
+                        >
+                          {promptCopied ? (
+                            <Check className="h-3.5 w-3.5 text-green-600" />
+                          ) : (
+                            <Copy className="h-3.5 w-3.5 text-gray-500" />
+                          )}
+                        </button>
+                      </div>
                       <div className="flex gap-2">
                         <div className="flex rounded-md border border-border overflow-hidden">
                           <button
