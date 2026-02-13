@@ -39,6 +39,17 @@ export function AgentBuilder2({
   const [chatOpen, setChatOpen] = useState(true)
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
 
+  const handlePromptGenerated = (prompt: string, skills: string[], documents?: any[]) => {
+    if (currentAgent) {
+      onSaveAgent({
+        ...currentAgent,
+        prompt,
+        skills,
+        documents: documents || currentAgent.documents,
+      })
+    }
+  }
+
   // Group agents by stage
   const agentsByStage = WORKFLOW_STAGES.map((stage) => ({
     ...stage,
@@ -193,8 +204,9 @@ export function AgentBuilder2({
           <div className="flex-1 overflow-hidden">
             <ChatInterface
               currentAgent={currentAgent}
-              onSaveAgent={onSaveAgent}
-              isPreviewMode={isPreviewMode}
+              onPromptGenerated={handlePromptGenerated}
+              agentId={currentAgent?.id}
+              currentPrompt={currentAgent?.prompt}
             />
           </div>
         </div>
