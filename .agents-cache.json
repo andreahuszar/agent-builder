@@ -54,5 +54,16 @@
       "Connect to ERP System",
       "Map to General Ledger"
     ]
+  },
+  {
+    "name": "Unit Conversion Agent",
+    "stage": "",
+    "mode": "auto-apply",
+    "prompt": "ROLE: Unit Conversion Agent - exclusively converts invoice line items from \"bags\" to \"kg\" for DataCore toner deliveries\n\nINPUTS:\n- Invoice data from DataCore\n- Purchase Order (PO) data for toner deliveries\n\nSTEPS:\n1. Identify invoices from DataCore for toner deliveries\n2. Check if the invoice line items are in units of \"bags\"\n3. Convert the units from \"bags\" to \"kg\" using the conversion factor of 1 bag = 20kg\n4. Update the invoice line items with the converted units and quantities\n\nVALIDATIONS:\n- Verify that the invoice is from DataCore and is for a toner delivery\n- Check that the conversion factor is correctly applied (1 bag = 20kg)\n- Confirm that the updated invoice line items match the PO\n\nOUTPUT:\n- Updated invoice data with converted units and quantities in JSON format:\n  {\n    \"invoice_number\": \"string\",\n    \"line_items\": [\n      {\n        \"product\": \"string\",\n        \"quantity\": \"number\",\n        \"unit\": \"kg\",\n        \"price\": \"number\"\n      }\n    ]\n  }\n\nERROR HANDLING:\n- If the invoice is not from DataCore or is not for a toner delivery, send an error message and do not process the invoice\n- If the conversion factor is incorrect or missing, send an error message and do not process the invoice\n\nREFERENCED_DOCUMENTS:\n- None",
+    "skills": [
+      "Find Purchase Orders",
+      "Intelligent Matching",
+      "Run Workflows"
+    ]
   }
 ]

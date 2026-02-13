@@ -1,7 +1,8 @@
 "use client"
 
+import { useState } from "react"
 import { Agent } from "./AgentBuilderPage"
-import { Pencil, Clock, Trash2, Save } from "lucide-react"
+import { Pencil, Clock, Trash2, Save, Check, X } from "lucide-react"
 import { Button } from "@/app/components/ui/button"
 
 interface AgentDetailsViewProps {
@@ -10,6 +11,7 @@ interface AgentDetailsViewProps {
   onEdit: () => void
   onDelete: (agentId: string) => void
   onSave: () => void
+  onUpdateAgent: (updatedAgent: Agent) => void
 }
 
 const AVAILABLE_SKILLS = [
@@ -33,7 +35,11 @@ export function AgentDetailsView({
   onEdit,
   onDelete,
   onSave,
+  onUpdateAgent,
 }: AgentDetailsViewProps) {
+  const [isEditingName, setIsEditingName] = useState(false)
+  const [editedName, setEditedName] = useState(agent.name)
+
   // Extract KEY ACTIONS from prompt
   const extractKeyActions = (prompt: string) => {
     const match = prompt.match(/KEY ACTIONS?:([\s\S]*?)(?=\n\n|$)/i)
@@ -41,6 +47,21 @@ export function AgentDetailsView({
     
     const lines = match[1].split('\n').filter(line => line.trim())
     return lines.map(line => line.replace(/^\d+\.\s*/, '').trim()).filter(Boolean)
+  }
+
+  const handleSaveName = () => {
+    if (editedName.trim() && editedName !== agent.name) {
+      onUpdateAgent({
+        ...agent,
+        name: editedName.trim(),
+      })
+    }
+    setIsEditingName(false)
+  }
+
+  const handleCancelEdit = () => {
+    setEditedName(agent.name)
+    setIsEditingName(false)
   }
 
   const keyActions = extractKeyActions(agent.prompt || '')
@@ -52,13 +73,43 @@ export function AgentDetailsView({
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <h1 className="text-xl font-semibold text-gray-950">{agent.name}</h1>
-            <button
-              onClick={onEdit}
-              className="p-1.5 hover:bg-gray-200 rounded transition-colors"
-            >
-              <Pencil className="h-4 w-4 text-gray-600" />
-            </button>
+            {isEditingName ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text"
+                  value={editedName}
+                  onChange={(e) => setEditedName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleSaveName()
+                    if (e.key === 'Escape') handleCancelEdit()
+                  }}
+                  className="text-xl font-semibold text-gray-950 border border-purple-600 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  autoFocus
+                />
+                <button
+                  onClick={handleSaveName}
+                  className="p-1.5 hover:bg-green-100 rounded transition-colors"
+                >
+                  <Check className="h-4 w-4 text-green-600" />
+                </button>
+                <button
+                  onClick={handleCancelEdit}
+                  className="p-1.5 hover:bg-red-100 rounded transition-colors"
+                >
+                  <X className="h-4 w-4 text-red-600" />
+                </button>
+              </div>
+            ) : (
+              <>
+                <h1 className="text-xl font-semibold text-gray-950">{agent.name}</h1>
+                <button
+                  onClick={() => setIsEditingName(true)}
+                  className="p-1.5 hover:bg-gray-200 rounded transition-colors"
+                >
+                  <Pencil className="h-4 w-4 text-gray-600" />
+                </button>
+              </>
+            )}
           </div>
           <div className="flex items-center gap-2">
             <span className="text-sm text-gray-600">Active</span>

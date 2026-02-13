@@ -43,12 +43,39 @@ export function AgentBuilder2({
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
   const [showDetails, setShowDetails] = useState(false)
 
+  // Extract a clean agent name from the prompt
+  const extractAgentName = (prompt: string): string => {
+    // Try to extract from ROLE line
+    const roleMatch = prompt.match(/ROLE:\s*(.+?)(?:\s*-|Agent|\n|$)/i)
+    if (roleMatch) {
+      let name = roleMatch[1].trim()
+      // Remove common suffixes
+      name = name.replace(/\s+(Agent|automation|processor|handler|service|system)$/i, '')
+      // Capitalize first letter of each word
+      name = name.split(' ').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
+      ).join(' ')
+      return name + ' Agent'
+    }
+    
+    // Fallback: try to extract from first meaningful line
+    const lines = prompt.split('\n').filter(l => l.trim())
+    if (lines.length > 0) {
+      return lines[0].substring(0, 50).trim() + ' Agent'
+    }
+    
+    return 'New Agent'
+  }
+
   const handlePromptGenerated = (prompt: string, skills: string[], documents?: any[]) => {
     console.log('[AgentBuilder2] handlePromptGenerated called', { currentAgent, prompt: prompt.substring(0, 50), skills })
+    
+    const agentName = extractAgentName(prompt)
     
     if (currentAgent) {
       const updatedAgent = {
         ...currentAgent,
+        name: currentAgent.name === 'New Agent' || !currentAgent.name ? agentName : currentAgent.name,
         prompt,
         skills,
         documents: documents || currentAgent.documents,
@@ -60,10 +87,6 @@ export function AgentBuilder2({
       // Create a new agent if none is selected
       console.log('[AgentBuilder2] Creating new agent')
       const newAgentId = `agent-${Date.now()}`
-      
-      // Extract name from prompt if possible
-      const nameMatch = prompt.match(/ROLE:\s*(.+?)(?:\s*-|$)/i)
-      const agentName = nameMatch ? nameMatch[1].trim() : 'New Agent'
       
       // Extract stage from prompt if possible
       const stageMatch = prompt.match(/STAGE:\s*(\w+)/i)
@@ -222,6 +245,7 @@ export function AgentBuilder2({
             onEdit={handleEditAgentDetails}
             onDelete={onDeleteAgent}
             onSave={handleSaveAgentDetails}
+            onUpdateAgent={onSaveAgent}
           />
         ) : (
           <div className="flex-1 flex items-center justify-center bg-gray-50">
