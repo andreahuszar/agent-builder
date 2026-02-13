@@ -63,16 +63,6 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                 Dashboard
               </button>
               <button
-                onClick={() => handleSubTabChange('workflow')}
-                className={`${
-                  activeSubTab === 'workflow'
-                    ? 'border-purple-900 text-purple-900'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
-              >
-                Workflow
-              </button>
-              <button
                 onClick={() => handleSubTabChange('agent-builder')}
                 className={`${
                   activeSubTab === 'agent-builder'
@@ -180,16 +170,6 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                 } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
               >
                 Dashboard
-              </button>
-              <button
-                onClick={() => handleSubTabChange('workflow')}
-                className={`${
-                  activeSubTab === 'workflow'
-                    ? 'border-purple-900 text-purple-900'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
-              >
-                Workflow
               </button>
               <button
                 onClick={() => handleSubTabChange('agent-builder')}
