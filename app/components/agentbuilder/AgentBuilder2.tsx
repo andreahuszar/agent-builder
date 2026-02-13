@@ -4,6 +4,7 @@ import { useState } from "react"
 import { ChevronRight, ChevronDown, Plus, X, Minimize2, Power, Pencil } from "lucide-react"
 import { Agent } from "./AgentBuilderPage"
 import { ChatInterface } from "./ChatInterface"
+import { AgentDetailsView } from "./AgentDetailsView"
 import { Button } from "@/app/components/ui/button"
 
 interface AgentBuilder2Props {
@@ -15,6 +16,7 @@ interface AgentBuilder2Props {
   isPreviewMode: boolean
   onToggleActive: (agentId: string) => void
   onEditAgent: (agent: Agent) => void
+  onDeleteAgent: (agentId: string) => void
 }
 
 const WORKFLOW_STAGES = [
@@ -35,19 +37,32 @@ export function AgentBuilder2({
   isPreviewMode,
   onToggleActive,
   onEditAgent,
+  onDeleteAgent,
 }: AgentBuilder2Props) {
   const [chatOpen, setChatOpen] = useState(true)
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
+  const [showDetails, setShowDetails] = useState(false)
 
   const handlePromptGenerated = (prompt: string, skills: string[], documents?: any[]) => {
     if (currentAgent) {
-      onSaveAgent({
+      const updatedAgent = {
         ...currentAgent,
         prompt,
         skills,
         documents: documents || currentAgent.documents,
-      })
+      }
+      onSaveAgent(updatedAgent)
+      setShowDetails(true)
     }
+  }
+
+  const handleEditAgentDetails = () => {
+    setShowDetails(false)
+  }
+
+  const handleSaveAgentDetails = () => {
+    // Save is already handled by onSaveAgent
+    setShowDetails(true)
   }
 
   // Group agents by stage
@@ -161,30 +176,42 @@ export function AgentBuilder2({
       </div>
 
       {/* Middle Column: Main Content Area */}
-      <div className="flex-1 flex items-center justify-center bg-gray-50">
-        <div className="text-center px-8">
-          <div className="mb-6">
-            <svg className="w-48 h-48 mx-auto" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
-              {/* Robot illustration */}
-              <circle cx="100" cy="80" r="40" fill="#E5E7EB"/>
-              <circle cx="85" cy="75" r="5" fill="#374151"/>
-              <circle cx="115" cy="75" r="5" fill="#374151"/>
-              <path d="M85 90 Q100 95 115 90" stroke="#374151" strokeWidth="2" fill="none"/>
-              <rect x="70" y="120" width="60" height="50" rx="8" fill="#E5E7EB"/>
-              <rect x="55" y="135" width="15" height="30" rx="5" fill="#E5E7EB"/>
-              <rect x="130" y="135" width="15" height="30" rx="5" fill="#E5E7EB"/>
-              {/* Building blocks */}
-              <rect x="130" y="60" width="25" height="25" rx="4" fill="#7C3AED" opacity="0.6"/>
-              <rect x="140" y="40" width="25" height="25" rx="4" fill="#A78BFA" opacity="0.6"/>
-            </svg>
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {showDetails && currentAgent && currentAgent.prompt ? (
+          <AgentDetailsView
+            agent={currentAgent}
+            onToggleActive={onToggleActive}
+            onEdit={handleEditAgentDetails}
+            onDelete={onDeleteAgent}
+            onSave={handleSaveAgentDetails}
+          />
+        ) : (
+          <div className="flex-1 flex items-center justify-center bg-gray-50">
+            <div className="text-center px-8">
+              <div className="mb-6">
+                <svg className="w-48 h-48 mx-auto" viewBox="0 0 200 200" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  {/* Robot illustration */}
+                  <circle cx="100" cy="80" r="40" fill="#E5E7EB"/>
+                  <circle cx="85" cy="75" r="5" fill="#374151"/>
+                  <circle cx="115" cy="75" r="5" fill="#374151"/>
+                  <path d="M85 90 Q100 95 115 90" stroke="#374151" strokeWidth="2" fill="none"/>
+                  <rect x="70" y="120" width="60" height="50" rx="8" fill="#E5E7EB"/>
+                  <rect x="55" y="135" width="15" height="30" rx="5" fill="#E5E7EB"/>
+                  <rect x="130" y="135" width="15" height="30" rx="5" fill="#E5E7EB"/>
+                  {/* Building blocks */}
+                  <rect x="130" y="60" width="25" height="25" rx="4" fill="#7C3AED" opacity="0.6"/>
+                  <rect x="140" y="40" width="25" height="25" rx="4" fill="#A78BFA" opacity="0.6"/>
+                </svg>
+              </div>
+              <h3 className="text-xl font-semibold text-gray-950 mb-2">
+                Nothing configured yet
+              </h3>
+              <p className="text-sm text-gray-600 max-w-md mx-auto">
+                Chat with the agent builder to configure your agents and rules
+              </p>
+            </div>
           </div>
-          <h3 className="text-xl font-semibold text-gray-950 mb-2">
-            Nothing configured yet
-          </h3>
-          <p className="text-sm text-gray-600 max-w-md mx-auto">
-            Chat with the agent builder to configure your agents and rules
-          </p>
-        </div>
+        )}
       </div>
 
       {/* Right Column: Chat Panel */}

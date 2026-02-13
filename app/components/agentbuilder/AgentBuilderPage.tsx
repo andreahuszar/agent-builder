@@ -1009,6 +1009,7 @@ ERROR HANDLING:
                   isPreviewMode={isPreviewMode}
                   onToggleActive={toggleAgentActive}
                   onEditAgent={handleEditAgent}
+                  onDeleteAgent={handleDeleteAgent}
                 />
               )}
               {mode === "executive-dashboard" && (
