@@ -807,17 +807,6 @@ ERROR HANDLING:
                       Dashboard
                     </button>
                     <button
-                      onClick={() => setMode("observe")}
-                      className={`${
-                        mode === "observe"
-                          ? "bg-purple-900 text-white"
-                          : "text-gray-900 hover:bg-gray-100 hover:text-gray-950"
-                      } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
-                      aria-current={mode === "observe" ? "page" : undefined}
-                    >
-                      Workflow
-                    </button>
-                    <button
                       onClick={() => setMode("build")}
                       className={`${
                         mode === "build"
