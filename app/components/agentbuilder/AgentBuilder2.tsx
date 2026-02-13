@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { ChevronRight, ChevronDown, Plus, X, Minimize2, Power, Pencil } from "lucide-react"
 import { Agent } from "./AgentBuilderPage"
 import { ChatInterface } from "./ChatInterface"
@@ -154,8 +154,8 @@ export function AgentBuilder2({
   }
 
   // Add event listeners for drag
-  useState(() => {
-    if (typeof window !== 'undefined') {
+  useEffect(() => {
+    if (isDraggingLeft || isDraggingRight) {
       window.addEventListener('mousemove', handleMouseMove as any)
       window.addEventListener('mouseup', handleMouseUp)
       return () => {
@@ -163,7 +163,7 @@ export function AgentBuilder2({
         window.removeEventListener('mouseup', handleMouseUp)
       }
     }
-  })
+  }, [isDraggingLeft, isDraggingRight])
 
   // Group agents by stage
   const agentsByStage = WORKFLOW_STAGES.map((stage) => ({
