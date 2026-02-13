@@ -44,6 +44,8 @@ export function AgentBuilder2({
   const [showDetails, setShowDetails] = useState(false)
 
   const handlePromptGenerated = (prompt: string, skills: string[], documents?: any[]) => {
+    console.log('[AgentBuilder2] handlePromptGenerated called', { currentAgent, prompt: prompt.substring(0, 50), skills })
+    
     if (currentAgent) {
       const updatedAgent = {
         ...currentAgent,
@@ -51,7 +53,36 @@ export function AgentBuilder2({
         skills,
         documents: documents || currentAgent.documents,
       }
+      console.log('[AgentBuilder2] Updating existing agent:', updatedAgent.name)
       onSaveAgent(updatedAgent)
+      setShowDetails(true)
+    } else {
+      // Create a new agent if none is selected
+      console.log('[AgentBuilder2] Creating new agent')
+      const newAgentId = `agent-${Date.now()}`
+      
+      // Extract name from prompt if possible
+      const nameMatch = prompt.match(/ROLE:\s*(.+?)(?:\s*-|$)/i)
+      const agentName = nameMatch ? nameMatch[1].trim() : 'New Agent'
+      
+      // Extract stage from prompt if possible
+      const stageMatch = prompt.match(/STAGE:\s*(\w+)/i)
+      const stage = stageMatch ? stageMatch[1].toLowerCase() : ''
+      
+      const newAgent: Agent = {
+        id: newAgentId,
+        name: agentName,
+        stage,
+        active: true,
+        mode: 'auto-apply',
+        prompt,
+        skills,
+        documents: documents || [],
+      }
+      
+      console.log('[AgentBuilder2] New agent created:', newAgent)
+      onSaveAgent(newAgent)
+      onAgentSelect(newAgent)
       setShowDetails(true)
     }
   }
