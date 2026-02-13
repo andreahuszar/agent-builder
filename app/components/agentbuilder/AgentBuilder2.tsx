@@ -123,6 +123,25 @@ export function AgentBuilder2({
     setShowDetails(true)
   }
 
+  const handleCreateNewAgent = (stageId?: string) => {
+    // Create a new agent locally without switching views
+    const newAgentId = `agent-${Date.now()}`
+    const newAgent: Agent = {
+      id: newAgentId,
+      name: "",
+      stage: stageId || "",
+      active: false,
+      mode: "auto-apply",
+      prompt: "",
+      skills: [],
+      documents: [],
+    }
+    
+    onAgentSelect(newAgent)
+    setChatOpen(true)
+    setShowDetails(false)
+  }
+
   // Handle left resize
   const handleLeftMouseDown = (e: React.MouseEvent) => {
     e.preventDefault()
@@ -326,11 +345,7 @@ export function AgentBuilder2({
                 Create custom rules and agents to enhance your workflow
               </p>
               <button
-                onClick={() => {
-                  onCreateAgent("")
-                  setChatOpen(true)
-                  setShowDetails(false)
-                }}
+                onClick={() => handleCreateNewAgent()}
                 className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-900 text-white rounded-lg hover:bg-purple-800 transition-colors text-sm font-medium"
               >
                 <Plus className="h-4 w-4" />
