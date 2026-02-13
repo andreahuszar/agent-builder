@@ -20,8 +20,6 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
         setActiveSubTab('general-settings');
       } else if (hash.includes('dashboard')) {
         setActiveSubTab('dashboard');
-      } else if (hash.includes('workflow')) {
-        setActiveSubTab('workflow');
       } else if (hash.includes('agent-builder')) {
         setActiveSubTab('agent-builder');
       } else if (hash.includes('documents')) {
@@ -111,7 +109,6 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
           <div className="flex-1 overflow-auto">
             {activeSubTab === 'general-settings' && <APAutomationGeneralSettings />}
             {activeSubTab === 'dashboard' && <AgentBuilderPage hideNavigation={true} defaultMode="executive-dashboard" />}
-            {activeSubTab === 'workflow' && <AgentBuilderPage hideNavigation={true} defaultMode="observe" />}
             {activeSubTab === 'agent-builder' && <AgentBuilderPage hideNavigation={true} defaultMode="build" />}
             {activeSubTab === 'documents' && <AgentBuilderPage hideNavigation={true} defaultMode="documents" />}
           </div>
@@ -221,7 +218,6 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
           <div className="flex-1 overflow-auto">
             {activeSubTab === 'general-settings' && <APAutomationGeneralSettings />}
             {activeSubTab === 'dashboard' && <AgentBuilderPage hideNavigation={true} defaultMode="executive-dashboard" />}
-            {activeSubTab === 'workflow' && <AgentBuilderPage hideNavigation={true} defaultMode="observe" />}
             {activeSubTab === 'agent-builder' && <AgentBuilderPage hideNavigation={true} defaultMode="build" />}
             {activeSubTab === 'documents' && <AgentBuilderPage hideNavigation={true} defaultMode="documents" />}
           </div>
