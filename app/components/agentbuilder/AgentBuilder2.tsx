@@ -42,6 +42,10 @@ export function AgentBuilder2({
   const [chatOpen, setChatOpen] = useState(true)
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
   const [showDetails, setShowDetails] = useState(false)
+  const [leftWidth, setLeftWidth] = useState(320) // 320px = w-80
+  const [rightWidth, setRightWidth] = useState(400) // 400px default chat width
+  const [isDraggingLeft, setIsDraggingLeft] = useState(false)
+  const [isDraggingRight, setIsDraggingRight] = useState(false)
 
   // Extract a clean agent name from the prompt
   const extractAgentName = (prompt: string): string => {
@@ -119,6 +123,48 @@ export function AgentBuilder2({
     setShowDetails(true)
   }
 
+  // Handle left resize
+  const handleLeftMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsDraggingLeft(true)
+  }
+
+  // Handle right resize
+  const handleRightMouseDown = (e: React.MouseEvent) => {
+    e.preventDefault()
+    setIsDraggingRight(true)
+  }
+
+  // Handle mouse move for resizing
+  const handleMouseMove = (e: MouseEvent) => {
+    if (isDraggingLeft) {
+      const newWidth = Math.max(240, Math.min(500, e.clientX))
+      setLeftWidth(newWidth)
+    }
+    if (isDraggingRight) {
+      const newWidth = Math.max(300, Math.min(600, window.innerWidth - e.clientX))
+      setRightWidth(newWidth)
+    }
+  }
+
+  // Handle mouse up
+  const handleMouseUp = () => {
+    setIsDraggingLeft(false)
+    setIsDraggingRight(false)
+  }
+
+  // Add event listeners for drag
+  useState(() => {
+    if (typeof window !== 'undefined') {
+      window.addEventListener('mousemove', handleMouseMove as any)
+      window.addEventListener('mouseup', handleMouseUp)
+      return () => {
+        window.removeEventListener('mousemove', handleMouseMove as any)
+        window.removeEventListener('mouseup', handleMouseUp)
+      }
+    }
+  })
+
   // Group agents by stage
   const agentsByStage = WORKFLOW_STAGES.map((stage) => ({
     ...stage,
@@ -140,9 +186,9 @@ export function AgentBuilder2({
   }
 
   return (
-    <div className="flex h-full bg-white">
+    <div className="flex h-full bg-white relative">
       {/* Left Column: Agent List */}
-      <div className="w-80 border-r border-gray-200 flex flex-col bg-white">
+      <div className="border-r border-gray-200 flex flex-col bg-white" style={{ width: `${leftWidth}px` }}>
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-base font-bold text-gray-950 uppercase tracking-wide">Agents</h2>
@@ -236,8 +282,17 @@ export function AgentBuilder2({
         </div>
       </div>
 
+      {/* Left Resize Handle */}
+      <div
+        onMouseDown={handleLeftMouseDown}
+        className={`w-1 hover:w-1.5 bg-transparent hover:bg-purple-600 cursor-col-resize transition-all ${
+          isDraggingLeft ? 'w-1.5 bg-purple-600' : ''
+        }`}
+        style={{ flexShrink: 0 }}
+      />
+
       {/* Middle Column: Main Content Area */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="flex-1 flex flex-col overflow-hidden" style={{ minWidth: '400px' }}>
         {showDetails && currentAgent && currentAgent.prompt ? (
           <AgentDetailsView
             agent={currentAgent}
@@ -276,9 +331,20 @@ export function AgentBuilder2({
         )}
       </div>
 
+      {/* Right Resize Handle */}
+      {chatOpen && (
+        <div
+          onMouseDown={handleRightMouseDown}
+          className={`w-1 hover:w-1.5 bg-transparent hover:bg-purple-600 cursor-col-resize transition-all ${
+            isDraggingRight ? 'w-1.5 bg-purple-600' : ''
+          }`}
+          style={{ flexShrink: 0 }}
+        />
+      )}
+
       {/* Right Column: Chat Panel */}
       {chatOpen && (
-        <div className="w-[400px] border-l border-gray-200 flex flex-col">
+        <div className="border-l border-gray-200 flex flex-col" style={{ width: `${rightWidth}px` }}>
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-950">Chat</h2>
             <button
