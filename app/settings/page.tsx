@@ -20,6 +20,8 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
         setActiveSubTab('general-settings');
       } else if (hash.includes('dashboard')) {
         setActiveSubTab('dashboard');
+      } else if (hash.includes('agent-builder-2')) {
+        setActiveSubTab('agent-builder-2');
       } else if (hash.includes('agent-builder')) {
         setActiveSubTab('agent-builder');
       } else if (hash.includes('documents')) {
