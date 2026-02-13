@@ -46,8 +46,9 @@ export function AgentDetailsView({
   const keyActions = extractKeyActions(agent.prompt || '')
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-50">
-      <div className="max-w-4xl mx-auto p-6 space-y-6">
+    <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
+      <div className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto p-6 space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
@@ -184,9 +185,12 @@ export function AgentDetailsView({
             <span>Stats will be shown once agent has been live for 24 hours</span>
           </div>
         </div>
+        </div>
+      </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+      {/* Sticky Footer with Action Buttons */}
+      <div className="border-t border-gray-200 bg-white px-6 py-4">
+        <div className="max-w-4xl mx-auto flex items-center justify-between">
           <button
             onClick={() => onDelete(agent.id)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-md transition-colors"
