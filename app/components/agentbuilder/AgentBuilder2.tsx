@@ -156,9 +156,16 @@ export function AgentBuilder2({
   // Add event listeners for drag
   useEffect(() => {
     if (isDraggingLeft || isDraggingRight) {
+      // Set cursor for entire document during drag
+      document.body.style.cursor = 'col-resize'
+      document.body.style.userSelect = 'none'
+      
       window.addEventListener('mousemove', handleMouseMove as any)
       window.addEventListener('mouseup', handleMouseUp)
+      
       return () => {
+        document.body.style.cursor = ''
+        document.body.style.userSelect = ''
         window.removeEventListener('mousemove', handleMouseMove as any)
         window.removeEventListener('mouseup', handleMouseUp)
       }
