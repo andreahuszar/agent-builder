@@ -58,7 +58,7 @@ interface AgentBuilderPageProps {
 
 export default function AgentBuilderPage({ hideNavigation = false, defaultMode = "observe" }: AgentBuilderPageProps = {}) {
   const [mode, setMode] = useState<Mode>(defaultMode)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [sidebarOpen, setSidebarOpen] = useState(true)
 
   // Initialize agents from localStorage if available, otherwise use default agents
   const getInitialAgents = (): Agent[] => {
