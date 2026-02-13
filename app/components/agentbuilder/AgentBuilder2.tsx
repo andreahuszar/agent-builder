@@ -124,7 +124,14 @@ export function AgentBuilder2({
                     {stage.agents.map((agent) => (
                       <div
                         key={agent.id}
-                        onClick={() => onAgentSelect(agent)}
+                        onClick={() => {
+                          onAgentSelect(agent)
+                          if (agent.prompt) {
+                            setShowDetails(true)
+                          } else {
+                            setShowDetails(false)
+                          }
+                        }}
                         className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group cursor-pointer"
                       >
                         <Button
