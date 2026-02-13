@@ -999,6 +999,16 @@ ERROR HANDLING:
                   onStateChange={handlePromptAndSkillsUpdate}
                 />
               )}
+              {mode === "build2" && (
+                <AgentBuilder2
+                  agents={agents}
+                  onCreateAgent={handleCreateAgentForStage}
+                  currentAgent={editingAgent}
+                  onAgentSelect={setEditingAgent}
+                  onSaveAgent={handleSaveAgent}
+                  isPreviewMode={isPreviewMode}
+                />
+              )}
               {mode === "executive-dashboard" && (
                 <div className="w-full h-full overflow-y-auto">
                   <ExecutiveDashboardClient />
