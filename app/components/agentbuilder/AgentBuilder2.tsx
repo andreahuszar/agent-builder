@@ -299,7 +299,7 @@ export function AgentBuilder2({
 
         <div className="p-4 border-t border-gray-200">
           <button
-            onClick={() => onCreateAgent("")}
+            onClick={() => handleCreateNewAgent()}
             className="w-full flex items-center justify-start gap-2 px-4 py-2.5 bg-purple-900 text-white rounded-lg hover:bg-purple-800 transition-colors text-sm font-medium"
           >
             <Plus className="w-4 h-4" />
