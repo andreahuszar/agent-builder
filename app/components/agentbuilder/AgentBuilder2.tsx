@@ -39,7 +39,7 @@ export function AgentBuilder2({
   onEditAgent,
   onDeleteAgent,
 }: AgentBuilder2Props) {
-  const [chatOpen, setChatOpen] = useState(true)
+  const [chatOpen, setChatOpen] = useState(false)
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
   const [showDetails, setShowDetails] = useState(false)
   const [leftWidth, setLeftWidth] = useState(320) // 320px = w-80
@@ -327,12 +327,23 @@ export function AgentBuilder2({
                   <rect x="140" y="40" width="25" height="25" rx="4" fill="#A78BFA" opacity="0.6"/>
                 </svg>
               </div>
-              <h3 className="text-xl font-semibold text-gray-950 mb-2">
-                Nothing configured yet
+              <h3 className="text-xl font-semibold text-gray-950 mb-4">
+                Agent builder
               </h3>
-              <p className="text-sm text-gray-600 max-w-md mx-auto">
-                Chat with the agent builder to configure your agents and rules
+              <p className="text-sm text-gray-600 max-w-md mx-auto mb-6">
+                Create custom rules and agents to enhance your workflow
               </p>
+              <button
+                onClick={() => {
+                  onCreateAgent("")
+                  setChatOpen(true)
+                  setShowDetails(false)
+                }}
+                className="inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-900 text-white rounded-lg hover:bg-purple-800 transition-colors text-sm font-medium"
+              >
+                <Plus className="h-4 w-4" />
+                Create new agent
+              </button>
             </div>
           </div>
         )}
