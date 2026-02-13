@@ -328,7 +328,27 @@ export function AgentBuilder2({
             onSave={handleSaveAgentDetails}
             onUpdateAgent={onSaveAgent}
           />
+        ) : chatOpen ? (
+          // State when user is creating a new agent (chat is open)
+          <div className="flex-1 flex items-center justify-center bg-white">
+            <div className="text-center px-8">
+              <div className="mb-6">
+                <img 
+                  src="/agent-builder-robot.png" 
+                  alt="Agent Builder Robot" 
+                  className="w-48 h-48 mx-auto object-contain"
+                />
+              </div>
+              <h3 className="text-2xl font-semibold text-gray-950 mb-4">
+                Nothing configured yet
+              </h3>
+              <p className="text-sm text-gray-600 max-w-md mx-auto">
+                Chat with the agent builder to configure your agents and rules
+              </p>
+            </div>
+          </div>
         ) : (
+          // Initial empty state (no chat, no agent selected)
           <div className="flex-1 flex items-center justify-center bg-gray-50">
             <div className="text-center px-8">
               <div className="mb-6">
