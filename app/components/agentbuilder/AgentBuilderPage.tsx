@@ -4,6 +4,7 @@ import { useEffect } from "react"
 import { useState } from "react"
 import { Button } from "@/app/components/ui/button"
 import { AgentBuilder } from "./AgentBuilder"
+import { AgentBuilder2 } from "./AgentBuilder2"
 import { WorkflowVisualizer } from "./WorkflowVisualizer"
 import { DocumentsLibrary } from "./DocumentsLibrary"
 import { PromptFlowchart } from "./PromptFlowchart"
@@ -17,7 +18,7 @@ import { Checkbox } from "@/app/components/ui/checkbox"
 import ExecutiveDashboardClient from "@/app/components/executive-dashboard/ExecutiveDashboardClient"
 import { clearInvoiceCache } from "@/app/services/agentInvoiceService"
 
-type Mode = "chat" | "observe" | "build" | "executive-dashboard" | "documents"
+type Mode = "chat" | "observe" | "build" | "build2" | "executive-dashboard" | "documents"
 
 export type AgentDocument = {
   id: string
@@ -816,6 +817,17 @@ ERROR HANDLING:
                       aria-current={mode === "build" ? "page" : undefined}
                     >
                       Agent Builder
+                    </button>
+                    <button
+                      onClick={() => setMode("build2")}
+                      className={`${
+                        mode === "build2"
+                          ? "bg-purple-900 text-white"
+                          : "text-gray-900 hover:bg-gray-100 hover:text-gray-950"
+                      } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
+                      aria-current={mode === "build2" ? "page" : undefined}
+                    >
+                      Agent Builder 2
                     </button>
                     <button
                       onClick={() => setMode("documents")}
