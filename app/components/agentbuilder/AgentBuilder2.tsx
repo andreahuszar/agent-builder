@@ -44,7 +44,7 @@ export function AgentBuilder2({
   return (
     <div className="flex h-full bg-white">
       {/* Left Column: Workflow Stages */}
-      <div className="w-64 border-r border-gray-200 flex flex-col">
+      <div className="w-80 border-r border-gray-200 flex flex-col">
         <div className="p-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold text-gray-950">Workflow</h2>
