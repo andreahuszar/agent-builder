@@ -1007,6 +1007,8 @@ ERROR HANDLING:
                   onAgentSelect={setEditingAgent}
                   onSaveAgent={handleSaveAgent}
                   isPreviewMode={isPreviewMode}
+                  onToggleActive={toggleAgentActive}
+                  onEditAgent={handleEditAgent}
                 />
               )}
               {mode === "executive-dashboard" && (

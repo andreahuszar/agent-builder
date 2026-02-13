@@ -195,6 +195,16 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                 Agent Builder
               </button>
               <button
+                onClick={() => handleSubTabChange('agent-builder-2')}
+                className={`${
+                  activeSubTab === 'agent-builder-2'
+                    ? 'border-purple-900 text-purple-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
+              >
+                Agent Builder 2
+              </button>
+              <button
                 onClick={() => handleSubTabChange('documents')}
                 className={`${
                   activeSubTab === 'documents'
@@ -212,6 +222,7 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
             {activeSubTab === 'general-settings' && <APAutomationGeneralSettings />}
             {activeSubTab === 'dashboard' && <AgentBuilderPage hideNavigation={true} defaultMode="executive-dashboard" />}
             {activeSubTab === 'agent-builder' && <AgentBuilderPage hideNavigation={true} defaultMode="build" />}
+            {activeSubTab === 'agent-builder-2' && <AgentBuilderPage hideNavigation={true} defaultMode="build2" />}
             {activeSubTab === 'documents' && <AgentBuilderPage hideNavigation={true} defaultMode="documents" />}
           </div>
         </div>
