@@ -254,6 +254,7 @@ export function AgentBuilder2({
                           onAgentSelect(agent)
                           if (agent.prompt) {
                             setShowDetails(true)
+                            setChatOpen(true)
                           } else {
                             setShowDetails(false)
                           }
