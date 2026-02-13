@@ -391,15 +391,16 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
   return (
     <div className="flex flex-col h-full bg-card">
       {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div key={message.id} className={`flex gap-3 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
-            {message.role === "assistant" && (
-              <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-                <Bot className="w-4 h-4 text-primary-foreground" />
-              </div>
-            )}
-            <div className="max-w-[85%] space-y-2">
+      <div className="flex-1 overflow-y-auto p-4">
+        <div className="max-w-2xl mx-auto space-y-3">
+          {messages.map((message) => (
+            <div key={message.id} className={`flex gap-2 ${message.role === "user" ? "justify-end" : "justify-start"}`}>
+              {message.role === "assistant" && (
+                <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                  <Bot className="w-4 h-4 text-primary-foreground" />
+                </div>
+              )}
+              <div className="max-w-[70%] space-y-2">
               {/* Settings Recommendation Display */}
               {message.role === "assistant" && message.isSettingsRecommendation && (
                 <div className="p-4 rounded-lg border-2 border-blue-500 bg-blue-50 dark:bg-blue-950/20">
@@ -439,7 +440,7 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
               {/* Regular message content - show only if not a generated prompt or settings recommendation */}
               {!(message.role === "assistant" && message.generatedPrompt) && !message.isSettingsRecommendation && (
                 <div
-                  className={`p-3 rounded-lg ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
+                  className={`px-3 py-2 rounded-lg ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
                 >
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
                 </div>
@@ -448,11 +449,11 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
               {/* Generated Prompt Display with Apply Button */}
               {message.role === "assistant" && message.generatedPrompt && message.generatedPrompt.length > 0 && (
                 <>
-                  <div className="p-3 rounded-lg bg-muted">
+                  <div className="px-3 py-2 rounded-lg bg-muted">
                     <p className="text-sm leading-relaxed whitespace-pre-wrap font-mono">{message.generatedPrompt}</p>
                   </div>
                   {message.suggestedSkills && message.suggestedSkills.length > 0 && (
-                    <div className="p-3 rounded-lg bg-muted/50">
+                    <div className="px-3 py-2 rounded-lg bg-muted/50">
                       <h4 className="text-xs font-medium text-muted-foreground mb-2">Suggested Skills:</h4>
                       <div className="flex flex-wrap gap-2">
                         {message.suggestedSkills.map((skill) => (
@@ -497,20 +498,21 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
                 <User className="w-4 h-4 text-muted-foreground" />
               </div>
             )}
-          </div>
-        ))}
-        {isProcessing && (
-          <div className="flex gap-3 justify-start">
-            <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
-              <Bot className="w-4 h-4 text-primary-foreground animate-pulse" />
             </div>
-            <div className="bg-muted p-3 rounded-lg">
-              <p className="text-sm text-muted-foreground">Analyzing and expanding your configuration...</p>
+          ))}
+          {isProcessing && (
+            <div className="flex gap-2 justify-start">
+              <div className="w-7 h-7 rounded-full bg-primary flex items-center justify-center flex-shrink-0">
+                <Bot className="w-4 h-4 text-primary-foreground animate-pulse" />
+              </div>
+              <div className="bg-muted px-3 py-2 rounded-lg">
+                <p className="text-sm text-muted-foreground">Analyzing and expanding your configuration...</p>
+              </div>
             </div>
-          </div>
-        )}
-        {/* Scroll anchor */}
-        <div ref={messagesEndRef} />
+          )}
+          {/* Scroll anchor */}
+          <div ref={messagesEndRef} />
+        </div>
       </div>
 
       {/* Session Documents - shown above input */}
