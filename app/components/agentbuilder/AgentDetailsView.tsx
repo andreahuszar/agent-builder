@@ -39,6 +39,7 @@ export function AgentDetailsView({
 }: AgentDetailsViewProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(agent.name)
+  const [promptView, setPromptView] = useState<"basic" | "advanced" | "flowchart">("basic")
 
   // Extract KEY ACTIONS from prompt
   const extractKeyActions = (prompt: string) => {
@@ -47,6 +48,12 @@ export function AgentDetailsView({
     
     const lines = match[1].split('\n').filter(line => line.trim())
     return lines.map(line => line.replace(/^\d+\.\s*/, '').trim()).filter(Boolean)
+  }
+
+  // Extract ROLE from prompt for basic view
+  const extractRole = (prompt: string) => {
+    const match = prompt.match(/ROLE:([\s\S]*?)(?=\n\n|KEY ACTIONS?:|$)/i)
+    return match ? match[1].trim() : ""
   }
 
   const handleSaveName = () => {
@@ -168,32 +175,95 @@ export function AgentDetailsView({
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-sm font-semibold text-gray-950">Agent details</h2>
             <div className="flex gap-2">
-              <button className="px-3 py-1 text-xs font-medium border-b-2 border-purple-600 text-gray-950">
+              <button 
+                onClick={() => setPromptView("basic")}
+                className={`px-3 py-1 text-xs font-medium border-b-2 ${
+                  promptView === "basic" 
+                    ? "border-purple-600 text-gray-950" 
+                    : "border-transparent text-gray-500 hover:text-gray-950"
+                }`}
+              >
                 Basic
               </button>
-              <button className="px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-950">
+              <button 
+                onClick={() => setPromptView("advanced")}
+                className={`px-3 py-1 text-xs font-medium border-b-2 ${
+                  promptView === "advanced" 
+                    ? "border-purple-600 text-gray-950" 
+                    : "border-transparent text-gray-500 hover:text-gray-950"
+                }`}
+              >
                 Advanced
               </button>
-              <button className="px-3 py-1 text-xs font-medium text-gray-500 hover:text-gray-950">
+              <button 
+                onClick={() => setPromptView("flowchart")}
+                className={`px-3 py-1 text-xs font-medium border-b-2 ${
+                  promptView === "flowchart" 
+                    ? "border-purple-600 text-gray-950" 
+                    : "border-transparent text-gray-500 hover:text-gray-950"
+                }`}
+              >
                 Flowchart
               </button>
             </div>
           </div>
 
-          {/* Description */}
-          <p className="text-sm text-gray-700 mb-4">
-            {agent.prompt?.split('\n')[0] || agent.name}
-          </p>
+          {/* Basic View */}
+          {promptView === "basic" && (
+            <>
+              {/* Role */}
+              {extractRole(agent.prompt || "") && (
+                <div className="mb-4">
+                  <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">ROLE:</h3>
+                  <p className="text-sm text-gray-700">{extractRole(agent.prompt || "")}</p>
+                </div>
+              )}
 
-          {/* Key Actions */}
-          {keyActions.length > 0 && (
-            <div className="mt-4">
-              <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">KEY ACTIONS:</h3>
-              <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
-                {keyActions.map((action, index) => (
-                  <li key={index}>{action}</li>
-                ))}
-              </ol>
+              {/* Key Actions */}
+              {keyActions.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">KEY ACTIONS:</h3>
+                  <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
+                    {keyActions.map((action, index) => (
+                      <li key={index}>{action}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Advanced View */}
+          {promptView === "advanced" && (
+            <>
+              {/* Full Prompt */}
+              <div className="mb-4">
+                <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">SYSTEM PROMPT:</h3>
+                <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono bg-gray-50 p-3 rounded border border-gray-200 max-h-96 overflow-y-auto">
+                  {agent.prompt || "No prompt configured"}
+                </pre>
+              </div>
+
+              {/* Referenced Files */}
+              {agent.documents && agent.documents.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">REFERENCED FILES:</h3>
+                  <div className="space-y-2">
+                    {agent.documents.map((doc, index) => (
+                      <div key={index} className="flex items-center gap-2 text-xs text-gray-700 bg-gray-50 p-2 rounded border border-gray-200">
+                        <span className="font-mono">{doc}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Flowchart View */}
+          {promptView === "flowchart" && (
+            <div className="text-center py-8 text-sm text-gray-500">
+              Flowchart visualization coming soon
             </div>
           )}
         </div>
