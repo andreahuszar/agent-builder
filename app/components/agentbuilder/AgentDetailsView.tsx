@@ -274,9 +274,39 @@ export function AgentDetailsView({
           {promptView === "advanced" && (
             <>
               {/* Full Prompt */}
-              <div className="mb-4">
+              <div className="mb-6">
                 <div className="text-sm text-gray-700 whitespace-pre-wrap">
                   {agent.prompt || "No prompt configured"}
+                </div>
+              </div>
+
+              {/* Required Agent Skills */}
+              <div className="mb-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-xs font-semibold text-gray-700 uppercase">Required agent skills</h3>
+                  <span className="text-xs text-gray-500">
+                    {agent.skills?.length || 0} of {AVAILABLE_SKILLS.length} selected
+                  </span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {AVAILABLE_SKILLS.map((skill) => {
+                    const isSelected = agent.skills?.includes(skill)
+                    return (
+                      <button
+                        key={skill}
+                        className={`px-3 py-1.5 text-xs rounded-md border transition-colors ${
+                          isSelected
+                            ? 'bg-purple-50 border-purple-600 text-purple-700'
+                            : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                        }`}
+                      >
+                        {isSelected && (
+                          <span className="inline-block w-3 h-3 mr-1.5 rounded-sm bg-purple-600" />
+                        )}
+                        {skill}
+                      </button>
+                    )
+                  })}
                 </div>
               </div>
 
@@ -388,36 +418,6 @@ export function AgentDetailsView({
               </div>
             </div>
           )}
-        </div>
-
-        {/* Required Agent Skills */}
-        <div className="bg-white rounded-lg p-4 border border-gray-200">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-950">Required agent skills</h2>
-            <span className="text-xs text-gray-500">
-              {agent.skills?.length || 0} of {AVAILABLE_SKILLS.length} selected
-            </span>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {AVAILABLE_SKILLS.map((skill) => {
-              const isSelected = agent.skills?.includes(skill)
-              return (
-                <button
-                  key={skill}
-                  className={`px-3 py-1.5 text-xs rounded-md border transition-colors ${
-                    isSelected
-                      ? 'bg-purple-50 border-purple-600 text-purple-700'
-                      : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
-                  }`}
-                >
-                  {isSelected && (
-                    <span className="inline-block w-3 h-3 mr-1.5 rounded-sm bg-purple-600" />
-                  )}
-                  {skill}
-                </button>
-              )
-            })}
-          </div>
         </div>
 
         {/* Performance Metrics */}
