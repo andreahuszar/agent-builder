@@ -521,7 +521,11 @@ export function AgentDetailsView({
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-2">Mode</label>
-              <select value={agent.mode || "auto-apply"} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white">
+              <select 
+                value={agent.mode || "auto-apply"} 
+                onChange={(e) => onUpdateAgent({ ...agent, mode: e.target.value as 'observe' | 'suggest' | 'auto-apply' })}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white"
+              >
                 <option value="observe">Observe</option>
                 <option value="suggest">Suggest</option>
                 <option value="auto-apply">Auto-apply</option>
@@ -529,7 +533,11 @@ export function AgentDetailsView({
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-2">Stage</label>
-              <select value={agent.stage || ""} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white">
+              <select 
+                value={agent.stage || ""} 
+                onChange={(e) => onUpdateAgent({ ...agent, stage: e.target.value, lane: '' })}
+                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white"
+              >
                 <option value="">Select stage</option>
                 <option value="ingestion">Ingestion</option>
                 <option value="data-capture">Data capture</option>
@@ -543,9 +551,7 @@ export function AgentDetailsView({
               <label className="block text-xs font-medium text-gray-700 mb-2">Lane</label>
               <select 
                 value={agent.lane || ""}
-                onChange={(e) => {
-                  // Lane update would be handled here
-                }}
+                onChange={(e) => onUpdateAgent({ ...agent, lane: e.target.value })}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white"
               >
                 <option value="">Select a lane</option>
