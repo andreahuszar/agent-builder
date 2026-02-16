@@ -29,6 +29,15 @@ const AVAILABLE_SKILLS = [
   "Verify Data",
 ]
 
+const STAGE_LANES: Record<string, string[]> = {
+  ingestion: ["Source Intake", "File Triage", "Duplicate Detection", "Supplier Routing"],
+  "data-capture": ["OCR Extraction", "Field Normalisation", "Header vs Line Split", "Currency/Tax Parsing"],
+  verification: ["Confidence Scoring", "Anomaly Checks", "Supplier Master Validation", "Policy Checks"],
+  matching: ["PO Match", "GRN Match", "Contract Match", "Unit Conversion", "Tolerance Application"],
+  approval: ["Approver Routing", "Reminder Nudges", "Exception Pack Creation", "Escalation"],
+  posting: ["Coding Suggestion", "ERP Payload Creation", "Posting Validation", "Reconciliation"]
+}
+
 export function AgentDetailsView({
   agent,
   onToggleActive,
@@ -197,12 +206,17 @@ export function AgentDetailsView({
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-2">Lane</label>
-              <input
-                type="text"
-                value={agent.lane || "Unit conversion"}
+              <select 
+                value={agent.lane || ""}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white"
-                readOnly
-              />
+              >
+                <option value="">Select a lane</option>
+                {agent.stage && STAGE_LANES[agent.stage]?.map((laneOption) => (
+                  <option key={laneOption} value={laneOption} selected={agent.lane === laneOption}>
+                    {laneOption}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
