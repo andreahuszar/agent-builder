@@ -502,19 +502,20 @@ export function AgentDetailsView({
           <div className="grid grid-cols-3 gap-4">
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-2">Mode</label>
-              <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white">
+              <select value={agent.mode || "auto-apply"} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white">
                 <option value="observe">Observe</option>
                 <option value="suggest">Suggest</option>
-                <option value="auto-apply" selected={agent.mode === "auto-apply"}>Auto-apply</option>
+                <option value="auto-apply">Auto-apply</option>
               </select>
             </div>
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-2">Stage</label>
-              <select className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white">
+              <select value={agent.stage || ""} className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white">
+                <option value="">Select stage</option>
                 <option value="ingestion">Ingestion</option>
                 <option value="data-capture">Data capture</option>
                 <option value="verification">Verification</option>
-                <option value="matching" selected={agent.stage === "matching"}>Matching</option>
+                <option value="matching">Matching</option>
                 <option value="approval">Approval</option>
                 <option value="posting">Posting</option>
               </select>
