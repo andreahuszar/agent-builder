@@ -273,39 +273,8 @@ export function AgentDetailsView({
           {/* Advanced View */}
           {promptView === "advanced" && (
             <>
-              {/* Inputs */}
-              {extractInputs(agent.prompt || "").length > 0 && (
-                <div className="mb-4">
-                  <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">INPUTS:</h3>
-                  <ul className="space-y-1 text-sm text-gray-700">
-                    {extractInputs(agent.prompt || "").map((input, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <span className="text-purple-600 mt-1">•</span>
-                        <span>{input}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Outputs */}
-              {extractOutputs(agent.prompt || "").length > 0 && (
-                <div className="mb-4">
-                  <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">OUTPUTS:</h3>
-                  <ul className="space-y-1 text-sm text-gray-700">
-                    {extractOutputs(agent.prompt || "").map((output, index) => (
-                      <li key={index} className="flex items-start gap-2">
-                        <span className="text-purple-600 mt-1">•</span>
-                        <span>{output}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
               {/* Full Prompt */}
               <div className="mb-4">
-                <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">SYSTEM PROMPT:</h3>
                 <div className="text-sm text-gray-700 whitespace-pre-wrap">
                   {agent.prompt || "No prompt configured"}
                 </div>
