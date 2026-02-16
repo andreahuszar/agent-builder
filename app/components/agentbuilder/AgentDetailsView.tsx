@@ -137,7 +137,7 @@ export function AgentDetailsView({
     setIsEditingName(false)
   }
 
-  // Detect conflicts with other agents
+  // Detect conflicts with other agents (copied from AgentBuilder.tsx)
   const detectConflicts = (): ConflictType[] => {
     if (!agent || !agent.prompt || !allAgents) return []
 
@@ -145,55 +145,66 @@ export function AgentDetailsView({
     const currentPromptLower = agent.prompt.toLowerCase()
     const currentStageIndex = stages.findIndex((s) => s.id === agent.stage)
 
-    console.log('[Conflict Detection] Current agent:', {
-      id: agent.id,
-      name: agent.name,
-      stage: agent.stage,
-      stageIndex: currentStageIndex
-    })
+    const extractVendorScope = (promptText: string): string[] => {
+      const vendors: string[] = []
+      const vendorPatterns = [
+        /for\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:invoices|vendors?)/gi,
+        /from\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:only|exclusively)/gi,
+        /(?:vendor|supplier):\s*([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/gi,
+      ]
 
-    allAgents.forEach((otherAgent) => {
-      console.log('[Conflict Detection] Checking agent:', {
-        id: otherAgent.id,
-        name: otherAgent.name,
-        stage: otherAgent.stage,
-        active: otherAgent.active,
-        hasPrompt: !!otherAgent.prompt,
-        sameId: otherAgent.id === agent.id
+      vendorPatterns.forEach((pattern) => {
+        const matches = [...promptText.matchAll(pattern)]
+        matches.forEach((match) => {
+          if (match[1]) vendors.push(match[1].toLowerCase())
+        })
       })
 
-      // Check conflicts with both active AND inactive agents (inactive agents are warnings)
-      if (!otherAgent.id || otherAgent.id === agent.id || !otherAgent.prompt) {
-        console.log('[Conflict Detection] Skipping agent (no id/prompt or same id):', otherAgent.name)
-        return
-      }
+      return vendors
+    }
+
+    const getRuleAction = (promptText: string): "approve" | "reject" | "review" | "neutral" => {
+      if (promptText.includes("auto-approve") || promptText.includes("approve all")) return "approve"
+      if (
+        promptText.includes("reject") ||
+        promptText.includes("flag for review") ||
+        promptText.includes("manual review")
+      )
+        return "reject"
+      if (promptText.includes("require approval")) return "review"
+      return "neutral"
+    }
+
+    const currentVendors = extractVendorScope(agent.prompt)
+    const currentAction = getRuleAction(currentPromptLower)
+    const currentIsVendorSpecific = currentVendors.length > 0
+
+    allAgents.forEach((otherAgent) => {
+      if (!otherAgent.id || otherAgent.id === agent.id || !otherAgent.prompt) return
 
       const otherStageIndex = stages.findIndex((s) => s.id === otherAgent.stage)
       const otherPromptLower = otherAgent.prompt.toLowerCase()
+
       const isSameStage = currentStageIndex === otherStageIndex
+      const isEarlierStage = otherStageIndex < currentStageIndex
+      const isLaterStage = otherStageIndex > currentStageIndex
+
       const stageDistance = Math.abs(currentStageIndex - otherStageIndex)
+      if (stageDistance > 1) return
 
-      console.log('[Conflict Detection] Stage comparison:', {
-        otherAgent: otherAgent.name,
-        currentStage: agent.stage,
-        otherStage: otherAgent.stage,
-        isSameStage,
-        stageDistance
-      })
+      const otherVendors = extractVendorScope(otherAgent.prompt)
+      const otherAction = getRuleAction(otherPromptLower)
+      const otherIsVendorSpecific = otherVendors.length > 0
 
-      // Only check conflicts for same stage or adjacent stages
-      if (stageDistance > 1) {
-        console.log('[Conflict Detection] Skipping (stage too far):', otherAgent.name)
-        return
-      }
+      const hasVendorOverlap = currentVendors.some((v) => otherVendors.includes(v))
+      const actionsConflict =
+        (currentAction === "approve" && otherAction === "reject") ||
+        (currentAction === "reject" && otherAction === "approve")
 
-      // SAME STAGE CONFLICTS
       if (isSameStage) {
-        console.log('[Conflict Detection] Same stage detected, checking conflicts with:', otherAgent.name)
-
-        // Check for contradictory actions
-        const currentAutoApproves = currentPromptLower.includes("auto-approve") || currentPromptLower.includes("approve all")
-        const currentRequiresReview = 
+        const currentAutoApproves =
+          currentPromptLower.includes("auto-approve") || currentPromptLower.includes("approve all")
+        const currentRequiresReview =
           currentPromptLower.includes("flag for review") ||
           currentPromptLower.includes("manual review") ||
           currentPromptLower.includes("require approval") ||
@@ -205,53 +216,150 @@ export function AgentDetailsView({
           otherPromptLower.includes("require approval") ||
           otherPromptLower.includes("reject")
 
-        const isGenuineRuleConflict = 
+        const isGenuineRuleConflict =
           (currentAutoApproves && otherRequiresReview) || (currentRequiresReview && otherAutoApproves)
 
-        console.log('[Conflict Detection] Rule conflict check:', {
-          otherAgent: otherAgent.name,
-          currentAutoApproves,
-          currentRequiresReview,
-          otherAutoApproves,
-          otherRequiresReview,
-          isGenuineRuleConflict
-        })
-
         if (isGenuineRuleConflict) {
-          console.log('[Conflict Detection] ✓ Rule conflict detected with:', otherAgent.name)
-          detectedConflicts.push({
-            type: "rule",
-            severity: "high",
-            conflictingAgentId: otherAgent.id,
-            conflictingAgentName: otherAgent.name,
-            description: currentAutoApproves
-              ? `Contradictory rules in same stage: This agent auto-approves while "${otherAgent.name}" requires manual review`
-              : `Contradictory rules in same stage: This agent requires review while "${otherAgent.name}" auto-approves`,
-          })
+          if (currentIsVendorSpecific && otherIsVendorSpecific) {
+            if (hasVendorOverlap) {
+              detectedConflicts.push({
+                type: "rule",
+                severity: "high",
+                conflictingAgentId: otherAgent.id,
+                conflictingAgentName: otherAgent.name,
+                description: `Contradictory vendor-specific rules: Both agents target ${currentVendors.filter((v) => otherVendors.includes(v)).join(", ")} with conflicting actions`,
+              })
+            }
+          } else if (!currentIsVendorSpecific && !otherIsVendorSpecific) {
+            detectedConflicts.push({
+              type: "rule",
+              severity: "high",
+              conflictingAgentId: otherAgent.id,
+              conflictingAgentName: otherAgent.name,
+              description: currentAutoApproves
+                ? `Contradictory general rules in same stage: This agent auto-approves while "${otherAgent.name}" requires manual review`
+                : `Contradictory general rules in same stage: This agent requires review while "${otherAgent.name}" auto-approves`,
+            })
+          }
         }
 
-        // Detect overlapping responsibilities in same stage
+        // Detect field modification conflicts
+        const fields = ["po number", "amount", "vendor", "invoice number", "date", "status"]
+        fields.forEach((field) => {
+          if (currentPromptLower.includes(`modify ${field}`) || currentPromptLower.includes(`change ${field}`)) {
+            if (otherPromptLower.includes(`modify ${field}`) || otherPromptLower.includes(`change ${field}`)) {
+              detectedConflicts.push({
+                type: "field",
+                severity: "medium",
+                conflictingAgentId: otherAgent.id,
+                conflictingAgentName: otherAgent.name,
+                description: `Both agents in same stage modify "${field}" - creates ambiguity about which agent should handle this field`,
+              })
+            }
+          }
+        })
+
+        // Detect overlapping responsibilities
         const responsibilityKeywords = ["extract", "validate", "verify", "route", "approve", "post", "process"]
         const currentResponsibilities = responsibilityKeywords.filter((kw) => currentPromptLower.includes(kw))
         const otherResponsibilities = responsibilityKeywords.filter((kw) => otherPromptLower.includes(kw))
         const overlap = currentResponsibilities.filter((r) => otherResponsibilities.includes(r))
 
-        console.log('[Conflict Detection] Responsibility overlap check:', {
-          otherAgent: otherAgent.name,
-          currentResponsibilities,
-          otherResponsibilities,
-          overlap,
-          overlapCount: overlap.length
-        })
-
         if (overlap.length >= 2) {
-          console.log('[Conflict Detection] ✓ Responsibility conflict detected with:', otherAgent.name)
           detectedConflicts.push({
             type: "responsibility",
             severity: "medium",
             conflictingAgentId: otherAgent.id,
             conflictingAgentName: otherAgent.name,
             description: `Overlapping responsibilities in same stage: Both agents handle ${overlap.join(", ")} - may duplicate work or cause conflicts`,
+          })
+        }
+      }
+
+      if (isLaterStage) {
+        const currentRejects =
+          currentPromptLower.includes("mark as failed") ||
+          currentPromptLower.includes("reject") ||
+          currentPromptLower.includes("flag for review")
+        const otherApproves =
+          otherPromptLower.includes("mark as passed") ||
+          otherPromptLower.includes("status: pass") ||
+          otherPromptLower.includes("approve")
+
+        if (currentRejects && otherApproves) {
+          detectedConflicts.push({
+            type: "status",
+            severity: "high",
+            conflictingAgentId: otherAgent.id,
+            conflictingAgentName: otherAgent.name,
+            description: `Workflow reversal: This stage rejects invoices that "${otherAgent.name}" approved in earlier stage "${otherAgent.stage}"`,
+          })
+        }
+
+        const fields = ["amount", "vendor", "invoice number"]
+        fields.forEach((field) => {
+          const currentModifies =
+            currentPromptLower.includes(`modify ${field}`) || currentPromptLower.includes(`change ${field}`)
+          const otherSets = otherPromptLower.includes(`extract ${field}`) || otherPromptLower.includes(`set ${field}`)
+
+          if (currentModifies && otherSets) {
+            detectedConflicts.push({
+              type: "field",
+              severity: "medium",
+              conflictingAgentId: otherAgent.id,
+              conflictingAgentName: otherAgent.name,
+              description: `Workflow conflict: This stage modifies "${field}" that was set by "${otherAgent.name}" in earlier stage - consider if this is intentional`,
+            })
+          }
+        })
+      }
+
+      if (isEarlierStage) {
+        const currentRejects =
+          currentPromptLower.includes("mark as failed") ||
+          currentPromptLower.includes("reject") ||
+          currentPromptLower.includes("flag for review")
+        const otherApproves =
+          otherPromptLower.includes("mark as passed") ||
+          otherPromptLower.includes("status: pass") ||
+          otherPromptLower.includes("approve")
+
+        if (currentRejects && otherApproves) {
+          detectedConflicts.push({
+            type: "status",
+            severity: "high",
+            conflictingAgentId: otherAgent.id,
+            conflictingAgentName: otherAgent.name,
+            description: `Workflow reversal: This stage rejects invoices that "${otherAgent.name}" approves in later stage "${otherAgent.stage}"`,
+          })
+        }
+
+        const fields = ["amount", "vendor", "invoice number"]
+        fields.forEach((field) => {
+          const currentModifies =
+            currentPromptLower.includes(`modify ${field}`) || currentPromptLower.includes(`change ${field}`)
+          const otherSets = otherPromptLower.includes(`extract ${field}`) || otherPromptLower.includes(`set ${field}`)
+
+          if (currentModifies && otherSets) {
+            detectedConflicts.push({
+              type: "field",
+              severity: "medium",
+              conflictingAgentId: otherAgent.id,
+              conflictingAgentName: otherAgent.name,
+              description: `Workflow conflict: This stage modifies "${field}" that will be set by "${otherAgent.name}" in later stage - consider workflow order`,
+            })
+          }
+        })
+      }
+
+      if (isSameStage && agent.mode && otherAgent.mode) {
+        if (agent.mode === "auto-apply" && otherAgent.mode === "observe") {
+          detectedConflicts.push({
+            type: "rule",
+            severity: "low",
+            conflictingAgentId: otherAgent.id,
+            conflictingAgentName: otherAgent.name,
+            description: `Mode mismatch in same stage: This agent auto-applies changes while "${otherAgent.name}" only observes - may cause inconsistent behavior`,
           })
         }
       }
@@ -262,17 +370,8 @@ export function AgentDetailsView({
 
   // Run conflict detection when agent or allAgents changes
   useEffect(() => {
-    console.log('[AgentDetailsView] Running conflict detection', {
-      agentId: agent?.id,
-      agentName: agent?.name,
-      hasPrompt: !!agent?.prompt,
-      allAgentsCount: allAgents?.length || 0,
-      allAgents: allAgents?.map(a => ({ id: a.id, name: a.name, stage: a.stage, active: a.active }))
-    })
-    
     if (agent && agent.prompt) {
       const detected = detectConflicts()
-      console.log('[AgentDetailsView] Conflicts detected:', detected)
       setConflicts(detected)
     }
   }, [agent?.id, agent?.prompt, agent?.stage, allAgents])
