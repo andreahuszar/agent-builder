@@ -395,16 +395,17 @@ export function AgentBuilder2({
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-950">Chat</h2>
             <button
-              onClick={() => setChatOpen(false)}
+              onClick={() => chatRef.current?.clearChat()}
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
             >
-              End chat
+              Clear chat
               <X className="h-4 w-4" />
             </button>
           </div>
 
           <div className="flex-1 overflow-hidden">
             <ChatInterface
+              ref={chatRef}
               currentAgent={currentAgent}
               onPromptGenerated={handlePromptGenerated}
               agentId={currentAgent?.id}
