@@ -355,91 +355,56 @@ export function AgentDetailsView({
           {/* Flowchart View */}
           {promptView === "flowchart" && (
             <div className="py-4">
-              {/* Start Node */}
-              <div className="flex flex-col items-center">
-                <div className="px-6 py-3 bg-green-100 border-2 border-green-500 rounded-full text-sm font-semibold text-green-700">
-                  START
-                </div>
-                <div className="w-0.5 h-8 bg-gray-300"></div>
-              </div>
-
-              {/* Role Node */}
+              {/* Agent Role/Purpose */}
               {extractRole(agent.prompt || "") && (
-                <>
-                  <div className="flex flex-col items-center">
-                    <div className="w-full max-w-md px-4 py-3 bg-purple-50 border-2 border-purple-300 rounded-lg text-sm text-gray-950">
-                      <div className="font-semibold text-purple-700 mb-1">ROLE</div>
-                      <div>{extractRole(agent.prompt || "")}</div>
-                    </div>
-                    <div className="w-0.5 h-8 bg-gray-300"></div>
+                <div className="flex flex-col items-center mb-6">
+                  <div className="w-full max-w-2xl px-6 py-4 bg-purple-50 border-2 border-purple-400 rounded-xl text-center">
+                    <div className="text-xs font-semibold text-purple-600 mb-2 uppercase tracking-wide">Agent Purpose</div>
+                    <div className="text-base font-medium text-gray-950">{extractRole(agent.prompt || "")}</div>
                   </div>
-                </>
+                </div>
               )}
 
-              {/* Inputs Node */}
-              {extractInputs(agent.prompt || "").length > 0 && (
-                <>
-                  <div className="flex flex-col items-center">
-                    <div className="w-full max-w-md px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-sm text-gray-950">
-                      <div className="font-semibold text-blue-700 mb-2">INPUTS</div>
-                      <ul className="space-y-1">
-                        {extractInputs(agent.prompt || "").map((input, index) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <span className="text-blue-600 mt-0.5">•</span>
-                            <span>{input}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                    <div className="w-0.5 h-8 bg-gray-300"></div>
-                  </div>
-                </>
-              )}
-
-              {/* Actions/Steps Nodes */}
+              {/* Process Steps */}
               {keyActions.length > 0 && (
-                <>
-                  <div className="flex flex-col items-center space-y-4">
-                    {keyActions.map((action, index) => (
-                      <div key={index} className="flex flex-col items-center w-full">
-                        <div className="w-full max-w-md px-4 py-3 bg-white border-2 border-gray-300 rounded text-sm text-gray-950">
-                          <div className="flex items-start gap-2">
-                            <span className="font-semibold text-purple-700">{index + 1}.</span>
-                            <span>{action}</span>
+                <div className="space-y-3">
+                  <div className="text-center mb-4">
+                    <div className="inline-block px-4 py-1 bg-gray-100 rounded-full">
+                      <span className="text-xs font-semibold text-gray-600 uppercase tracking-wide">Process Flow</span>
+                    </div>
+                  </div>
+                  
+                  {keyActions.map((action, index) => (
+                    <div key={index} className="flex flex-col items-center">
+                      <div className="w-full max-w-2xl px-5 py-4 bg-white border-2 border-gray-300 rounded-lg shadow-sm hover:shadow-md transition-shadow">
+                        <div className="flex items-start gap-3">
+                          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-purple-600 text-white text-sm font-bold shrink-0">
+                            {index + 1}
+                          </div>
+                          <div className="flex-1 text-sm text-gray-950 pt-0.5">
+                            {action}
                           </div>
                         </div>
-                        {index < keyActions.length - 1 && <div className="w-0.5 h-8 bg-gray-300"></div>}
                       </div>
-                    ))}
-                    <div className="w-0.5 h-8 bg-gray-300"></div>
-                  </div>
-                </>
-              )}
-
-              {/* Outputs Node */}
-              {extractOutputs(agent.prompt || "").length > 0 && (
-                <>
-                  <div className="flex flex-col items-center">
-                    <div className="w-full max-w-md px-4 py-3 bg-amber-50 border-2 border-amber-300 rounded-lg text-sm text-gray-950">
-                      <div className="font-semibold text-amber-700 mb-2">OUTPUTS</div>
-                      <ul className="space-y-1">
-                        {extractOutputs(agent.prompt || "").map((output, index) => (
-                          <li key={index} className="flex items-start gap-2">
-                            <span className="text-amber-600 mt-0.5">•</span>
-                            <span>{output}</span>
-                          </li>
-                        ))}
-                      </ul>
+                      {index < keyActions.length - 1 && (
+                        <div className="flex items-center justify-center py-2">
+                          <div className="w-0.5 h-6 bg-gray-300"></div>
+                          <div className="absolute">
+                            <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                              <path fillRule="evenodd" d="M10 18a1 1 0 01-.707-.293l-4-4a1 1 0 011.414-1.414L10 15.586l3.293-3.293a1 1 0 011.414 1.414l-4 4A1 1 0 0110 18z" clipRule="evenodd" />
+                            </svg>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                    <div className="w-0.5 h-8 bg-gray-300"></div>
-                  </div>
-                </>
+                  ))}
+                </div>
               )}
 
-              {/* End Node */}
-              <div className="flex flex-col items-center">
-                <div className="px-6 py-3 bg-red-100 border-2 border-red-500 rounded-full text-sm font-semibold text-red-700">
-                  END
+              {/* Completion indicator */}
+              <div className="flex justify-center mt-6">
+                <div className="px-6 py-2 bg-green-50 border-2 border-green-400 rounded-full">
+                  <span className="text-sm font-semibold text-green-700">✓ Complete</span>
                 </div>
               </div>
             </div>
