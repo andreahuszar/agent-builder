@@ -208,14 +208,22 @@ export function AgentDetailsView({
               <label className="block text-xs font-medium text-gray-700 mb-2">Lane</label>
               <select 
                 value={agent.lane || ""}
+                onChange={(e) => {
+                  console.log("Lane changed:", e.target.value)
+                  // Lane update would be handled here
+                }}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white"
               >
                 <option value="">Select a lane</option>
-                {agent.stage && STAGE_LANES[agent.stage]?.map((laneOption) => (
-                  <option key={laneOption} value={laneOption} selected={agent.lane === laneOption}>
-                    {laneOption}
-                  </option>
-                ))}
+                {(() => {
+                  console.log("Agent stage:", agent.stage)
+                  console.log("Available lanes:", STAGE_LANES[agent.stage || ""])
+                  return agent.stage && STAGE_LANES[agent.stage]?.map((laneOption) => (
+                    <option key={laneOption} value={laneOption}>
+                      {laneOption}
+                    </option>
+                  ))
+                })()}
               </select>
             </div>
           </div>
