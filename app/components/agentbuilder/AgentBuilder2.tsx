@@ -83,6 +83,8 @@ export function AgentBuilder2({
       const updatedAgent = {
         ...currentAgent,
         name: currentAgent.name === 'New Agent' || !currentAgent.name ? agentName : currentAgent.name,
+        stage: detectedStage || currentAgent.stage || '',
+        lane: detectedLane || currentAgent.lane || '',
         prompt,
         skills,
         documents: documents || currentAgent.documents,
