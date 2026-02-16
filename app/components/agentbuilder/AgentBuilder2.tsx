@@ -47,6 +47,8 @@ export function AgentBuilder2({
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
   const [isDraggingRight, setIsDraggingRight] = useState(false)
   const chatRef = useRef<ChatInterfaceRef>(null)
+  const [detectedStage, setDetectedStage] = useState<string>("")
+  const [detectedLane, setDetectedLane] = useState<string>("")
 
   // Extract a clean agent name from the prompt
   const extractAgentName = (prompt: string): string => {
@@ -100,7 +102,8 @@ export function AgentBuilder2({
       const newAgent: Agent = {
         id: newAgentId,
         name: agentName,
-        stage,
+        stage: detectedStage || stage,
+        lane: detectedLane,
         active: true,
         mode: 'auto-apply',
         prompt,
@@ -408,6 +411,14 @@ export function AgentBuilder2({
               ref={chatRef}
               currentAgent={currentAgent}
               onPromptGenerated={handlePromptGenerated}
+              onStageDetected={(stage) => {
+                console.log('[AgentBuilder2] Stage detected:', stage)
+                setDetectedStage(stage)
+              }}
+              onLaneDetected={(lane) => {
+                console.log('[AgentBuilder2] Lane detected:', lane)
+                setDetectedLane(lane)
+              }}
               agentId={currentAgent?.id}
               currentPrompt={currentAgent?.prompt}
             />
