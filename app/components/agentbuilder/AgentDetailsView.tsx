@@ -298,8 +298,94 @@ export function AgentDetailsView({
 
           {/* Flowchart View */}
           {promptView === "flowchart" && (
-            <div className="text-center py-8 text-sm text-gray-500">
-              Flowchart visualization coming soon
+            <div className="py-4">
+              {/* Start Node */}
+              <div className="flex flex-col items-center">
+                <div className="px-6 py-3 bg-green-100 border-2 border-green-500 rounded-full text-sm font-semibold text-green-700">
+                  START
+                </div>
+                <div className="w-0.5 h-8 bg-gray-300"></div>
+              </div>
+
+              {/* Role Node */}
+              {extractRole(agent.prompt || "") && (
+                <>
+                  <div className="flex flex-col items-center">
+                    <div className="w-full max-w-md px-4 py-3 bg-purple-50 border-2 border-purple-300 rounded-lg text-sm text-gray-950">
+                      <div className="font-semibold text-purple-700 mb-1">ROLE</div>
+                      <div>{extractRole(agent.prompt || "")}</div>
+                    </div>
+                    <div className="w-0.5 h-8 bg-gray-300"></div>
+                  </div>
+                </>
+              )}
+
+              {/* Inputs Node */}
+              {extractInputs(agent.prompt || "").length > 0 && (
+                <>
+                  <div className="flex flex-col items-center">
+                    <div className="w-full max-w-md px-4 py-3 bg-blue-50 border-2 border-blue-300 rounded-lg text-sm text-gray-950">
+                      <div className="font-semibold text-blue-700 mb-2">INPUTS</div>
+                      <ul className="space-y-1">
+                        {extractInputs(agent.prompt || "").map((input, index) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <span className="text-blue-600 mt-0.5">•</span>
+                            <span>{input}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="w-0.5 h-8 bg-gray-300"></div>
+                  </div>
+                </>
+              )}
+
+              {/* Actions/Steps Nodes */}
+              {keyActions.length > 0 && (
+                <>
+                  <div className="flex flex-col items-center space-y-4">
+                    {keyActions.map((action, index) => (
+                      <div key={index} className="flex flex-col items-center w-full">
+                        <div className="w-full max-w-md px-4 py-3 bg-white border-2 border-gray-300 rounded text-sm text-gray-950">
+                          <div className="flex items-start gap-2">
+                            <span className="font-semibold text-purple-700">{index + 1}.</span>
+                            <span>{action}</span>
+                          </div>
+                        </div>
+                        {index < keyActions.length - 1 && <div className="w-0.5 h-8 bg-gray-300"></div>}
+                      </div>
+                    ))}
+                    <div className="w-0.5 h-8 bg-gray-300"></div>
+                  </div>
+                </>
+              )}
+
+              {/* Outputs Node */}
+              {extractOutputs(agent.prompt || "").length > 0 && (
+                <>
+                  <div className="flex flex-col items-center">
+                    <div className="w-full max-w-md px-4 py-3 bg-amber-50 border-2 border-amber-300 rounded-lg text-sm text-gray-950">
+                      <div className="font-semibold text-amber-700 mb-2">OUTPUTS</div>
+                      <ul className="space-y-1">
+                        {extractOutputs(agent.prompt || "").map((output, index) => (
+                          <li key={index} className="flex items-start gap-2">
+                            <span className="text-amber-600 mt-0.5">•</span>
+                            <span>{output}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                    <div className="w-0.5 h-8 bg-gray-300"></div>
+                  </div>
+                </>
+              )}
+
+              {/* End Node */}
+              <div className="flex flex-col items-center">
+                <div className="px-6 py-3 bg-red-100 border-2 border-red-500 rounded-full text-sm font-semibold text-red-700">
+                  END
+                </div>
+              </div>
             </div>
           )}
         </div>
