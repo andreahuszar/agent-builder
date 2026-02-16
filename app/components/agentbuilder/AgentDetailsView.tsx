@@ -16,17 +16,17 @@ interface AgentDetailsViewProps {
 
 const AVAILABLE_SKILLS = [
   "Connect to ERP",
-  "Extract text",
-  "Find purchase orders",
-  "Find vendor information",
-  "Flag issues",
-  "Intelligent matching",
+  "Extract Text",
+  "Find Purchase Orders",
+  "Find Vendor Information",
+  "Flag Issues",
+  "Intelligent Matching",
   "Map to General Ledger",
-  "Process documents",
-  "Route for approval",
-  "Run workflows",
-  "Send messages",
-  "Verify data",
+  "Process Documents",
+  "Route for Approval",
+  "Run Workflows",
+  "Send Messages",
+  "Verify Data",
 ]
 
 export function AgentDetailsView({
@@ -71,9 +71,9 @@ export function AgentDetailsView({
     return actions.slice(0, 7)
   }
 
-  // Extract ROLE from prompt for basic view
+  // Extract ROLE from prompt for basic view (first line only)
   const extractRole = (prompt: string) => {
-    const match = prompt.match(/ROLE:([\s\S]*?)(?=\n\n[A-Z]+:|$)/i)
+    const match = prompt.match(/ROLE:\s*\n?\s*([^\n]+)/i)
     return match ? match[1].trim() : ""
   }
   
