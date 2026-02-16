@@ -579,30 +579,30 @@ export function AgentDetailsView({
             <div className="flex gap-2">
               <button 
                 onClick={() => setPromptView("basic")}
-                className={`px-3 py-1 text-xs font-medium border-b-2 ${
+                className={`px-4 py-1.5 text-xs font-medium rounded-md border transition-colors ${
                   promptView === "basic" 
-                    ? "border-purple-600 text-gray-950" 
-                    : "border-transparent text-gray-500 hover:text-gray-950"
+                    ? "bg-purple-100 border-purple-200 text-purple-900" 
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 Basic
               </button>
               <button 
                 onClick={() => setPromptView("advanced")}
-                className={`px-3 py-1 text-xs font-medium border-b-2 ${
+                className={`px-4 py-1.5 text-xs font-medium rounded-md border transition-colors ${
                   promptView === "advanced" 
-                    ? "border-purple-600 text-gray-950" 
-                    : "border-transparent text-gray-500 hover:text-gray-950"
+                    ? "bg-purple-100 border-purple-200 text-purple-900" 
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 Advanced
               </button>
               <button 
                 onClick={() => setPromptView("flowchart")}
-                className={`px-3 py-1 text-xs font-medium border-b-2 ${
+                className={`px-4 py-1.5 text-xs font-medium rounded-md border transition-colors ${
                   promptView === "flowchart" 
-                    ? "border-purple-600 text-gray-950" 
-                    : "border-transparent text-gray-500 hover:text-gray-950"
+                    ? "bg-purple-100 border-purple-200 text-purple-900" 
+                    : "bg-white border-gray-300 text-gray-700 hover:bg-gray-50"
                 }`}
               >
                 Flowchart
