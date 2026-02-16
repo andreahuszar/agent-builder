@@ -41,34 +41,34 @@ export function AgentDetailsView({
   const [editedName, setEditedName] = useState(agent.name)
   const [promptView, setPromptView] = useState<"basic" | "advanced" | "flowchart">("basic")
 
-  // Extract KEY ACTIONS from prompt (combines STEPS, KEY ACTIONS, and other action sections)
+  // Extract KEY ACTIONS from prompt (only main action steps, excluding validations/outputs/error handling)
   const extractKeyActions = (prompt: string) => {
     const actions: string[] = []
     
-    // Extract from STEPS section
-    const stepsMatch = prompt.match(/STEPS?:([\s\S]*?)(?=\n\n[A-Z]+:|$)/i)
+    // Extract from STEPS section (stop before VALIDATIONS, OUTPUT, ERROR HANDLING)
+    const stepsMatch = prompt.match(/STEPS?:([\s\S]*?)(?=\n\n(?:VALIDATIONS?|OUTPUTS?|ERROR HANDLING|[A-Z]{2,}):|\n\n-|$)/i)
     if (stepsMatch) {
-      const lines = stepsMatch[1].split('\n').filter(line => line.trim())
+      const lines = stepsMatch[1].split('\n').filter(line => {
+        const trimmed = line.trim()
+        return trimmed && /^\d+\./.test(trimmed) // Only numbered steps
+      })
       actions.push(...lines.map(line => line.replace(/^\d+\.\s*[-•]?\s*/, '').trim()).filter(Boolean))
     }
     
-    // Extract from KEY ACTIONS section
-    const keyActionsMatch = prompt.match(/KEY ACTIONS?:([\s\S]*?)(?=\n\n[A-Z]+:|$)/i)
-    if (keyActionsMatch) {
-      const lines = keyActionsMatch[1].split('\n').filter(line => line.trim())
-      actions.push(...lines.map(line => line.replace(/^\d+\.\s*[-•]?\s*/, '').trim()).filter(Boolean))
-    }
-    
-    // Extract from PROCESS section if no STEPS or KEY ACTIONS found
+    // If no STEPS found, try KEY ACTIONS section
     if (actions.length === 0) {
-      const processMatch = prompt.match(/PROCESS:([\s\S]*?)(?=\n\n[A-Z]+:|$)/i)
-      if (processMatch) {
-        const lines = processMatch[1].split('\n').filter(line => line.trim())
+      const keyActionsMatch = prompt.match(/KEY ACTIONS?:([\s\S]*?)(?=\n\n(?:VALIDATIONS?|OUTPUTS?|ERROR HANDLING|[A-Z]{2,}):|\n\n-|$)/i)
+      if (keyActionsMatch) {
+        const lines = keyActionsMatch[1].split('\n').filter(line => {
+          const trimmed = line.trim()
+          return trimmed && /^\d+\./.test(trimmed)
+        })
         actions.push(...lines.map(line => line.replace(/^\d+\.\s*[-•]?\s*/, '').trim()).filter(Boolean))
       }
     }
     
-    return actions
+    // Limit to first 5-7 actions for summary view
+    return actions.slice(0, 7)
   }
 
   // Extract ROLE from prompt for basic view
@@ -291,22 +291,23 @@ export function AgentDetailsView({
                 <div className="flex flex-wrap gap-2">
                   {AVAILABLE_SKILLS.map((skill) => {
                     const isSelected = agent.skills?.includes(skill)
+                    console.log('Skill:', skill, 'Selected:', isSelected, 'Agent skills:', agent.skills)
                     return (
-                      <button
+                      <div
                         key={skill}
                         className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-md border transition-colors ${
                           isSelected
                             ? 'bg-purple-50 border-purple-600 text-purple-700 font-medium'
-                            : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
+                            : 'bg-white border-gray-300 text-gray-700'
                         }`}
                       >
                         {isSelected && (
-                          <span className="flex items-center justify-center w-4 h-4 rounded bg-green-500 text-white shrink-0">
+                          <span className="flex items-center justify-center w-4 h-4 rounded-full bg-green-500 text-white shrink-0">
                             <Check className="w-3 h-3" strokeWidth={3} />
                           </span>
                         )}
                         {skill}
-                      </button>
+                      </div>
                     )
                   })}
                 </div>
