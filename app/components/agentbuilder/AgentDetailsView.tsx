@@ -145,16 +145,46 @@ export function AgentDetailsView({
     const currentPromptLower = agent.prompt.toLowerCase()
     const currentStageIndex = stages.findIndex((s) => s.id === agent.stage)
 
+    console.log('[Conflict Detection] Current agent:', {
+      id: agent.id,
+      name: agent.name,
+      stage: agent.stage,
+      stageIndex: currentStageIndex
+    })
+
     allAgents.forEach((otherAgent) => {
-      if (!otherAgent.id || otherAgent.id === agent.id || !otherAgent.prompt || !otherAgent.active) return
+      console.log('[Conflict Detection] Checking agent:', {
+        id: otherAgent.id,
+        name: otherAgent.name,
+        stage: otherAgent.stage,
+        active: otherAgent.active,
+        hasPrompt: !!otherAgent.prompt,
+        sameId: otherAgent.id === agent.id
+      })
+
+      if (!otherAgent.id || otherAgent.id === agent.id || !otherAgent.prompt || !otherAgent.active) {
+        console.log('[Conflict Detection] Skipping agent (no id/prompt, inactive, or same id):', otherAgent.name)
+        return
+      }
 
       const otherStageIndex = stages.findIndex((s) => s.id === otherAgent.stage)
       const otherPromptLower = otherAgent.prompt.toLowerCase()
       const isSameStage = currentStageIndex === otherStageIndex
       const stageDistance = Math.abs(currentStageIndex - otherStageIndex)
 
+      console.log('[Conflict Detection] Stage comparison:', {
+        otherAgent: otherAgent.name,
+        currentStage: agent.stage,
+        otherStage: otherAgent.stage,
+        isSameStage,
+        stageDistance
+      })
+
       // Only check conflicts for same stage or adjacent stages
-      if (stageDistance > 1) return
+      if (stageDistance > 1) {
+        console.log('[Conflict Detection] Skipping (stage too far):', otherAgent.name)
+        return
+      }
 
       // SAME STAGE CONFLICTS
       if (isSameStage) {
