@@ -1,9 +1,9 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { ChevronRight, ChevronDown, Plus, X, Minimize2, Power, Pencil } from "lucide-react"
 import { Agent } from "./AgentBuilderPage"
-import { ChatInterface } from "./ChatInterface"
+import { ChatInterface, type ChatInterfaceRef } from "./ChatInterface"
 import { AgentDetailsView } from "./AgentDetailsView"
 import { Button } from "@/app/components/ui/button"
 
@@ -46,6 +46,7 @@ export function AgentBuilder2({
   const [rightWidth, setRightWidth] = useState(400) // 400px default chat width
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
   const [isDraggingRight, setIsDraggingRight] = useState(false)
+  const chatRef = useRef<ChatInterfaceRef>(null)
 
   // Extract a clean agent name from the prompt
   const extractAgentName = (prompt: string): string => {

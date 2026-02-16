@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
 import { Button } from "@/app/components/ui/button"
 import { Input } from "@/app/components/ui/input"
 import { Send, Bot, User, CheckCircle2, Paperclip, X, FileText, Loader2, AlertCircle } from "lucide-react"
@@ -42,6 +42,10 @@ interface ChatInterfaceProps {
   currentAgent?: Agent | null
 }
 
+export interface ChatInterfaceRef {
+  clearChat: () => void
+}
+
 const AVAILABLE_SKILLS = [
   "Extract text",
   "Process Documents",
@@ -57,7 +61,7 @@ const AVAILABLE_SKILLS = [
   "Find Vendor Information",
 ]
 
-export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetected, currentPrompt, agentId, currentAgent }: ChatInterfaceProps) {
+export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({ onPromptGenerated, onStageDetected, onLaneDetected, currentPrompt, agentId, currentAgent }, ref) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -75,8 +79,7 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  useEffect(() => {
-    console.log("[v0] Agent changed, clearing chat. Agent ID:", agentId)
+  const clearChat = () => {
     setMessages([
       {
         id: "1",
@@ -89,6 +92,16 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
     setInput("")
     setQuestionCount(0)
     setSessionDocuments([])
+  }
+
+  // Expose clearChat to parent component
+  useImperativeHandle(ref, () => ({
+    clearChat
+  }))
+
+  useEffect(() => {
+    console.log("[v0] Agent changed, clearing chat. Agent ID:", agentId)
+    clearChat()
   }, [agentId])
 
   // Auto-scroll to bottom when messages change
@@ -610,7 +623,9 @@ export function ChatInterface({ onPromptGenerated, onStageDetected, onLaneDetect
       </div>
     </div>
   )
-}
+})
+
+ChatInterface.displayName = "ChatInterface"
 
 function extractPromptAndSkills(response: string): { prompt: string; skills: string[]; isQuestion: boolean; stage?: string; lane?: string; isSettingsRecommendation?: boolean; settingsLink?: string } {
   let prompt = ""
