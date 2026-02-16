@@ -294,14 +294,16 @@ export function AgentDetailsView({
                     return (
                       <button
                         key={skill}
-                        className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-md border transition-colors ${
+                        className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-md border transition-colors ${
                           isSelected
                             ? 'bg-purple-50 border-purple-600 text-purple-700 font-medium'
                             : 'bg-white border-gray-300 text-gray-700 hover:border-gray-400'
                         }`}
                       >
                         {isSelected && (
-                          <Check className="w-3 h-3" />
+                          <span className="flex items-center justify-center w-4 h-4 rounded bg-green-500 text-white shrink-0">
+                            <Check className="w-3 h-3" strokeWidth={3} />
+                          </span>
                         )}
                         {skill}
                       </button>
