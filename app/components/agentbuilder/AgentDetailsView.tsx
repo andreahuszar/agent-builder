@@ -256,6 +256,23 @@ export function AgentDetailsView({
                 </div>
               )}
 
+              {/* Key Actions */}
+              {keyActions.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">KEY ACTIONS:</h3>
+                  <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
+                    {keyActions.map((action, index) => (
+                      <li key={index}>{action}</li>
+                    ))}
+                  </ol>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Advanced View */}
+          {promptView === "advanced" && (
+            <>
               {/* Inputs */}
               {extractInputs(agent.prompt || "").length > 0 && (
                 <div className="mb-4">
@@ -271,21 +288,9 @@ export function AgentDetailsView({
                 </div>
               )}
 
-              {/* Key Actions */}
-              {keyActions.length > 0 && (
-                <div className="mb-4">
-                  <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">KEY ACTIONS:</h3>
-                  <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
-                    {keyActions.map((action, index) => (
-                      <li key={index}>{action}</li>
-                    ))}
-                  </ol>
-                </div>
-              )}
-
               {/* Outputs */}
               {extractOutputs(agent.prompt || "").length > 0 && (
-                <div>
+                <div className="mb-4">
                   <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">OUTPUTS:</h3>
                   <ul className="space-y-1 text-sm text-gray-700">
                     {extractOutputs(agent.prompt || "").map((output, index) => (
@@ -297,12 +302,7 @@ export function AgentDetailsView({
                   </ul>
                 </div>
               )}
-            </>
-          )}
 
-          {/* Advanced View */}
-          {promptView === "advanced" && (
-            <>
               {/* Full Prompt */}
               <div className="mb-4">
                 <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">SYSTEM PROMPT:</h3>
