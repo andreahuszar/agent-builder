@@ -13,6 +13,7 @@ interface AgentDetailsViewProps {
   onSave: () => void
   onUpdateAgent: (updatedAgent: Agent) => void
   allAgents?: Agent[]
+  onOpenTest?: () => void
 }
 
 const AVAILABLE_SKILLS = [
@@ -64,6 +65,7 @@ export function AgentDetailsView({
   onSave,
   onUpdateAgent,
   allAgents = [],
+  onOpenTest,
 }: AgentDetailsViewProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(agent.name)
@@ -743,6 +745,27 @@ export function AgentDetailsView({
             </div>
           )}
         </div>
+
+        {/* Test Agent Banner */}
+        {onOpenTest && (
+          <div className="bg-gradient-to-r from-purple-600 to-purple-800 rounded-lg p-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center">
+                  <span className="text-white text-lg">🧪</span>
+                </div>
+                <span className="text-white text-sm font-medium">Test agent against Historical invoice data?</span>
+              </div>
+              <button
+                onClick={onOpenTest}
+                className="flex items-center gap-2 px-4 py-2 bg-white text-purple-700 rounded-md hover:bg-purple-50 transition-colors text-sm font-medium"
+              >
+                <span>🔬</span>
+                Test agent
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Performance Metrics */}
         <div className="bg-white rounded-lg p-4 border border-gray-200">

@@ -1010,6 +1010,7 @@ ERROR HANDLING:
                   onToggleActive={toggleAgentActive}
                   onEditAgent={handleEditAgent}
                   onDeleteAgent={handleDeleteAgent}
+                  onOpenTest={() => editingAgent && handleTestAgent(editingAgent)}
                 />
               )}
               {mode === "executive-dashboard" && (

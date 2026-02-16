@@ -17,6 +17,7 @@ interface AgentBuilder2Props {
   onToggleActive: (agentId: string) => void
   onEditAgent: (agent: Agent) => void
   onDeleteAgent: (agentId: string) => void
+  onOpenTest?: () => void
 }
 
 const WORKFLOW_STAGES = [
@@ -38,6 +39,7 @@ export function AgentBuilder2({
   onToggleActive,
   onEditAgent,
   onDeleteAgent,
+  onOpenTest,
 }: AgentBuilder2Props) {
   const [chatOpen, setChatOpen] = useState(false)
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
@@ -335,6 +337,7 @@ export function AgentBuilder2({
             onSave={handleSaveAgentDetails}
             onUpdateAgent={onSaveAgent}
             allAgents={agents}
+            onOpenTest={onOpenTest}
           />
         ) : chatOpen ? (
           // State when user is creating a new agent (chat is open)
