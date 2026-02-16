@@ -162,8 +162,9 @@ export function AgentDetailsView({
         sameId: otherAgent.id === agent.id
       })
 
-      if (!otherAgent.id || otherAgent.id === agent.id || !otherAgent.prompt || !otherAgent.active) {
-        console.log('[Conflict Detection] Skipping agent (no id/prompt, inactive, or same id):', otherAgent.name)
+      // Check conflicts with both active AND inactive agents (inactive agents are warnings)
+      if (!otherAgent.id || otherAgent.id === agent.id || !otherAgent.prompt) {
+        console.log('[Conflict Detection] Skipping agent (no id/prompt or same id):', otherAgent.name)
         return
       }
 
