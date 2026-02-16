@@ -80,6 +80,7 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
   const inputRef = useRef<HTMLInputElement>(null)
 
   const clearChat = () => {
+    console.log("[ChatInterface] clearChat called")
     setMessages([
       {
         id: "1",
@@ -92,6 +93,7 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
     setInput("")
     setQuestionCount(0)
     setSessionDocuments([])
+    console.log("[ChatInterface] Chat cleared, messages reset")
   }
 
   // Expose clearChat to parent component
