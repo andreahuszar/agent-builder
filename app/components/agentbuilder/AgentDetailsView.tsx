@@ -210,8 +210,17 @@ export function AgentDetailsView({
 
   // Run conflict detection when agent or allAgents changes
   useEffect(() => {
+    console.log('[AgentDetailsView] Running conflict detection', {
+      agentId: agent?.id,
+      agentName: agent?.name,
+      hasPrompt: !!agent?.prompt,
+      allAgentsCount: allAgents?.length || 0,
+      allAgents: allAgents?.map(a => ({ id: a.id, name: a.name, stage: a.stage, active: a.active }))
+    })
+    
     if (agent && agent.prompt) {
       const detected = detectConflicts()
+      console.log('[AgentDetailsView] Conflicts detected:', detected)
       setConflicts(detected)
     }
   }, [agent?.id, agent?.prompt, agent?.stage, allAgents])
