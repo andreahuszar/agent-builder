@@ -291,7 +291,6 @@ export function AgentDetailsView({
                 <div className="flex flex-wrap gap-2">
                   {AVAILABLE_SKILLS.map((skill) => {
                     const isSelected = agent.skills?.includes(skill)
-                    console.log('Skill:', skill, 'Selected:', isSelected, 'Agent skills:', agent.skills)
                     return (
                       <div
                         key={skill}

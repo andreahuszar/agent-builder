@@ -395,10 +395,7 @@ export function AgentBuilder2({
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-950">Chat</h2>
             <button
-              onClick={() => {
-                console.log("[AgentBuilder2] Clear chat button clicked, ref:", chatRef.current)
-                chatRef.current?.clearChat()
-              }}
+              onClick={() => chatRef.current?.clearChat()}
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
             >
               Clear chat
