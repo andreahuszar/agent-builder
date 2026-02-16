@@ -209,22 +209,24 @@ export function AgentDetailsView({
               <select 
                 value={agent.lane || ""}
                 onChange={(e) => {
-                  console.log("Lane changed:", e.target.value)
                   // Lane update would be handled here
                 }}
                 className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white"
               >
                 <option value="">Select a lane</option>
-                {(() => {
-                  console.log("Agent stage:", agent.stage)
-                  console.log("Available lanes:", STAGE_LANES[agent.stage || ""])
-                  return agent.stage && STAGE_LANES[agent.stage]?.map((laneOption) => (
+                {agent.stage && STAGE_LANES[agent.stage] ? (
+                  STAGE_LANES[agent.stage].map((laneOption) => (
                     <option key={laneOption} value={laneOption}>
                       {laneOption}
                     </option>
                   ))
-                })()}
+                ) : (
+                  <option disabled>No stage selected</option>
+                )}
               </select>
+              {!agent.stage && (
+                <p className="text-xs text-gray-500 mt-1">Please select a stage first</p>
+              )}
             </div>
           </div>
         </div>
