@@ -189,6 +189,8 @@ export function AgentDetailsView({
 
       // SAME STAGE CONFLICTS
       if (isSameStage) {
+        console.log('[Conflict Detection] Same stage detected, checking conflicts with:', otherAgent.name)
+
         // Check for contradictory actions
         const currentAutoApproves = currentPromptLower.includes("auto-approve") || currentPromptLower.includes("approve all")
         const currentRequiresReview = 
@@ -206,7 +208,17 @@ export function AgentDetailsView({
         const isGenuineRuleConflict = 
           (currentAutoApproves && otherRequiresReview) || (currentRequiresReview && otherAutoApproves)
 
+        console.log('[Conflict Detection] Rule conflict check:', {
+          otherAgent: otherAgent.name,
+          currentAutoApproves,
+          currentRequiresReview,
+          otherAutoApproves,
+          otherRequiresReview,
+          isGenuineRuleConflict
+        })
+
         if (isGenuineRuleConflict) {
+          console.log('[Conflict Detection] ✓ Rule conflict detected with:', otherAgent.name)
           detectedConflicts.push({
             type: "rule",
             severity: "high",
@@ -224,7 +236,16 @@ export function AgentDetailsView({
         const otherResponsibilities = responsibilityKeywords.filter((kw) => otherPromptLower.includes(kw))
         const overlap = currentResponsibilities.filter((r) => otherResponsibilities.includes(r))
 
+        console.log('[Conflict Detection] Responsibility overlap check:', {
+          otherAgent: otherAgent.name,
+          currentResponsibilities,
+          otherResponsibilities,
+          overlap,
+          overlapCount: overlap.length
+        })
+
         if (overlap.length >= 2) {
+          console.log('[Conflict Detection] ✓ Responsibility conflict detected with:', otherAgent.name)
           detectedConflicts.push({
             type: "responsibility",
             severity: "medium",
