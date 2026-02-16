@@ -41,19 +41,56 @@ export function AgentDetailsView({
   const [editedName, setEditedName] = useState(agent.name)
   const [promptView, setPromptView] = useState<"basic" | "advanced" | "flowchart">("basic")
 
-  // Extract KEY ACTIONS from prompt
+  // Extract KEY ACTIONS from prompt (combines STEPS, KEY ACTIONS, and other action sections)
   const extractKeyActions = (prompt: string) => {
-    const match = prompt.match(/KEY ACTIONS?:([\s\S]*?)(?=\n\n|$)/i)
-    if (!match) return []
+    const actions: string[] = []
     
-    const lines = match[1].split('\n').filter(line => line.trim())
-    return lines.map(line => line.replace(/^\d+\.\s*/, '').trim()).filter(Boolean)
+    // Extract from STEPS section
+    const stepsMatch = prompt.match(/STEPS?:([\s\S]*?)(?=\n\n[A-Z]+:|$)/i)
+    if (stepsMatch) {
+      const lines = stepsMatch[1].split('\n').filter(line => line.trim())
+      actions.push(...lines.map(line => line.replace(/^\d+\.\s*[-•]?\s*/, '').trim()).filter(Boolean))
+    }
+    
+    // Extract from KEY ACTIONS section
+    const keyActionsMatch = prompt.match(/KEY ACTIONS?:([\s\S]*?)(?=\n\n[A-Z]+:|$)/i)
+    if (keyActionsMatch) {
+      const lines = keyActionsMatch[1].split('\n').filter(line => line.trim())
+      actions.push(...lines.map(line => line.replace(/^\d+\.\s*[-•]?\s*/, '').trim()).filter(Boolean))
+    }
+    
+    // Extract from PROCESS section if no STEPS or KEY ACTIONS found
+    if (actions.length === 0) {
+      const processMatch = prompt.match(/PROCESS:([\s\S]*?)(?=\n\n[A-Z]+:|$)/i)
+      if (processMatch) {
+        const lines = processMatch[1].split('\n').filter(line => line.trim())
+        actions.push(...lines.map(line => line.replace(/^\d+\.\s*[-•]?\s*/, '').trim()).filter(Boolean))
+      }
+    }
+    
+    return actions
   }
 
   // Extract ROLE from prompt for basic view
   const extractRole = (prompt: string) => {
-    const match = prompt.match(/ROLE:([\s\S]*?)(?=\n\n|KEY ACTIONS?:|$)/i)
+    const match = prompt.match(/ROLE:([\s\S]*?)(?=\n\n[A-Z]+:|$)/i)
     return match ? match[1].trim() : ""
+  }
+  
+  // Extract INPUTS from prompt
+  const extractInputs = (prompt: string) => {
+    const match = prompt.match(/INPUTS?:([\s\S]*?)(?=\n\n[A-Z]+:|$)/i)
+    if (!match) return []
+    const lines = match[1].split('\n').filter(line => line.trim())
+    return lines.map(line => line.replace(/^[-•]\s*/, '').trim()).filter(Boolean)
+  }
+  
+  // Extract OUTPUTS from prompt
+  const extractOutputs = (prompt: string) => {
+    const match = prompt.match(/OUTPUTS?:([\s\S]*?)(?=\n\n[A-Z]+:|$)/i)
+    if (!match) return []
+    const lines = match[1].split('\n').filter(line => line.trim())
+    return lines.map(line => line.replace(/^[-•]\s*/, '').trim()).filter(Boolean)
   }
 
   const handleSaveName = () => {
@@ -219,15 +256,45 @@ export function AgentDetailsView({
                 </div>
               )}
 
+              {/* Inputs */}
+              {extractInputs(agent.prompt || "").length > 0 && (
+                <div className="mb-4">
+                  <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">INPUTS:</h3>
+                  <ul className="space-y-1 text-sm text-gray-700">
+                    {extractInputs(agent.prompt || "").map((input, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-purple-600 mt-1">•</span>
+                        <span>{input}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {/* Key Actions */}
               {keyActions.length > 0 && (
-                <div>
+                <div className="mb-4">
                   <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">KEY ACTIONS:</h3>
                   <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
                     {keyActions.map((action, index) => (
                       <li key={index}>{action}</li>
                     ))}
                   </ol>
+                </div>
+              )}
+
+              {/* Outputs */}
+              {extractOutputs(agent.prompt || "").length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">OUTPUTS:</h3>
+                  <ul className="space-y-1 text-sm text-gray-700">
+                    {extractOutputs(agent.prompt || "").map((output, index) => (
+                      <li key={index} className="flex items-start gap-2">
+                        <span className="text-purple-600 mt-1">•</span>
+                        <span>{output}</span>
+                      </li>
+                    ))}
+                  </ul>
                 </div>
               )}
             </>
