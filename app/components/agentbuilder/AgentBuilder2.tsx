@@ -1,12 +1,20 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { ChevronRight, ChevronDown, Plus, X, Minimize2, Power, Pencil } from "lucide-react"
+import { ChevronRight, ChevronDown, Plus, X, Minimize2, Power, Pencil, Play, Loader2, TrendingDown } from "lucide-react"
 import { Agent } from "./AgentBuilderPage"
 import { ChatInterface, type ChatInterfaceRef } from "./ChatInterface"
 import { AgentDetailsView } from "./AgentDetailsView"
 import { Button } from "@/app/components/ui/button"
 import { Card } from "@/app/components/ui/card"
+import { Label } from "@/app/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
+
+// Import simulation modules
+import { generateTestScenarios, type ScenarioConfig, type TimePeriod, type Stage } from './testScenarioGenerator'
+import { simulateBaselineProcessingBatch, type BaselineStats } from './baselineSimulator'
+import { simulateAgentProcessingBatch, type AgentStats, type AgentConfig as SimAgentConfig } from './agentSimulator'
+import { calculateComparisonMetrics, createInvoiceComparisons, formatMetricsForDisplay, generateExecutiveSummary, type ComparisonMetrics, type InvoiceComparison } from './comparisonMetrics'
 
 interface AgentBuilder2Props {
   agents: Agent[]
@@ -57,6 +65,19 @@ export function AgentBuilder2({
   const [detectedStage, setDetectedStage] = useState<string>("")
   const [detectedLane, setDetectedLane] = useState<string>("")
 
+  // Testing modal state
+  const [selectedTimePeriod, setSelectedTimePeriod] = useState<"7days" | "30days" | "3months" | "6months">("7days")
+  const [isTesting, setIsTesting] = useState(false)
+  const [testProgress, setTestProgress] = useState(0)
+  const [comparisonMetrics, setComparisonMetrics] = useState<ComparisonMetrics | null>(null)
+  const [invoiceComparisons, setInvoiceComparisons] = useState<InvoiceComparison[]>([])
+  const [baselineStats, setBaselineStats] = useState<BaselineStats | null>(null)
+  const [agentStats, setAgentStats] = useState<AgentStats | null>(null)
+  const [withoutAgentFilter, setWithoutAgentFilter] = useState<"all" | "pass" | "blocked" | "delayed" | "error">("all")
+  const [withAgentFilter, setWithAgentFilter] = useState<"all" | "auto_resolved" | "suggested_resolution" | "observed" | "escalated_to_human">("all")
+  const [currentPage, setCurrentPage] = useState(1)
+  const [rowsPerPage] = useState(50)
+
   // Extract a clean agent name from the prompt
   const extractAgentName = (prompt: string): string => {
     // Try to extract from ROLE line
@@ -79,6 +100,155 @@ export function AgentBuilder2({
     }
     
     return 'New Agent'
+  }
+
+  const runBulkTest = async () => {
+    if (!testingAgent) return
+    
+    setIsTesting(true)
+    setTestProgress(0)
+    setComparisonMetrics(null)
+    setInvoiceComparisons([])
+    setCurrentPage(1)
+
+    // Configure scenario generation
+    const scenarioConfig: ScenarioConfig = {
+      scenarioTypes: ["all"],
+      issueMix: 40, // Fixed 40% issue rate for realistic testing
+      stage: (testingAgent.stage || 'matching') as Stage,
+      lane: testingAgent.lane || "",
+    }
+
+    // Generate test scenarios
+    const scenarios = generateTestScenarios(selectedTimePeriod as TimePeriod, scenarioConfig)
+    
+    // Configure agent for simulation
+    const agentConfig: SimAgentConfig = {
+      name: testingAgent.name || "Test Agent",
+      stage: testingAgent.stage || "matching",
+      lane: testingAgent.lane || "",
+      mode: testingAgent.mode || "auto-apply",
+      prompt: testingAgent.prompt || "",
+      skills: testingAgent.skills || [],
+    }
+
+    const batchSize = 50
+    const totalBatches = Math.ceil(scenarios.length / batchSize)
+    
+    let allBaselineResults: any[] = []
+    let allAgentResults: any[] = []
+
+    // Process in batches for UI responsiveness
+    for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+      const batchStart = batchIndex * batchSize
+      const batchEnd = Math.min(batchStart + batchSize, scenarios.length)
+      const batchScenarios = scenarios.slice(batchStart, batchEnd)
+
+      // Simulate processing delay for realism
+      await new Promise((resolve) => setTimeout(resolve, 200))
+
+      // Run both baseline and agent simulations
+      const { results: baselineResults } = simulateBaselineProcessingBatch(batchScenarios)
+      const { results: agentResults } = simulateAgentProcessingBatch(batchScenarios, agentConfig)
+
+      allBaselineResults = [...allBaselineResults, ...baselineResults]
+      allAgentResults = [...allAgentResults, ...agentResults]
+
+      // Update progress
+      const progress = ((batchEnd) / scenarios.length) * 100
+      setTestProgress(progress)
+
+      // Create invoice comparisons for display
+      const batchComparisons = createInvoiceComparisons(batchScenarios, baselineResults, agentResults)
+      setInvoiceComparisons(prev => [...prev, ...batchComparisons])
+    }
+
+    // Calculate final statistics
+    const { stats: finalBaselineStats } = simulateBaselineProcessingBatch(scenarios)
+    const { stats: finalAgentStats } = simulateAgentProcessingBatch(scenarios, agentConfig)
+    
+    setBaselineStats(finalBaselineStats)
+    setAgentStats(finalAgentStats)
+
+    // Calculate comparison metrics
+    const metrics = calculateComparisonMetrics(finalBaselineStats, finalAgentStats, scenarios.length)
+    setComparisonMetrics(metrics)
+
+    setIsTesting(false)
+  }
+
+  const handleCloseTestModal = () => {
+    if (onCloseTest) onCloseTest()
+    
+    // Reset all test state
+    setComparisonMetrics(null)
+    setInvoiceComparisons([])
+    setTestProgress(0)
+    setIsTesting(false)
+    setCurrentPage(1)
+    setWithoutAgentFilter("all")
+    setWithAgentFilter("all")
+  }
+
+  const exportComparisonToCSV = () => {
+    if (!comparisonMetrics || invoiceComparisons.length === 0) return
+
+    // Build CSV content
+    const headers = [
+      "Invoice ID",
+      "Vendor",
+      "Amount",
+      "Without Agent - Outcome",
+      "Without Agent - Time (min)",
+      "Without Agent - Manual Touches",
+      "With Agent - Action",
+      "With Agent - Time (min)",
+      "With Agent - Manual Touches",
+      "Improvement",
+      "Time Saved (min)",
+      "Improvement Highlights",
+    ]
+
+    const rows = invoiceComparisons.map(comp => [
+      comp.invoiceId,
+      comp.vendor,
+      comp.amount.toFixed(2),
+      comp.withoutAgent.outcome,
+      comp.withoutAgent.processingTime.toFixed(1),
+      comp.withoutAgent.manualTouches,
+      comp.withAgent.action,
+      comp.withAgent.processingTime.toFixed(1),
+      comp.withAgent.manualTouches,
+      comp.improvement.outcome,
+      comp.improvement.timeSaved.toFixed(1),
+      comp.improvement.highlights.join("; "),
+    ])
+
+    // Add summary rows
+    rows.push([]) // Empty row
+    rows.push(["SUMMARY"])
+    rows.push(["Total Invoices", String(invoiceComparisons.length)])
+    rows.push(["Avg Time Without Agent", comparisonMetrics.avgProcessingTimeWithout.toFixed(1) + " min"])
+    rows.push(["Avg Time With Agent", comparisonMetrics.avgProcessingTimeWith.toFixed(1) + " min"])
+    rows.push(["Time Reduction", comparisonMetrics.timeReductionPercentage.toFixed(1) + "%"])
+    rows.push(["Annual FTE Savings", comparisonMetrics.annualFTESavings.toFixed(2)])
+    rows.push(["Annual Cost Savings", "$" + comparisonMetrics.annualCostSavings.toLocaleString()])
+
+    // Convert to CSV
+    const csvContent = [
+      headers.join(","),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(","))
+    ].join("\n")
+
+    // Download
+    const blob = new Blob([csvContent], { type: "text/csv" })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement("a")
+    link.href = url
+    link.download = `agent-test-comparison-${Date.now()}.csv`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
   }
 
   const handlePromptGenerated = (prompt: string, skills: string[], documents?: any[]) => {
@@ -448,21 +618,292 @@ export function AgentBuilder2({
                   Simulate against historical invoice data to measure agent impact
                 </p>
               </div>
-              <Button variant="ghost" size="icon" onClick={onCloseTest}>
+              <Button variant="ghost" size="icon" onClick={handleCloseTestModal}>
                 <X className="w-5 h-5" />
               </Button>
             </div>
 
             <div className="flex-1 overflow-y-auto p-6">
-              <div className="max-w-4xl mx-auto">
-                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 text-center">
-                  <p className="text-gray-950 text-lg mb-2">🧪 Testing Interface</p>
-                  <p className="text-gray-700 text-sm">
-                    This is where you can test your agent against historical invoice data.
-                    Full testing functionality coming soon!
-                  </p>
+              {!isTesting && invoiceComparisons.length === 0 ? (
+                <div className="space-y-6">
+                  <div>
+                    <Label className="text-base font-semibold mb-3 block">Select Time Period</Label>
+                    <div className="grid grid-cols-4 gap-3">
+                      <Button
+                        variant={selectedTimePeriod === "7days" ? "default" : "outline"}
+                        onClick={() => setSelectedTimePeriod("7days")}
+                        className="h-20 flex flex-col items-center justify-center"
+                      >
+                        <span className="font-bold text-xl">7 days</span>
+                        <span className="text-xs">~1,500 invoices</span>
+                      </Button>
+                      <Button
+                        variant={selectedTimePeriod === "30days" ? "default" : "outline"}
+                        onClick={() => setSelectedTimePeriod("30days")}
+                        className="h-20 flex flex-col items-center justify-center"
+                      >
+                        <span className="font-bold text-xl">30 days</span>
+                        <span className="text-xs">~6,200 invoices</span>
+                      </Button>
+                      <Button
+                        variant={selectedTimePeriod === "3months" ? "default" : "outline"}
+                        onClick={() => setSelectedTimePeriod("3months")}
+                        className="h-20 flex flex-col items-center justify-center"
+                      >
+                        <span className="font-bold text-xl">3 months</span>
+                        <span className="text-xs">~18,500 invoices</span>
+                      </Button>
+                      <Button
+                        variant={selectedTimePeriod === "6months" ? "default" : "outline"}
+                        onClick={() => setSelectedTimePeriod("6months")}
+                        className="h-20 flex flex-col items-center justify-center"
+                      >
+                        <span className="font-bold text-xl">6 months</span>
+                        <span className="text-xs">~37,000 invoices</span>
+                      </Button>
+                    </div>
+                  </div>
+
+                  <Card className="p-4 bg-muted/50">
+                    <h4 className="font-semibold mb-2">Test Configuration</h4>
+                    <div className="space-y-2 text-sm">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Agent:</span>
+                        <span className="font-medium">{testingAgent.name || "Unnamed Agent"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Stage:</span>
+                        <span className="font-medium capitalize">{testingAgent.stage || "N/A"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Lane:</span>
+                        <span className="font-medium">{testingAgent.lane || "N/A"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Mode:</span>
+                        <span className="font-medium capitalize">{testingAgent.mode === "auto-apply" ? "Auto-Apply" : testingAgent.mode || "N/A"}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Skills:</span>
+                        <span className="font-medium">{testingAgent.skills?.length || 0} selected</span>
+                      </div>
+                    </div>
+                  </Card>
+
+                  <Button onClick={runBulkTest} className="w-full h-12" size="lg">
+                    <Play className="w-5 h-5 mr-2" />
+                    Start Test Run
+                  </Button>
                 </div>
-              </div>
+              ) : isTesting ? (
+                <div className="space-y-6">
+                  <div className="text-center py-8">
+                    <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-primary" />
+                    <h4 className="text-lg font-semibold mb-2">Processing Invoices...</h4>
+                    <p className="text-muted-foreground mb-4">Testing agent against historical data</p>
+                    <div className="max-w-md mx-auto">
+                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-primary transition-all duration-300"
+                          style={{ width: `${testProgress}%` }}
+                        />
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-2">{testProgress.toFixed(0)}% Complete</p>
+                    </div>
+                  </div>
+
+                  {invoiceComparisons.length > 0 && (
+                    <Card className="p-4">
+                      <h4 className="font-semibold mb-3">Recent Results</h4>
+                      <div className="space-y-2 max-h-48 overflow-y-auto">
+                        {invoiceComparisons
+                          .slice(-10)
+                          .reverse()
+                          .map((comparison, idx) => (
+                            <div
+                              key={idx}
+                              className="flex items-center justify-between text-xs p-2 bg-muted/50 rounded"
+                            >
+                              <span className="font-mono">{comparison.invoiceId}</span>
+                              <span className={comparison.improvement.outcome === "better" ? "text-green-600" : "text-gray-600"}>
+                                {comparison.improvement.outcome === "better" ? "✓ Improved" : "○ No change"}
+                              </span>
+                            </div>
+                          ))}
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-6">
+                  {/* Executive Summary */}
+                  {comparisonMetrics && (
+                    <Card className="p-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
+                      <h4 className="text-lg font-semibold mb-2">Agent Value Summary</h4>
+                      <p className="text-sm text-gray-700 leading-relaxed">
+                        {generateExecutiveSummary(comparisonMetrics)}
+                      </p>
+                    </Card>
+                  )}
+
+                  {/* Comparison Metrics - Side by Side */}
+                  {comparisonMetrics && (
+                    <>
+                      <div className="grid grid-cols-3 gap-4">
+                        {/* WITHOUT Agent Column */}
+                        <Card className="p-4 bg-gray-50">
+                          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">Without Agent</p>
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-xs text-gray-500">Avg Time</p>
+                              <p className="text-xl font-bold text-gray-900">{comparisonMetrics.avgProcessingTimeWithout.toFixed(1)} min</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Exceptions</p>
+                              <p className="text-xl font-bold text-gray-900">{comparisonMetrics.exceptionsWithout.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Manual Touches</p>
+                              <p className="text-xl font-bold text-gray-900">{comparisonMetrics.manualTouchesWithout.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-gray-500">Cost/Invoice</p>
+                              <p className="text-xl font-bold text-gray-900">${comparisonMetrics.costPerInvoiceWithout.toFixed(2)}</p>
+                            </div>
+                          </div>
+                        </Card>
+
+                        {/* WITH Agent Column */}
+                        <Card className="p-4 bg-purple-50 border-purple-200">
+                          <p className="text-xs font-semibold text-purple-900 uppercase tracking-wide mb-3">With Agent</p>
+                          <div className="space-y-3">
+                            <div>
+                              <p className="text-xs text-purple-700">Avg Time</p>
+                              <p className="text-xl font-bold text-purple-900">{comparisonMetrics.avgProcessingTimeWith.toFixed(1)} min</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-purple-700">Exceptions</p>
+                              <p className="text-xl font-bold text-purple-900">{comparisonMetrics.exceptionsWith.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-purple-700">Manual Touches</p>
+                              <p className="text-xl font-bold text-purple-900">{comparisonMetrics.manualTouchesWith.toLocaleString()}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-purple-700">Cost/Invoice</p>
+                              <p className="text-xl font-bold text-purple-900">${comparisonMetrics.costPerInvoiceWith.toFixed(2)}</p>
+                            </div>
+                          </div>
+                        </Card>
+
+                        {/* Improvement Column */}
+                        <Card className="p-4 bg-green-50 border-green-200">
+                          <p className="text-xs font-semibold text-green-900 uppercase tracking-wide mb-3">Improvement</p>
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2">
+                              <TrendingDown className="w-4 h-4 text-green-600" />
+                              <div>
+                                <p className="text-xs text-green-700">Time Saved</p>
+                                <p className="text-xl font-bold text-green-900">{comparisonMetrics.timeReductionPercentage.toFixed(0)}%</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <TrendingDown className="w-4 h-4 text-green-600" />
+                              <div>
+                                <p className="text-xs text-green-700">Fewer Exceptions</p>
+                                <p className="text-xl font-bold text-green-900">{comparisonMetrics.exceptionReductionPercentage.toFixed(0)}%</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <TrendingDown className="w-4 h-4 text-green-600" />
+                              <div>
+                                <p className="text-xs text-green-700">Fewer Touches</p>
+                                <p className="text-xl font-bold text-green-900">{comparisonMetrics.manualTouchReductionPercentage.toFixed(0)}%</p>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <TrendingDown className="w-4 h-4 text-green-600" />
+                              <div>
+                                <p className="text-xs text-green-700">Cost Savings</p>
+                                <p className="text-xl font-bold text-green-900">${comparisonMetrics.costSavingsPerInvoice.toFixed(2)}</p>
+                              </div>
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+
+                      {/* ROI Metrics */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <Card className="p-4">
+                          <p className="text-sm font-semibold mb-3">FTE Savings</p>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Hours Saved:</span>
+                              <span className="font-medium">{comparisonMetrics.fteHoursSaved.toFixed(1)} hours</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Annual FTE Savings:</span>
+                              <span className="font-medium text-green-600">{comparisonMetrics.annualFTESavings.toFixed(2)} FTE</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Annual Cost Savings:</span>
+                              <span className="font-medium text-green-600">${comparisonMetrics.annualCostSavings.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                            </div>
+                          </div>
+                        </Card>
+
+                        <Card className="p-4">
+                          <p className="text-sm font-semibold mb-3">Processing Efficiency</p>
+                          <div className="space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Speedup Factor:</span>
+                              <span className="font-medium">{comparisonMetrics.processingSpeedupFactor.toFixed(1)}x faster</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Auto-Resolved:</span>
+                              <span className="font-medium">{comparisonMetrics.autoResolvedCount.toLocaleString()} invoices</span>
+                            </div>
+                            <div className="flex justify-between text-sm">
+                              <span className="text-muted-foreground">Accuracy:</span>
+                              <span className="font-medium">{comparisonMetrics.accuracyWith.toFixed(1)}% (+{comparisonMetrics.accuracyImprovement.toFixed(1)}%)</span>
+                            </div>
+                          </div>
+                        </Card>
+                      </div>
+                    </>
+                  )}
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-3 pt-4 border-t">
+                    <Button
+                      onClick={handleCloseTestModal}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Close
+                    </Button>
+                    <Button
+                      onClick={exportComparisonToCSV}
+                      disabled={!comparisonMetrics}
+                      variant="outline"
+                      className="flex-1"
+                    >
+                      Export CSV
+                    </Button>
+                    <Button
+                      onClick={() => {
+                        setComparisonMetrics(null)
+                        setInvoiceComparisons([])
+                        setTestProgress(0)
+                      }}
+                      variant="default"
+                      className="flex-1"
+                    >
+                      Run New Test
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
         </div>
