@@ -119,6 +119,49 @@ export function AgentDetailsView({
     return actions.slice(0, 7)
   }
 
+  // Extract detailed STEPS for flowchart view (more comprehensive than key actions)
+  const extractFlowchartSteps = (prompt: string) => {
+    const steps: string[] = []
+    
+    // Try to extract from STEPS section first (most detailed)
+    const stepsMatch = prompt.match(/STEPS?:([\s\S]*?)(?=\n\n(?:VALIDATIONS?|OUTPUTS?|ERROR HANDLING|INPUTS?|[A-Z]{2,}):|\n\n-|$)/i)
+    if (stepsMatch) {
+      const text = stepsMatch[1]
+      const lines = text.split('\n')
+      
+      for (const line of lines) {
+        const trimmed = line.trim()
+        // Main numbered steps (1. 2. 3.)
+        if (/^\d+\./.test(trimmed)) {
+          const step = trimmed.replace(/^\d+\.\s*[-•]?\s*/, '').trim()
+          if (step && step.length > 5) steps.push(step)
+        }
+        // Important sub-steps (a. b. c.)
+        else if (/^\s*[a-z]\.\s*/i.test(trimmed) && steps.length > 0) {
+          const subStep = trimmed.replace(/^\s*[a-z]\.\s*/i, '').trim()
+          // Include meaningful sub-steps
+          if (subStep && subStep.length > 10) {
+            steps.push(`  ${subStep}`) // Indent sub-steps
+          }
+        }
+      }
+    }
+    
+    // Fallback to AGENT INSTRUCTIONS if no steps found
+    if (steps.length === 0) {
+      const instructionsMatch = prompt.match(/AGENT INSTRUCTIONS?:([\s\S]*?)(?=\n\n(?:INPUTS?|STEPS?|VALIDATIONS?|[A-Z]{2,}):|\n\n-|$)/i)
+      if (instructionsMatch) {
+        const lines = instructionsMatch[1].split('\n').filter(line => {
+          const trimmed = line.trim()
+          return trimmed && trimmed.length > 10
+        })
+        steps.push(...lines.map(line => line.replace(/^\d+\.\s*[-•]?\s*/, '').trim()).filter(Boolean))
+      }
+    }
+    
+    return steps
+  }
+
   // Extract ROLE from prompt for basic view (first line only)
   const extractRole = (prompt: string) => {
     const match = prompt.match(/ROLE:\s*\n?\s*([^\n]+)/i)
@@ -396,6 +439,7 @@ export function AgentDetailsView({
   }, [agent?.id, agent?.prompt, agent?.stage, allAgents])
 
   const keyActions = extractKeyActions(agent.prompt || '')
+  const flowchartSteps = extractFlowchartSteps(agent.prompt || '')
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
@@ -707,7 +751,7 @@ export function AgentDetailsView({
               )}
 
               {/* Process Steps */}
-              {keyActions.length > 0 && (
+              {flowchartSteps.length > 0 && (
                 <div className="space-y-3">
                   <div className="text-center mb-4">
                     <div className="inline-block px-4 py-1 bg-gray-100 rounded-full">
@@ -715,30 +759,50 @@ export function AgentDetailsView({
                     </div>
                   </div>
                   
-                  {keyActions.map((action, index) => (
-                    <div key={index} className="flex flex-col items-center">
-                      <div className="w-full max-w-2xl px-5 py-4 bg-white border-2 border-gray-300 rounded-lg shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex items-start gap-3">
-                          <div className="flex items-center justify-center w-7 h-7 rounded-full bg-purple-600 text-white text-sm font-bold shrink-0">
-                            {index + 1}
+                  {(() => {
+                    let stepNumber = 1
+                    return flowchartSteps.map((step, index) => {
+                      const isSubStep = step.startsWith('  ')
+                      const displayStep = step.trim()
+                      const currentStepNumber = isSubStep ? null : stepNumber++
+                      
+                      return (
+                        <div key={index} className="flex flex-col items-center">
+                          <div className={`w-full ${isSubStep ? 'max-w-xl ml-12' : 'max-w-2xl'} px-5 py-4 ${
+                            isSubStep 
+                              ? 'bg-purple-50 border-2 border-purple-200' 
+                              : 'bg-white border-2 border-gray-300'
+                          } rounded-lg shadow-sm hover:shadow-md transition-shadow`}>
+                            <div className="flex items-start gap-3">
+                              {!isSubStep && (
+                                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-purple-600 text-white text-sm font-bold shrink-0">
+                                  {currentStepNumber}
+                                </div>
+                              )}
+                              {isSubStep && (
+                                <div className="flex items-center justify-center w-7 h-7 rounded-full bg-purple-300 text-purple-900 text-xs font-bold shrink-0">
+                                  →
+                                </div>
+                              )}
+                              <div className={`flex-1 text-sm ${isSubStep ? 'text-purple-900' : 'text-gray-950'} pt-0.5`}>
+                                {displayStep}
+                              </div>
+                            </div>
                           </div>
-                          <div className="flex-1 text-sm text-gray-950 pt-0.5">
-                            {action}
-                          </div>
+                          {index < flowchartSteps.length - 1 && (
+                            <div className="flex items-center justify-center py-2">
+                              <div className="w-0.5 h-6 bg-gray-300"></div>
+                              <div className="absolute">
+                                <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
+                                  <path fillRule="evenodd" d="M10 18a1 1 0 01-.707-.293l-4-4a1 1 0 011.414-1.414L10 15.586l3.293-3.293a1 1 0 011.414 1.414l-4 4A1 1 0 0110 18z" clipRule="evenodd" />
+                                </svg>
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      </div>
-                      {index < keyActions.length - 1 && (
-                        <div className="flex items-center justify-center py-2">
-                          <div className="w-0.5 h-6 bg-gray-300"></div>
-                          <div className="absolute">
-                            <svg className="w-4 h-4 text-gray-400" fill="currentColor" viewBox="0 0 20 20">
-                              <path fillRule="evenodd" d="M10 18a1 1 0 01-.707-.293l-4-4a1 1 0 011.414-1.414L10 15.586l3.293-3.293a1 1 0 011.414 1.414l-4 4A1 1 0 0110 18z" clipRule="evenodd" />
-                            </svg>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
+                      )
+                    })
+                  })()}
                 </div>
               )}
 
