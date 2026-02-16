@@ -75,6 +75,7 @@ export function AgentBuilder2({
   const [agentStats, setAgentStats] = useState<AgentStats | null>(null)
   const [withoutAgentFilter, setWithoutAgentFilter] = useState<"all" | "pass" | "blocked" | "delayed" | "error">("all")
   const [withAgentFilter, setWithAgentFilter] = useState<"all" | "auto_resolved" | "suggested_resolution" | "observed" | "escalated_to_human">("all")
+  const [statusFilter, setStatusFilter] = useState<"all" | "pass" | "fail">("all")
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage] = useState(50)
 
@@ -188,6 +189,7 @@ export function AgentBuilder2({
     setCurrentPage(1)
     setWithoutAgentFilter("all")
     setWithAgentFilter("all")
+    setStatusFilter("all")
   }
 
   const exportComparisonToCSV = () => {
@@ -871,6 +873,256 @@ export function AgentBuilder2({
                         </Card>
                       </div>
                     </>
+                  )}
+
+                  {/* Invoice-by-Invoice Comparison Table */}
+                  {invoiceComparisons.length > 0 && (
+                    <Card className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div>
+                          <h4 className="font-semibold">Invoice-by-Invoice Comparison</h4>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Agent actions: <span className="text-purple-700">✓ No human needed</span> • <span className="text-yellow-700">→ Review needed</span> • <span className="text-gray-600">○ Flagged only</span> • <span className="text-yellow-700">↑ Manual required</span>
+                          </p>
+                        </div>
+                        <div className="flex gap-2">
+                          <Select value={withoutAgentFilter} onValueChange={(value: any) => {
+                            setWithoutAgentFilter(value)
+                            setCurrentPage(1)
+                          }}>
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue placeholder="Without Agent" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[10001]">
+                              <SelectItem value="all">All Outcomes</SelectItem>
+                              <SelectItem value="pass">Passed</SelectItem>
+                              <SelectItem value="blocked">Blocked</SelectItem>
+                              <SelectItem value="delayed">Delayed</SelectItem>
+                              <SelectItem value="error">Error</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          
+                          <Select value={withAgentFilter} onValueChange={(value: any) => {
+                            setWithAgentFilter(value)
+                            setCurrentPage(1)
+                          }}>
+                            <SelectTrigger className="w-[140px]">
+                              <SelectValue placeholder="With Agent" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[10001]">
+                              <SelectItem value="all">All Actions</SelectItem>
+                              <SelectItem value="auto_resolved">Auto-resolved</SelectItem>
+                              <SelectItem value="suggested_resolution">Suggested</SelectItem>
+                              <SelectItem value="observed">Observed</SelectItem>
+                              <SelectItem value="escalated_to_human">Escalated</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          
+                          <Select value={statusFilter} onValueChange={(value: any) => {
+                            setStatusFilter(value)
+                            setCurrentPage(1)
+                          }}>
+                            <SelectTrigger className="w-[120px]">
+                              <SelectValue placeholder="Improvement" />
+                            </SelectTrigger>
+                            <SelectContent className="z-[10001]">
+                              <SelectItem value="all">All</SelectItem>
+                              <SelectItem value="pass">Improved</SelectItem>
+                              <SelectItem value="fail">With Issues</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                      <div className="border rounded-lg overflow-hidden">
+                        <table className="w-full text-xs">
+                          <thead className="bg-muted">
+                            <tr>
+                              <th className="text-left p-2">Invoice ID</th>
+                              <th className="text-left p-2">Vendor</th>
+                              <th className="text-right p-2">Amount</th>
+                              <th className="text-left p-2">Without Agent</th>
+                              <th className="text-left p-2">With Agent</th>
+                              <th className="text-left p-2">Improvement</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {(() => {
+                              const filteredResults = invoiceComparisons.filter((comparison) => {
+                                // Without Agent filter
+                                if (withoutAgentFilter !== "all" && comparison.withoutAgent.outcome !== withoutAgentFilter) {
+                                  return false
+                                }
+                                
+                                // With Agent filter
+                                if (withAgentFilter !== "all" && comparison.withAgent.agentAction !== withAgentFilter) {
+                                  return false
+                                }
+                                
+                                // Improvement filter
+                                if (statusFilter === "pass" && comparison.improvement.outcome !== "better") {
+                                  return false
+                                }
+                                if (statusFilter === "fail" && !comparison.hasIssue) {
+                                  return false
+                                }
+                                
+                                return true
+                              })
+                              
+                              // Show empty state if no results match filter
+                              if (filteredResults.length === 0) {
+                                return (
+                                  <tr>
+                                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                                      <p className="text-sm">No invoices match the current filter.</p>
+                                      <p className="text-xs mt-1">Try selecting a different filter option.</p>
+                                    </td>
+                                  </tr>
+                                )
+                              }
+                              
+                              const startIndex = (currentPage - 1) * rowsPerPage
+                              const endIndex = startIndex + rowsPerPage
+                              const paginatedResults = filteredResults.slice(startIndex, endIndex)
+
+                              return paginatedResults.map((comparison, idx) => (
+                                <tr
+                                  key={idx}
+                                  className="border-t hover:bg-muted/50 transition-colors"
+                                >
+                                  <td className="p-2 font-mono">
+                                    <div className="flex items-center gap-1">
+                                      {comparison.invoiceId}
+                                    </div>
+                                  </td>
+                                  <td className="p-2">{comparison.vendor}</td>
+                                  <td className="p-2 text-right font-medium">${comparison.amount.toFixed(2)}</td>
+                                  <td className="p-2">
+                                    <div className="flex flex-col gap-1">
+                                      <span className={`text-xs px-1.5 py-0.5 rounded inline-block ${
+                                        comparison.withoutAgent.outcome === "pass" ? "bg-green-100 text-green-700" : 
+                                        comparison.withoutAgent.outcome === "blocked" ? "bg-red-100 text-red-700" :
+                                        comparison.withoutAgent.outcome === "delayed" ? "bg-yellow-100 text-yellow-700" :
+                                        "bg-gray-100 text-gray-700"
+                                      }`}>
+                                        {comparison.withoutAgent.outcome === "pass" ? "passed" : comparison.withoutAgent.outcome}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">{comparison.withoutAgent.processingTimeMinutes.toFixed(0)}min • {comparison.withoutAgent.manualTouches} touch{comparison.withoutAgent.manualTouches !== 1 ? 'es' : ''}</span>
+                                    </div>
+                                  </td>
+                                  <td className="p-2">
+                                    <div className="flex flex-col gap-1">
+                                      <span className={`text-xs px-1.5 py-0.5 rounded inline-block ${
+                                        comparison.withAgent.agentAction === "auto_resolved" ? "bg-purple-100 text-purple-700" : 
+                                        comparison.withAgent.agentAction === "suggested_resolution" ? "bg-yellow-100 text-yellow-700" :
+                                        comparison.withAgent.agentAction === "observed" ? "bg-blue-100 text-blue-700" :
+                                        "bg-gray-100 text-gray-700"
+                                      }`}>
+                                        {comparison.withAgent.agentAction === "auto_resolved" ? "✓ Auto-resolved (no human)" : 
+                                         comparison.withAgent.agentAction === "suggested_resolution" ? "→ Suggested (needs review)" : 
+                                         comparison.withAgent.agentAction === "observed" ? "○ Observed (flagged only)" : 
+                                         "↑ Escalated to human"}
+                                      </span>
+                                      <span className="text-xs text-muted-foreground">{comparison.withAgent.processingTimeMinutes.toFixed(0)}min • {comparison.withAgent.manualTouches} touch{comparison.withAgent.manualTouches !== 1 ? 'es' : ''}</span>
+                                    </div>
+                                  </td>
+                                  <td className="p-2">
+                                    <div className="flex flex-wrap gap-1">
+                                      {comparison.improvement.highlights.map((highlight, hidx) => (
+                                        <span key={hidx} className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
+                                          {highlight}
+                                        </span>
+                                      ))}
+                                      {comparison.improvement.highlights.length === 0 && (
+                                        <span className="text-xs text-muted-foreground">No change</span>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))
+                            })()}
+                          </tbody>
+                        </table>
+                      </div>
+                      {(() => {
+                        const filteredResults = invoiceComparisons.filter((comparison) => {
+                          // Without Agent filter
+                          if (withoutAgentFilter !== "all" && comparison.withoutAgent.outcome !== withoutAgentFilter) {
+                            return false
+                          }
+                          
+                          // With Agent filter
+                          if (withAgentFilter !== "all" && comparison.withAgent.agentAction !== withAgentFilter) {
+                            return false
+                          }
+                          
+                          // Improvement filter
+                          if (statusFilter === "pass" && comparison.improvement.outcome !== "better") {
+                            return false
+                          }
+                          if (statusFilter === "fail" && !comparison.hasIssue) {
+                            return false
+                          }
+                          
+                          return true
+                        })
+
+                        const totalPages = Math.ceil(filteredResults.length / rowsPerPage)
+                        
+                        if (totalPages <= 1) return null
+
+                        return (
+                          <div className="flex items-center justify-between mt-3 text-xs">
+                            <div className="text-muted-foreground">
+                              Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, filteredResults.length)} of {filteredResults.length} invoices
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                disabled={currentPage === 1}
+                              >
+                                Previous
+                              </Button>
+                              <div className="flex items-center gap-1">
+                                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
+                                  let pageNum
+                                  if (totalPages <= 5) {
+                                    pageNum = i + 1
+                                  } else if (currentPage <= 3) {
+                                    pageNum = i + 1
+                                  } else if (currentPage >= totalPages - 2) {
+                                    pageNum = totalPages - 4 + i
+                                  } else {
+                                    pageNum = currentPage - 2 + i
+                                  }
+                                  return (
+                                    <Button
+                                      key={pageNum}
+                                      variant={currentPage === pageNum ? "default" : "outline"}
+                                      size="sm"
+                                      onClick={() => setCurrentPage(pageNum)}
+                                      className="w-8 h-8 p-0"
+                                    >
+                                      {pageNum}
+                                    </Button>
+                                  )
+                                })}
+                              </div>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                disabled={currentPage === totalPages}
+                              >
+                                Next
+                              </Button>
+                            </div>
+                          </div>
+                        )
+                      })()}
+                    </Card>
                   )}
 
                   {/* Action Buttons */}
