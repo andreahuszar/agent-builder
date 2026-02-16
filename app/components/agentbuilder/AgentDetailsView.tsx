@@ -306,9 +306,9 @@ export function AgentDetailsView({
               {/* Full Prompt */}
               <div className="mb-4">
                 <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">SYSTEM PROMPT:</h3>
-                <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono bg-gray-50 p-3 rounded border border-gray-200 max-h-96 overflow-y-auto">
+                <div className="text-sm text-gray-700 whitespace-pre-wrap">
                   {agent.prompt || "No prompt configured"}
-                </pre>
+                </div>
               </div>
 
               {/* Referenced Files */}
