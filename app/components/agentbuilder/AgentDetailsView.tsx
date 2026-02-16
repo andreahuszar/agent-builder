@@ -70,33 +70,48 @@ export function AgentDetailsView({
   const [promptView, setPromptView] = useState<"basic" | "advanced" | "flowchart">("basic")
   const [conflicts, setConflicts] = useState<ConflictType[]>([])
 
-  // Extract KEY ACTIONS from prompt (only main action steps, excluding validations/outputs/error handling)
+  // Extract KEY ACTIONS from prompt with special handling for routing/approval
   const extractKeyActions = (prompt: string) => {
     const actions: string[] = []
     
-    // Extract from STEPS section (stop before VALIDATIONS, OUTPUT, ERROR HANDLING)
+    // First, check for routing/approval information to show prominently
+    const routeToMatch = prompt.match(/route.*?to\s+([^(\n]+(?:\([^)]+\))?)/i)
+    const approverMatch = prompt.match(/(?:approver|assigned to|route to):\s*([^\n]+(?:\([^)]+\))?)/i)
+    
+    // Extract from STEPS section
     const stepsMatch = prompt.match(/STEPS?:([\s\S]*?)(?=\n\n(?:VALIDATIONS?|OUTPUTS?|ERROR HANDLING|[A-Z]{2,}):|\n\n-|$)/i)
     if (stepsMatch) {
-      const lines = stepsMatch[1].split('\n').filter(line => {
+      const text = stepsMatch[1]
+      const lines = text.split('\n')
+      
+      for (const line of lines) {
         const trimmed = line.trim()
-        return trimmed && /^\d+\./.test(trimmed) // Only numbered steps
-      })
-      actions.push(...lines.map(line => line.replace(/^\d+\.\s*[-•]?\s*/, '').trim()).filter(Boolean))
+        // Main numbered steps (1. 2. 3.)
+        if (/^\d+\./.test(trimmed)) {
+          const action = trimmed.replace(/^\d+\.\s*[-•]?\s*/, '').trim()
+          if (action) actions.push(action)
+        }
+        // Sub-steps with routing info (a. Route invoice for approval to...)
+        else if (/^\s*[a-z]\.\s*route/i.test(trimmed)) {
+          const subAction = trimmed.replace(/^\s*[a-z]\.\s*/i, '').trim()
+          if (subAction) actions.push(subAction)
+        }
+      }
     }
     
-    // If no STEPS found, try KEY ACTIONS section
+    // If no STEPS found, try KEY ACTIONS or AGENT INSTRUCTIONS
     if (actions.length === 0) {
-      const keyActionsMatch = prompt.match(/KEY ACTIONS?:([\s\S]*?)(?=\n\n(?:VALIDATIONS?|OUTPUTS?|ERROR HANDLING|[A-Z]{2,}):|\n\n-|$)/i)
+      const keyActionsMatch = prompt.match(/KEY ACTIONS?:|AGENT INSTRUCTIONS?:([\s\S]*?)(?=\n\n(?:VALIDATIONS?|OUTPUTS?|ERROR HANDLING|INPUTS?|STEPS?|[A-Z]{2,}):|\n\n-|$)/i)
       if (keyActionsMatch) {
         const lines = keyActionsMatch[1].split('\n').filter(line => {
           const trimmed = line.trim()
-          return trimmed && /^\d+\./.test(trimmed)
+          return trimmed && (/^\d+\./.test(trimmed) || trimmed.length > 20)
         })
         actions.push(...lines.map(line => line.replace(/^\d+\.\s*[-•]?\s*/, '').trim()).filter(Boolean))
       }
     }
     
-    // Limit to first 5-7 actions for summary view
+    // Limit to first 7 actions for summary view
     return actions.slice(0, 7)
   }
 
