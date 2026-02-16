@@ -1011,6 +1011,8 @@ ERROR HANDLING:
                   onEditAgent={handleEditAgent}
                   onDeleteAgent={handleDeleteAgent}
                   onOpenTest={() => editingAgent && handleTestAgent(editingAgent)}
+                  testingAgent={testingAgent}
+                  onCloseTest={handleCloseTest}
                 />
               )}
               {mode === "executive-dashboard" && (

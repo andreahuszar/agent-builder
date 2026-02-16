@@ -6,6 +6,7 @@ import { Agent } from "./AgentBuilderPage"
 import { ChatInterface, type ChatInterfaceRef } from "./ChatInterface"
 import { AgentDetailsView } from "./AgentDetailsView"
 import { Button } from "@/app/components/ui/button"
+import { Card } from "@/app/components/ui/card"
 
 interface AgentBuilder2Props {
   agents: Agent[]
@@ -18,6 +19,8 @@ interface AgentBuilder2Props {
   onEditAgent: (agent: Agent) => void
   onDeleteAgent: (agentId: string) => void
   onOpenTest?: () => void
+  testingAgent?: Agent | null
+  onCloseTest?: () => void
 }
 
 const WORKFLOW_STAGES = [
@@ -40,6 +43,8 @@ export function AgentBuilder2({
   onEditAgent,
   onDeleteAgent,
   onOpenTest,
+  testingAgent,
+  onCloseTest,
 }: AgentBuilder2Props) {
   const [chatOpen, setChatOpen] = useState(false)
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
@@ -429,6 +434,37 @@ export function AgentBuilder2({
               currentPrompt={currentAgent?.prompt}
             />
           </div>
+        </div>
+      )}
+
+      {/* Test Modal */}
+      {testingAgent && (
+        <div className="fixed inset-0 bg-background z-[10000] flex flex-col">
+          <Card className="w-full h-full overflow-hidden flex flex-col border-0 rounded-none shadow-none">
+            <div className="p-6 border-b border-border flex items-center justify-between">
+              <div>
+                <h3 className="text-xl font-semibold">Test Agent: {testingAgent.name || "Untitled Agent"}</h3>
+                <p className="text-base text-gray-950 mt-2">
+                  Simulate against historical invoice data to measure agent impact
+                </p>
+              </div>
+              <Button variant="ghost" size="icon" onClick={onCloseTest}>
+                <X className="w-5 h-5" />
+              </Button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto p-6">
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 text-center">
+                  <p className="text-gray-950 text-lg mb-2">🧪 Testing Interface</p>
+                  <p className="text-gray-700 text-sm">
+                    This is where you can test your agent against historical invoice data.
+                    Full testing functionality coming soon!
+                  </p>
+                </div>
+              </div>
+            </div>
+          </Card>
         </div>
       )}
     </div>
