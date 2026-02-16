@@ -524,7 +524,7 @@ export function AgentDetailsView({
               <select 
                 value={agent.mode || "auto-apply"} 
                 onChange={(e) => onUpdateAgent({ ...agent, mode: e.target.value as 'observe' | 'suggest' | 'auto-apply' })}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="observe">Observe</option>
                 <option value="suggest">Suggest</option>
@@ -536,7 +536,7 @@ export function AgentDetailsView({
               <select 
                 value={agent.stage || ""} 
                 onChange={(e) => onUpdateAgent({ ...agent, stage: e.target.value, lane: '' })}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="">Select stage</option>
                 <option value="ingestion">Ingestion</option>
@@ -552,7 +552,7 @@ export function AgentDetailsView({
               <select 
                 value={agent.lane || ""}
                 onChange={(e) => onUpdateAgent({ ...agent, lane: e.target.value })}
-                className="w-full px-3 py-2 text-sm border border-gray-300 rounded-md bg-white"
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="">Select a lane</option>
                 {agent.stage && STAGE_LANES[agent.stage] ? (
