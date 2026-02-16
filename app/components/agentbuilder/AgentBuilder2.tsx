@@ -334,6 +334,7 @@ export function AgentBuilder2({
             onDelete={onDeleteAgent}
             onSave={handleSaveAgentDetails}
             onUpdateAgent={onSaveAgent}
+            allAgents={agents}
           />
         ) : chatOpen ? (
           // State when user is creating a new agent (chat is open)

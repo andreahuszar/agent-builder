@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Agent } from "./AgentBuilderPage"
 import { Pencil, Clock, Trash2, Save, Check, X } from "lucide-react"
 import { Button } from "@/app/components/ui/button"
@@ -12,6 +12,7 @@ interface AgentDetailsViewProps {
   onDelete: (agentId: string) => void
   onSave: () => void
   onUpdateAgent: (updatedAgent: Agent) => void
+  allAgents?: Agent[]
 }
 
 const AVAILABLE_SKILLS = [
@@ -38,6 +39,23 @@ const STAGE_LANES: Record<string, string[]> = {
   posting: ["Coding Suggestion", "ERP Payload Creation", "Posting Validation", "Reconciliation"]
 }
 
+const stages = [
+  { id: "ingestion", name: "Ingestion" },
+  { id: "data-capture", name: "Data Capture" },
+  { id: "verification", name: "Verification" },
+  { id: "matching", name: "Matching" },
+  { id: "approval", name: "Approval" },
+  { id: "posting", name: "Posting" },
+]
+
+type ConflictType = {
+  type: "rule" | "responsibility" | "field" | "status"
+  severity: "high" | "medium" | "low"
+  conflictingAgentId: string
+  conflictingAgentName: string
+  description: string
+}
+
 export function AgentDetailsView({
   agent,
   onToggleActive,
@@ -45,10 +63,12 @@ export function AgentDetailsView({
   onDelete,
   onSave,
   onUpdateAgent,
+  allAgents = [],
 }: AgentDetailsViewProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(agent.name)
   const [promptView, setPromptView] = useState<"basic" | "advanced" | "flowchart">("basic")
+  const [conflicts, setConflicts] = useState<ConflictType[]>([])
 
   // Extract KEY ACTIONS from prompt (only main action steps, excluding validations/outputs/error handling)
   const extractKeyActions = (prompt: string) => {
@@ -117,6 +137,85 @@ export function AgentDetailsView({
     setIsEditingName(false)
   }
 
+  // Detect conflicts with other agents
+  const detectConflicts = (): ConflictType[] => {
+    if (!agent || !agent.prompt || !allAgents) return []
+
+    const detectedConflicts: ConflictType[] = []
+    const currentPromptLower = agent.prompt.toLowerCase()
+    const currentStageIndex = stages.findIndex((s) => s.id === agent.stage)
+
+    allAgents.forEach((otherAgent) => {
+      if (!otherAgent.id || otherAgent.id === agent.id || !otherAgent.prompt || !otherAgent.active) return
+
+      const otherStageIndex = stages.findIndex((s) => s.id === otherAgent.stage)
+      const otherPromptLower = otherAgent.prompt.toLowerCase()
+      const isSameStage = currentStageIndex === otherStageIndex
+      const stageDistance = Math.abs(currentStageIndex - otherStageIndex)
+
+      // Only check conflicts for same stage or adjacent stages
+      if (stageDistance > 1) return
+
+      // SAME STAGE CONFLICTS
+      if (isSameStage) {
+        // Check for contradictory actions
+        const currentAutoApproves = currentPromptLower.includes("auto-approve") || currentPromptLower.includes("approve all")
+        const currentRequiresReview = 
+          currentPromptLower.includes("flag for review") ||
+          currentPromptLower.includes("manual review") ||
+          currentPromptLower.includes("require approval") ||
+          currentPromptLower.includes("reject")
+        const otherAutoApproves = otherPromptLower.includes("auto-approve") || otherPromptLower.includes("approve all")
+        const otherRequiresReview =
+          otherPromptLower.includes("flag for review") ||
+          otherPromptLower.includes("manual review") ||
+          otherPromptLower.includes("require approval") ||
+          otherPromptLower.includes("reject")
+
+        const isGenuineRuleConflict = 
+          (currentAutoApproves && otherRequiresReview) || (currentRequiresReview && otherAutoApproves)
+
+        if (isGenuineRuleConflict) {
+          detectedConflicts.push({
+            type: "rule",
+            severity: "high",
+            conflictingAgentId: otherAgent.id,
+            conflictingAgentName: otherAgent.name,
+            description: currentAutoApproves
+              ? `Contradictory rules in same stage: This agent auto-approves while "${otherAgent.name}" requires manual review`
+              : `Contradictory rules in same stage: This agent requires review while "${otherAgent.name}" auto-approves`,
+          })
+        }
+
+        // Detect overlapping responsibilities in same stage
+        const responsibilityKeywords = ["extract", "validate", "verify", "route", "approve", "post", "process"]
+        const currentResponsibilities = responsibilityKeywords.filter((kw) => currentPromptLower.includes(kw))
+        const otherResponsibilities = responsibilityKeywords.filter((kw) => otherPromptLower.includes(kw))
+        const overlap = currentResponsibilities.filter((r) => otherResponsibilities.includes(r))
+
+        if (overlap.length >= 2) {
+          detectedConflicts.push({
+            type: "responsibility",
+            severity: "medium",
+            conflictingAgentId: otherAgent.id,
+            conflictingAgentName: otherAgent.name,
+            description: `Overlapping responsibilities in same stage: Both agents handle ${overlap.join(", ")} - may duplicate work or cause conflicts`,
+          })
+        }
+      }
+    })
+
+    return detectedConflicts
+  }
+
+  // Run conflict detection when agent or allAgents changes
+  useEffect(() => {
+    if (agent && agent.prompt) {
+      const detected = detectConflicts()
+      setConflicts(detected)
+    }
+  }, [agent?.id, agent?.prompt, agent?.stage, allAgents])
+
   const keyActions = extractKeyActions(agent.prompt || '')
 
   return (
@@ -180,6 +279,62 @@ export function AgentDetailsView({
             </button>
           </div>
         </div>
+
+        {/* Conflict Warning */}
+        {conflicts.length > 0 && (
+          <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4">
+            <div className="space-y-3">
+              <div className="flex items-start gap-3">
+                <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center shrink-0 mt-0.5">
+                  <span className="text-white text-sm font-bold">!</span>
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-sm text-amber-900">
+                    Potential Conflicts Detected ({conflicts.length})
+                  </h4>
+                  <p className="text-xs text-amber-700 mt-1">
+                    This agent may conflict with other agents in your workflow. Review before deploying.
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {conflicts.map((conflict, index) => (
+                  <div
+                    key={index}
+                    className={`p-3 rounded-lg border ${
+                      conflict.severity === "high"
+                        ? "bg-red-50 border-red-200"
+                        : conflict.severity === "medium"
+                          ? "bg-amber-50 border-amber-200"
+                          : "bg-blue-50 border-blue-200"
+                    }`}
+                  >
+                    <div className="flex items-start gap-2">
+                      <span
+                        className={`text-xs font-medium px-2 py-0.5 rounded shrink-0 ${
+                          conflict.severity === "high"
+                            ? "bg-red-100 text-red-700"
+                            : conflict.severity === "medium"
+                              ? "bg-amber-100 text-amber-700"
+                              : "bg-blue-100 text-blue-700"
+                        }`}
+                      >
+                        {conflict.severity.toUpperCase()}
+                      </span>
+                      <div className="flex-1">
+                        <p className="text-xs font-medium text-gray-950 mb-1 capitalize">
+                          {conflict.type} conflict with "{conflict.conflictingAgentName}"
+                        </p>
+                        <p className="text-xs text-gray-700">{conflict.description}</p>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Deployment Info */}
         <div className="bg-white rounded-lg p-4 border border-gray-200">
