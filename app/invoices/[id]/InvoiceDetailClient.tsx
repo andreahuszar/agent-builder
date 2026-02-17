@@ -12,7 +12,6 @@ import { GRDocumentTable } from '@/app/components/invoices/comparison/GRDocument
 import { GRDocumentPreview } from '@/app/components/invoices/comparison/GRDocumentPreview';
 import { TeachingConfirmationModal } from '@/app/components/invoices/TeachingConfirmationModal';
 import { AIAgentPanel } from '@/app/components/invoices/AIAgentPanel';
-import { AgentInsightsPanel } from '@/app/components/invoices/AgentInsightsPanel';
 import { markAgentTrainingResolved } from '@/app/components/invoices/agent/useAgentState';
 import { useSelection } from '@/app/context/SelectionContext';
 import { useToast } from '@/app/components/ui/Toast';
@@ -903,13 +902,6 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         workflowStatus={workflowStatus || invoice.status}
         onAgentToggle={() => setIsAgentPanelOpen(!isAgentPanelOpen)}
       />
-
-      {/* Agent Insights Panel */}
-      {invoice.agent_insights && invoice.agent_insights.length > 0 && (
-        <div className="px-6 py-3 bg-gray-50 border-b border-gray-200">
-          <AgentInsightsPanel insights={invoice.agent_insights} />
-        </div>
-      )}
 
       {/* Main Content Area */}
       <div className="flex-1 overflow-hidden">
