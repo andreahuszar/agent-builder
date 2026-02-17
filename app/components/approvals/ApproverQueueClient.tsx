@@ -9,10 +9,12 @@ import {
 } from 'lucide-react';
 import { InvoiceDrawer } from '@/app/components/approvals/InvoiceDrawer';
 import { DelegationModal } from '@/app/components/approvals/DelegationModal';
+import { RejectionReasonModal } from '@/app/components/approvals/RejectionReasonModal';
 import { SLAStatusBadge } from '@/app/components/approvals/SLAStatusBadge';
 import { StatusBadge } from '@/app/components/invoices/StatusBadge';
 import { compareBySLA, formatTimePending, calculatePriority, type SLAStatus } from '@/app/services/slaService';
 import { useToast } from '@/app/components/ui/Toast';
+import { recordRejection } from '@/app/services/approvalRoutingService';
 
 interface Invoice {
   id: string;
@@ -65,6 +67,7 @@ export function ApproverQueueClient() {
   const [myInvoices, setMyInvoices] = useState<Invoice[]>([]);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [showDelegationModal, setShowDelegationModal] = useState<{ invoiceId: string; assignee: TeamMember } | null>(null);
+  const [showRejectionModal, setShowRejectionModal] = useState<{ invoice: Invoice } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
 
@@ -138,25 +141,59 @@ export function ApproverQueueClient() {
     }
   };
 
-  const handleReject = async (invoiceId: string, reason: string) => {
+  const handleRejectClick = async (invoiceId: string) => {
+    const invoice = myInvoices.find(inv => inv.id === invoiceId);
+    if (!invoice) return;
+
+    // Open rejection modal
+    setShowRejectionModal({ invoice });
+  };
+
+  const handleRejectConfirm = async (
+    reason: string,
+    category: string,
+    suggestedApproverId?: string,
+    suggestedApproverName?: string
+  ) => {
+    if (!showRejectionModal) return;
+
+    const invoice = showRejectionModal.invoice;
+
     try {
-      const invoice = myInvoices.find(inv => inv.id === invoiceId);
-      if (!invoice) return;
+      // Record rejection for learning
+      await recordRejection(
+        invoice.vendor_name_snapshot,
+        invoice.total,
+        CURRENT_USER_ID,
+        suggestedApproverId
+      );
 
       // Update local state
       setMyInvoices(prevInvoices =>
-        prevInvoices.filter(inv => inv.id !== invoiceId)
+        prevInvoices.filter(inv => inv.id !== invoice.id)
       );
 
-      showToast(`Invoice ${invoice.invoice_number} rejected`, 'success');
+      // Show success message with suggestion feedback
+      let message = `Invoice ${invoice.invoice_number} rejected`;
+      if (suggestedApproverName) {
+        message += ` • Suggestion recorded: ${suggestedApproverName}`;
+      }
+      showToast(message, 'success');
+
+      setShowRejectionModal(null);
       
-      if (selectedInvoiceId === invoiceId) {
+      if (selectedInvoiceId === invoice.id) {
         setSelectedInvoiceId(null);
       }
     } catch (error) {
       console.error('Error rejecting invoice:', error);
       showToast('Failed to reject invoice', 'error');
     }
+  };
+
+  // Legacy handler for drawer (will also use modal)
+  const handleReject = async (invoiceId: string, reason: string) => {
+    handleRejectClick(invoiceId);
   };
 
   const handleDelegate = async (invoiceId: string, assigneeId: string, assigneeName: string, reason: string) => {
@@ -349,7 +386,7 @@ export function ApproverQueueClient() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleReject(invoice.id, 'Rejected by approver');
+                        handleRejectClick(invoice.id);
                       }}
                       className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm font-medium"
                     >
@@ -417,6 +454,22 @@ export function ApproverQueueClient() {
             reason
           )}
           onClose={() => setShowDelegationModal(null)}
+        />
+      )}
+
+      {/* Rejection Reason Modal */}
+      {showRejectionModal && (
+        <RejectionReasonModal
+          invoiceId={showRejectionModal.invoice.id}
+          invoiceNumber={showRejectionModal.invoice.invoice_number}
+          vendor={showRejectionModal.invoice.vendor_name_snapshot}
+          amount={showRejectionModal.invoice.total}
+          currency={showRejectionModal.invoice.currency}
+          currentApproverId={CURRENT_USER_ID}
+          currentApproverName={CURRENT_USER_NAME}
+          teamMembers={teamMembers}
+          onConfirm={handleRejectConfirm}
+          onClose={() => setShowRejectionModal(null)}
         />
       )}
     </div>
