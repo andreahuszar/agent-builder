@@ -50,6 +50,7 @@ const UserMenu = () => {
           aria-label={`User menu for ${user.username}`}
           aria-expanded="false"
           aria-haspopup="menu"
+          suppressHydrationWarning
         >
           {initial}
           <span className="sr-only">{user.username}</span>
