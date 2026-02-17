@@ -25,11 +25,9 @@ const NavigationPills: React.FC<NavigationPillsProps> = memo(({
     <nav className={`flex flex-1 justify-start ${className}`} aria-label="Tabs">
       <div className="flex space-x-2">
         {items.map((tab) => {
-          // Check if this tab's href matches the current pathname
-          const isActive = pathname === tab.href || activeView === tab.id;
-          
-          // If href starts with # (hash navigation), use button
+          // If href starts with # (hash navigation), use button and activeView for state
           if (tab.href.startsWith('#')) {
+            const isActive = activeView === tab.id;
             return (
               <button
                 key={tab.id}
@@ -50,7 +48,8 @@ const NavigationPills: React.FC<NavigationPillsProps> = memo(({
             );
           }
           
-          // Otherwise use Link for actual page navigation
+          // Otherwise use Link for actual page navigation, check pathname
+          const isActive = pathname === tab.href;
           return (
             <Link
               key={tab.id}
