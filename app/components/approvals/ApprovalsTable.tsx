@@ -64,7 +64,7 @@ interface ApprovalsTableProps {
   onInvoiceClick: (id: string) => void;
   onApprove: (id: string) => void;
   onReject: (id: string, reason: string) => void;
-  onDelegate: (id: string, assignee: TeamMember) => void;
+  onDelegate: (id: string) => void;
   onAssign?: (id: string) => void; // New: Opens intelligent assignment modal
   onNudge: (id: string, approverName: string) => void;
   onUnassign: (id: string, currentAssigneeName: string) => void;
@@ -340,44 +340,14 @@ export function ApprovalsTable({
                         Assign
                       </button>
                     ) : (
-                      // Original dropdown behavior (fallback)
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:border-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
-                          >
-                            <UserPlus className="h-3.5 w-3.5" />
-                            Assign
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                          {teamMembers.map((member) => (
-                            <DropdownMenuItem
-                              key={member.id}
-                              onClick={() => onDelegate(invoice.id, member)}
-                              className="cursor-pointer"
-                            >
-                              <div className="flex items-center gap-3 w-full">
-                                <div className={`h-7 w-7 rounded-full ${member.color} flex items-center justify-center flex-shrink-0`}>
-                                  <span className="text-xs font-medium text-white">
-                                    {member.initials}
-                                  </span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium text-gray-900 group-hover:text-white group-focus:text-white truncate">
-                                    {member.name}
-                                  </div>
-                                  {member.role && (
-                                    <div className="text-xs text-gray-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
-                                      {member.role}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      // Fallback: Open delegation modal
+                      <button
+                        onClick={() => onDelegate(invoice.id)}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:border-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                        Assign
+                      </button>
                     )}
                   </td>
                 )}
@@ -395,63 +365,14 @@ export function ApprovalsTable({
                         <Bell className="h-3.5 w-3.5" />
                         Nudge
                       </button>
-                      {/* Reassign Icon Button with Dropdown */}
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <button
-                            className="inline-flex items-center justify-center p-1.5 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:border-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
-                            title="Reassign"
-                          >
-                            <UserPlus className="h-3.5 w-3.5" />
-                          </button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end" className="w-56">
-                          {teamMembers.map((member) => (
-                            <DropdownMenuItem
-                              key={member.id}
-                              onClick={() => onDelegate(invoice.id, member)}
-                              className="cursor-pointer"
-                            >
-                              <div className="flex items-center gap-3 w-full">
-                                <div className={`h-7 w-7 rounded-full ${member.color} flex items-center justify-center flex-shrink-0`}>
-                                  <span className="text-xs font-medium text-white">
-                                    {member.initials}
-                                  </span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium text-gray-900 group-hover:text-white group-focus:text-white truncate">
-                                    {member.name}
-                                  </div>
-                                  {member.role && (
-                                    <div className="text-xs text-gray-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
-                                      {member.role}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </DropdownMenuItem>
-                          ))}
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem
-                            onClick={() => onUnassign(invoice.id, invoice.assigned_to_name || 'Approver')}
-                            className="cursor-pointer text-red-600 hover:!bg-red-600 hover:!text-white focus:!bg-red-600 focus:!text-white"
-                          >
-                            <div className="flex items-center gap-3 w-full">
-                              <div className="h-7 w-7 rounded-full bg-red-100 group-hover:bg-red-200 flex items-center justify-center flex-shrink-0">
-                                <UserMinus className="h-4 w-4 text-red-600" />
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium text-red-600 group-hover:text-white group-focus:text-white truncate">
-                                  Unassign
-                                </div>
-                                <div className="text-xs text-red-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
-                                  Return to Pending Review
-                                </div>
-                              </div>
-                            </div>
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {/* Reassign Button */}
+                      <button
+                        onClick={() => onDelegate(invoice.id)}
+                        className="inline-flex items-center justify-center p-1.5 text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:border-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                        title="Reassign"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                      </button>
                       {/* More Actions (3 dots) */}
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>

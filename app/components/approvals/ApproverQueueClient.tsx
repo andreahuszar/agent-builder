@@ -79,7 +79,7 @@ export function ApproverQueueClient() {
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
   const [myInvoices, setMyInvoices] = useState<Invoice[]>([]);
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
-  const [showDelegationModal, setShowDelegationModal] = useState<{ invoiceId: string; assignee: TeamMember } | null>(null);
+  const [showDelegationModal, setShowDelegationModal] = useState<{ invoiceId: string; invoice: Invoice } | null>(null);
   const [showRejectionModal, setShowRejectionModal] = useState<{ invoice: Invoice } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
@@ -227,25 +227,27 @@ export function ApproverQueueClient() {
     handleRejectClick(invoiceId);
   };
 
-  const handleDelegate = async (invoiceId: string, assigneeId: string, assigneeName: string, reason: string) => {
+  const handleDelegate = async (assigneeId: string, assigneeName: string) => {
+    if (!showDelegationModal) return;
+    
     try {
-      const invoice = myInvoices.find(inv => inv.id === invoiceId);
+      const invoice = myInvoices.find(inv => inv.id === showDelegationModal.invoiceId);
       if (!invoice) return;
 
       // Update local state - remove from my queue
       setMyInvoices(prevInvoices =>
-        prevInvoices.filter(inv => inv.id !== invoiceId)
+        prevInvoices.filter(inv => inv.id !== showDelegationModal.invoiceId)
       );
 
-      showToast(`Invoice delegated to ${assigneeName} successfully`, 'success');
+      showToast(`Invoice reassigned to ${assigneeName} successfully`, 'success');
       setShowDelegationModal(null);
       
-      if (selectedInvoiceId === invoiceId) {
+      if (selectedInvoiceId === showDelegationModal.invoiceId) {
         setSelectedInvoiceId(null);
       }
     } catch (error) {
-      console.error('Error delegating invoice:', error);
-      showToast('Failed to delegate invoice', 'error');
+      console.error('Error reassigning invoice:', error);
+      showToast('Failed to reassign invoice', 'error');
     }
   };
 
@@ -465,18 +467,10 @@ export function ApproverQueueClient() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        // Filter out current user and unavailable approvers
-                        const availableMembers = teamMembers.filter(m => 
-                          m.id !== CURRENT_USER_ID && 
-                          m.status !== 'out-of-office' && 
-                          m.status !== 'left-company'
-                        );
-                        if (availableMembers.length > 0) {
-                          setShowDelegationModal({
-                            invoiceId: invoice.id,
-                            assignee: availableMembers[0],
-                          });
-                        }
+                        setShowDelegationModal({
+                          invoiceId: invoice.id,
+                          invoice: invoice,
+                        });
                       }}
                       className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors text-sm font-medium"
                     >
@@ -510,7 +504,12 @@ export function ApproverQueueClient() {
         onApprove={handleApprove}
         onReject={handleReject}
         onNudge={() => {}}
-        onDelegate={(invoiceId, assignee) => setShowDelegationModal({ invoiceId, assignee })}
+        onDelegate={(invoiceId) => {
+          const invoice = myInvoices.find(inv => inv.id === invoiceId);
+          if (invoice) {
+            setShowDelegationModal({ invoiceId, invoice });
+          }
+        }}
         onUnassign={() => {}}
         teamMembers={teamMembers}
       />
@@ -519,13 +518,13 @@ export function ApproverQueueClient() {
       {showDelegationModal && (
         <DelegationModal
           invoiceId={showDelegationModal.invoiceId}
-          assignee={showDelegationModal.assignee}
-          onConfirm={(reason) => handleDelegate(
-            showDelegationModal.invoiceId,
-            showDelegationModal.assignee.id,
-            showDelegationModal.assignee.name,
-            reason
-          )}
+          invoiceNumber={showDelegationModal.invoice.invoice_number}
+          vendor={showDelegationModal.invoice.vendor_name_snapshot}
+          amount={showDelegationModal.invoice.total}
+          currency={showDelegationModal.invoice.currency}
+          currentApproverId={CURRENT_USER_ID}
+          teamMembers={teamMembers}
+          onConfirm={handleDelegate}
           onClose={() => setShowDelegationModal(null)}
         />
       )}

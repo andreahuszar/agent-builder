@@ -101,7 +101,7 @@ interface InvoiceDrawerProps {
   onApprove: (id: string) => void;
   onReject: (id: string, reason: string) => void;
   onNudge?: (id: string, approverName: string) => void;
-  onDelegate?: (id: string, assignee: TeamMember) => void;
+  onDelegate?: (id: string) => void;
   onUnassign?: (id: string, currentAssigneeName: string) => void;
   teamMembers?: TeamMember[];
 }
@@ -326,91 +326,15 @@ export function InvoiceDrawer({
                       Nudge
                     </button>
                   )}
-                  {/* Reassign Dropdown */}
-                  {onDelegate && teamMembers.length > 0 && (
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          className="box-border inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white text-purple-900 text-sm font-medium rounded-md border border-purple-900 hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
-                        >
-                          <UserPlus className="h-4 w-4" />
-                          Reassign
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        {teamMembers.map((member) => {
-                          const isUnavailable = member.status === 'out-of-office' || member.status === 'left-company';
-                          
-                          return (
-                            <DropdownMenuItem
-                              key={member.id}
-                              onClick={() => {
-                                if (!isUnavailable) {
-                                  onDelegate(invoice.id, member);
-                                }
-                              }}
-                              disabled={isUnavailable}
-                              className={`cursor-pointer ${isUnavailable ? 'opacity-50 cursor-not-allowed' : ''}`}
-                            >
-                              <div className="flex items-center gap-3 w-full">
-                                <div className={`h-7 w-7 rounded-full ${member.color} flex items-center justify-center flex-shrink-0`}>
-                                  <span className="text-xs font-medium text-white">
-                                    {member.initials}
-                                  </span>
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-center gap-2">
-                                    <div className="text-sm font-medium text-gray-900 group-hover:text-white group-focus:text-white truncate">
-                                      {member.name}
-                                    </div>
-                                    {member.status === 'out-of-office' && (
-                                      <span className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-xs whitespace-nowrap">
-                                        <Calendar className="h-2.5 w-2.5" />
-                                        OOO
-                                      </span>
-                                    )}
-                                    {member.status === 'left-company' && (
-                                      <span className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded text-xs whitespace-nowrap">
-                                        <UserX className="h-2.5 w-2.5" />
-                                        Left
-                                      </span>
-                                    )}
-                                  </div>
-                                  {member.role && (
-                                    <div className="text-xs text-gray-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
-                                      {member.role}
-                                    </div>
-                                  )}
-                                </div>
-                              </div>
-                            </DropdownMenuItem>
-                          );
-                        })}
-                        {onUnassign && (
-                          <>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem
-                              onClick={() => onUnassign(invoice.id, invoice.assigned_to_name || 'Approver')}
-                              className="cursor-pointer text-red-600 hover:!bg-red-600 hover:!text-white focus:!bg-red-600 focus:!text-white"
-                            >
-                              <div className="flex items-center gap-3 w-full">
-                                <div className="h-7 w-7 rounded-full bg-red-100 group-hover:bg-red-200 flex items-center justify-center flex-shrink-0">
-                                  <UserMinus className="h-4 w-4 text-red-600" />
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="text-sm font-medium text-red-600 group-hover:text-white group-focus:text-white truncate">
-                                    Unassign
-                                  </div>
-                                  <div className="text-xs text-red-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
-                                    Return to Pending Review
-                                  </div>
-                                </div>
-                              </div>
-                            </DropdownMenuItem>
-                          </>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                  {/* Reassign Button */}
+                  {onDelegate && (
+                    <button
+                      onClick={() => onDelegate(invoice.id)}
+                      className="box-border inline-flex items-center justify-center gap-1.5 px-3 py-1.5 bg-white text-purple-900 text-sm font-medium rounded-md border border-purple-900 hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                    >
+                      <UserPlus className="h-4 w-4" />
+                      Reassign
+                    </button>
                   )}
                 </div>
               )}

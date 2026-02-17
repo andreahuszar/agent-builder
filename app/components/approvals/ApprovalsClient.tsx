@@ -88,7 +88,7 @@ export function ApprovalsClient() {
   const [filteredInvoices, setFilteredInvoices] = useState<Invoice[]>([]);
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
-  const [showDelegationModal, setShowDelegationModal] = useState<{ invoiceId: string; assignee: TeamMember } | null>(null);
+  const [showDelegationModal, setShowDelegationModal] = useState<{ invoiceId: string; invoice: Invoice } | null>(null);
   const [showIntelligentAssignmentModal, setShowIntelligentAssignmentModal] = useState<{ 
     invoiceId: string; 
     invoice: Invoice; 
@@ -372,7 +372,11 @@ export function ApprovalsClient() {
     }
   };
 
-  const handleDelegate = async (invoiceId: string, assigneeId: string, assigneeName: string, reason: string) => {
+  const handleDelegate = async (assigneeId: string, assigneeName: string) => {
+    if (!showDelegationModal) return;
+    
+    const invoiceId = showDelegationModal.invoiceId;
+    
     try {
       // Update local state directly for demo purposes (mock data doesn't persist through API refetch)
       setAllInvoices(prevInvoices =>
@@ -382,7 +386,7 @@ export function ApprovalsClient() {
                 ...inv,
                 assigned_to_user_id: assigneeId,
                 assigned_to_name: assigneeName,
-                status: 'approved_ready_for_payment', // Moves to "Pending Approval" tab
+                status: 'pending_approval', // Moves to "Pending Approval" tab
               }
             : inv
         )
@@ -745,7 +749,12 @@ export function ApprovalsClient() {
               onInvoiceClick={handleInvoiceClick}
               onApprove={handleApprove}
               onReject={handleReject}
-              onDelegate={(invoiceId, assignee) => setShowDelegationModal({ invoiceId, assignee })}
+              onDelegate={(invoiceId) => {
+                const invoice = allInvoices.find(inv => inv.id === invoiceId);
+                if (invoice) {
+                  setShowDelegationModal({ invoiceId, invoice });
+                }
+              }}
               onAssign={handleAssignInvoice}
               onNudge={handleNudge}
               onUnassign={(invoiceId, currentAssigneeName) => setShowUnassignModal({ invoiceId, currentAssigneeName })}
@@ -767,7 +776,12 @@ export function ApprovalsClient() {
         onApprove={handleApprove}
         onReject={handleReject}
         onNudge={handleNudge}
-        onDelegate={(invoiceId, assignee) => setShowDelegationModal({ invoiceId, assignee })}
+        onDelegate={(invoiceId) => {
+          const invoice = allInvoices.find(inv => inv.id === invoiceId);
+          if (invoice) {
+            setShowDelegationModal({ invoiceId, invoice });
+          }
+        }}
         onUnassign={(invoiceId, currentAssigneeName) => setShowUnassignModal({ invoiceId, currentAssigneeName })}
         teamMembers={teamMembers}
       />
@@ -776,8 +790,13 @@ export function ApprovalsClient() {
       {showDelegationModal && (
         <DelegationModal
           invoiceId={showDelegationModal.invoiceId}
-          assignee={showDelegationModal.assignee}
-          onConfirm={(reason) => handleDelegate(showDelegationModal.invoiceId, showDelegationModal.assignee.id, showDelegationModal.assignee.name, reason)}
+          invoiceNumber={showDelegationModal.invoice.invoice_number}
+          vendor={showDelegationModal.invoice.vendor_name_snapshot}
+          amount={showDelegationModal.invoice.total}
+          currency={showDelegationModal.invoice.currency}
+          currentApproverId={showDelegationModal.invoice.assigned_to_user_id}
+          teamMembers={teamMembers}
+          onConfirm={handleDelegate}
           onClose={() => setShowDelegationModal(null)}
         />
       )}
