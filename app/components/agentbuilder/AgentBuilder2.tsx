@@ -541,10 +541,10 @@ export function AgentBuilder2({
                 />
               </div>
               <h3 className="text-2xl font-semibold text-gray-950 mb-4">
-                Nothing configured yet
+                Let's build your agent together
               </h3>
               <p className="text-sm text-gray-600 max-w-md mx-auto">
-                Chat with the agent builder to configure your agents and rules
+                Use the chat panel on the right to describe what you'd like this agent to do. I'll help configure everything.
               </p>
             </div>
           </div>
