@@ -1,6 +1,6 @@
 'use client';
 
-import React, { memo } from 'react';
+import React, { memo, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { TabItem } from '@/app/constants/navigation';
@@ -20,36 +20,38 @@ const NavigationPills: React.FC<NavigationPillsProps> = memo(({
   className = '',
 }) => {
   const pathname = usePathname();
+  const [currentHash, setCurrentHash] = useState('');
+
+  // Track hash changes
+  useEffect(() => {
+    const updateHash = () => {
+      setCurrentHash(window.location.hash);
+    };
+    
+    updateHash(); // Set initial hash
+    window.addEventListener('hashchange', updateHash);
+    return () => window.removeEventListener('hashchange', updateHash);
+  }, []);
 
   return (
     <nav className={`flex flex-1 justify-start ${className}`} aria-label="Tabs">
       <div className="flex space-x-2">
         {items.map((tab) => {
-          // If href starts with # (hash navigation), use button and activeView for state
-          if (tab.href.startsWith('#')) {
-            const isActive = activeView === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => {
-                  onViewChange(tab.id);
-                  announceToScreenReader(`Switched to ${tab.label} view`);
-                }}
-                className={`${
-                  isActive
-                    ? 'bg-purple-900 text-white'
-                    : 'text-gray-900 hover:bg-gray-100 hover:text-gray-950'
-                } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
-                aria-current={isActive ? 'page' : undefined}
-                aria-label={`${tab.label} ${isActive ? '(current)' : ''}`}
-              >
-                {tab.label}
-              </button>
-            );
+          // Check if this is a hash-based navigation (contains #)
+          const hasHash = tab.href.includes('#');
+          
+          let isActive = false;
+          
+          if (hasHash) {
+            // For hash navigation, check if current URL matches (pathname + hash)
+            const [basePath, hash] = tab.href.split('#');
+            const targetPath = basePath || '/';
+            isActive = pathname === targetPath && currentHash === `#${hash}`;
+          } else {
+            // For regular navigation, just check pathname
+            isActive = pathname === tab.href;
           }
           
-          // Otherwise use Link for actual page navigation, check pathname
-          const isActive = pathname === tab.href;
           return (
             <Link
               key={tab.id}
