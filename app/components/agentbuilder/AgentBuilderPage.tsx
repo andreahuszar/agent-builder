@@ -807,7 +807,8 @@ ERROR HANDLING:
                     >
                       Dashboard
                     </button>
-                    <button
+                    {/* Original Agent Builder - Hidden but still functional */}
+                    {/* <button
                       onClick={() => setMode("build")}
                       className={`${
                         mode === "build"
@@ -817,7 +818,7 @@ ERROR HANDLING:
                       aria-current={mode === "build" ? "page" : undefined}
                     >
                       Agent Builder
-                    </button>
+                    </button> */}
                     <button
                       onClick={() => setMode("build2")}
                       className={`${
