@@ -2297,6 +2297,99 @@ export const generateBaselineInvoices = (): Invoice[] => {
     lines: []
   } as Invoice);
 
+  // Unassigned invoices for Pending Review (to demo intelligent assignment with OOO status)
+  const pendingReviewDate1 = new Date(now);
+  pendingReviewDate1.setDate(pendingReviewDate1.getDate() + 30);
+
+  mockInvoices.push({
+    id: 'pending-microsoft-1',
+    invoice_number: 'INV-2025-5001',
+    vendor_name_snapshot: 'Microsoft Corporation',
+    vendor_id: 'VND-MS-001',
+    vendor_tax_id_snapshot: 'TAX-MS-001',
+    invoice_date: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    due_date: pendingReviewDate1.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: 15200.00,
+    tax_total: 1216.00,
+    total: 16416.00,
+    status: 'requires_review',
+    match_status: 'matched',
+    po_numbers_cached: ['PO-2025-1300'],
+    assigned_to_user_id: null,
+    assigned_to_name: null,
+    lines: []
+  } as Invoice);
+
+  const pendingReviewDate2 = new Date(now);
+  pendingReviewDate2.setDate(pendingReviewDate2.getDate() + 28);
+
+  mockInvoices.push({
+    id: 'pending-adobe-1',
+    invoice_number: 'INV-2025-5002',
+    vendor_name_snapshot: 'Adobe Systems',
+    vendor_id: 'VND-ADOBE-001',
+    vendor_tax_id_snapshot: 'TAX-ADOBE-001',
+    invoice_date: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    due_date: pendingReviewDate2.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: 7800.00,
+    tax_total: 624.00,
+    total: 8424.00,
+    status: 'requires_review',
+    match_status: 'matched',
+    po_numbers_cached: ['PO-2025-1301'],
+    assigned_to_user_id: null,
+    assigned_to_name: null,
+    lines: []
+  } as Invoice);
+
+  const pendingReviewDate3 = new Date(now);
+  pendingReviewDate3.setDate(pendingReviewDate3.getDate() + 25);
+
+  mockInvoices.push({
+    id: 'pending-microsoft-2',
+    invoice_number: 'INV-2025-5003',
+    vendor_name_snapshot: 'Microsoft Corporation',
+    vendor_id: 'VND-MS-001',
+    vendor_tax_id_snapshot: 'TAX-MS-001',
+    invoice_date: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    due_date: pendingReviewDate3.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: 11000.00,
+    tax_total: 880.00,
+    total: 11880.00,
+    status: 'requires_review',
+    match_status: 'matched',
+    po_numbers_cached: ['PO-2025-1302'],
+    assigned_to_user_id: null,
+    assigned_to_name: null,
+    lines: []
+  } as Invoice);
+
+  const pendingReviewDate4 = new Date(now);
+  pendingReviewDate4.setDate(pendingReviewDate4.getDate() + 22);
+
+  mockInvoices.push({
+    id: 'pending-adobe-2',
+    invoice_number: 'INV-2025-5004',
+    vendor_name_snapshot: 'Adobe Systems',
+    vendor_id: 'VND-ADOBE-001',
+    vendor_tax_id_snapshot: 'TAX-ADOBE-001',
+    invoice_date: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    due_date: pendingReviewDate4.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: 12500.00,
+    tax_total: 1000.00,
+    total: 13500.00,
+    status: 'requires_review',
+    match_status: 'matched',
+    po_numbers_cached: ['PO-2025-1303'],
+    assigned_to_user_id: null,
+    assigned_to_name: null,
+    lines: []
+  } as Invoice);
+
   // Enrich all invoices with demo data using centralized service
   return mockInvoices.map(enrichInvoiceWithDemoData);
 };
