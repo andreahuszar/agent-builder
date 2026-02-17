@@ -1,6 +1,8 @@
 'use client';
 
 import React, { memo } from 'react';
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
 import { TabItem } from '@/app/constants/navigation';
 import { announceToScreenReader } from '@/app/utils/accessibility';
 
@@ -17,27 +19,58 @@ const NavigationPills: React.FC<NavigationPillsProps> = memo(({
   onViewChange,
   className = '',
 }) => {
+  const pathname = usePathname();
+
   return (
     <nav className={`flex flex-1 justify-start ${className}`} aria-label="Tabs">
       <div className="flex space-x-2">
-        {items.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => {
-              onViewChange(tab.id);
-              announceToScreenReader(`Switched to ${tab.label} view`);
-            }}
-            className={`${
-              activeView === tab.id
-                ? 'bg-purple-900 text-white'
-                : 'text-gray-900 hover:bg-gray-100 hover:text-gray-950'
-            } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
-            aria-current={activeView === tab.id ? 'page' : undefined}
-            aria-label={`${tab.label} ${activeView === tab.id ? '(current)' : ''}`}
-          >
-            {tab.label}
-          </button>
-        ))}
+        {items.map((tab) => {
+          // Check if this tab's href matches the current pathname
+          const isActive = pathname === tab.href || activeView === tab.id;
+          
+          // If href starts with # (hash navigation), use button
+          if (tab.href.startsWith('#')) {
+            return (
+              <button
+                key={tab.id}
+                onClick={() => {
+                  onViewChange(tab.id);
+                  announceToScreenReader(`Switched to ${tab.label} view`);
+                }}
+                className={`${
+                  isActive
+                    ? 'bg-purple-900 text-white'
+                    : 'text-gray-900 hover:bg-gray-100 hover:text-gray-950'
+                } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
+                aria-current={isActive ? 'page' : undefined}
+                aria-label={`${tab.label} ${isActive ? '(current)' : ''}`}
+              >
+                {tab.label}
+              </button>
+            );
+          }
+          
+          // Otherwise use Link for actual page navigation
+          return (
+            <Link
+              key={tab.id}
+              href={tab.href}
+              onClick={() => {
+                onViewChange(tab.id);
+                announceToScreenReader(`Navigated to ${tab.label}`);
+              }}
+              className={`${
+                isActive
+                  ? 'bg-purple-900 text-white'
+                  : 'text-gray-900 hover:bg-gray-100 hover:text-gray-950'
+              } rounded-lg px-3 py-1.5 text-base font-medium transition-colors`}
+              aria-current={isActive ? 'page' : undefined}
+              aria-label={`${tab.label} ${isActive ? '(current)' : ''}`}
+            >
+              {tab.label}
+            </Link>
+          );
+        })}
       </div>
     </nav>
   );
