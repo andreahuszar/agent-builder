@@ -56,6 +56,16 @@ interface Invoice {
   hours_overdue?: number;
 }
 
+interface StatusDetails {
+  reason?: string;
+  return_date?: string;
+  backup_approver_id?: string;
+  backup_approver_name?: string;
+  left_date?: string;
+  replacement_approver_id?: string;
+  replacement_approver_name?: string;
+}
+
 interface TeamMember {
   id: string;
   name: string;
@@ -65,7 +75,8 @@ interface TeamMember {
   color: string;
   current_workload?: number;
   capacity?: number;
-  status?: 'available' | 'busy' | 'out-of-office';
+  status?: 'available' | 'busy' | 'out-of-office' | 'left-company';
+  status_details?: StatusDetails | null;
 }
 
 export function ApprovalsClient() {

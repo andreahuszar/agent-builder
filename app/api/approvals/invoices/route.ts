@@ -49,53 +49,64 @@ export async function GET(request: NextRequest) {
           break;
       }
 
-      // Mock team members
-      const teamMembers = [
-        {
-          id: 'user-1',
-          name: 'Sarah Mitchell',
-          email: 'sarah.mitchell@company.com',
-          role: 'Approver',
-          initials: 'SM',
-          color: 'bg-purple-600',
-          status: 'available',
-          current_workload: 5,
-          capacity: 20
-        },
-        {
-          id: 'user-2',
-          name: 'James Thompson',
-          email: 'james.thompson@company.com',
-          role: 'Approver',
-          initials: 'JT',
-          color: 'bg-blue-600',
-          status: 'available',
-          current_workload: 3,
-          capacity: 20
-        },
-        {
-          id: 'user-3',
-          name: 'Caroline Walsh',
-          email: 'caroline.walsh@company.com',
-          role: 'Approver',
-          initials: 'CW',
-          color: 'bg-green-600',
-          status: 'available',
-          current_workload: 4,
-          capacity: 20
-        },
-        {
-          id: 'user-4',
-          name: 'James Wilson',
-          email: 'james.wilson@company.com',
-          role: 'Senior Approver',
-          initials: 'JW',
-          color: 'bg-orange-600',
-          status: 'available',
-          current_workload: 6,
-          capacity: 20
+      // Fetch team members from the team API to get status data
+      let teamMembers = [];
+      try {
+        const teamResponse = await fetch(`${request.nextUrl.origin}/api/approvals/team`);
+        if (teamResponse.ok) {
+          const teamData = await teamResponse.json();
+          teamMembers = teamData.members || [];
         }
-      ];
+      } catch (error) {
+        console.error('Error fetching team members:', error);
+        // Fallback to basic team members
+        teamMembers = [
+          {
+            id: 'user-1',
+            name: 'Sarah Mitchell',
+            email: 'sarah.mitchell@company.com',
+            role: 'Approver',
+            initials: 'SM',
+            color: 'bg-purple-600',
+            status: 'available',
+            current_workload: 5,
+            capacity: 20
+          },
+          {
+            id: 'user-2',
+            name: 'James Thompson',
+            email: 'james.thompson@company.com',
+            role: 'Approver',
+            initials: 'JT',
+            color: 'bg-blue-600',
+            status: 'available',
+            current_workload: 3,
+            capacity: 20
+          },
+          {
+            id: 'user-3',
+            name: 'Caroline Walsh',
+            email: 'caroline.walsh@company.com',
+            role: 'Approver',
+            initials: 'CW',
+            color: 'bg-green-600',
+            status: 'available',
+            current_workload: 4,
+            capacity: 20
+          },
+          {
+            id: 'user-4',
+            name: 'James Wilson',
+            email: 'james.wilson@company.com',
+            role: 'Senior Approver',
+            initials: 'JW',
+            color: 'bg-orange-600',
+            status: 'available',
+            current_workload: 6,
+            capacity: 20
+          }
+        ];
+      }
 
       return NextResponse.json({
         invoices: filteredInvoices,
