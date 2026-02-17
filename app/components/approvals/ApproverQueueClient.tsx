@@ -60,6 +60,8 @@ interface TeamMember {
 const CURRENT_USER_ID = 'user-1';
 const CURRENT_USER_NAME = 'Sarah Mitchell';
 
+type FilterType = 'all' | 'breached' | 'at_risk' | 'on_time';
+
 export function ApproverQueueClient() {
   const router = useRouter();
   const { showToast } = useToast();
@@ -70,6 +72,7 @@ export function ApproverQueueClient() {
   const [showRejectionModal, setShowRejectionModal] = useState<{ invoice: Invoice } | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [activeFilter, setActiveFilter] = useState<FilterType>('all');
 
   // Fetch invoices and team members
   useEffect(() => {
@@ -118,6 +121,23 @@ export function ApproverQueueClient() {
 
     return { total, breached, atRisk, onTime };
   }, [myInvoices]);
+
+  // Filter invoices based on active filter
+  const filteredInvoices = useMemo(() => {
+    switch (activeFilter) {
+      case 'breached':
+        return myInvoices.filter(inv => 
+          inv.sla_status === 'breached' || inv.sla_status === 'severe_breach'
+        );
+      case 'at_risk':
+        return myInvoices.filter(inv => inv.sla_status === 'at_risk');
+      case 'on_time':
+        return myInvoices.filter(inv => inv.sla_status === 'on_time');
+      case 'all':
+      default:
+        return myInvoices;
+    }
+  }, [myInvoices, activeFilter]);
 
   // Handle actions
   const handleApprove = async (invoiceId: string) => {
@@ -269,16 +289,30 @@ export function ApproverQueueClient() {
 
           {/* Queue Statistics */}
           <div className="grid grid-cols-4 gap-4">
-            <div className="bg-white border border-gray-200 rounded-lg p-4">
+            <button
+              onClick={() => setActiveFilter('all')}
+              className={`bg-white border rounded-lg p-4 text-left transition-all hover:shadow-md ${
+                activeFilter === 'all' 
+                  ? 'border-purple-600 ring-2 ring-purple-600 ring-opacity-50' 
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-gray-600">Total Queue</p>
                   <p className="text-2xl font-bold text-gray-950 mt-1">{queueStats.total}</p>
                 </div>
-                <FileText className="h-8 w-8 text-gray-400" />
+                <FileText className={`h-8 w-8 ${activeFilter === 'all' ? 'text-purple-600' : 'text-gray-400'}`} />
               </div>
-            </div>
-            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            </button>
+            <button
+              onClick={() => setActiveFilter('breached')}
+              className={`bg-red-50 border rounded-lg p-4 text-left transition-all hover:shadow-md ${
+                activeFilter === 'breached' 
+                  ? 'border-red-600 ring-2 ring-red-600 ring-opacity-50' 
+                  : 'border-red-200 hover:border-red-300'
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-red-700">SLA Breached</p>
@@ -286,8 +320,15 @@ export function ApproverQueueClient() {
                 </div>
                 <AlertTriangle className="h-8 w-8 text-red-600" />
               </div>
-            </div>
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4">
+            </button>
+            <button
+              onClick={() => setActiveFilter('at_risk')}
+              className={`bg-amber-50 border rounded-lg p-4 text-left transition-all hover:shadow-md ${
+                activeFilter === 'at_risk' 
+                  ? 'border-amber-600 ring-2 ring-amber-600 ring-opacity-50' 
+                  : 'border-amber-200 hover:border-amber-300'
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-amber-700">At Risk</p>
@@ -295,8 +336,15 @@ export function ApproverQueueClient() {
                 </div>
                 <Clock className="h-8 w-8 text-amber-600" />
               </div>
-            </div>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            </button>
+            <button
+              onClick={() => setActiveFilter('on_time')}
+              className={`bg-green-50 border rounded-lg p-4 text-left transition-all hover:shadow-md ${
+                activeFilter === 'on_time' 
+                  ? 'border-green-600 ring-2 ring-green-600 ring-opacity-50' 
+                  : 'border-green-200 hover:border-green-300'
+              }`}
+            >
               <div className="flex items-center justify-between">
                 <div>
                   <p className="text-sm text-green-700">On Time</p>
@@ -304,7 +352,7 @@ export function ApproverQueueClient() {
                 </div>
                 <CheckCircle className="h-8 w-8 text-green-600" />
               </div>
-            </div>
+            </button>
           </div>
         </div>
       </div>
@@ -321,9 +369,19 @@ export function ApproverQueueClient() {
               You have no pending invoices in your approval queue.
             </p>
           </div>
+        ) : filteredInvoices.length === 0 ? (
+          <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
+            <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-gray-950 mb-2">
+              No invoices found
+            </h3>
+            <p className="text-gray-600">
+              No invoices match the selected filter.
+            </p>
+          </div>
         ) : (
           <div className="space-y-4">
-            {myInvoices.map((invoice) => (
+            {filteredInvoices.map((invoice) => (
               <div
                 key={invoice.id}
                 className="bg-white rounded-lg border border-gray-200 hover:border-purple-300 transition-all cursor-pointer"
