@@ -64,7 +64,8 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
               >
                 Dashboard
               </button>
-              <button
+              {/* Original Agent Builder - Hidden */}
+              {/* <button
                 onClick={() => handleSubTabChange('agent-builder')}
                 className={`${
                   activeSubTab === 'agent-builder'
@@ -73,7 +74,7 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                 } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
               >
                 Agent Builder
-              </button>
+              </button> */}
               <button
                 onClick={() => handleSubTabChange('agent-builder-2')}
                 className={`${
@@ -184,7 +185,8 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
               >
                 Dashboard
               </button>
-              <button
+              {/* Original Agent Builder - Hidden */}
+              {/* <button
                 onClick={() => handleSubTabChange('agent-builder')}
                 className={`${
                   activeSubTab === 'agent-builder'
@@ -193,7 +195,7 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                 } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
               >
                 Agent Builder
-              </button>
+              </button> */}
               <button
                 onClick={() => handleSubTabChange('agent-builder-2')}
                 className={`${
