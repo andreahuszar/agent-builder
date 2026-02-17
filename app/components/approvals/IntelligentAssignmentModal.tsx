@@ -1,8 +1,18 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
-import { X, User, Search, Sparkles, TrendingUp, CheckCircle } from 'lucide-react';
+import { X, User, Search, Sparkles, TrendingUp, CheckCircle, AlertCircle, Calendar, UserX } from 'lucide-react';
 import { ApproverSuggestion } from '@/app/services/approvalRoutingService';
+
+interface StatusDetails {
+  reason?: string;
+  return_date?: string;
+  backup_approver_id?: string;
+  backup_approver_name?: string;
+  left_date?: string;
+  replacement_approver_id?: string;
+  replacement_approver_name?: string;
+}
 
 interface TeamMember {
   id: string;
@@ -13,7 +23,8 @@ interface TeamMember {
   color: string;
   current_workload?: number;
   capacity?: number;
-  status?: 'available' | 'busy' | 'out-of-office';
+  status?: 'available' | 'busy' | 'out-of-office' | 'left-company';
+  status_details?: StatusDetails | null;
 }
 
 interface IntelligentAssignmentModalProps {
@@ -50,11 +61,17 @@ export function IntelligentAssignmentModal({
     return teamMembers.find(m => m.id === id);
   };
 
-  // Filter team members for manual search
+  // Filter team members for manual search (exclude unavailable)
   const filteredTeamMembers = useMemo(() => {
-    if (!searchQuery) return teamMembers;
+    // First filter out unavailable members
+    let available = teamMembers.filter(member => 
+      member.status !== 'out-of-office' && member.status !== 'left-company'
+    );
+    
+    // Then apply search filter
+    if (!searchQuery) return available;
     const query = searchQuery.toLowerCase();
-    return teamMembers.filter(member =>
+    return available.filter(member =>
       member.name.toLowerCase().includes(query) ||
       member.email?.toLowerCase().includes(query)
     );
@@ -113,6 +130,46 @@ export function IntelligentAssignmentModal({
     if (confidence >= 0.75) return 'bg-blue-100 text-blue-700';
     return 'bg-amber-100 text-amber-700';
   };
+
+  // Helper function to render status badge
+  const renderStatusBadge = (member: TeamMember) => {
+    if (member.status === 'out-of-office') {
+      return (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">
+          <Calendar className="h-3 w-3" />
+          <span>Out until {member.status_details?.return_date}</span>
+        </div>
+      );
+    }
+    if (member.status === 'left-company') {
+      return (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">
+          <UserX className="h-3 w-3" />
+          <span>Left company</span>
+        </div>
+      );
+    }
+    if (member.status === 'busy') {
+      return (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">
+          <AlertCircle className="h-3 w-3" />
+          <span>Busy</span>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Filter AI suggestions to remove unavailable approvers
+  const availableSuggestions = useMemo(() => {
+    return suggestions.filter(suggestion => {
+      const member = getTeamMember(suggestion.approver_id);
+      return member && member.status !== 'out-of-office' && member.status !== 'left-company';
+    });
+  }, [suggestions]);
+
+  // Check if there were filtered suggestions
+  const hasFilteredSuggestions = suggestions.length > availableSuggestions.length;
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -186,12 +243,22 @@ export function IntelligentAssignmentModal({
             {/* AI Suggestions View */}
             {assignmentMode === 'ai' && (
               <div className="space-y-3">
-                {suggestions.length > 0 ? (
+                {/* Warning for filtered unavailable approvers */}
+                {hasFilteredSuggestions && (
+                  <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
+                    <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                    <p className="text-sm text-amber-800">
+                      Some suggested approvers are currently unavailable (out of office or left company) and have been filtered out.
+                    </p>
+                  </div>
+                )}
+
+                {availableSuggestions.length > 0 ? (
                   <>
                     <p className="text-sm text-gray-600 mb-3">
                       Based on historical patterns, here are the recommended approvers:
                     </p>
-                    {suggestions.map((suggestion, index) => {
+                    {availableSuggestions.map((suggestion, index) => {
                       const member = getTeamMember(suggestion.approver_id);
                       if (!member) return null;
                       
