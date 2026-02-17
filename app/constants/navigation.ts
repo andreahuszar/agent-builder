@@ -106,6 +106,7 @@ export const MODULE_PILLS: Record<string, TabItem[]> = {
     { id: 'purchase-orders', label: 'Purchase Orders', href: '/purchase-orders' },
     { id: 'goods-receipts', label: 'Goods Receipts', href: '/goods-receipts' },
     { id: 'approvals', label: 'Approvals', href: '/approvals' },
+    { id: 'my-queue', label: 'My Queue', href: '/approvals/my-queue' },
     { id: 'all-invoices', label: 'All Invoices', href: '#all-invoices' },
     { id: 'escalations', label: 'Escalations', href: '/escalations' },
     { id: 'launchpad', label: 'Launchpad', href: '/launchpad' },

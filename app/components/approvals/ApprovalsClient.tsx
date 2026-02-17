@@ -515,9 +515,18 @@ export function ApprovalsClient() {
     <div className="h-[calc(100vh-4rem)] flex flex-col px-4 pt-4 sm:px-6 lg:px-8 pb-20">
       {/* Title & Controls */}
       <div className="mb-4 flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-gray-950">
-          Approvals
-        </h1>
+        <div className="flex items-center gap-4">
+          <h1 className="text-2xl font-bold text-gray-950">
+            Approvals
+          </h1>
+          <button
+            onClick={() => router.push('/approvals/my-queue')}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-sm bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+          >
+            <User className="h-4 w-4" />
+            My Queue
+          </button>
+        </div>
 
         {/* User/Admin Toggle - Hidden temporarily */}
         {false && (
