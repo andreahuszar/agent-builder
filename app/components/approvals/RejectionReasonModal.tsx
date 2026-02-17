@@ -1,7 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, AlertTriangle, DollarSign, FileText, User, Building2 } from 'lucide-react';
+import { X, AlertTriangle, DollarSign, FileText, User, Building2, Calendar, UserX } from 'lucide-react';
+
+interface StatusDetails {
+  reason?: string;
+  return_date?: string;
+  backup_approver_id?: string;
+  backup_approver_name?: string;
+  left_date?: string;
+  replacement_approver_id?: string;
+  replacement_approver_name?: string;
+}
 
 interface TeamMember {
   id: string;
@@ -10,6 +20,8 @@ interface TeamMember {
   email?: string;
   role?: string;
   color: string;
+  status?: 'available' | 'busy' | 'out-of-office' | 'left-company';
+  status_details?: StatusDetails | null;
 }
 
 interface RejectionReasonModalProps {
@@ -83,6 +95,40 @@ export function RejectionReasonModal({
   const selectedCategoryData = REJECTION_CATEGORIES.find(c => c.id === selectedCategory);
   const requiresSuggestion = selectedCategoryData?.requiresSuggestion || false;
   const suggestedApprover = teamMembers.find(m => m.id === suggestedApproverId);
+
+  // Helper function to render status badge
+  const renderStatusBadge = (member: TeamMember) => {
+    if (member.status === 'out-of-office') {
+      return (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">
+          <Calendar className="h-3 w-3" />
+          <span>Out until {member.status_details?.return_date}</span>
+        </div>
+      );
+    }
+    if (member.status === 'left-company') {
+      return (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">
+          <UserX className="h-3 w-3" />
+          <span>Left company</span>
+        </div>
+      );
+    }
+    if (member.status === 'busy') {
+      return (
+        <div className="flex items-center gap-1 px-2 py-0.5 bg-orange-100 text-orange-700 rounded text-xs">
+          <AlertTriangle className="h-3 w-3" />
+          <span>Busy</span>
+        </div>
+      );
+    }
+    return null;
+  };
+
+  // Check if approver is available for selection
+  const isApproverAvailable = (member: TeamMember): boolean => {
+    return member.status !== 'out-of-office' && member.status !== 'left-company';
+  };
 
   const handleConfirm = () => {
     if (!selectedCategory) return;
@@ -206,32 +252,54 @@ export function RejectionReasonModal({
                     .filter(m => m.id !== currentApproverId)
                     .map((member) => {
                       const isSelected = suggestedApproverId === member.id;
+                      const isAvailable = isApproverAvailable(member);
+                      const statusBadge = renderStatusBadge(member);
                       
                       return (
                         <button
                           key={member.id}
-                          onClick={() => setSuggestedApproverId(member.id)}
+                          onClick={() => {
+                            if (isAvailable) {
+                              setSuggestedApproverId(member.id);
+                            }
+                          }}
+                          disabled={!isAvailable}
                           className={`w-full text-left p-3 rounded-lg border transition-all ${
-                            isSelected
-                              ? 'border-blue-600 bg-blue-100'
-                              : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                            !isAvailable
+                              ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                              : isSelected
+                                ? 'border-blue-600 bg-blue-100'
+                                : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-full ${member.color} flex items-center justify-center flex-shrink-0`}>
+                            <div className={`w-10 h-10 rounded-full ${member.color} flex items-center justify-center flex-shrink-0 ${!isAvailable ? 'opacity-50' : ''}`}>
                               <span className="text-sm font-medium text-white">
                                 {member.initials}
                               </span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-950">
-                                {member.name}
-                              </p>
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-sm font-medium text-gray-950">
+                                  {member.name}
+                                </p>
+                                {statusBadge}
+                              </div>
                               <p className="text-xs text-gray-500">
                                 {member.role}
                               </p>
+                              {!isAvailable && member.status_details?.backup_approver_name && (
+                                <p className="text-xs text-blue-700 mt-1">
+                                  Backup: {member.status_details.backup_approver_name}
+                                </p>
+                              )}
+                              {!isAvailable && member.status_details?.replacement_approver_name && (
+                                <p className="text-xs text-blue-700 mt-1">
+                                  Replacement: {member.status_details.replacement_approver_name}
+                                </p>
+                              )}
                             </div>
-                            {isSelected && (
+                            {isSelected && isAvailable && (
                               <div className="flex-shrink-0">
                                 <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center">
                                   <div className="w-2 h-2 rounded-full bg-white" />
