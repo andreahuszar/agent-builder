@@ -209,10 +209,10 @@ export function ApproverQueueClient() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="w-full">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="bg-white border-b border-gray-200 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8">
+        <div className="py-6">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-4">
               <button
@@ -273,7 +273,7 @@ export function ApproverQueueClient() {
       </div>
 
       {/* Invoice List */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="py-8">
         {myInvoices.length === 0 ? (
           <div className="bg-white rounded-lg border border-gray-200 p-12 text-center">
             <CheckCircle className="h-16 w-16 text-green-600 mx-auto mb-4" />
