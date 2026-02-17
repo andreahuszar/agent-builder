@@ -12,7 +12,7 @@ type Invoice = Partial<UnifiedInvoice>;
 
 // Module-level cache to persist invoices across client-side navigations
 // Cache version: increment this to bust cache when invoice generation logic changes
-const CACHE_VERSION = 5; // Production ready - invoiceIndex fix complete
+const CACHE_VERSION = 6; // Bust cache to ensure bulk commodities tolerance agent shows correctly
 let cachedInvoices: Invoice[] | null = null;
 let cacheTimestamp: number = 0;
 let cacheVersion: number = 0;
