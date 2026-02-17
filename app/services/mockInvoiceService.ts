@@ -2133,6 +2133,170 @@ export const generateBaselineInvoices = (): Invoice[] => {
     }
   } as Invoice);
 
+  // Additional approval queue invoices for Sarah Mitchell (user-1)
+  const additionalQueueDate1 = new Date(now);
+  additionalQueueDate1.setDate(additionalQueueDate1.getDate() + 15);
+  const additionalQueueAssigned1 = new Date(now.getTime() - 8 * 60 * 60 * 1000); // 8 hours ago
+
+  mockInvoices.push({
+    id: 'approval-queue-1',
+    invoice_number: 'INV-2025-4501',
+    vendor_name_snapshot: 'Microsoft Corporation',
+    vendor_id: 'VND-MS-001',
+    vendor_tax_id_snapshot: 'TAX-MS-001',
+    invoice_date: new Date(now.getTime() - 5 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    due_date: additionalQueueDate1.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: 12500.00,
+    tax_total: 1000.00,
+    total: 13500.00,
+    status: 'pending_approval',
+    match_status: 'matched',
+    po_numbers_cached: ['PO-2025-1234'],
+    assigned_to_user_id: 'user-1',
+    assigned_to_name: 'Sarah Mitchell',
+    assigned_at: additionalQueueAssigned1.toISOString(),
+    sla_hours: 24,
+    sla_status: 'on_time',
+    lines: []
+  } as Invoice);
+
+  const additionalQueueDate2 = new Date(now);
+  additionalQueueDate2.setDate(additionalQueueDate2.getDate() + 20);
+  const additionalQueueAssigned2 = new Date(now.getTime() - 16 * 60 * 60 * 1000); // 16 hours ago
+
+  mockInvoices.push({
+    id: 'approval-queue-2',
+    invoice_number: 'INV-2025-4502',
+    vendor_name_snapshot: 'Adobe Systems',
+    vendor_id: 'VND-ADOBE-001',
+    vendor_tax_id_snapshot: 'TAX-ADOBE-001',
+    invoice_date: new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    due_date: additionalQueueDate2.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: 8900.00,
+    tax_total: 712.00,
+    total: 9612.00,
+    status: 'pending_approval',
+    match_status: 'matched',
+    po_numbers_cached: ['PO-2025-1235'],
+    assigned_to_user_id: 'user-1',
+    assigned_to_name: 'Sarah Mitchell',
+    assigned_at: additionalQueueAssigned2.toISOString(),
+    sla_hours: 24,
+    sla_status: 'at_risk',
+    lines: []
+  } as Invoice);
+
+  const additionalQueueDate3 = new Date(now);
+  additionalQueueDate3.setDate(additionalQueueDate3.getDate() + 10);
+  const additionalQueueAssigned3 = new Date(now.getTime() - 28 * 60 * 60 * 1000); // 28 hours ago (breached)
+
+  mockInvoices.push({
+    id: 'approval-queue-3',
+    invoice_number: 'INV-2025-4503',
+    vendor_name_snapshot: 'AWS',
+    vendor_id: 'VND-AWS-001',
+    vendor_tax_id_snapshot: 'TAX-AWS-001',
+    invoice_date: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    due_date: additionalQueueDate3.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: 45000.00,
+    tax_total: 3600.00,
+    total: 48600.00,
+    status: 'pending_approval',
+    match_status: 'matched',
+    po_numbers_cached: ['PO-2025-1236'],
+    assigned_to_user_id: 'user-1',
+    assigned_to_name: 'Sarah Mitchell',
+    assigned_at: additionalQueueAssigned3.toISOString(),
+    sla_hours: 24,
+    sla_status: 'breached',
+    hours_overdue: 4,
+    lines: []
+  } as Invoice);
+
+  const additionalQueueDate4 = new Date(now);
+  additionalQueueDate4.setDate(additionalQueueDate4.getDate() + 18);
+  const additionalQueueAssigned4 = new Date(now.getTime() - 5 * 60 * 60 * 1000); // 5 hours ago
+
+  mockInvoices.push({
+    id: 'approval-queue-4',
+    invoice_number: 'INV-2025-4504',
+    vendor_name_snapshot: 'Salesforce',
+    vendor_id: 'VND-SF-001',
+    vendor_tax_id_snapshot: 'TAX-SF-001',
+    invoice_date: new Date(now.getTime() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    due_date: additionalQueueDate4.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: 22000.00,
+    tax_total: 1760.00,
+    total: 23760.00,
+    status: 'pending_approval',
+    match_status: 'matched',
+    po_numbers_cached: ['PO-2025-1237'],
+    assigned_to_user_id: 'user-1',
+    assigned_to_name: 'Sarah Mitchell',
+    assigned_at: additionalQueueAssigned4.toISOString(),
+    sla_hours: 24,
+    sla_status: 'on_time',
+    lines: []
+  } as Invoice);
+
+  const additionalQueueDate5 = new Date(now);
+  additionalQueueDate5.setDate(additionalQueueDate5.getDate() + 12);
+  const additionalQueueAssigned5 = new Date(now.getTime() - 20 * 60 * 60 * 1000); // 20 hours ago
+
+  mockInvoices.push({
+    id: 'approval-queue-5',
+    invoice_number: 'INV-2025-4505',
+    vendor_name_snapshot: 'Google Cloud',
+    vendor_id: 'VND-GCP-001',
+    vendor_tax_id_snapshot: 'TAX-GCP-001',
+    invoice_date: new Date(now.getTime() - 4 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    due_date: additionalQueueDate5.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: 15800.00,
+    tax_total: 1264.00,
+    total: 17064.00,
+    status: 'pending_approval',
+    match_status: 'matched',
+    po_numbers_cached: ['PO-2025-1238'],
+    assigned_to_user_id: 'user-1',
+    assigned_to_name: 'Sarah Mitchell',
+    assigned_at: additionalQueueAssigned5.toISOString(),
+    sla_hours: 24,
+    sla_status: 'at_risk',
+    lines: []
+  } as Invoice);
+
+  const additionalQueueDate6 = new Date(now);
+  additionalQueueDate6.setDate(additionalQueueDate6.getDate() + 25);
+  const additionalQueueAssigned6 = new Date(now.getTime() - 3 * 60 * 60 * 1000); // 3 hours ago
+
+  mockInvoices.push({
+    id: 'approval-queue-6',
+    invoice_number: 'INV-2025-4506',
+    vendor_name_snapshot: 'Microsoft Corporation',
+    vendor_id: 'VND-MS-001',
+    vendor_tax_id_snapshot: 'TAX-MS-001',
+    invoice_date: new Date(now.getTime() - 1 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+    due_date: additionalQueueDate6.toISOString().split('T')[0],
+    currency: 'USD',
+    subtotal: 8200.00,
+    tax_total: 656.00,
+    total: 8856.00,
+    status: 'pending_approval',
+    match_status: 'matched',
+    po_numbers_cached: ['PO-2025-1239'],
+    assigned_to_user_id: 'user-1',
+    assigned_to_name: 'Sarah Mitchell',
+    assigned_at: additionalQueueAssigned6.toISOString(),
+    sla_hours: 24,
+    sla_status: 'on_time',
+    lines: []
+  } as Invoice);
+
   // Enrich all invoices with demo data using centralized service
   return mockInvoices.map(enrichInvoiceWithDemoData);
 };
