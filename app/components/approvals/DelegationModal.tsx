@@ -1,7 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { X, User, AlertCircle } from 'lucide-react';
+import { X, User, AlertCircle, Calendar, UserX } from 'lucide-react';
+
+interface StatusDetails {
+  reason?: string;
+  return_date?: string;
+  backup_approver_id?: string;
+  backup_approver_name?: string;
+  left_date?: string;
+  replacement_approver_id?: string;
+  replacement_approver_name?: string;
+}
 
 interface TeamMember {
   id: string;
@@ -10,6 +20,8 @@ interface TeamMember {
   email?: string;
   role?: string;
   color: string;
+  status?: 'available' | 'busy' | 'out-of-office' | 'left-company';
+  status_details?: StatusDetails | null;
 }
 
 interface DelegationModalProps {
@@ -84,16 +96,62 @@ export function DelegationModal({
                     {assignee.initials}
                   </span>
                 </div>
-                <div>
-                  <p className="text-sm font-medium text-gray-950">
-                    {assignee.name}
-                  </p>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-medium text-gray-950">
+                      {assignee.name}
+                    </p>
+                    {assignee.status === 'out-of-office' && (
+                      <span className="flex items-center gap-1 px-2 py-0.5 bg-amber-100 text-amber-700 rounded text-xs">
+                        <Calendar className="h-3 w-3" />
+                        OOO
+                      </span>
+                    )}
+                    {assignee.status === 'left-company' && (
+                      <span className="flex items-center gap-1 px-2 py-0.5 bg-gray-200 text-gray-700 rounded text-xs">
+                        <UserX className="h-3 w-3" />
+                        Left
+                      </span>
+                    )}
+                  </div>
                   <p className="text-xs text-gray-500">
                     {assignee.role}
                   </p>
                 </div>
               </div>
             </div>
+
+            {/* Warning for unavailable assignee */}
+            {(assignee.status === 'out-of-office' || assignee.status === 'left-company') && (
+              <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md flex items-start gap-2">
+                <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-800">
+                  {assignee.status === 'out-of-office' && (
+                    <>
+                      <p className="font-medium">Approver is currently out of office</p>
+                      {assignee.status_details?.return_date && (
+                        <p className="text-xs mt-1">Returns: {assignee.status_details.return_date}</p>
+                      )}
+                      {assignee.status_details?.backup_approver_name && (
+                        <p className="text-xs mt-1">
+                          Consider delegating to backup: <span className="font-medium">{assignee.status_details.backup_approver_name}</span>
+                        </p>
+                      )}
+                    </>
+                  )}
+                  {assignee.status === 'left-company' && (
+                    <>
+                      <p className="font-medium">Approver has left the company</p>
+                      {assignee.status_details?.replacement_approver_name && (
+                        <p className="text-xs mt-1">
+                          Consider delegating to replacement: <span className="font-medium">{assignee.status_details.replacement_approver_name}</span>
+                        </p>
+                      )}
+                    </>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Reason Selection */}
             <div className="mb-4">

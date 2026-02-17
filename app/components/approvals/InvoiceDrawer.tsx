@@ -6,7 +6,7 @@ import {
   X, FileText, DollarSign, Calendar, Building2,
   User, Hash, CreditCard, MessageSquare, Send,
   Check, XCircle, Clock, AlertTriangle, Package, Image, TrendingUp,
-  File, Coins, BookOpen, Link2, Bell, UserPlus, UserMinus, Mail
+  File, Coins, BookOpen, Link2, Bell, UserPlus, UserMinus, Mail, UserX
 } from 'lucide-react';
 import {
   DropdownMenu,
@@ -25,12 +25,24 @@ import { DocumentPreview } from '../invoices/DocumentPreview';
 import { ResizablePanel } from '../invoices/ResizablePanel';
 import { VendorCommunication } from '@/types/invoice';
 
+interface StatusDetails {
+  reason?: string;
+  return_date?: string;
+  backup_approver_id?: string;
+  backup_approver_name?: string;
+  left_date?: string;
+  replacement_approver_id?: string;
+  replacement_approver_name?: string;
+}
+
 interface TeamMember {
   id: string;
   name: string;
   initials: string;
   color: string;
   role?: string;
+  status?: 'available' | 'busy' | 'out-of-office' | 'left-company';
+  status_details?: StatusDetails | null;
 }
 
 interface Invoice {
@@ -326,31 +338,54 @@ export function InvoiceDrawer({
                         </button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end" className="w-56">
-                        {teamMembers.map((member) => (
-                          <DropdownMenuItem
-                            key={member.id}
-                            onClick={() => onDelegate(invoice.id, member)}
-                            className="cursor-pointer"
-                          >
-                            <div className="flex items-center gap-3 w-full">
-                              <div className={`h-7 w-7 rounded-full ${member.color} flex items-center justify-center flex-shrink-0`}>
-                                <span className="text-xs font-medium text-white">
-                                  {member.initials}
-                                </span>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium text-gray-900 group-hover:text-white group-focus:text-white truncate">
-                                  {member.name}
+                        {teamMembers.map((member) => {
+                          const isUnavailable = member.status === 'out-of-office' || member.status === 'left-company';
+                          
+                          return (
+                            <DropdownMenuItem
+                              key={member.id}
+                              onClick={() => {
+                                if (!isUnavailable) {
+                                  onDelegate(invoice.id, member);
+                                }
+                              }}
+                              disabled={isUnavailable}
+                              className={`cursor-pointer ${isUnavailable ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                              <div className="flex items-center gap-3 w-full">
+                                <div className={`h-7 w-7 rounded-full ${member.color} flex items-center justify-center flex-shrink-0`}>
+                                  <span className="text-xs font-medium text-white">
+                                    {member.initials}
+                                  </span>
                                 </div>
-                                {member.role && (
-                                  <div className="text-xs text-gray-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
-                                    {member.role}
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-2">
+                                    <div className="text-sm font-medium text-gray-900 group-hover:text-white group-focus:text-white truncate">
+                                      {member.name}
+                                    </div>
+                                    {member.status === 'out-of-office' && (
+                                      <span className="flex items-center gap-1 px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded text-xs whitespace-nowrap">
+                                        <Calendar className="h-2.5 w-2.5" />
+                                        OOO
+                                      </span>
+                                    )}
+                                    {member.status === 'left-company' && (
+                                      <span className="flex items-center gap-1 px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded text-xs whitespace-nowrap">
+                                        <UserX className="h-2.5 w-2.5" />
+                                        Left
+                                      </span>
+                                    )}
                                   </div>
-                                )}
+                                  {member.role && (
+                                    <div className="text-xs text-gray-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
+                                      {member.role}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
+                            </DropdownMenuItem>
+                          );
+                        })}
                         {onUnassign && (
                           <>
                             <DropdownMenuSeparator />

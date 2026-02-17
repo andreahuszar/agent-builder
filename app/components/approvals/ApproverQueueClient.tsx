@@ -44,6 +44,16 @@ interface Invoice {
   hours_overdue?: number;
 }
 
+interface StatusDetails {
+  reason?: string;
+  return_date?: string;
+  backup_approver_id?: string;
+  backup_approver_name?: string;
+  left_date?: string;
+  replacement_approver_id?: string;
+  replacement_approver_name?: string;
+}
+
 interface TeamMember {
   id: string;
   name: string;
@@ -53,7 +63,8 @@ interface TeamMember {
   color: string;
   current_workload?: number;
   capacity?: number;
-  status?: 'available' | 'busy' | 'out-of-office';
+  status?: 'available' | 'busy' | 'out-of-office' | 'left-company';
+  status_details?: StatusDetails | null;
 }
 
 // Mock current user ID (in real app, this would come from auth)
@@ -454,12 +465,16 @@ export function ApproverQueueClient() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        // For now, just show first available team member
-                        const otherMembers = teamMembers.filter(m => m.id !== CURRENT_USER_ID);
-                        if (otherMembers.length > 0) {
+                        // Filter out current user and unavailable approvers
+                        const availableMembers = teamMembers.filter(m => 
+                          m.id !== CURRENT_USER_ID && 
+                          m.status !== 'out-of-office' && 
+                          m.status !== 'left-company'
+                        );
+                        if (availableMembers.length > 0) {
                           setShowDelegationModal({
                             invoiceId: invoice.id,
-                            assignee: otherMembers[0],
+                            assignee: availableMembers[0],
                           });
                         }
                       }}
