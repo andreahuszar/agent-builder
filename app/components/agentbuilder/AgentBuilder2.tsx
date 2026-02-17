@@ -16,6 +16,16 @@ import { simulateBaselineProcessingBatch, type BaselineStats } from './baselineS
 import { simulateAgentProcessingBatch, type AgentStats, type AgentConfig as SimAgentConfig } from './agentSimulator'
 import { calculateComparisonMetrics, createInvoiceComparisons, formatMetricsForDisplay, generateExecutiveSummary, type ComparisonMetrics, type InvoiceComparison } from './comparisonMetrics'
 
+interface AgentMetrics {
+  evaluated: number
+  actedOn: number
+  referred: number
+  createdDate?: string
+  lastRunDate?: string | null
+  avgRuntimeMs?: number
+  invoicesProcessed?: number
+}
+
 interface AgentBuilder2Props {
   agents: Agent[]
   onCreateAgent: (stageId: string) => void
@@ -29,6 +39,7 @@ interface AgentBuilder2Props {
   onOpenTest?: () => void
   testingAgent?: Agent | null
   onCloseTest?: () => void
+  agentMetrics?: Record<string, AgentMetrics>
 }
 
 const WORKFLOW_STAGES = [
@@ -53,6 +64,7 @@ export function AgentBuilder2({
   onOpenTest,
   testingAgent,
   onCloseTest,
+  agentMetrics = {},
 }: AgentBuilder2Props) {
   const [chatOpen, setChatOpen] = useState(false)
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
@@ -515,6 +527,7 @@ export function AgentBuilder2({
             onUpdateAgent={onSaveAgent}
             allAgents={agents}
             onOpenTest={onOpenTest}
+            agentMetrics={currentAgent.id ? agentMetrics[currentAgent.id] : undefined}
           />
         ) : chatOpen ? (
           // State when user is creating a new agent (chat is open)

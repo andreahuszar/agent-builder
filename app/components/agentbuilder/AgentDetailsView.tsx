@@ -5,6 +5,16 @@ import { Agent } from "./AgentBuilderPage"
 import { Pencil, Clock, Trash2, Save, Check, X } from "lucide-react"
 import { Button } from "@/app/components/ui/button"
 
+interface AgentMetrics {
+  evaluated: number
+  actedOn: number
+  referred: number
+  createdDate?: string
+  lastRunDate?: string | null
+  avgRuntimeMs?: number
+  invoicesProcessed?: number
+}
+
 interface AgentDetailsViewProps {
   agent: Agent
   onToggleActive: (agentId: string) => void
@@ -14,6 +24,7 @@ interface AgentDetailsViewProps {
   onUpdateAgent: (updatedAgent: Agent) => void
   allAgents?: Agent[]
   onOpenTest?: () => void
+  agentMetrics?: AgentMetrics
 }
 
 const AVAILABLE_SKILLS = [
@@ -66,6 +77,7 @@ export function AgentDetailsView({
   onUpdateAgent,
   allAgents = [],
   onOpenTest,
+  agentMetrics,
 }: AgentDetailsViewProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(agent.name)
@@ -838,12 +850,35 @@ export function AgentDetailsView({
         </div>
 
         {/* Performance Metrics */}
-        <div className="bg-white rounded-lg p-4 border border-gray-200">
+        <div className="bg-white rounded-lg p-6 border border-gray-200">
           <h2 className="text-sm font-semibold text-gray-950 mb-4">Performance metrics</h2>
-          <div className="flex items-center gap-2 text-sm text-gray-600">
-            <Clock className="h-4 w-4" />
-            <span>Stats will be shown once agent has been live for 24 hours</span>
-          </div>
+          {agentMetrics ? (
+            <div className="grid grid-cols-3 gap-4">
+              <div className="bg-white rounded-lg p-4 border border-gray-200">
+                <div className="text-xs text-gray-600 mb-1">Invoices evaluated</div>
+                <div className="text-2xl font-bold text-gray-950">
+                  {new Intl.NumberFormat("en-US").format(agentMetrics.evaluated)}
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-4 border border-gray-200">
+                <div className="text-xs text-gray-600 mb-1">Acted on</div>
+                <div className="text-2xl font-bold text-gray-950">
+                  {new Intl.NumberFormat("en-US").format(agentMetrics.actedOn)}
+                </div>
+              </div>
+              <div className="bg-white rounded-lg p-4 border border-gray-200">
+                <div className="text-xs text-gray-600 mb-1">Referred to team</div>
+                <div className="text-2xl font-bold text-gray-950">
+                  {new Intl.NumberFormat("en-US").format(agentMetrics.referred)}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-2 text-sm text-gray-600">
+              <Clock className="h-4 w-4" />
+              <span>Stats will be shown once agent has been live for 24 hours</span>
+            </div>
+          )}
         </div>
         </div>
       </div>

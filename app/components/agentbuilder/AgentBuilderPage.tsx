@@ -1013,6 +1013,7 @@ ERROR HANDLING:
                   onOpenTest={() => editingAgent && handleTestAgent(editingAgent)}
                   testingAgent={testingAgent}
                   onCloseTest={handleCloseTest}
+                  agentMetrics={agentMetrics}
                 />
               )}
               {mode === "executive-dashboard" && (
