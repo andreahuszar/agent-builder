@@ -65,6 +65,7 @@ interface ApprovalsTableProps {
   onApprove: (id: string) => void;
   onReject: (id: string, reason: string) => void;
   onDelegate: (id: string, assignee: TeamMember) => void;
+  onAssign?: (id: string) => void; // New: Opens intelligent assignment modal
   onNudge: (id: string, approverName: string) => void;
   onUnassign: (id: string, currentAssigneeName: string) => void;
   teamMembers: TeamMember[];
@@ -82,6 +83,7 @@ export function ApprovalsTable({
   onApprove,
   onReject,
   onDelegate,
+  onAssign,
   onNudge,
   onUnassign,
   teamMembers,
@@ -325,43 +327,58 @@ export function ApprovalsTable({
                     onClick={(e) => e.stopPropagation()}
                     className="px-3 py-2.5 whitespace-nowrap"
                   >
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <button
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:border-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
-                        >
-                          <UserPlus className="h-3.5 w-3.5" />
-                          Assign
-                        </button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end" className="w-56">
-                        {teamMembers.map((member) => (
-                          <DropdownMenuItem
-                            key={member.id}
-                            onClick={() => onDelegate(invoice.id, member)}
-                            className="cursor-pointer"
+                    {onAssign ? (
+                      // Intelligent assignment button (opens modal with AI suggestions)
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onAssign(invoice.id);
+                        }}
+                        className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-white bg-purple-900 border border-purple-900 rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                      >
+                        <UserPlus className="h-3.5 w-3.5" />
+                        Assign
+                      </button>
+                    ) : (
+                      // Original dropdown behavior (fallback)
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <button
+                            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 hover:border-gray-400 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
                           >
-                            <div className="flex items-center gap-3 w-full">
-                              <div className={`h-7 w-7 rounded-full ${member.color} flex items-center justify-center flex-shrink-0`}>
-                                <span className="text-xs font-medium text-white">
-                                  {member.initials}
-                                </span>
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium text-gray-900 group-hover:text-white group-focus:text-white truncate">
-                                  {member.name}
+                            <UserPlus className="h-3.5 w-3.5" />
+                            Assign
+                          </button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-56">
+                          {teamMembers.map((member) => (
+                            <DropdownMenuItem
+                              key={member.id}
+                              onClick={() => onDelegate(invoice.id, member)}
+                              className="cursor-pointer"
+                            >
+                              <div className="flex items-center gap-3 w-full">
+                                <div className={`h-7 w-7 rounded-full ${member.color} flex items-center justify-center flex-shrink-0`}>
+                                  <span className="text-xs font-medium text-white">
+                                    {member.initials}
+                                  </span>
                                 </div>
-                                {member.role && (
-                                  <div className="text-xs text-gray-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
-                                    {member.role}
+                                <div className="flex-1 min-w-0">
+                                  <div className="text-sm font-medium text-gray-900 group-hover:text-white group-focus:text-white truncate">
+                                    {member.name}
                                   </div>
-                                )}
+                                  {member.role && (
+                                    <div className="text-xs text-gray-500 group-hover:text-white/80 group-focus:text-white/80 truncate">
+                                      {member.role}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          </DropdownMenuItem>
-                        ))}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+                            </DropdownMenuItem>
+                          ))}
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    )}
                   </td>
                 )}
                 {activeView === 'approved' && (

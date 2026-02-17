@@ -17,11 +17,13 @@ import {
 import { ApprovalsTable } from '@/app/components/approvals/ApprovalsTable';
 import { InvoiceDrawer } from '@/app/components/approvals/InvoiceDrawer';
 import { DelegationModal } from '@/app/components/approvals/DelegationModal';
+import { IntelligentAssignmentModal } from '@/app/components/approvals/IntelligentAssignmentModal';
 import { UnassignModal } from '@/app/components/approvals/UnassignModal';
 import { TeamWorkloadDrawer } from '@/app/components/approvals/TeamWorkloadDrawer';
 import { BulkAssignmentDrawer } from '@/app/components/approvals/BulkAssignmentDrawer';
 import { compareBySLA, type SLAStatus } from '@/app/services/slaService';
 import { useToast } from '@/app/components/ui/Toast';
+import { getRoutingSuggestions, type ApproverSuggestion } from '@/app/services/approvalRoutingService';
 
 export type ViewType = 'pending' | 'on-hold' | 'approved' | 'rejected' | 'completed_rejected' | 'all';
 export type UserRole = 'user' | 'admin';
@@ -76,6 +78,12 @@ export function ApprovalsClient() {
   const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string | null>(null);
   const [showDelegationModal, setShowDelegationModal] = useState<{ invoiceId: string; assignee: TeamMember } | null>(null);
+  const [showIntelligentAssignmentModal, setShowIntelligentAssignmentModal] = useState<{ 
+    invoiceId: string; 
+    invoice: Invoice; 
+    suggestions: ApproverSuggestion[];
+    autoRouteEligible: boolean;
+  } | null>(null);
   const [showUnassignModal, setShowUnassignModal] = useState<{ invoiceId: string; currentAssigneeName: string } | null>(null);
   const [showTeamWorkloadDrawer, setShowTeamWorkloadDrawer] = useState(false);
   const [showBulkAssignmentDrawer, setShowBulkAssignmentDrawer] = useState(false);
@@ -379,6 +387,76 @@ export function ApprovalsClient() {
     }
   };
 
+  const handleAssignInvoice = async (invoiceId: string) => {
+    const invoice = allInvoices.find(inv => inv.id === invoiceId);
+    if (!invoice) return;
+
+    try {
+      // Fetch AI routing suggestions
+      const routingResponse = await getRoutingSuggestions({
+        vendor: invoice.vendor_name_snapshot,
+        amount: invoice.total,
+        invoiceId: invoiceId,
+      });
+
+      // Open intelligent assignment modal with suggestions
+      setShowIntelligentAssignmentModal({
+        invoiceId,
+        invoice,
+        suggestions: routingResponse.suggestions,
+        autoRouteEligible: routingResponse.auto_route_eligible,
+      });
+    } catch (error) {
+      console.error('Error fetching routing suggestions:', error);
+      showToast('Failed to fetch routing suggestions', 'error');
+    }
+  };
+
+  const handleConfirmAssignment = async (
+    approverId: string,
+    approverName: string,
+    confidence?: number,
+    isAISuggested?: boolean
+  ) => {
+    if (!showIntelligentAssignmentModal) return;
+    
+    const invoiceId = showIntelligentAssignmentModal.invoiceId;
+
+    try {
+      // Generate SLA deadline (24 hours for demo)
+      const assignedAt = new Date();
+      const slaDeadline = new Date(assignedAt);
+      slaDeadline.setHours(slaDeadline.getHours() + 24);
+
+      // Update local state
+      setAllInvoices(prevInvoices =>
+        prevInvoices.map(inv =>
+          inv.id === invoiceId
+            ? {
+                ...inv,
+                assigned_to_user_id: approverId,
+                assigned_to_name: approverName,
+                status: 'pending_approval',
+                assigned_at: assignedAt.toISOString(),
+                sla_hours: 24,
+                sla_status: 'on_time' as SLAStatus,
+              }
+            : inv
+        )
+      );
+
+      // Show success toast with confidence indicator
+      const confidenceText = confidence ? ` (${Math.round(confidence * 100)}% confidence)` : '';
+      const suggestionText = isAISuggested ? ' via AI suggestion' : '';
+      showToast(`Invoice assigned to ${approverName}${confidenceText}${suggestionText}`, 'success');
+
+      setShowIntelligentAssignmentModal(null);
+    } catch (error) {
+      console.error('Error assigning invoice:', error);
+      showToast('Failed to assign invoice', 'error');
+    }
+  };
+
   const handleNudge = (invoiceId: string, approverName: string) => {
     showToast(`Reminder sent to ${approverName}`, 'success');
   };
@@ -648,6 +726,7 @@ export function ApprovalsClient() {
               onApprove={handleApprove}
               onReject={handleReject}
               onDelegate={(invoiceId, assignee) => setShowDelegationModal({ invoiceId, assignee })}
+              onAssign={handleAssignInvoice}
               onNudge={handleNudge}
               onUnassign={(invoiceId, currentAssigneeName) => setShowUnassignModal({ invoiceId, currentAssigneeName })}
               teamMembers={teamMembers}
@@ -680,6 +759,22 @@ export function ApprovalsClient() {
           assignee={showDelegationModal.assignee}
           onConfirm={(reason) => handleDelegate(showDelegationModal.invoiceId, showDelegationModal.assignee.id, showDelegationModal.assignee.name, reason)}
           onClose={() => setShowDelegationModal(null)}
+        />
+      )}
+
+      {/* Intelligent Assignment Modal */}
+      {showIntelligentAssignmentModal && (
+        <IntelligentAssignmentModal
+          invoiceId={showIntelligentAssignmentModal.invoiceId}
+          invoiceNumber={showIntelligentAssignmentModal.invoice.invoice_number}
+          vendor={showIntelligentAssignmentModal.invoice.vendor_name_snapshot}
+          amount={showIntelligentAssignmentModal.invoice.total}
+          currency={showIntelligentAssignmentModal.invoice.currency}
+          suggestions={showIntelligentAssignmentModal.suggestions}
+          autoRouteEligible={showIntelligentAssignmentModal.autoRouteEligible}
+          teamMembers={teamMembers}
+          onAssign={handleConfirmAssignment}
+          onClose={() => setShowIntelligentAssignmentModal(null)}
         />
       )}
 
