@@ -61,17 +61,11 @@ export function IntelligentAssignmentModal({
     return teamMembers.find(m => m.id === id);
   };
 
-  // Filter team members for manual search (exclude unavailable)
+  // Filter team members for manual search (SHOW all, including unavailable)
   const filteredTeamMembers = useMemo(() => {
-    // First filter out unavailable members
-    let available = teamMembers.filter(member => 
-      member.status !== 'out-of-office' && member.status !== 'left-company'
-    );
-    
-    // Then apply search filter
-    if (!searchQuery) return available;
+    if (!searchQuery) return teamMembers;
     const query = searchQuery.toLowerCase();
-    return available.filter(member =>
+    return teamMembers.filter(member =>
       member.name.toLowerCase().includes(query) ||
       member.email?.toLowerCase().includes(query)
     );
@@ -160,16 +154,14 @@ export function IntelligentAssignmentModal({
     return null;
   };
 
-  // Filter AI suggestions to remove unavailable approvers
-  const availableSuggestions = useMemo(() => {
-    return suggestions.filter(suggestion => {
-      const member = getTeamMember(suggestion.approver_id);
-      return member && member.status !== 'out-of-office' && member.status !== 'left-company';
-    });
-  }, [suggestions]);
-
-  // Check if there were filtered suggestions
-  const hasFilteredSuggestions = suggestions.length > availableSuggestions.length;
+  // Show all suggestions, but mark unavailable ones
+  const availableSuggestions = suggestions;
+  
+  // Check if approver is available for selection
+  const isApproverAvailable = (approverId: string): boolean => {
+    const member = getTeamMember(approverId);
+    return member ? (member.status !== 'out-of-office' && member.status !== 'left-company') : false;
+  };
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto">
@@ -243,16 +235,6 @@ export function IntelligentAssignmentModal({
             {/* AI Suggestions View */}
             {assignmentMode === 'ai' && (
               <div className="space-y-3">
-                {/* Warning for filtered unavailable approvers */}
-                {hasFilteredSuggestions && (
-                  <div className="flex items-start gap-2 px-3 py-2 bg-amber-50 border border-amber-200 rounded-md">
-                    <AlertCircle className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
-                    <p className="text-sm text-amber-800">
-                      Some suggested approvers are currently unavailable (out of office or left company) and have been filtered out.
-                    </p>
-                  </div>
-                )}
-
                 {availableSuggestions.length > 0 ? (
                   <>
                     <p className="text-sm text-gray-600 mb-3">
@@ -263,29 +245,40 @@ export function IntelligentAssignmentModal({
                       if (!member) return null;
                       
                       const isSelected = selectedApproverId === suggestion.approver_id;
+                      const isAvailable = isApproverAvailable(suggestion.approver_id);
+                      const statusBadge = renderStatusBadge(member);
                       
                       return (
                         <button
                           key={suggestion.approver_id}
-                          onClick={() => setSelectedApproverId(suggestion.approver_id)}
+                          onClick={() => {
+                            if (isAvailable) {
+                              setSelectedApproverId(suggestion.approver_id);
+                            }
+                          }}
+                          disabled={!isAvailable}
                           className={`w-full text-left p-4 rounded-lg border-2 transition-all ${
-                            isSelected
-                              ? 'border-purple-600 bg-purple-50'
-                              : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                            !isAvailable
+                              ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                              : isSelected
+                                ? 'border-purple-600 bg-purple-50'
+                                : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
                           }`}
                         >
                           <div className="flex items-start gap-3">
                             {/* Rank Badge */}
                             <div className={`flex-shrink-0 w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold ${
-                              index === 0 ? 'bg-purple-600 text-white' :
-                              index === 1 ? 'bg-purple-200 text-purple-900' :
-                              'bg-gray-200 text-gray-700'
+                              !isAvailable
+                                ? 'bg-gray-300 text-gray-600'
+                                : index === 0 ? 'bg-purple-600 text-white' :
+                                  index === 1 ? 'bg-purple-200 text-purple-900' :
+                                  'bg-gray-200 text-gray-700'
                             }`}>
                               {index + 1}
                             </div>
 
                             {/* Avatar */}
-                            <div className={`w-10 h-10 rounded-full ${member.color} flex items-center justify-center flex-shrink-0`}>
+                            <div className={`w-10 h-10 rounded-full ${member.color} flex items-center justify-center flex-shrink-0 ${!isAvailable ? 'opacity-50' : ''}`}>
                               <span className="text-sm font-medium text-white">
                                 {member.initials}
                               </span>
@@ -297,6 +290,7 @@ export function IntelligentAssignmentModal({
                                 <span className="text-sm font-semibold text-gray-950">
                                   {member.name}
                                 </span>
+                                {statusBadge}
                                 <span className={`px-2 py-0.5 text-xs font-medium rounded-full ${getConfidenceBadgeColor(suggestion.confidence)}`}>
                                   {formatConfidence(suggestion.confidence)} confident
                                 </span>
@@ -310,10 +304,26 @@ export function IntelligentAssignmentModal({
                                   {suggestion.reason}
                                 </p>
                               </div>
+                              {!isAvailable && member.status_details?.backup_approver_name && (
+                                <div className="flex items-start gap-2 mt-2 pt-2 border-t border-gray-200">
+                                  <User className="h-3.5 w-3.5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                  <p className="text-xs text-blue-700">
+                                    Backup: {member.status_details.backup_approver_name}
+                                  </p>
+                                </div>
+                              )}
+                              {!isAvailable && member.status_details?.replacement_approver_name && (
+                                <div className="flex items-start gap-2 mt-2 pt-2 border-t border-gray-200">
+                                  <User className="h-3.5 w-3.5 text-blue-600 mt-0.5 flex-shrink-0" />
+                                  <p className="text-xs text-blue-700">
+                                    Replacement: {member.status_details.replacement_approver_name}
+                                  </p>
+                                </div>
+                              )}
                             </div>
 
                             {/* Selection Indicator */}
-                            {isSelected && (
+                            {isSelected && isAvailable && (
                               <div className="flex-shrink-0">
                                 <CheckCircle className="h-5 w-5 text-purple-600" />
                               </div>
@@ -360,32 +370,54 @@ export function IntelligentAssignmentModal({
                   {filteredTeamMembers.length > 0 ? (
                     filteredTeamMembers.map((member) => {
                       const isSelected = selectedApproverId === member.id;
+                      const isAvailable = isApproverAvailable(member.id);
+                      const statusBadge = renderStatusBadge(member);
                       
                       return (
                         <button
                           key={member.id}
-                          onClick={() => setSelectedApproverId(member.id)}
+                          onClick={() => {
+                            if (isAvailable) {
+                              setSelectedApproverId(member.id);
+                            }
+                          }}
+                          disabled={!isAvailable}
                           className={`w-full text-left p-3 rounded-lg border transition-all ${
-                            isSelected
-                              ? 'border-purple-600 bg-purple-50'
-                              : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
+                            !isAvailable
+                              ? 'border-gray-200 bg-gray-50 opacity-60 cursor-not-allowed'
+                              : isSelected
+                                ? 'border-purple-600 bg-purple-50'
+                                : 'border-gray-200 bg-white hover:border-gray-300 hover:bg-gray-50'
                           }`}
                         >
                           <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-full ${member.color} flex items-center justify-center flex-shrink-0`}>
+                            <div className={`w-10 h-10 rounded-full ${member.color} flex items-center justify-center flex-shrink-0 ${!isAvailable ? 'opacity-50' : ''}`}>
                               <span className="text-sm font-medium text-white">
                                 {member.initials}
                               </span>
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-950">
-                                {member.name}
-                              </p>
+                              <div className="flex items-center gap-2 mb-1">
+                                <p className="text-sm font-medium text-gray-950">
+                                  {member.name}
+                                </p>
+                                {statusBadge}
+                              </div>
                               <p className="text-xs text-gray-500">
                                 {member.role}
                               </p>
+                              {!isAvailable && member.status_details?.backup_approver_name && (
+                                <p className="text-xs text-blue-700 mt-1">
+                                  Backup: {member.status_details.backup_approver_name}
+                                </p>
+                              )}
+                              {!isAvailable && member.status_details?.replacement_approver_name && (
+                                <p className="text-xs text-blue-700 mt-1">
+                                  Replacement: {member.status_details.replacement_approver_name}
+                                </p>
+                              )}
                             </div>
-                            {isSelected && (
+                            {isSelected && isAvailable && (
                               <CheckCircle className="h-5 w-5 text-purple-600 flex-shrink-0" />
                             )}
                           </div>

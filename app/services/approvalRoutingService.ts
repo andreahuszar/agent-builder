@@ -36,12 +36,14 @@ const MOCK_ROUTING_PATTERNS = [
   { vendor: 'AWS', approver_id: 'user-1', approver_name: 'Sarah Mitchell', success_count: 15, amount_min: 0, amount_max: 100000 },
   { vendor: 'Google Cloud', approver_id: 'user-1', approver_name: 'Sarah Mitchell', success_count: 6, amount_min: 0, amount_max: 50000 },
   
-  // James Thompson - Office supplies, facilities
+  // James Thompson - Office supplies, facilities, and some tech vendors
   { vendor: 'Office Depot', approver_id: 'user-2', approver_name: 'James Thompson', success_count: 20, amount_min: 0, amount_max: 10000 },
   { vendor: 'Staples Inc', approver_id: 'user-2', approver_name: 'James Thompson', success_count: 18, amount_min: 0, amount_max: 10000 },
   { vendor: 'ACME Office Supplies', approver_id: 'user-2', approver_name: 'James Thompson', success_count: 14, amount_min: 0, amount_max: 15000 },
   { vendor: 'FedEx', approver_id: 'user-2', approver_name: 'James Thompson', success_count: 25, amount_min: 0, amount_max: 5000 },
   { vendor: 'UPS', approver_id: 'user-2', approver_name: 'James Thompson', success_count: 22, amount_min: 0, amount_max: 5000 },
+  { vendor: 'Adobe Systems', approver_id: 'user-2', approver_name: 'James Thompson', success_count: 5, amount_min: 0, amount_max: 15000 },
+  { vendor: 'Microsoft Corporation', approver_id: 'user-2', approver_name: 'James Thompson', success_count: 7, amount_min: 0, amount_max: 20000 },
   
   // Caroline Walsh - Marketing vendors
   { vendor: 'LinkedIn', approver_id: 'user-3', approver_name: 'Caroline Walsh', success_count: 9, amount_min: 0, amount_max: 30000 },
