@@ -550,6 +550,176 @@ export const generateBaselineInvoices = (): Invoice[] => {
   } as Invoice);
 
   // ========================================================================
+  // BASELINE PO INVOICE #4 - WITH ONE LINE ITEM MISMATCH (JanServ Plc)
+  // ========================================================================
+  const baselinePO2Date = new Date(now);
+  baselinePO2Date.setDate(baselinePO2Date.getDate() - 7); // Created 7 days ago
+  const baselinePO2DueDate = new Date(baselinePO2Date);
+  baselinePO2DueDate.setDate(baselinePO2DueDate.getDate() + 30); // Due in 23 days
+
+  const baselinePO2Lines = [
+    {
+      id: 'line-baseline-po2-1',
+      line_no: 1,
+      sku: 'EQ-012001',
+      description: 'Equipment - Mower Extension',
+      qty: 25,
+      uom: 'Units',
+      unit_price: 80.00,
+      net_amount: 2000.00,
+      line_total: 2000.00,
+      po_line_id: 'po-line-9011-1',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-baseline-po2-2',
+      line_no: 2,
+      sku: 'SE-002377',
+      description: 'Installation Services - On-site Setup',
+      qty: 20,
+      uom: 'Hours',
+      unit_price: 95.00,
+      net_amount: 1900.00,
+      line_total: 1900.00,
+      po_line_id: 'po-line-9011-2',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-baseline-po2-3',
+      line_no: 3,
+      sku: 'GU-00101',
+      description: 'Training Materials - User Guides',
+      qty: 20, // MISMATCH: PO has 15, invoice has 20 (variance = 5)
+      uom: 'Units',
+      unit_price: 45.00,
+      net_amount: 900.00,
+      line_total: 900.00,
+      po_line_id: 'po-line-9011-3',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-baseline-po2-4',
+      line_no: 4,
+      sku: 'SE-101789',
+      description: 'Grounds Maintenance Services',
+      qty: 12,
+      uom: 'Months',
+      unit_price: 200.00,
+      net_amount: 2400.00,
+      line_total: 2400.00,
+      po_line_id: 'po-line-9011-4',
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-baseline-po2-5',
+      line_no: 5,
+      sku: 'EQ-800111',
+      description: 'Pleated air filters, 20×20×2, MERV 8',
+      qty: 50,
+      uom: 'EA',
+      unit_price: 45.00,
+      net_amount: 2250.00,
+      line_total: 2250.00,
+      po_line_id: null, // Not matched yet - has substitution suggestion
+      gr_line_id: null,
+      ses_line_id: null,
+      // AI Substitution Suggestion
+      suggested_po_match: {
+        po_line_id: 'po-line-9011-5',
+        po_line_no: 5,
+        po_description: 'Air Filters MERV 9 - EQ-800111',
+        po_qty: 50,
+        po_unit_price: 45.00,
+        po_uom: 'EA',
+        confidence: 0.78,
+        reason: 'System detected similar items with specification differences',
+        differences: [
+          {
+            field: 'specification',
+            invoice_value: 'MERV 8',
+            po_value: 'MERV 9'
+          }
+        ]
+      }
+    },
+    {
+      id: 'line-baseline-po2-6',
+      line_no: 6,
+      sku: 'MA-145784',
+      description: 'Landscaping Sand',
+      qty: 2700,
+      uom: 'KG',
+      unit_price: 1.00,
+      net_amount: 2700.00,
+      line_total: 2700.00,
+      po_line_id: 'po-line-9011-6',
+      gr_line_id: null,
+      ses_line_id: null
+    }
+  ];
+
+  const baselinePO2Subtotal = 12150.00; // Updated: 2000 + 1900 + 900 + 2400 + 2250 + 2700
+  const baselinePO2Tax = 2430.00; // 20% VAT
+  const baselinePO2Total = 14580.00; // Updated: 12150 + 2430
+
+  mockInvoices.push({
+    id: 'baseline-po-2',
+    invoice_number: 'INV-2025-0124',
+    vendor_name_snapshot: 'JanServ Plc',
+    vendor_id: 'VND0001489',
+    vendor_tax_id_snapshot: '28N0929',
+    vendor_address_snapshot: 'Danefield House, Selby Rd, Leeds, West Yorkshire (WY), United Kingdom (UK), LS25 1NG',
+    vendor_email: 'accountspayable@janserv.com',
+    vendor_phone: '+44 113 264 5295',
+    invoice_date: '2025-11-07',
+    due_date: '2025-12-08',
+    email_received_date: '2025-11-06',
+    customer_no: 'W4828999',
+    job_number: 'WO-2025-445',
+    currency: 'GBP',
+    subtotal: baselinePO2Subtotal,
+    tax_total: baselinePO2Tax,
+    tax_rate_percent: 20,
+    total: baselinePO2Total,
+    status: 'verification', // Verification stage (line item variances being checked)
+    match_status: 'variance', // Has variance on line 3
+    type: 'PO',
+    vendor_requires_po: true,
+    vendor_is_verified: true,
+    approval_status: 'pending',
+    assigned_to_name: 'James Wilson',
+    assigned_to_user_id: 'user-4',
+    po_numbers_cached: ['PO-2025-9011'],
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: ['Line Item Variance'],
+    created_at: baselinePO2Date.toISOString(),
+    updated_at: baselinePO2Date.toISOString(),
+    data_ingestion_date: baselinePO2Date.toISOString().split('T')[0],
+    lines: baselinePO2Lines,
+    invoice_lines: baselinePO2Lines,
+    // Payment bank details
+    payment_bank_details: {
+      bank_name: 'SANTANDER',
+      account_name: 'JanServ Plc',
+      account_number: '60891848',
+      sort_code: '09-01-29',
+      iban: 'GB44ABBY09012960891848',
+      swift: 'ABBYGB2LXXX',
+      bank_currency: 'GBP',
+      bank_address: 'Bridle Road, Bootle, Merseyside, United Kingdom (UK), GIR 0AA'
+    },
+    // Display configuration for blue header template (JanServ-inspired design)
+    display_config: {
+      template: 'blue-header'
+    }
+  } as Invoice);
+
+  // ========================================================================
   // MULTI-PO INVOICE (Test for multiple PO matching)
   // ========================================================================
   const multiPODate = new Date(now);
@@ -1087,176 +1257,6 @@ export const generateBaselineInvoices = (): Invoice[] => {
     data_ingestion_date: baselineMatchedDate.toISOString().split('T')[0],
     lines: baselineMatchedLines,
     invoice_lines: baselineMatchedLines
-  } as Invoice);
-
-  // ========================================================================
-  // BASELINE PO INVOICE #2 - WITH ONE LINE ITEM MISMATCH
-  // ========================================================================
-  const baselinePO2Date = new Date(now);
-  baselinePO2Date.setDate(baselinePO2Date.getDate() - 7); // Created 7 days ago
-  const baselinePO2DueDate = new Date(baselinePO2Date);
-  baselinePO2DueDate.setDate(baselinePO2DueDate.getDate() + 30); // Due in 23 days
-
-  const baselinePO2Lines = [
-    {
-      id: 'line-baseline-po2-1',
-      line_no: 1,
-      sku: 'EQ-012001',
-      description: 'Equipment - Mower Extension',
-      qty: 25,
-      uom: 'Units',
-      unit_price: 80.00,
-      net_amount: 2000.00,
-      line_total: 2000.00,
-      po_line_id: 'po-line-9011-1',
-      gr_line_id: null,
-      ses_line_id: null
-    },
-    {
-      id: 'line-baseline-po2-2',
-      line_no: 2,
-      sku: 'SE-002377',
-      description: 'Installation Services - On-site Setup',
-      qty: 20,
-      uom: 'Hours',
-      unit_price: 95.00,
-      net_amount: 1900.00,
-      line_total: 1900.00,
-      po_line_id: 'po-line-9011-2',
-      gr_line_id: null,
-      ses_line_id: null
-    },
-    {
-      id: 'line-baseline-po2-3',
-      line_no: 3,
-      sku: 'GU-00101',
-      description: 'Training Materials - User Guides',
-      qty: 20, // MISMATCH: PO has 15, invoice has 20 (variance = 5)
-      uom: 'Units',
-      unit_price: 45.00,
-      net_amount: 900.00,
-      line_total: 900.00,
-      po_line_id: 'po-line-9011-3',
-      gr_line_id: null,
-      ses_line_id: null
-    },
-    {
-      id: 'line-baseline-po2-4',
-      line_no: 4,
-      sku: 'SE-101789',
-      description: 'Grounds Maintenance Services',
-      qty: 12,
-      uom: 'Months',
-      unit_price: 200.00,
-      net_amount: 2400.00,
-      line_total: 2400.00,
-      po_line_id: 'po-line-9011-4',
-      gr_line_id: null,
-      ses_line_id: null
-    },
-    {
-      id: 'line-baseline-po2-5',
-      line_no: 5,
-      sku: 'EQ-800111',
-      description: 'Pleated air filters, 20×20×2, MERV 8',
-      qty: 50,
-      uom: 'EA',
-      unit_price: 45.00,
-      net_amount: 2250.00,
-      line_total: 2250.00,
-      po_line_id: null, // Not matched yet - has substitution suggestion
-      gr_line_id: null,
-      ses_line_id: null,
-      // AI Substitution Suggestion
-      suggested_po_match: {
-        po_line_id: 'po-line-9011-5',
-        po_line_no: 5,
-        po_description: 'Air Filters MERV 9 - EQ-800111',
-        po_qty: 50,
-        po_unit_price: 45.00,
-        po_uom: 'EA',
-        confidence: 0.78,
-        reason: 'System detected similar items with specification differences',
-        differences: [
-          {
-            field: 'specification',
-            invoice_value: 'MERV 8',
-            po_value: 'MERV 9'
-          }
-        ]
-      }
-    },
-    {
-      id: 'line-baseline-po2-6',
-      line_no: 6,
-      sku: 'MA-145784',
-      description: 'Landscaping Sand',
-      qty: 2700,
-      uom: 'KG',
-      unit_price: 1.00,
-      net_amount: 2700.00,
-      line_total: 2700.00,
-      po_line_id: 'po-line-9011-6',
-      gr_line_id: null,
-      ses_line_id: null
-    }
-  ];
-
-  const baselinePO2Subtotal = 12150.00; // Updated: 2000 + 1900 + 900 + 2400 + 2250 + 2700
-  const baselinePO2Tax = 2430.00; // 20% VAT
-  const baselinePO2Total = 14580.00; // Updated: 12150 + 2430
-
-  mockInvoices.push({
-    id: 'baseline-po-2',
-    invoice_number: 'INV-2025-0124',
-    vendor_name_snapshot: 'JanServ Plc',
-    vendor_id: 'VND0001489',
-    vendor_tax_id_snapshot: '28N0929',
-    vendor_address_snapshot: 'Danefield House, Selby Rd, Leeds, West Yorkshire (WY), United Kingdom (UK), LS25 1NG',
-    vendor_email: 'accountspayable@janserv.com',
-    vendor_phone: '+44 113 264 5295',
-    invoice_date: '2025-11-07',
-    due_date: '2025-12-08',
-    email_received_date: '2025-11-06',
-    customer_no: 'W4828999',
-    job_number: 'WO-2025-445',
-    currency: 'GBP',
-    subtotal: baselinePO2Subtotal,
-    tax_total: baselinePO2Tax,
-    tax_rate_percent: 20,
-    total: baselinePO2Total,
-    status: 'verification', // Verification stage (line item variances being checked)
-    match_status: 'variance', // Has variance on line 3
-    type: 'PO',
-    vendor_requires_po: true,
-    vendor_is_verified: true,
-    approval_status: 'pending',
-    assigned_to_name: 'James Wilson',
-    assigned_to_user_id: 'user-4',
-    po_numbers_cached: ['PO-2025-9011'],
-    gr_numbers: [],
-    docType: 'Invoice',
-    issues: ['Line Item Variance'],
-    created_at: baselinePO2Date.toISOString(),
-    updated_at: baselinePO2Date.toISOString(),
-    data_ingestion_date: baselinePO2Date.toISOString().split('T')[0],
-    lines: baselinePO2Lines,
-    invoice_lines: baselinePO2Lines,
-    // Payment bank details
-    payment_bank_details: {
-      bank_name: 'SANTANDER',
-      account_name: 'JanServ Plc',
-      account_number: '60891848',
-      sort_code: '09-01-29',
-      iban: 'GB44ABBY09012960891848',
-      swift: 'ABBYGB2LXXX',
-      bank_currency: 'GBP',
-      bank_address: 'Bridle Road, Bootle, Merseyside, United Kingdom (UK), GIR 0AA'
-    },
-    // Display configuration for blue header template (JanServ-inspired design)
-    display_config: {
-      template: 'blue-header'
-    }
   } as Invoice);
 
   // ========================================================================
