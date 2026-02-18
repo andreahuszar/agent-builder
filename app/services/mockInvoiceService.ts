@@ -181,6 +181,214 @@ export const generateBaselineInvoices = (): Invoice[] => {
   } as Invoice);
 
   // ========================================================================
+  // BASELINE PO INVOICE #2 - PERFECT MATCH BUT BANK DETAILS EXCEPTION
+  // ========================================================================
+  const baselinePOBankDate = new Date(now);
+  baselinePOBankDate.setDate(baselinePOBankDate.getDate() - 4); // Created 4 days ago
+  const baselinePOBankDueDate = new Date(baselinePOBankDate);
+  baselinePOBankDueDate.setDate(baselinePOBankDueDate.getDate() + 30); // Due in 26 days
+
+  const baselinePOBankLines = [
+    {
+      id: 'line-baseline-po-bank-1',
+      line_no: 1,
+      sku: '-',
+      description: 'Toyota Prius 2022 (7 days)',
+      qty: 7,
+      uom: 'DAYS',
+      unit_price: 120.00,
+      net_amount: 840.00,
+      tax_rate: 15,
+      tax_amount: 126.00,
+      line_total: 966.00,
+      po_line_id: 'po-line-9010-1',
+      gr_line_id: null,
+      ses_line_id: null,
+      notes: 'Class 2 Vehicle rental. Pick-up and drop-off from same location. Fleet Booking (rentalcars.com). Full-to-full return policy.'
+    },
+    {
+      id: 'line-baseline-po-bank-2',
+      line_no: 2,
+      sku: '-',
+      description: 'Motor Insurnace - Comprehensive (Class 2 Vehicle)',
+      qty: 7,
+      uom: 'DAYS',
+      unit_price: 30.00,
+      net_amount: 210.00,
+      tax_rate: 15,
+      tax_amount: 31.50,
+      line_total: 241.50,
+      po_line_id: 'po-line-9010-2',
+      gr_line_id: null,
+      ses_line_id: null,
+      notes: 'Full protection incl. 3rd-Party Liability'
+    }
+  ];
+
+  const baselinePOBankSubtotal = 1050.00;
+  const baselinePOBankTax = 157.50; // 15% tax
+  const baselinePOBankTotal = 1207.50;
+
+  mockInvoices.push({
+    id: 'baseline-po-bank-1',
+    invoice_number: 'IV472-884',
+    vehicle_registration_no: 'BIL5954',
+    customer_no: 'C1118382',
+    job_number: 'C1118382',
+    vendor_name_snapshot: 'Fleet Inc.',
+    vendor_id: 'VND0001544',
+    vendor_tax_id_snapshot: 'WB474PR',
+    vendor_email: 'receiveables@fleetinc.com',
+    vendor_phone: '+1 (253) 212-1077',
+    vendor_address_snapshot: '2608 84th Street Ct S, Lakewood, Washington (WA), 98499',
+    invoice_date: '2025-11-09',
+    due_date: '2025-12-09',
+    email_received_date: '2025-11-08',
+    payment_terms: 'NET 30',
+    currency: 'USD',
+    subtotal: baselinePOBankSubtotal,
+    tax_total: baselinePOBankTax,
+    tax_rate_percent: 15,
+    total: baselinePOBankTotal,
+    status: 'verification', // Verification stage (bank details need verification)
+    match_status: 'exception', // Exception due to bank details only
+    type: 'PO',
+    vendor_requires_po: true,
+    vendor_is_verified: true,
+    approval_status: 'pending',
+    assigned_to_name: 'James Wilson',
+    assigned_to_user_id: 'user-4',
+    po_numbers_cached: ['PO-2025-9010'],
+    bill_to_snapshot: {
+      legal_name: 'GSPV Ltd',
+      address: 'Senna Building, Gorsuch Pl, London, E2 8JF',
+      tax_id: '927 8131 1',
+      email: 'phil@xelix.com',
+      phone: '+44 20 8648 4267'
+    },
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: ['Bank Details Change'],
+    created_at: baselinePOBankDate.toISOString(),
+    updated_at: baselinePOBankDate.toISOString(),
+    data_ingestion_date: baselinePOBankDate.toISOString().split('T')[0],
+    lines: baselinePOBankLines,
+    invoice_lines: baselinePOBankLines,
+    // Payment bank details (new account that differs from MVD)
+    payment_bank_details: {
+      bank_name: 'EASTERN BANK',
+      account_name: 'Fleet Inc.',
+      account_number: '13719713158835300',
+      routing_number: '011002550',
+      iban: 'GB82 WEST 2014 5370 0123 87',
+      swift_bic: 'EASTUSX1',
+      sort_code: '20-14-53',
+      bank_currency: 'USD',
+      bank_address: '195 MARKET STREET, LYNN, MASSACHUSETTS MA, 01901'
+    },
+    // Bank details exception - account changed
+    validation_warnings: [{
+      type: 'bank_details_change',
+      category: 'risk',
+      field: 'payment_bank_details',
+      message: 'Bank account changed since last invoice',
+      severity: 'error',
+      old_bank_details: {
+        bank_name: 'WESTERN BANK',
+        account_name: 'Fleet Inc.',
+        account_number: '98765432101',
+        routing_number: '011002551',
+        iban: 'GB29 NWBK 6016 1331 9268 19',
+        swift_bic: 'NWBKGB2L',
+        sort_code: '60-16-13',
+        bank_currency: 'USD',
+        bank_address: '195 MARKET STREET, LYNN, MASSACHUSETTS MA, 01901'
+      },
+      new_bank_details: {
+        bank_name: 'EASTERN BANK',
+        account_name: 'Fleet Inc.',
+        account_number: '13719713158835300',
+        routing_number: '011002550',
+        iban: 'GB82 WEST 2014 5370 0123 87',
+        swift_bic: 'EASTUSX1',
+        sort_code: '20-14-53',
+        bank_currency: 'USD',
+        bank_address: '195 MARKET STREET, LYNN, MASSACHUSETTS MA, 01901'
+      },
+      // Legacy fields for backward compatibility
+      old_account: '****2101',
+      new_account: '****5300'
+    }],
+    // Requisitioner information for verification email
+    requisitioner: {
+      name: 'Sarah Johnson',
+      email: 'sarah.johnson@company.com',
+      department: 'Sales'
+    },
+    // OCR extractions with confidence scores
+    ocr_extractions: {
+      invoice_number: {
+        value: 'IV472-884',
+        confidence: 0.96,
+        candidates: []
+      },
+      customer_no: {
+        value: 'C1118382',
+        confidence: 0.94,
+        candidates: []
+      },
+      job_number: {
+        value: 'C1118382',
+        confidence: 0.94,
+        candidates: []
+      },
+      vehicle_registration_no: {
+        value: 'BIL5954',
+        confidence: 0.92,
+        candidates: []
+      },
+      po_numbers_cached: {
+        value: 'PO-2025-9010',
+        confidence: 0.95,
+        candidates: []
+      }
+    },
+    // Auto-corrections for fields that were mixed up on scanned document
+    auto_corrections: [
+      {
+        field: 'invoice_number',
+        original_value: 'PO-2025-9010',
+        corrected_value: 'IV472-884',
+        reason: 'Invoice and PO numbers were swapped on the scanned document. Auto-corrected based on detected numbering patterns.',
+        vendor_name: 'Fleet Inc.',
+        document_type: 'invoice',
+        recent_documents: [
+          { number: 'IV472-882', date: 'Oct 20, 2025', amount: '$1,150.00' },
+          { number: 'IV472-883', date: 'Nov 1, 2025', amount: '$890.50' },
+          { number: 'IV472-884', date: 'Nov 9, 2025', amount: '$1,207.50', is_current: true }
+        ]
+      },
+      {
+        field: 'po_numbers_cached',
+        original_value: 'IV472-884',
+        corrected_value: 'PO-2025-9010',
+        reason: 'Invoice and PO numbers were swapped on the scanned document. Auto-corrected based on detected numbering patterns.',
+        vendor_name: 'Fleet Inc.',
+        document_type: 'po',
+        recent_documents: [
+          { number: 'PO-2025-9008', date: 'Oct 15, 2025', amount: '$2,100.00' },
+          { number: 'PO-2025-9009', date: 'Oct 28, 2025', amount: '$950.00' },
+          { number: 'PO-2025-9010', date: 'Nov 5, 2025', amount: '$1,207.50', is_current: true }
+        ]
+      }
+    ],
+    // Display configuration for simple table invoice template
+    display_config: {
+      template: 'simple-table-invoice'
+    }
+  } as Invoice);
+
+  // ========================================================================
   // MULTI-PO INVOICE (Test for multiple PO matching)
   // ========================================================================
   const multiPODate = new Date(now);
@@ -887,214 +1095,6 @@ export const generateBaselineInvoices = (): Invoice[] => {
     // Display configuration for blue header template (JanServ-inspired design)
     display_config: {
       template: 'blue-header'
-    }
-  } as Invoice);
-
-  // ========================================================================
-  // BASELINE PO INVOICE #3 - PERFECT MATCH BUT BANK DETAILS EXCEPTION
-  // ========================================================================
-  const baselinePOBankDate = new Date(now);
-  baselinePOBankDate.setDate(baselinePOBankDate.getDate() - 4); // Created 4 days ago
-  const baselinePOBankDueDate = new Date(baselinePOBankDate);
-  baselinePOBankDueDate.setDate(baselinePOBankDueDate.getDate() + 30); // Due in 26 days
-
-  const baselinePOBankLines = [
-    {
-      id: 'line-baseline-po-bank-1',
-      line_no: 1,
-      sku: '-',
-      description: 'Toyota Prius 2022 (7 days)',
-      qty: 7,
-      uom: 'DAYS',
-      unit_price: 120.00,
-      net_amount: 840.00,
-      tax_rate: 15,
-      tax_amount: 126.00,
-      line_total: 966.00,
-      po_line_id: 'po-line-9010-1',
-      gr_line_id: null,
-      ses_line_id: null,
-      notes: 'Class 2 Vehicle rental. Pick-up and drop-off from same location. Fleet Booking (rentalcars.com). Full-to-full return policy.'
-    },
-    {
-      id: 'line-baseline-po-bank-2',
-      line_no: 2,
-      sku: '-',
-      description: 'Motor Insurnace - Comprehensive (Class 2 Vehicle)',
-      qty: 7,
-      uom: 'DAYS',
-      unit_price: 30.00,
-      net_amount: 210.00,
-      tax_rate: 15,
-      tax_amount: 31.50,
-      line_total: 241.50,
-      po_line_id: 'po-line-9010-2',
-      gr_line_id: null,
-      ses_line_id: null,
-      notes: 'Full protection incl. 3rd-Party Liability'
-    }
-  ];
-
-  const baselinePOBankSubtotal = 1050.00;
-  const baselinePOBankTax = 157.50; // 15% tax
-  const baselinePOBankTotal = 1207.50;
-
-  mockInvoices.push({
-    id: 'baseline-po-bank-1',
-    invoice_number: 'IV472-884',
-    vehicle_registration_no: 'BIL5954',
-    customer_no: 'C1118382',
-    job_number: 'C1118382',
-    vendor_name_snapshot: 'Fleet Inc.',
-    vendor_id: 'VND0001544',
-    vendor_tax_id_snapshot: 'WB474PR',
-    vendor_email: 'receiveables@fleetinc.com',
-    vendor_phone: '+1 (253) 212-1077',
-    vendor_address_snapshot: '2608 84th Street Ct S, Lakewood, Washington (WA), 98499',
-    invoice_date: '2025-11-09',
-    due_date: '2025-12-09',
-    email_received_date: '2025-11-08',
-    payment_terms: 'NET 30',
-    currency: 'USD',
-    subtotal: baselinePOBankSubtotal,
-    tax_total: baselinePOBankTax,
-    tax_rate_percent: 15,
-    total: baselinePOBankTotal,
-    status: 'verification', // Verification stage (bank details need verification)
-    match_status: 'exception', // Exception due to bank details only
-    type: 'PO',
-    vendor_requires_po: true,
-    vendor_is_verified: true,
-    approval_status: 'pending',
-    assigned_to_name: 'James Wilson',
-    assigned_to_user_id: 'user-4',
-    po_numbers_cached: ['PO-2025-9010'],
-    bill_to_snapshot: {
-      legal_name: 'GSPV Ltd',
-      address: 'Senna Building, Gorsuch Pl, London, E2 8JF',
-      tax_id: '927 8131 1',
-      email: 'phil@xelix.com',
-      phone: '+44 20 8648 4267'
-    },
-    gr_numbers: [],
-    docType: 'Invoice',
-    issues: ['Bank Details Change'],
-    created_at: baselinePOBankDate.toISOString(),
-    updated_at: baselinePOBankDate.toISOString(),
-    data_ingestion_date: baselinePOBankDate.toISOString().split('T')[0],
-    lines: baselinePOBankLines,
-    invoice_lines: baselinePOBankLines,
-    // Payment bank details (new account that differs from MVD)
-    payment_bank_details: {
-      bank_name: 'EASTERN BANK',
-      account_name: 'Fleet Inc.',
-      account_number: '13719713158835300',
-      routing_number: '011002550',
-      iban: 'GB82 WEST 2014 5370 0123 87',
-      swift_bic: 'EASTUSX1',
-      sort_code: '20-14-53',
-      bank_currency: 'USD',
-      bank_address: '195 MARKET STREET, LYNN, MASSACHUSETTS MA, 01901'
-    },
-    // Bank details exception - account changed
-    validation_warnings: [{
-      type: 'bank_details_change',
-      category: 'risk',
-      field: 'payment_bank_details',
-      message: 'Bank account changed since last invoice',
-      severity: 'error',
-      old_bank_details: {
-        bank_name: 'WESTERN BANK',
-        account_name: 'Fleet Inc.',
-        account_number: '98765432101',
-        routing_number: '011002551',
-        iban: 'GB29 NWBK 6016 1331 9268 19',
-        swift_bic: 'NWBKGB2L',
-        sort_code: '60-16-13',
-        bank_currency: 'USD',
-        bank_address: '195 MARKET STREET, LYNN, MASSACHUSETTS MA, 01901'
-      },
-      new_bank_details: {
-        bank_name: 'EASTERN BANK',
-        account_name: 'Fleet Inc.',
-        account_number: '13719713158835300',
-        routing_number: '011002550',
-        iban: 'GB82 WEST 2014 5370 0123 87',
-        swift_bic: 'EASTUSX1',
-        sort_code: '20-14-53',
-        bank_currency: 'USD',
-        bank_address: '195 MARKET STREET, LYNN, MASSACHUSETTS MA, 01901'
-      },
-      // Legacy fields for backward compatibility
-      old_account: '****2101',
-      new_account: '****5300'
-    }],
-    // Requisitioner information for verification email
-    requisitioner: {
-      name: 'Sarah Johnson',
-      email: 'sarah.johnson@company.com',
-      department: 'Sales'
-    },
-    // OCR extractions with confidence scores
-    ocr_extractions: {
-      invoice_number: {
-        value: 'IV472-884',
-        confidence: 0.96,
-        candidates: []
-      },
-      customer_no: {
-        value: 'C1118382',
-        confidence: 0.94,
-        candidates: []
-      },
-      job_number: {
-        value: 'C1118382',
-        confidence: 0.94,
-        candidates: []
-      },
-      vehicle_registration_no: {
-        value: 'BIL5954',
-        confidence: 0.92,
-        candidates: []
-      },
-      po_numbers_cached: {
-        value: 'PO-2025-9010',
-        confidence: 0.95,
-        candidates: []
-      }
-    },
-    // Auto-corrections for fields that were mixed up on scanned document
-    auto_corrections: [
-      {
-        field: 'invoice_number',
-        original_value: 'PO-2025-9010',
-        corrected_value: 'IV472-884',
-        reason: 'Invoice and PO numbers were swapped on the scanned document. Auto-corrected based on detected numbering patterns.',
-        vendor_name: 'Fleet Inc.',
-        document_type: 'invoice',
-        recent_documents: [
-          { number: 'IV472-882', date: 'Oct 20, 2025', amount: '$1,150.00' },
-          { number: 'IV472-883', date: 'Nov 1, 2025', amount: '$890.50' },
-          { number: 'IV472-884', date: 'Nov 9, 2025', amount: '$1,207.50', is_current: true }
-        ]
-      },
-      {
-        field: 'po_numbers_cached',
-        original_value: 'IV472-884',
-        corrected_value: 'PO-2025-9010',
-        reason: 'Invoice and PO numbers were swapped on the scanned document. Auto-corrected based on detected numbering patterns.',
-        vendor_name: 'Fleet Inc.',
-        document_type: 'po',
-        recent_documents: [
-          { number: 'PO-2025-9008', date: 'Oct 15, 2025', amount: '$2,100.00' },
-          { number: 'PO-2025-9009', date: 'Oct 28, 2025', amount: '$950.00' },
-          { number: 'PO-2025-9010', date: 'Nov 5, 2025', amount: '$1,207.50', is_current: true }
-        ]
-      }
-    ],
-    // Display configuration for simple table invoice template
-    display_config: {
-      template: 'simple-table-invoice'
     }
   } as Invoice);
 
