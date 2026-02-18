@@ -388,6 +388,167 @@ export const generateBaselineInvoices = (): Invoice[] => {
     }
   } as Invoice);
 
+  // ============================================================================
+  // MISSING PO INVOICE - Premier Office Supplies
+  // ============================================================================
+  // Complete invoice but missing PO field - needs PO assignment
+
+  const missingPODate = new Date('2025-10-21');
+  const missingPODueDate = new Date('2025-11-20');
+
+  const missingPOLines = [
+    {
+      id: 'line-missing-po-1',
+      line_no: 1,
+      description: 'Premium Copy Paper, 8.5×11, 20lb, White',
+      sku: 'PA1144',
+      notes: 'Reem of 100gsm premium paper',
+      qty: 10,
+      uom: 'RM',
+      unit_price: 45.00,
+      net_amount: 450.00,
+      tax_rate: 20,
+      tax_amount: 90.00,
+      line_total: 540.00,
+      po_line_id: null, // No PO match
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-missing-po-2',
+      line_no: 2,
+      description: 'Laser Printer Toner Cartridge, Black, High Yield',
+      sku: 'PR4882',
+      qty: 5,
+      uom: 'EA',
+      unit_price: 89.00,
+      net_amount: 445.00,
+      tax_rate: 20,
+      tax_amount: 89.00,
+      line_total: 534.00,
+      po_line_id: null, // No PO match
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-missing-po-3',
+      line_no: 3,
+      description: 'Manila File Folders, Letter Size, Box of 100',
+      sku: 'FO1134',
+      qty: 3,
+      uom: 'BX',
+      unit_price: 18.50,
+      net_amount: 55.50,
+      tax_rate: 20,
+      tax_amount: 11.10,
+      line_total: 66.60,
+      po_line_id: null, // No PO match
+      gr_line_id: null,
+      ses_line_id: null
+    },
+    {
+      id: 'line-missing-po-4',
+      line_no: 4,
+      description: 'Ballpoint Pens, Black, Medium Point, Box of 12',
+      sku: 'PE8447',
+      qty: 8,
+      uom: 'BX',
+      unit_price: 6.25,
+      net_amount: 50.00,
+      tax_rate: 20,
+      tax_amount: 10.00,
+      line_total: 60.00,
+      po_line_id: null, // No PO match
+      gr_line_id: null,
+      ses_line_id: null
+    }
+  ];
+
+  const missingPOSubtotal = 1000.50;
+  const missingPOTax = 200.10; // 20% sales tax
+  const missingPOTotal = 1200.60;
+
+  mockInvoices.push({
+    id: 'missing-po-1',
+    invoice_number: 'POS-2025-8842',
+    job_number: 'JOB-2025-450',
+    vendor_name_snapshot: 'Premier Office Supplies',
+    vendor_id: 'VND-5002',
+    vendor_tax_id_snapshot: 'WB994610',
+    vendor_address_snapshot: '19200 SW 116th Ave Miami FL 33157',
+    vendor_country_snapshot: 'United States of America (USA)',
+    invoice_date: missingPODate.toISOString().split('T')[0],
+    due_date: missingPODueDate.toISOString().split('T')[0],
+    email_received_date: (() => { const d = new Date(missingPODate); d.setDate(d.getDate() - 1); return d.toISOString().split('T')[0]; })(),
+    currency: 'USD',
+    customer_no: 'CUST661000',
+    subtotal: missingPOSubtotal,
+    tax_total: missingPOTax,
+    tax_rate_percent: 20,
+    total: missingPOTotal,
+    status: 'verification', // Verification stage (close match PO needs user confirmation)
+    match_status: 'exception', // Missing PO - no PO assigned yet
+    type: 'PO',
+    vendor_requires_po: true, // This vendor requires PO
+    vendor_is_verified: true,
+    approval_status: 'pending',
+    // No assigned approver yet - this invoice needs review before assignment
+    assigned_to_name: undefined,
+    assigned_to_user_id: undefined,
+    po_numbers_cached: [], // Empty - no PO assigned yet (user must accept AI suggestion)
+    po_id: null, // No PO ID until user accepts the close_match_po suggestion
+    gr_numbers: [],
+    docType: 'Invoice',
+    issues: ['Missing PO'],
+    created_at: missingPODate.toISOString(),
+    updated_at: missingPODate.toISOString(),
+    data_ingestion_date: missingPODate.toISOString().split('T')[0],
+    lines: missingPOLines,
+    invoice_lines: missingPOLines,
+    bill_to_snapshot: {
+      legal_name: 'GPSV Ltd',
+      address: 'Senna Building, Gorsuch Pl, London, Greater London, United Kingdom (UK) - E2 8JF',
+      tax_id: '927 8131 1',
+      email: 'accountspayables@xelix.com'
+    },
+    payment_method: 'bank_transfer',
+    payment_bank_details: {
+      bank_name: 'Commerce Bank',
+      account_name: 'Premier Office Supplies',
+      account_number: '55667789876',
+      routing_number: '987654321',
+      bank_address: 'Commerce Bank, 1000 Walnut Street, Kansas City, MO 64106',
+    },
+    // Validation warnings (empty - missing PO is handled by InvoiceValidator)
+    validation_warnings: [],
+    // Close match AI suggestion for PO
+    close_match_po: {
+      po_number: 'PO-2025-8901',
+      confidence: 1.0,
+      matching_factors: {
+        vendor_match: true,
+        date_proximity_days: 3,      // PO created Oct 18, invoice Oct 21
+        line_items_overlap: 4,        // All 4 invoice items match PO
+        total_line_items: 4,          // Total number of invoice line items
+        variance_count: 0,            // No variance
+      },
+      po_summary: {
+        total: 1000.50,               // Matches invoice subtotal (before tax)
+        created_date: '2025-10-18',
+        vendor_name: 'Premier Office Supplies',
+        line_count: 4                 // Perfect match - 4 items
+      }
+    },
+    // Extraction field confidences
+    extraction_field_confidences: {
+      po_numbers_cached: 0,  // 0% confidence - PO not found on document
+    },
+    // Display configuration for green Premier Office Supplies template
+    display_config: {
+      template: 'green-premier'
+    }
+  } as Invoice);
+
   // ========================================================================
   // MULTI-PO INVOICE (Test for multiple PO matching)
   // ========================================================================
@@ -1095,167 +1256,6 @@ export const generateBaselineInvoices = (): Invoice[] => {
     // Display configuration for blue header template (JanServ-inspired design)
     display_config: {
       template: 'blue-header'
-    }
-  } as Invoice);
-
-  // ============================================================================
-  // MISSING PO INVOICE - Premier Office Supplies
-  // ============================================================================
-  // Complete invoice but missing PO field - needs PO assignment
-
-  const missingPODate = new Date('2025-10-21');
-  const missingPODueDate = new Date('2025-11-20');
-
-  const missingPOLines = [
-    {
-      id: 'line-missing-po-1',
-      line_no: 1,
-      description: 'Premium Copy Paper, 8.5×11, 20lb, White',
-      sku: 'PA1144',
-      notes: 'Reem of 100gsm premium paper',
-      qty: 10,
-      uom: 'RM',
-      unit_price: 45.00,
-      net_amount: 450.00,
-      tax_rate: 20,
-      tax_amount: 90.00,
-      line_total: 540.00,
-      po_line_id: null, // No PO match
-      gr_line_id: null,
-      ses_line_id: null
-    },
-    {
-      id: 'line-missing-po-2',
-      line_no: 2,
-      description: 'Laser Printer Toner Cartridge, Black, High Yield',
-      sku: 'PR4882',
-      qty: 5,
-      uom: 'EA',
-      unit_price: 89.00,
-      net_amount: 445.00,
-      tax_rate: 20,
-      tax_amount: 89.00,
-      line_total: 534.00,
-      po_line_id: null, // No PO match
-      gr_line_id: null,
-      ses_line_id: null
-    },
-    {
-      id: 'line-missing-po-3',
-      line_no: 3,
-      description: 'Manila File Folders, Letter Size, Box of 100',
-      sku: 'FO1134',
-      qty: 3,
-      uom: 'BX',
-      unit_price: 18.50,
-      net_amount: 55.50,
-      tax_rate: 20,
-      tax_amount: 11.10,
-      line_total: 66.60,
-      po_line_id: null, // No PO match
-      gr_line_id: null,
-      ses_line_id: null
-    },
-    {
-      id: 'line-missing-po-4',
-      line_no: 4,
-      description: 'Ballpoint Pens, Black, Medium Point, Box of 12',
-      sku: 'PE8447',
-      qty: 8,
-      uom: 'BX',
-      unit_price: 6.25,
-      net_amount: 50.00,
-      tax_rate: 20,
-      tax_amount: 10.00,
-      line_total: 60.00,
-      po_line_id: null, // No PO match
-      gr_line_id: null,
-      ses_line_id: null
-    }
-  ];
-
-  const missingPOSubtotal = 1000.50;
-  const missingPOTax = 200.10; // 20% sales tax
-  const missingPOTotal = 1200.60;
-
-  mockInvoices.push({
-    id: 'missing-po-1',
-    invoice_number: 'POS-2025-8842',
-    job_number: 'JOB-2025-450',
-    vendor_name_snapshot: 'Premier Office Supplies',
-    vendor_id: 'VND-5002',
-    vendor_tax_id_snapshot: 'WB994610',
-    vendor_address_snapshot: '19200 SW 116th Ave Miami FL 33157',
-    vendor_country_snapshot: 'United States of America (USA)',
-    invoice_date: missingPODate.toISOString().split('T')[0],
-    due_date: missingPODueDate.toISOString().split('T')[0],
-    email_received_date: (() => { const d = new Date(missingPODate); d.setDate(d.getDate() - 1); return d.toISOString().split('T')[0]; })(),
-    currency: 'USD',
-    customer_no: 'CUST661000',
-    subtotal: missingPOSubtotal,
-    tax_total: missingPOTax,
-    tax_rate_percent: 20,
-    total: missingPOTotal,
-    status: 'verification', // Verification stage (close match PO needs user confirmation)
-    match_status: 'exception', // Missing PO - no PO assigned yet
-    type: 'PO',
-    vendor_requires_po: true, // This vendor requires PO
-    vendor_is_verified: true,
-    approval_status: 'pending',
-    // No assigned approver yet - this invoice needs review before assignment
-    assigned_to_name: undefined,
-    assigned_to_user_id: undefined,
-    po_numbers_cached: [], // Empty - no PO assigned yet (user must accept AI suggestion)
-    po_id: null, // No PO ID until user accepts the close_match_po suggestion
-    gr_numbers: [],
-    docType: 'Invoice',
-    issues: ['Missing PO'],
-    created_at: missingPODate.toISOString(),
-    updated_at: missingPODate.toISOString(),
-    data_ingestion_date: missingPODate.toISOString().split('T')[0],
-    lines: missingPOLines,
-    invoice_lines: missingPOLines,
-    bill_to_snapshot: {
-      legal_name: 'GPSV Ltd',
-      address: 'Senna Building, Gorsuch Pl, London, Greater London, United Kingdom (UK) - E2 8JF',
-      tax_id: '927 8131 1',
-      email: 'accountspayables@xelix.com'
-    },
-    payment_method: 'bank_transfer',
-    payment_bank_details: {
-      bank_name: 'Commerce Bank',
-      account_name: 'Premier Office Supplies',
-      account_number: '55667789876',
-      routing_number: '987654321',
-      bank_address: 'Commerce Bank, 1000 Walnut Street, Kansas City, MO 64106',
-    },
-    // Validation warnings (empty - missing PO is handled by InvoiceValidator)
-    validation_warnings: [],
-    // Close match AI suggestion for PO
-    close_match_po: {
-      po_number: 'PO-2025-8901',
-      confidence: 1.0,
-      matching_factors: {
-        vendor_match: true,
-        date_proximity_days: 3,      // PO created Oct 18, invoice Oct 21
-        line_items_overlap: 4,        // All 4 invoice items match PO
-        total_line_items: 4,          // Total number of invoice line items
-        variance_count: 0,            // No variance
-      },
-      po_summary: {
-        total: 1000.50,               // Matches invoice subtotal (before tax)
-        created_date: '2025-10-18',
-        vendor_name: 'Premier Office Supplies',
-        line_count: 4                 // Perfect match - 4 items
-      }
-    },
-    // Extraction field confidences
-    extraction_field_confidences: {
-      po_numbers_cached: 0,  // 0% confidence - PO not found on document
-    },
-    // Display configuration for green Premier Office Supplies template
-    display_config: {
-      template: 'green-premier'
     }
   } as Invoice);
 
