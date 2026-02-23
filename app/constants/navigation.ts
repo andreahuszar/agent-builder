@@ -1,4 +1,4 @@
-import { Receipt, ArrowLeftRight, FileCheck, Building, TrendingUp, Inbox, Settings } from 'lucide-react';
+import { Receipt, ArrowLeftRight, FileCheck, Building, TrendingUp, Inbox, Settings, Brain } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
 // UI Constants
@@ -47,6 +47,12 @@ export const NAV_ITEMS: NavItem[] = [
     label: 'Vendors',
     icon: Building,
     href: '/vendors',
+  },
+  {
+    id: 'ai-insights',
+    label: 'AI Insights',
+    icon: Brain,
+    href: '/ai-insights',
   },
   {
     id: 'reports',
@@ -123,6 +129,11 @@ export const MODULE_PILLS: Record<string, TabItem[]> = {
   ],
   'vendors': [
     { id: 'vendors', label: 'Vendors', href: '/vendors' },
+  ],
+  'ai-insights': [
+    { id: 'overview', label: 'Overview', href: '/ai-insights' },
+    { id: 'agents', label: 'Agent Performance', href: '/ai-insights#agents' },
+    { id: 'savings', label: 'Cost Savings', href: '/ai-insights#savings' },
   ],
   'reports': [
     { id: 'overview', label: 'Overview', href: '/reports' },
