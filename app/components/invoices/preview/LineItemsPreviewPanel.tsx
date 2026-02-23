@@ -4365,18 +4365,9 @@ export function LineItemsPreviewPanel({
                                         </Tooltip.Trigger>
                                       </SmartMatchPopover>
                                     )}
-                                    <Tooltip.Portal>
-                                      <Tooltip.Content style={{zIndex: 9999}} className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]" sideOffset={5}>
-                                        <div className="space-y-1">
-                                          <p className="font-semibold">Smart Match Applied</p>
-                                          <p>Click to review or unmatch</p>
-                                        </div>
-                                        <Tooltip.Arrow className="fill-gray-900" />
-                                      </Tooltip.Content>
-                                    </Tooltip.Portal>
                                   </Tooltip.Root>
                                 </Tooltip.Provider>
-                              )}
+                              ) : null}
                             </td>
                             <td className="px-1.5 py-2 text-xs text-center">
                               <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
