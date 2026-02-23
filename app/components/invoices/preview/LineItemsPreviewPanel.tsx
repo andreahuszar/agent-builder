@@ -52,6 +52,7 @@ interface InvoiceLineItem {
     conversion_factor: number;
     explanation: string;
   };
+  suppress_price_variance?: boolean;
 }
 
 interface POLineItem {
@@ -1465,6 +1466,35 @@ export function LineItemsPreviewPanel({
 
     return false;
   };
+  
+  // Check if line has any visible variance (for row background highlighting)
+  const hasAnyVariance = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): boolean => {
+    if (!poLine) return false;
+    
+    const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
+    
+    // Skip if manually matched or has custom rule/UoM conversion
+    if (manuallyMatchedLines.has(lineId) || hasCustomRuleMatch(invoiceLine, poLine) || hasMatchedUomDifference(invoiceLine, poLine)) {
+      return false;
+    }
+    
+    // Check for description variance
+    if ((unmatchedLines.has(lineId) && hasDescriptionDifference(invoiceLine, poLine)) || hasSuggestion(invoiceLine)) {
+      return true;
+    }
+    
+    // Check for quantity variance
+    if (Math.abs(invoiceLine.qty - poLine.qty_ordered) > 0.01) {
+      return true;
+    }
+    
+    // Check for unit price variance (unless suppressed)
+    if (Math.abs(invoiceLine.unit_price - poLine.unit_price) > 0.01 && !invoiceLine.suppress_price_variance) {
+      return true;
+    }
+    
+    return false;
+  };
 
   // Get status for an invoice line
   const getLineStatus = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): 'variance' | 'matched' | 'missing' => {
@@ -2409,11 +2439,7 @@ export function LineItemsPreviewPanel({
                               </span>
                             )}
                           </td>
-                          <td className={`px-1 py-2 text-xs text-gray-950 ${
-                            (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
-                              ? 'bg-red-50'
-                              : ''
-                          }`}>
+                          <td className="px-1 py-2 text-xs text-gray-950">
                             {isEditMode ? (
                               <input
                                 type="text"
@@ -2422,7 +2448,11 @@ export function LineItemsPreviewPanel({
                                 className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                               />
                             ) : (
-                              <div className="truncate max-w-[160px]" title={line.description}>
+                              <div className={`truncate max-w-[160px] ${
+                                (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
+                                  ? 'font-bold text-red-600'
+                                  : ''
+                              }`} title={line.description}>
                                 {line.description}
                               </div>
                             )}
@@ -2430,11 +2460,7 @@ export function LineItemsPreviewPanel({
                           <td className="px-1 py-2 text-xs text-gray-950 w-16">
                             {getSKU(line)}
                           </td>
-                          <td className={`px-1 py-2 text-xs text-right text-gray-950 w-12 ${
-                            matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
-                              ? 'bg-red-50'
-                              : ''
-                          }`}>
+                          <td className="px-1 py-2 text-xs text-right text-gray-950 w-12">
                             {isEditMode ? (
                               <input
                                 type="number"
@@ -2480,7 +2506,8 @@ export function LineItemsPreviewPanel({
                                   </div>
                                 );
                               }
-                              return line.qty;
+                              const hasVariance = matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO);
+                              return <span className={hasVariance ? 'font-bold text-red-600' : ''}>{line.qty}</span>;
                             })()}
                           </td>
                           <td className="px-1 py-2 text-xs text-center text-gray-950 w-10">
@@ -2495,24 +2522,26 @@ export function LineItemsPreviewPanel({
                               line.uom
                             )}
                           </td>
-                          <td className={`px-1 py-2 text-xs text-right text-gray-950 w-16 ${
-                            matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
-                              ? 'bg-red-50'
-                              : ''
-                          }`}>
+                          <td className="px-1 py-2 text-xs text-right text-gray-950 w-16">
                             {isEditMode ? (
                               <input
                                 type="number"
                                 value={line.unit_price}
                                 onChange={(e) => handleLineChange(lineIndex, 'unit_price', parseFloat(e.target.value) || 0)}
                                 className={`w-14 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
-                                  matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
+                                  matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO) && !line.suppress_price_variance
                                     ? ''
                                     : 'border border-gray-300'
                                 }`}
                               />
                             ) : (
-                              formatCurrency(line.unit_price)
+                              <span className={
+                                matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO) && !line.suppress_price_variance && !line.suppress_price_variance
+                                  ? 'font-bold text-red-600'
+                                  : ''
+                              }>
+                                {formatCurrency(line.unit_price)}
+                              </span>
                             )}
                           </td>
                           <td className="pl-1 pr-2 py-2 text-xs text-right font-medium text-gray-950 w-20">
@@ -2534,7 +2563,7 @@ export function LineItemsPreviewPanel({
                                           Qty: {line.qty > matchedPO.qty_ordered ? '+' : ''}{(line.qty - matchedPO.qty_ordered).toFixed(2)}
                                         </span>
                                       )}
-                                      {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && (
+                                      {Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !line.suppress_price_variance && (
                                         <span className={`text-xs font-semibold ${
                                           hasMatchedUomDifference(line, matchedPO) ? 'text-purple-700' : 'text-red-600'
                                         }`}>
@@ -2781,7 +2810,7 @@ export function LineItemsPreviewPanel({
                           <DraggableDroppableRow
                             key={line.id || line.line_no}
                             id={line.id || `line-${line.line_no}`}
-                            className={`h-[48px] group ${getRowHighlightClass(line) || 'bg-white'}`}
+                            className={`h-[48px] group ${getRowHighlightClass(line) || (hasAnyVariance(line, matchedPO) ? 'bg-red-50/30 hover:bg-red-50/40' : 'bg-white')}`}
                             isHovered={hoveredPosition === slot.position}
                             onMouseEnter={() => handleRowHover(slot.position)}
                             onMouseLeave={handleRowLeave}
@@ -2791,7 +2820,15 @@ export function LineItemsPreviewPanel({
                         ) : (
                           <tr
                             key={line.id || line.line_no}
-                            className={`h-[48px] group ${getRowHighlightClass(line)} ${hoveredPosition === slot.position ? 'bg-purple-50' : (getRowHighlightClass(line) ? '' : 'bg-white hover:bg-purple-50')}`}
+                            className={`h-[48px] group ${getRowHighlightClass(line)} ${
+                              hoveredPosition === slot.position 
+                                ? 'bg-purple-50' 
+                                : hasAnyVariance(line, matchedPO)
+                                  ? 'bg-red-50/30 hover:bg-red-50/40'
+                                  : getRowHighlightClass(line) 
+                                    ? '' 
+                                    : 'bg-white hover:bg-purple-50'
+                            }`}
                             onMouseEnter={() => handleRowHover(slot.position)}
                             onMouseLeave={handleRowLeave}
                           >
@@ -2960,39 +2997,55 @@ export function LineItemsPreviewPanel({
                       return (
                         <tr
                           key={matchedPO.id}
-                          className={`h-[48px] ${getPORowHighlightClass(matchedPO)} ${hoveredPosition === slot.position ? 'bg-purple-50' : (getPORowHighlightClass(matchedPO) ? '' : 'bg-white hover:bg-purple-50')}`}
+                          className={`h-[48px] ${getPORowHighlightClass(matchedPO)} ${
+                            hoveredPosition === slot.position 
+                              ? 'bg-purple-50' 
+                              : invLine && hasAnyVariance(invLine, matchedPO)
+                                ? 'bg-red-50/30 hover:bg-red-50/40'
+                                : getPORowHighlightClass(matchedPO) 
+                                  ? '' 
+                                  : 'bg-white hover:bg-purple-50'
+                          }`}
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
                         >
                           <td className={`pl-3 pr-1 py-2 text-xs text-right text-gray-950 w-6 ${getPORowBorderClass(matchedPO)}`}>{matchedPO.line_no}</td>
-                          <td className={`px-1 py-2 text-xs text-gray-950 ${
-                            invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && hasDescriptionDifference(invLine, matchedPO)) || hasSuggestion(invLine))
-                              ? 'bg-red-50'
-                              : ''
-                          }`}>
-                            <div className="truncate max-w-[160px]" title={matchedPO.description}>
+                          <td className="px-1 py-2 text-xs text-gray-950">
+                            <div className={`truncate max-w-[160px] ${
+                              invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && hasDescriptionDifference(invLine, matchedPO)) || hasSuggestion(invLine))
+                                ? 'font-bold text-red-600'
+                                : ''
+                            }`} title={matchedPO.description}>
                               {matchedPO.item_description || matchedPO.description}
                             </div>
                           </td>
                           <td className="px-1 py-2 text-xs text-gray-950 w-16">{matchedPO.sku || '-'}</td>
-                          <td className={`px-1 py-2 text-xs text-right text-gray-950 w-8 ${
-                            invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01 && !hasCustomRuleMatch(invLine, matchedPO) && !hasMatchedUomDifference(invLine, matchedPO)
-                              ? 'bg-red-50'
-                              : ''
-                          }`}>
-                            {matchedPO.qty_ordered}
+                          <td className="px-1 py-2 text-xs text-right text-gray-950 w-8">
+                            <span className={
+                              invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01 && !hasCustomRuleMatch(invLine, matchedPO) && !hasMatchedUomDifference(invLine, matchedPO)
+                                ? 'font-bold text-red-600'
+                                : ''
+                            }>
+                              {matchedPO.qty_ordered}
+                            </span>
                           </td>
-                          <td className={`px-1 py-2 text-xs text-center text-gray-950 w-10 ${
-                            invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01 && !hasCustomRuleMatch(invLine, matchedPO) && !hasMatchedUomDifference(invLine, matchedPO) && invLine.uom.toLowerCase() !== matchedPO.uom.toLowerCase()
-                              ? 'bg-red-50'
-                              : ''
-                          }`}>{matchedPO.uom}</td>
-                          <td className={`px-1 py-2 text-xs text-right text-gray-950 w-16 ${
-                            invLine && Math.abs(matchedPO.unit_price - invLine.unit_price) > 0.01 && !hasCustomRuleMatch(invLine, matchedPO) && !hasMatchedUomDifference(invLine, matchedPO)
-                              ? 'bg-red-50'
-                              : ''
-                          }`}>
-                            {formatCurrency(matchedPO.unit_price)}
+                          <td className="px-1 py-2 text-xs text-center text-gray-950 w-10">
+                            <span className={
+                              invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01 && !hasCustomRuleMatch(invLine, matchedPO) && !hasMatchedUomDifference(invLine, matchedPO) && invLine.uom.toLowerCase() !== matchedPO.uom.toLowerCase()
+                                ? 'font-bold text-red-600'
+                                : ''
+                            }>
+                              {matchedPO.uom}
+                            </span>
+                          </td>
+                          <td className="px-1 py-2 text-xs text-right text-gray-950 w-16">
+                            <span className={
+                              invLine && Math.abs(matchedPO.unit_price - invLine.unit_price) > 0.01 && !hasCustomRuleMatch(invLine, matchedPO) && !hasMatchedUomDifference(invLine, matchedPO) && !invLine.suppress_price_variance
+                                ? 'font-bold text-red-600'
+                                : ''
+                            }>
+                              {formatCurrency(matchedPO.unit_price)}
+                            </span>
                           </td>
                           <td className="pl-1 pr-2 py-2 text-xs text-right font-medium text-gray-950 w-20">
                             {formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)}
@@ -3180,7 +3233,7 @@ export function LineItemsPreviewPanel({
                             onMouseLeave={handleRowLeave}
                           >
                             {/* Qty Variance Column */}
-                            <td className="px-1.5 py-2 text-xs text-right">
+                            <td className={`px-1.5 py-2 text-xs text-right ${hasAnyVariance(line, matchedPO) ? 'bg-red-50/30' : ''}`}>
                               {matchedPO ? (
                                 // Show 0 variance if custom rule matches OR UOM conversion reconciles the difference
                                 (hasCustomRuleMatch(line, matchedPO) || hasMatchedUomDifference(line, matchedPO)) ? (
@@ -3198,10 +3251,10 @@ export function LineItemsPreviewPanel({
                             </td>
 
                             {/* Price Variance Column */}
-                            <td className="px-1.5 py-2 text-xs text-right">
+                            <td className={`px-1.5 py-2 text-xs text-right ${hasAnyVariance(line, matchedPO) ? 'bg-red-50/30' : ''}`}>
                               {matchedPO ? (
-                                // Show 0 variance if custom rule matches OR UOM conversion reconciles the difference
-                                (hasCustomRuleMatch(line, matchedPO) || hasMatchedUomDifference(line, matchedPO)) ? (
+                                // Show 0 variance if custom rule matches OR UOM conversion reconciles the difference OR price variance suppressed
+                                (hasCustomRuleMatch(line, matchedPO) || hasMatchedUomDifference(line, matchedPO) || line.suppress_price_variance) ? (
                                   <span className="text-green-600 font-bold">{formatCurrency(0)}</span>
                                 ) : Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 ? (
                                   <span className="text-red-600 font-semibold">
@@ -3540,11 +3593,7 @@ export function LineItemsPreviewPanel({
                             </span>
                           )}
                         </td>
-                        <td className={`px-1.5 py-2 text-xs text-gray-950 ${
-                          (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
-                            ? 'bg-red-50'
-                            : ''
-                        }`}>
+                        <td className="px-1.5 py-2 text-xs text-gray-950">
                           {isEditMode ? (
                             <input
                               type="text"
@@ -3553,7 +3602,11 @@ export function LineItemsPreviewPanel({
                               className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                             />
                           ) : (
-                            <div className="truncate max-w-[400px]" title={line.description}>
+                            <div className={`truncate max-w-[400px] ${
+                              (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
+                                ? 'font-bold text-red-600'
+                                : ''
+                            }`} title={line.description}>
                               {line.description}
                             </div>
                           )}
@@ -3561,11 +3614,7 @@ export function LineItemsPreviewPanel({
                         <td className="px-1.5 py-2 text-xs text-gray-950">
                           {getSKU(line)}
                         </td>
-                        <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                          matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
-                            ? 'bg-red-50'
-                            : ''
-                        }`}>
+                        <td className="px-1.5 py-2 text-xs text-right text-gray-950">
                           {isEditMode ? (
                             <input
                               type="number"
@@ -3611,7 +3660,8 @@ export function LineItemsPreviewPanel({
                                 </div>
                               );
                             }
-                            return line.qty;
+                            const hasVariance = matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO);
+                            return <span className={hasVariance ? 'font-bold text-red-600' : ''}>{line.qty}</span>;
                           })()}
                         </td>
                         <td className="px-1.5 py-2 text-xs text-center text-gray-950">
@@ -3626,11 +3676,7 @@ export function LineItemsPreviewPanel({
                             line.uom
                           )}
                         </td>
-                        <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                          matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
-                            ? 'bg-red-50'
-                            : ''
-                        }`}>
+                        <td className="px-1.5 py-2 text-xs text-right text-gray-950">
                           {isEditMode ? (
                             <input
                               type="number"
@@ -3644,7 +3690,13 @@ export function LineItemsPreviewPanel({
                               }`}
                             />
                           ) : (
-                            formatCurrency(line.unit_price)
+                            <span className={
+                              matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO) && !line.suppress_price_variance
+                                ? 'font-bold text-red-600'
+                                : ''
+                            }>
+                              {formatCurrency(line.unit_price)}
+                            </span>
                           )}
                         </td>
                         <td className="pl-1.5 pr-4 py-2 text-xs text-right font-medium text-gray-950">
@@ -3724,7 +3776,7 @@ export function LineItemsPreviewPanel({
                         <DraggableDroppableRow
                           key={line.id || line.line_no}
                           id={line.id || `line-${line.line_no}`}
-                          className="bg-white group"
+                          className={`group ${hasAnyVariance(line, matchedPO) ? 'bg-red-50/30 hover:bg-red-50/40' : 'bg-white'}`}
                           isHovered={hoveredPosition === slot.position}
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
@@ -3734,7 +3786,13 @@ export function LineItemsPreviewPanel({
                       ) : (
                         <tr
                           key={line.id || line.line_no}
-                          className={`group ${hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'}`}
+                          className={`group ${
+                            hoveredPosition === slot.position 
+                              ? 'bg-purple-50' 
+                              : hasAnyVariance(line, matchedPO)
+                                ? 'bg-red-50/30 hover:bg-red-50/40'
+                                : 'bg-white hover:bg-purple-50'
+                          }`}
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
                         >
@@ -3889,7 +3947,9 @@ export function LineItemsPreviewPanel({
                         const status = getLineStatus(line, matchedPO);
 
                         return (
-                          <tr key={`variance-${line.id || line.line_no}`} className={`h-[48px] bg-white hover:bg-purple-50 transition-colors group ${getRowHighlightClass(line)}`}>
+                          <tr key={`variance-${line.id || line.line_no}`} className={`h-[48px] transition-colors group ${getRowHighlightClass(line)} ${
+                            hasAnyVariance(line, matchedPO) ? 'bg-red-50/30 hover:bg-red-50/40' : 'bg-white hover:bg-purple-50'
+                          }`}>
                             <td className="px-1.5 py-2 text-xs text-gray-950 font-medium">{line.line_no}</td>
                             {/* Icon column for smart match indicators */}
                             <td className="px-1 py-2 text-center relative">
@@ -4037,11 +4097,7 @@ export function LineItemsPreviewPanel({
                                 </span>
                               )}
                             </td>
-                            <td className={`px-1.5 py-2 text-xs text-gray-950 ${
-                              (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
-                                ? 'bg-red-50'
-                                : ''
-                            }`}>
+                            <td className="px-1.5 py-2 text-xs text-gray-950">
                               {isEditMode ? (
                                 <input
                                   type="text"
@@ -4050,17 +4106,19 @@ export function LineItemsPreviewPanel({
                                   className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                                 />
                               ) : (
-                                <span>{line.description}</span>
+                                <span className={
+                                  (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
+                                    ? 'font-bold text-red-600'
+                                    : ''
+                                }>
+                                  {line.description}
+                                </span>
                               )}
                             </td>
                             <td className="px-1.5 py-2 text-xs text-gray-950">
                               {getSKU(line)}
                             </td>
-                            <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                              matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
-                                ? 'bg-red-50'
-                                : ''
-                            }`}>
+                            <td className="px-1.5 py-2 text-xs text-right text-gray-950">
                               {isEditMode ? (
                                 <input
                                   type="number"
@@ -4073,7 +4131,13 @@ export function LineItemsPreviewPanel({
                                   }`}
                                 />
                               ) : (
-                                line.qty
+                                <span className={
+                                  matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
+                                    ? 'font-bold text-red-600'
+                                    : ''
+                                }>
+                                  {line.qty}
+                                </span>
                               )}
                             </td>
                             <td className="px-1.5 py-2 text-xs text-center text-gray-950">
@@ -4088,11 +4152,7 @@ export function LineItemsPreviewPanel({
                                 line.uom
                               )}
                             </td>
-                            <td className={`px-1.5 py-2 text-xs text-right text-gray-950 ${
-                              matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
-                                ? 'bg-red-50'
-                                : ''
-                            }`}>
+                            <td className="px-1.5 py-2 text-xs text-right text-gray-950">
                               {isEditMode ? (
                                 <input
                                   type="number"
@@ -4106,7 +4166,13 @@ export function LineItemsPreviewPanel({
                                   }`}
                                 />
                               ) : (
-                                formatCurrency(line.unit_price)
+                                <span className={
+                                  matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO) && !line.suppress_price_variance
+                                    ? 'font-bold text-red-600'
+                                    : ''
+                                }>
+                                  {formatCurrency(line.unit_price)}
+                                </span>
                               )}
                             </td>
                             <td className="px-1.5 py-2 text-xs text-right font-medium text-gray-950">
@@ -4360,7 +4426,9 @@ export function LineItemsPreviewPanel({
                         const status = getLineStatus(line, matchedPO);
 
                         return (
-                          <tr key={`matched-${line.id || line.line_no}`} className={`h-[48px] bg-white hover:bg-purple-50 transition-colors group ${getRowHighlightClass(line)}`}>
+                          <tr key={`matched-${line.id || line.line_no}`} className={`h-[48px] transition-colors group ${getRowHighlightClass(line)} ${
+                            hasAnyVariance(line, matchedPO) ? 'bg-red-50/30 hover:bg-red-50/40' : 'bg-white hover:bg-purple-50'
+                          }`}>
                             {/* Same cell structure as variance lines */}
                             <td className="px-1.5 py-2 text-xs text-gray-950 font-medium">{line.line_no}</td>
                             {/* Icon column - same 3-priority logic as variance section */}

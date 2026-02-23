@@ -75,6 +75,15 @@ export interface InvoiceLine {
   tax_amount?: number;
   po_line_id?: string | null;
   gr_line_id?: string | null;
+  uom_conversion?: {
+    invoice_qty: number;
+    invoice_uom: string;
+    po_qty: number;
+    po_uom: string;
+    conversion_factor: number;
+    explanation: string;
+  };
+  suppress_price_variance?: boolean;
 }
 
 export interface InvoiceWithLines extends InvoiceHeader {

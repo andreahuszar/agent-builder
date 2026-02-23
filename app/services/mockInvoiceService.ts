@@ -655,14 +655,16 @@ export const generateBaselineInvoices = (): Invoice[] => {
       line_no: 6,
       sku: 'MA-145784',
       description: 'Landscaping Sand',
-      qty: 2700,
-      uom: 'KG',
-      unit_price: 1.00,
+      qty: 54,
+      uom: 'EACH',
+      unit_price: 50.00,
       net_amount: 2700.00,
       line_total: 2700.00,
       po_line_id: 'po-line-9011-6',
       gr_line_id: null,
-      ses_line_id: null
+      ses_line_id: null,
+      // Suppress price variance (different UOM scaling) but keep qty variance visible
+      suppress_price_variance: true
     }
   ];
 
