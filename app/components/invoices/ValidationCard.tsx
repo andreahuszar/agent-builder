@@ -42,6 +42,7 @@ interface ValidationCardProps {
   title?: string;
   defaultExpanded?: boolean;
   compact?: boolean;
+  onHeaderClick?: () => void; // Optional custom click handler instead of accordion behavior
 }
 
 const categoryConfig: Record<ValidationCategory, {
@@ -127,12 +128,22 @@ export function ValidationCard({
   issues,
   title,
   defaultExpanded = true,
-  compact = false
+  compact = false,
+  onHeaderClick
 }: ValidationCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
   const config = categoryConfig[category];
   const Icon = config.icon;
+  
+  // If custom click handler provided, use it instead of accordion behavior
+  const handleHeaderClick = () => {
+    if (onHeaderClick) {
+      onHeaderClick();
+    } else {
+      setIsExpanded(!isExpanded);
+    }
+  };
 
   // Group issues by severity
   const errorCount = issues.filter(i => i.severity === 'error').length;
@@ -159,7 +170,7 @@ export function ValidationCard({
     <div className={`rounded-lg border ${displayConfig.borderColor} ${displayConfig.bgColor} overflow-hidden`}>
       {/* Header */}
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={handleHeaderClick}
         className={`w-full ${compact ? 'px-3 py-1.5' : 'px-4 py-2'} flex items-center justify-between hover:bg-opacity-70 transition-colors`}
       >
         <div className="flex items-center gap-3">
@@ -187,15 +198,18 @@ export function ValidationCard({
             </div>
           </div>
         </div>
-        <ChevronDown
-          className={`h-4 w-4 text-gray-950 transition-transform ${
-            isExpanded ? 'rotate-180' : ''
-          }`}
-        />
+        {/* Only show chevron if using accordion behavior (no custom click handler) */}
+        {!onHeaderClick && (
+          <ChevronDown
+            className={`h-4 w-4 text-gray-950 transition-transform ${
+              isExpanded ? 'rotate-180' : ''
+            }`}
+          />
+        )}
       </button>
 
-      {/* Content */}
-      {isExpanded && (
+      {/* Content - show if expanded OR if custom click handler (not accordion) */}
+      {(isExpanded || onHeaderClick) && (
         <div className="border-t border-gray-200 bg-white">
           <div className="divide-y divide-gray-100">
             {issues.map((issue) => {

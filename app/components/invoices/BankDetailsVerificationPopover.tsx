@@ -2,8 +2,9 @@
 
 import React from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Shield, X, Mail, AlertTriangle } from 'lucide-react';
+import { Shield, X, Mail, AlertTriangle, Bot } from 'lucide-react';
 import { AnimatedPopover } from '../ui/AnimatedPopover';
+import Link from 'next/link';
 
 interface BankDetails {
   bank_name?: string;
@@ -229,8 +230,8 @@ export function BankDetailsVerificationPopover({
                 </div>
               </div>
 
-              {/* Action Button */}
-              <div className="mt-4">
+              {/* Action Buttons */}
+              <div className="mt-4 space-y-2">
                 <button
                   onClick={() => {
                     // Placeholder - no action for now
@@ -240,6 +241,17 @@ export function BankDetailsVerificationPopover({
                   <Mail className="h-4 w-4" />
                   Draft Verification Email
                 </button>
+                
+                <Link
+                  href="/settings?agent=Bank%20details%20checker#automation-agent-builder-2"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                  onClick={handleClose}
+                >
+                  <Bot className="h-4 w-4" />
+                  View Bank Details Checker Agent
+                </Link>
               </div>
             </div>
           </AnimatedPopover>

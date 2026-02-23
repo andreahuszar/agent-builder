@@ -43,6 +43,7 @@ export interface UnifiedInvoice extends InvoiceHeader {
   // Accounting fields
   gl_code?: string;
   accounting_notes?: string;
+  plant_id?: string; // Plant/facility identifier
 
   // Timestamps
   updated_at?: string;

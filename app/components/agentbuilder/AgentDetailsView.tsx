@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Agent } from "./AgentBuilderPage"
-import { Pencil, Clock, Trash2, Save, Check, X } from "lucide-react"
+import { Pencil, Clock, Trash2, Save, Check, X, AlertTriangle } from "lucide-react"
 import { Button } from "@/app/components/ui/button"
 
 interface AgentMetrics {
@@ -83,6 +83,12 @@ export function AgentDetailsView({
   const [editedName, setEditedName] = useState(agent.name)
   const [promptView, setPromptView] = useState<"basic" | "advanced" | "flowchart">("basic")
   const [conflicts, setConflicts] = useState<ConflictType[]>([])
+  const [isConflictCardDismissed, setIsConflictCardDismissed] = useState(false)
+
+  // Reset dismiss state when agent changes
+  useEffect(() => {
+    setIsConflictCardDismissed(false)
+  }, [agent.id])
 
   // Extract KEY ACTIONS from prompt with special handling for routing/approval/thresholds
   const extractKeyActions = (prompt: string) => {
@@ -350,7 +356,7 @@ export function AgentDetailsView({
         }
       }
 
-      if (isLaterStage) {
+      if (isEarlierStage) {
         const currentRejects =
           currentPromptLower.includes("mark as failed") ||
           currentPromptLower.includes("reject") ||
@@ -388,7 +394,7 @@ export function AgentDetailsView({
         })
       }
 
-      if (isEarlierStage) {
+      if (isLaterStage) {
         const currentRejects =
           currentPromptLower.includes("mark as failed") ||
           currentPromptLower.includes("reject") ||
@@ -495,6 +501,20 @@ export function AgentDetailsView({
                 >
                   <Pencil className="h-4 w-4 text-gray-600" />
                 </button>
+                {conflicts.length > 0 && isConflictCardDismissed && (
+                  <button
+                    onClick={() => setIsConflictCardDismissed(false)}
+                    className="p-1.5 hover:bg-amber-100 rounded transition-colors"
+                    title={`View ${conflicts.length} conflict${conflicts.length > 1 ? 's' : ''}`}
+                  >
+                    <div className="relative">
+                      <AlertTriangle className="h-4 w-4 text-amber-600" />
+                      <span className="absolute -top-1 -right-1 w-3 h-3 bg-amber-600 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                        {conflicts.length}
+                      </span>
+                    </div>
+                  </button>
+                )}
               </>
             )}
           </div>
@@ -516,8 +536,8 @@ export function AgentDetailsView({
         </div>
 
         {/* Conflict Warning */}
-        {conflicts.length > 0 && (
-          <div className="bg-amber-50 border-2 border-amber-200 rounded-lg p-4">
+        {conflicts.length > 0 && !isConflictCardDismissed && (
+          <div className="bg-white border border-gray-200 rounded-lg p-4">
             <div className="space-y-3">
               <div className="flex items-start gap-3">
                 <div className="w-6 h-6 rounded-full bg-amber-500 flex items-center justify-center shrink-0 mt-0.5">
@@ -531,6 +551,13 @@ export function AgentDetailsView({
                     This agent may conflict with other agents in your workflow. Review before deploying.
                   </p>
                 </div>
+                <button
+                  onClick={() => setIsConflictCardDismissed(true)}
+                  className="p-1 hover:bg-gray-100 rounded transition-colors shrink-0"
+                  title="Dismiss"
+                >
+                  <X className="h-4 w-4 text-gray-600" />
+                </button>
               </div>
 
               <div className="space-y-2">
@@ -546,17 +573,21 @@ export function AgentDetailsView({
                     }`}
                   >
                     <div className="flex items-start gap-2">
-                      <span
-                        className={`text-xs font-medium px-2 py-0.5 rounded shrink-0 ${
-                          conflict.severity === "high"
-                            ? "bg-red-100 text-red-700"
-                            : conflict.severity === "medium"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-blue-100 text-blue-700"
-                        }`}
-                      >
-                        {conflict.severity.toUpperCase()}
-                      </span>
+                      {conflict.severity === "high" && (
+                        <span className="text-xs font-bold px-2.5 py-1 rounded shrink-0 bg-red-600 text-white">
+                          {conflict.severity.toUpperCase()}
+                        </span>
+                      )}
+                      {conflict.severity === "medium" && (
+                        <span className="text-xs font-bold px-2.5 py-1 rounded shrink-0 bg-amber-500 text-white">
+                          {conflict.severity.toUpperCase()}
+                        </span>
+                      )}
+                      {conflict.severity === "low" && (
+                        <span className="text-xs font-bold px-2.5 py-1 rounded shrink-0 bg-blue-600 text-white">
+                          {conflict.severity.toUpperCase()}
+                        </span>
+                      )}
                       <div className="flex-1">
                         <p className="text-xs font-medium text-gray-950 mb-1 capitalize">
                           {conflict.type} conflict with "{conflict.conflictingAgentName}"

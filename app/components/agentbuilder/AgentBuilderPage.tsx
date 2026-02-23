@@ -62,25 +62,7 @@ export default function AgentBuilderPage({ hideNavigation = false, defaultMode =
 
   // Initialize agents from localStorage if available, otherwise use default agents
   const getInitialAgents = (): Agent[] => {
-    // Client-side only
-    if (typeof window !== 'undefined') {
-      try {
-        const stored = localStorage.getItem('agents')
-        if (stored) {
-          const parsed = JSON.parse(stored)
-          if (Array.isArray(parsed) && parsed.length > 0) {
-            console.log('[AgentBuilderPage] Loaded agents from localStorage:', parsed.length)
-            return parsed
-          }
-        }
-      } catch (e) {
-        console.error('[AgentBuilderPage] Failed to load agents from localStorage:', e)
-      }
-    }
-    
-    // Return default agents if localStorage is empty or on server
-    console.log('[AgentBuilderPage] Using default agents')
-    return [
+    const defaultAgents = [
     {
       id: "2",
       name: "OCR Agent",
@@ -414,7 +396,120 @@ ERROR HANDLING:
       lane: "Reconciliation",
       skills: ["Send Messages", "Run Workflows", "Connect to ERP System"],
     },
+    {
+      id: "9",
+      name: "TechSupply Customer Reference no. extraction",
+      stage: "data-capture",
+      active: true,
+      mode: "auto-apply",
+      prompt: `ROLE: Customer Reference Number Extraction Agent - exclusively extracts the customer reference number from invoice data for TechSupply Solutions
+
+INPUTS: Extracted invoice data from the Data Capture phase
+
+STEPS:
+1. Search the extracted invoice data for the customer reference number pattern (2 letters + 6 numbers)
+2. Validate the extracted customer reference number to ensure it matches the expected format
+3. If the customer reference number is found, output it in a structured format (e.g., JSON)
+
+VALIDATIONS:
+- The customer reference number should be in the format of 2 letters followed by 6 numbers
+- The extracted number should be 8 characters long
+
+OUTPUT: Extracted customer reference number in a structured format (e.g., JSON)
+
+ERROR HANDLING:
+- If the customer reference number is not found, flag the invoice for manual review
+- If the extracted number does not match the expected format, log an error and notify the administrator
+
+REFERENCED_DOCUMENTS: None`,
+      lane: "Header vs Line Split",
+      skills: ["Verify Data", "Find Vendor Information"],
+    },
+    {
+      id: "10",
+      name: "Bank details checker",
+      stage: "verification",
+      active: true,
+      mode: "suggest",
+      prompt: `ROLE: Bank Details Validation Agent - verifies vendor banking information for accuracy and fraud prevention
+
+INPUTS:
+- Invoice payment details from Data Capture phase
+- Vendor master database with verified bank details
+- Historical payment records
+
+STEPS:
+1. Extract bank account details from invoice (account number, sort code, IBAN, SWIFT/BIC)
+2. Compare against verified vendor banking information in master database
+3. Check for suspicious changes or mismatches
+4. Validate format and checksums for IBAN, account numbers
+5. Flag any discrepancies for manual review
+6. Suggest correction if minor formatting issue detected
+
+VALIDATIONS:
+- Bank details must match vendor master record
+- IBAN/SWIFT codes must pass checksum validation
+- Account numbers must match expected format for country
+- Flag if bank details changed recently (< 30 days)
+
+OUTPUT:
+- Validation status: "verified", "mismatch", or "suspicious"
+- List of discrepancies if any found
+- Suggested corrections for formatting issues
+
+ERROR HANDLING:
+- If bank details mismatch → Flag for manual verification
+- If vendor not in master database → Request bank details verification
+- If suspicious changes detected → Escalate to fraud team`,
+      lane: "Data Quality",
+      skills: ["Verify Data", "Find Vendor Information", "Flag Issues"],
+    },
     ]
+    
+    // Client-side only - check localStorage and merge with defaults
+    if (typeof window !== 'undefined') {
+      try {
+        const stored = localStorage.getItem('agents')
+        if (stored) {
+          const parsed = JSON.parse(stored)
+          if (Array.isArray(parsed) && parsed.length > 0) {
+            // Check if pre-built agents (IDs "9", "10") exist in stored agents
+            const missingAgents = []
+            
+            const hasTechSupplyAgent = parsed.some(a => a.id === "9")
+            if (!hasTechSupplyAgent) {
+              const techSupplyAgent = defaultAgents.find(a => a.id === "9")
+              if (techSupplyAgent) {
+                console.log('[AgentBuilderPage] Adding TechSupply agent to stored agents')
+                missingAgents.push(techSupplyAgent)
+              }
+            }
+            
+            const hasBankDetailsAgent = parsed.some(a => a.id === "10")
+            if (!hasBankDetailsAgent) {
+              const bankDetailsAgent = defaultAgents.find(a => a.id === "10")
+              if (bankDetailsAgent) {
+                console.log('[AgentBuilderPage] Adding Bank details checker agent to stored agents')
+                missingAgents.push(bankDetailsAgent)
+              }
+            }
+            
+            if (missingAgents.length > 0) {
+              return [...parsed, ...missingAgents]
+            }
+            
+            console.log('[AgentBuilderPage] Loaded agents from localStorage:', parsed.length)
+            return parsed
+          }
+        }
+      } catch (e) {
+        console.error('[AgentBuilderPage] Failed to load agents from localStorage:', e)
+      }
+    }
+    
+    // Return default agents if localStorage is empty or on server
+    console.log('[AgentBuilderPage] Using default agents')
+    return defaultAgents
   }
 
   const [agents, setAgents] = useState<Agent[]>(getInitialAgents())
@@ -423,10 +518,30 @@ ERROR HANDLING:
   useEffect(() => {
     const params = new URLSearchParams(window.location.search)
     const view = params.get('view')
+    const agentName = params.get('agent')
+    
     if (view === 'executive-dashboard') {
       setMode('executive-dashboard')
     }
-  }, [])
+    
+    // If agent parameter is provided, find and preview that agent
+    if (agentName && agents.length > 0) {
+      const agent = agents.find(a => a.name.toLowerCase().includes(agentName.toLowerCase()))
+      if (agent) {
+        setEditingAgent(agent)
+        setIsPreviewMode(true)
+        setMode('build2') // Use Agent Builder 2 UI
+        // Expand the stage containing this agent
+        if (agent.stage) {
+          setExpandedStages(prev => {
+            const newSet = new Set(prev)
+            newSet.add(agent.stage)
+            return newSet
+          })
+        }
+      }
+    }
+  }, [agents])
 
   // Save agents to localStorage and sync to server whenever they change
   useEffect(() => {
@@ -514,7 +629,7 @@ ERROR HANDLING:
     const baseMultiplier = dateRange === "7days" ? 1 : dateRange === "30days" ? 4.3 : 13
 
     agents.forEach((agent) => {
-      // Only generate metrics for pre-loaded agents (IDs 1-7), not newly created ones
+      // Only generate metrics for pre-loaded agents (IDs 2-10), not newly created ones
       if (agent.id && agent.id.length <= 2) {
         const baseEvaluated = Math.floor((Math.random() * 3000 + 1000) * baseMultiplier)
         const actedOnPercent = agent.mode === "auto-apply" ? 0.85 : agent.mode === "suggest" ? 0.6 : 0

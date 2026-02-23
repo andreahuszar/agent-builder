@@ -585,7 +585,9 @@ export function LineItemsPreviewPanel({
 
       // Show spacer when all tables can fit within the viewport
       // Very small buffer to account for borders and padding
-      const hasSpace = availableWidth >= totalNeeded + 5;
+      // If available width is very large (> 1400px), always disable sticky behavior
+      // This typically indicates the PDF panel is collapsed and there's plenty of space
+      const hasSpace = availableWidth > 1400 || availableWidth >= totalNeeded + 5;
 
       // Uncomment for debugging:
       // console.log('[Variance Debug]', {
@@ -2090,9 +2092,9 @@ export function LineItemsPreviewPanel({
             {showPO && poLines.length > 0 ? (
             // Horizontal scrollable layout when PO lines exist - Invoice table first, then PO table
             <>
-            <div ref={flexContainerRef} className={`flex min-h-full ${hasEnoughSpace ? 'w-fit' : 'w-full'}`}>
+            <div ref={flexContainerRef} className="flex min-h-full w-full">
               {/* Invoice Lines */}
-              <div className="flex-shrink-0 border-r border-gray-200">
+              <div className="flex-shrink-0 flex-grow border-r border-gray-200">
                 {/* SVG gradient definition (hidden, used by icons) */}
                 <svg width="0" height="0" style={{ position: 'absolute' }}>
                   <defs>
@@ -2103,7 +2105,7 @@ export function LineItemsPreviewPanel({
                     </linearGradient>
                   </defs>
                 </svg>
-                <table className="min-w-max">
+                <table className="w-full min-w-max">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
                       <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 13 : 11) : (11 + (isEditMode ? 2 : 0))} className="px-4 bg-white border-b h-[36px]">
@@ -3235,7 +3237,7 @@ export function LineItemsPreviewPanel({
             </>
           ) : (
             // Full width layout when no PO lines (needs info mode)
-            <div className="h-full">
+            <div className="h-full w-full">
               <table className="w-full">
                 <thead className="bg-gray-50 sticky top-0 z-10">
                   <tr>
@@ -3817,8 +3819,8 @@ export function LineItemsPreviewPanel({
               // Horizontal scrollable layout - Invoice table first, then PO table
               <div className="flex min-h-full w-full">
                 {/* Invoice Lines - Grouped */}
-                <div className="flex-shrink-0 border-r border-gray-200">
-                  <table className="min-w-max">
+                <div className="flex-shrink-0 flex-grow border-r border-gray-200">
+                  <table className="w-full min-w-max">
                     {/* Same header as default view */}
                     <thead className="bg-gray-50 sticky top-0 z-10">
                       <tr>

@@ -680,6 +680,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     email_received_date: '2025-11-06',
     customer_no: 'W4828999',
     job_number: 'WO-2025-445',
+    plant_id: '4432',
     currency: 'GBP',
     subtotal: baselinePO2Subtotal,
     tax_total: baselinePO2Tax,
@@ -716,6 +717,10 @@ export const generateBaselineInvoices = (): Invoice[] => {
     // Display configuration for blue header template (JanServ-inspired design)
     display_config: {
       template: 'blue-header'
+    },
+    // Agent extracted fields
+    extraction_field_confidences: {
+      plant_id: 0.95 // High confidence extraction by agent
     }
   } as Invoice);
 

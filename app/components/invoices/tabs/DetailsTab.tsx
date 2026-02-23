@@ -224,6 +224,9 @@ export function DetailsTab({
   const [isAdditionalDetailsExpanded, setIsAdditionalDetailsExpanded] = useState(false);
   const [isLineItemsExpanded, setIsLineItemsExpanded] = useState(true); // Start expanded
   const [isLineItemsFullscreen, setIsLineItemsFullscreen] = useState(false);
+  
+  // Ref for scrolling to Additional Invoice Details section
+  const additionalDetailsRef = useRef<HTMLDivElement>(null);
   const [isLineItemsEditMode, setIsLineItemsEditMode] = useState(false);
   const [lineItemsErrorCount, setLineItemsErrorCount] = useState<number | null>(null); // Track reactive error count from LineItemsPreviewPanel
   const [lineItemsValidationState, setLineItemsValidationState] = useState<LineItemsValidationState | null>(null); // Track reactive validation state for filtering warnings
@@ -235,6 +238,38 @@ export function DetailsTab({
   // Toggle fullscreen for line items
   const toggleLineItemsFullscreen = () => {
     setIsLineItemsFullscreen(!isLineItemsFullscreen);
+  };
+  
+  // Handler for risk indicator click - expands and scrolls to Additional Invoice Details
+  const handleRiskIndicatorClick = () => {
+    // Expand the section if collapsed
+    setIsAdditionalDetailsExpanded(true);
+    
+    // Scroll to the section after a brief delay to allow expansion animation
+    setTimeout(() => {
+      additionalDetailsRef.current?.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    }, 100);
+  };
+  
+  // Handler for data quality click - focuses on Customer ID field
+  const handleDataQualityClick = () => {
+    // Focus on the Customer ID (job_number) field
+    const customerIdField = fieldRefs.current['job_number'];
+    if (customerIdField) {
+      // Find the input element within the field container
+      const inputElement = customerIdField.querySelector('input');
+      if (inputElement) {
+        inputElement.focus();
+        // Optionally scroll into view if needed
+        customerIdField.scrollIntoView({ 
+          behavior: 'smooth', 
+          block: 'center' 
+        });
+      }
+    }
   };
 
   // Handle ESC key to exit fullscreen
@@ -1172,6 +1207,7 @@ export function DetailsTab({
                       issues={filteredValidationIssues.risk}
                       defaultExpanded={true}
                       compact={true}
+                      onHeaderClick={handleRiskIndicatorClick}
                     />
                   )}
                   {filteredValidationIssues.data_quality.length > 0 && (
@@ -1180,6 +1216,7 @@ export function DetailsTab({
                       issues={filteredValidationIssues.data_quality}
                       defaultExpanded={true}
                       compact={true}
+                      onHeaderClick={handleDataQualityClick}
                     />
                   )}
                   {filteredValidationIssues.delivery.length > 0 && (
@@ -1797,6 +1834,7 @@ export function DetailsTab({
                   <div ref={suggestionCardRef} className="absolute top-full left-0 mt-2 z-50 w-full min-w-[320px] max-w-md">
                     <TeachingCard
                       fieldLabel="Customer ID"
+                      vendorName={invoiceData.vendor_name_snapshot}
                       onPointToValue={() => {
                         // Close the popover
                         setExpandedSuggestion(null);
@@ -2119,35 +2157,42 @@ export function DetailsTab({
                 )}
               </div>
 
-              {/* Financial Row 3: Total (full width on left) */}
-              <div ref={(el) => fieldRefs.current['total'] = el} className="bg-purple-50 py-2 -ml-3 pl-3 pr-3">
-                <label className="flex items-center text-xs font-bold text-gray-900 mb-0 min-h-[16px]">
-                  <span className="flex items-center">
-                    Total
-                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.total} isEditMode={isEditing} />
-                  </span>
-                </label>
-                {isEditing ? (
-                  <ValidatedEditableField
-                    value={editedData.total || calculatedTotal}
-                    onChange={(value) => handleFieldChange('total', value)}
-                    type="currency"
-                    required={true}
-                    fieldName="total"
-                    currency={editedData.currency}
-                    onFocus={() => handleFieldFocus('total')}
-                    onBlur={handleFieldBlur}
+              {/* Plant ID - Only for INV-2025-0124 - appears before Total */}
+              {invoiceData.invoice_number === 'INV-2025-0124' && invoiceData.plant_id && (
+                <div ref={(el) => fieldRefs.current['plant_id'] = el} className="relative">
+                  <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
+                    <span className="flex items-center">
+                      Plant ID
+                      <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.plant_id} isEditMode={isEditing} hasValue={!!invoiceData.plant_id} />
+                    </span>
+                  </label>
+                  {isEditing ? (
+                    <ValidatedEditableField
+                      value={editedData.plant_id || invoiceData.plant_id}
+                      onChange={(value) => handleFieldChange('plant_id', value)}
+                      type="text"
+                      required={false}
+                      fieldName="plant_id"
+                      placeholder="Enter Plant ID"
+                      onFocus={() => handleFieldFocus('plant_id')}
+                      onBlur={handleFieldBlur}
+                    />
+                  ) : (
+                    <p className="text-sm font-medium text-gray-950">
+                      {invoiceData.plant_id}
+                    </p>
+                  )}
+                  <FieldErrorIndicator
+                    errors={fieldErrors['plant_id'] || []}
+                    onDismiss={() => removeError('plant_id')}
+                    readOnly={forceReadOnly}
+                    hasPendingAgentChanges={agentPendingFields['plant_id']}
+                    isEditing={isEditing}
                   />
-                ) : (
-                  <p className="text-sm font-bold text-gray-950">
-                    {formatCurrency(invoiceData.total || calculatedTotal, invoiceData.currency)}
-                  </p>
-                )}
-              </div>
-              <div></div>
-              <div></div>
+                </div>
+              )}
 
-              {/* Vehicle Registration No. - Only for baseline-po-bank-1 - appears after Discount */}
+              {/* Vehicle Registration No. - Only for baseline-po-bank-1 - appears before Total */}
               {invoiceData.id === 'baseline-po-bank-1' ? (
                 <div ref={(el) => fieldRefs.current['vehicle_registration_no'] = el} className="relative">
                   <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
@@ -2205,6 +2250,34 @@ export function DetailsTab({
                   )}
                 </div>
               ) : null}
+
+              {/* Financial Row 3: Total (full width on left) */}
+              <div ref={(el) => fieldRefs.current['total'] = el} className="bg-purple-50 py-2 -ml-3 pl-3 pr-3">
+                <label className="flex items-center text-xs font-bold text-gray-900 mb-0 min-h-[16px]">
+                  <span className="flex items-center">
+                    Total
+                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.total} isEditMode={isEditing} />
+                  </span>
+                </label>
+                {isEditing ? (
+                  <ValidatedEditableField
+                    value={editedData.total || calculatedTotal}
+                    onChange={(value) => handleFieldChange('total', value)}
+                    type="currency"
+                    required={true}
+                    fieldName="total"
+                    currency={editedData.currency}
+                    onFocus={() => handleFieldFocus('total')}
+                    onBlur={handleFieldBlur}
+                  />
+                ) : (
+                  <p className="text-sm font-bold text-gray-950">
+                    {formatCurrency(invoiceData.total || calculatedTotal, invoiceData.currency)}
+                  </p>
+                )}
+              </div>
+              <div></div>
+              <div></div>
             </div>
           </div>
           )}
@@ -2213,6 +2286,7 @@ export function DetailsTab({
         {!hidePaymentSection && !hideAccountingSection && (
         <div>
           <div
+            ref={additionalDetailsRef}
             className="relative px-4 py-3 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
             onClick={() => setIsAdditionalDetailsExpanded(!isAdditionalDetailsExpanded)}
           >

@@ -91,6 +91,22 @@ export function AgentBuilder2({
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage] = useState(50)
 
+  // Auto-show details when currentAgent is loaded (e.g., from URL parameter)
+  useEffect(() => {
+    if (currentAgent && currentAgent.prompt && isPreviewMode) {
+      setShowDetails(true)
+      setChatOpen(true) // Keep chat interface available
+      // Also expand the stage containing this agent
+      if (currentAgent.stage) {
+        setExpandedStages(prev => {
+          const newSet = new Set(prev)
+          newSet.add(currentAgent.stage)
+          return newSet
+        })
+      }
+    }
+  }, [currentAgent?.id, isPreviewMode])
+
   // Extract a clean agent name from the prompt
   const extractAgentName = (prompt: string): string => {
     // Try to extract from ROLE line

@@ -239,6 +239,18 @@ export function BlueHeaderTemplate({
               </SelectableText>
             </div>
           </div>
+          {invoice.plant_id && (
+            <div>
+              <div className="text-blue-100 mb-1">Plant ID</div>
+              <div className="font-bold">
+                <FieldWithOCR fieldName="plant_id">
+                  <SelectableText label="Plant ID">
+                    {invoice.plant_id}
+                  </SelectableText>
+                </FieldWithOCR>
+              </div>
+            </div>
+          )}
           <div>
             <div className="text-blue-100 mb-1">{labelText.poNumber}</div>
             <div className="font-bold">
