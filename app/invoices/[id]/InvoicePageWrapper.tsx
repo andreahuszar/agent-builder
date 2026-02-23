@@ -133,6 +133,7 @@ export function InvoicePageWrapper({ invoiceId, initialInvoice, invoiceNumber }:
     setReactiveStatus(newStatus);
   };
 
+
   // ViewModeSwitcher hidden for unified layout - will be removed in future phase
   const viewModeSwitcher = undefined;
 
@@ -186,7 +187,7 @@ export function InvoiceDetailClientWithViewMode({
   onStatusUpdate,
   workflowStatus,
   assignedUserName,
-  onAssignUser
+  onAssignUser,
 }: {
   invoiceId: string;
   initialInvoice: any;

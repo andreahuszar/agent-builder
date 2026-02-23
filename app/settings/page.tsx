@@ -12,9 +12,20 @@ interface SettingsContentProps {
 function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
   const [activeSubTab, setActiveSubTab] = useState('dashboard');
 
-  // Check hash on mount and when hash changes
+  // Check hash and URL params on mount and when they change
   useEffect(() => {
     const updateSubTabFromHash = () => {
+      // Check if we're creating a new agent (URL param takes priority)
+      const params = new URLSearchParams(window.location.search);
+      const isNewAgent = params.get('newAgent') === 'true';
+      
+      if (isNewAgent) {
+        console.log('[Settings] Detected newAgent param, switching to agent-builder-2');
+        setActiveSubTab('agent-builder-2');
+        return;
+      }
+      
+      // Otherwise, check hash for navigation
       const hash = window.location.hash;
       if (hash.includes('general-settings')) {
         setActiveSubTab('general-settings');
@@ -111,10 +122,10 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
           {/* Sub-tab Content */}
           <div className="flex-1 overflow-auto">
             {activeSubTab === 'general-settings' && <APAutomationGeneralSettings />}
-            {activeSubTab === 'dashboard' && <AgentBuilderPage hideNavigation={true} defaultMode="executive-dashboard" />}
-            {activeSubTab === 'agent-builder' && <AgentBuilderPage hideNavigation={true} defaultMode="build" />}
-            {activeSubTab === 'agent-builder-2' && <AgentBuilderPage hideNavigation={true} defaultMode="build2" />}
-            {activeSubTab === 'documents' && <AgentBuilderPage hideNavigation={true} defaultMode="documents" />}
+            {activeSubTab === 'dashboard' && <AgentBuilderPage key="dashboard" hideNavigation={true} defaultMode="executive-dashboard" />}
+            {activeSubTab === 'agent-builder' && <AgentBuilderPage key="builder1" hideNavigation={true} defaultMode="build" />}
+            {activeSubTab === 'agent-builder-2' && <AgentBuilderPage key="builder2" hideNavigation={true} defaultMode="build2" />}
+            {activeSubTab === 'documents' && <AgentBuilderPage key="documents" hideNavigation={true} defaultMode="documents" />}
           </div>
         </div>
       );

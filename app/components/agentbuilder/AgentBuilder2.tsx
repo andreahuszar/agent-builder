@@ -91,11 +91,13 @@ export function AgentBuilder2({
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage] = useState(50)
 
-  // Auto-show details when currentAgent is loaded (e.g., from URL parameter)
+  // Auto-show details when currentAgent is loaded (e.g., from URL parameter or new agent creation)
   useEffect(() => {
-    if (currentAgent && currentAgent.prompt && isPreviewMode) {
+    // Show details and chat for both preview mode and new agents with prompts
+    if (currentAgent && currentAgent.prompt) {
       setShowDetails(true)
       setChatOpen(true) // Keep chat interface available
+      
       // Also expand the stage containing this agent
       if (currentAgent.stage) {
         setExpandedStages(prev => {
@@ -105,7 +107,7 @@ export function AgentBuilder2({
         })
       }
     }
-  }, [currentAgent?.id, isPreviewMode])
+  }, [currentAgent?.id])
 
   // Extract a clean agent name from the prompt
   const extractAgentName = (prompt: string): string => {

@@ -34,6 +34,8 @@ interface DiagnosticBannerProps {
   onAssignUser?: (userName: string | null) => void;
   workflowStatus?: string;
   onAgentToggle?: () => void;
+  onReprocess?: () => void;
+  isReprocessing?: boolean;
 }
 
 export function DiagnosticBanner({
@@ -62,6 +64,8 @@ export function DiagnosticBanner({
   onAssignUser,
   workflowStatus,
   onAgentToggle,
+  onReprocess,
+  isReprocessing = false,
 }: DiagnosticBannerProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isRejectModalOpen, setIsRejectModalOpen] = useState(false);
@@ -302,8 +306,8 @@ export function DiagnosticBanner({
       {/* Action Buttons for all invoices */}
       <div className="ml-auto flex items-center gap-2">
         <button
-          onClick={workflowStatus === 'posted' ? undefined : onSaveClick}
-          disabled={isSaving || workflowStatus === 'posted'}
+          onClick={workflowStatus === 'posted' ? undefined : (onReprocess || onSaveClick)}
+          disabled={(isReprocessing || isSaving) || workflowStatus === 'posted'}
           className="px-3 py-1.5 text-sm bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 disabled:opacity-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 flex items-center gap-1.5"
         >
           {workflowStatus === 'posted' ? (
@@ -311,7 +315,7 @@ export function DiagnosticBanner({
               <Check className="h-4 w-4" />
               Posted
             </>
-          ) : isSaving ? (
+          ) : (isReprocessing || isSaving) ? (
             <>
               <RefreshCw className="h-4 w-4 animate-spin" />
               Reprocessing...

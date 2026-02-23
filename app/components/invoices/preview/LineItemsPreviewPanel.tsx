@@ -323,6 +323,11 @@ export function LineItemsPreviewPanel({
   const [isEditMode, setIsEditMode] = useState(false);
   const [editableLines, setEditableLines] = useState<InvoiceLineItem[]>(invoiceLines);
   const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  
+  // Sync editableLines when invoiceLines prop changes (e.g., from reprocessing)
+  useEffect(() => {
+    setEditableLines(invoiceLines);
+  }, [invoiceLines]);
   const [hoveredPosition, setHoveredPosition] = useState<number | null>(null);
   const [manuallyMatchedLines, setManuallyMatchedLines] = useState<Set<string>>(new Set());
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);

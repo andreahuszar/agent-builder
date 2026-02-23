@@ -471,7 +471,9 @@ export function AgentDetailsView({
                 <input
                   type="text"
                   value={editedName}
-                  onChange={(e) => setEditedName(e.target.value)}
+                  onChange={(e) => {
+                    setEditedName(e.target.value)
+                  }}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') handleSaveName()
                     if (e.key === 'Escape') handleCancelEdit()

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ArrowLeft, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, X, ChevronLeft, ChevronRight, MoreVertical } from 'lucide-react';
 import { WorkflowBreadcrumb } from './invoices/WorkflowBreadcrumb';
 
 interface NavigationContext {
@@ -113,7 +113,7 @@ const InvoiceDetailTopBar: React.FC<InvoiceDetailTopBarProps> = ({
               </div>
             )}
 
-            {/* Vertical separator between navigation and Exit */}
+            {/* Vertical separator between navigation and actions */}
             {navigationContext && (
               <div className="h-6 w-px bg-gray-300 mx-2" />
             )}

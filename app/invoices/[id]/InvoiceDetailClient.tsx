@@ -12,6 +12,8 @@ import { GRDocumentTable } from '@/app/components/invoices/comparison/GRDocument
 import { GRDocumentPreview } from '@/app/components/invoices/comparison/GRDocumentPreview';
 import { TeachingConfirmationModal } from '@/app/components/invoices/TeachingConfirmationModal';
 import { AIAgentPanel } from '@/app/components/invoices/AIAgentPanel';
+import { FloatingAgentChatButton } from '@/app/components/invoices/FloatingAgentChatButton';
+import { AgentChatDrawer } from '@/app/components/invoices/AgentChatDrawer';
 import { markAgentTrainingResolved } from '@/app/components/invoices/agent/useAgentState';
 import { useSelection } from '@/app/context/SelectionContext';
 import { useToast } from '@/app/components/ui/Toast';
@@ -42,6 +44,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   const [agentPendingFields, setAgentPendingFields] = useState<{[key: string]: any}>({});
   // Track accepted line item suggestions (persists across tab switches)
   const [acceptedLineSuggestions, setAcceptedLineSuggestions] = useState<Set<string>>(new Set());
+  // Floating agent chat state
+  const [isAgentChatOpen, setIsAgentChatOpen] = useState(false);
 
   // Check if this is a needs info status invoice
   const isNeedsInfoMode = invoice?.status === 'needs_info' || invoice?.status === 'needs-info';
@@ -114,9 +118,53 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     }
   };
 
-  const handleInvoiceUpdate = async (updatedData: any) => {
-    console.log('[InvoiceDetailClient] Updating invoice data', updatedData);
+  const handleTopBarReprocess = async () => {
+    setIsReprocessing(true);
+    
+    // Simulate AI processing delay
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    // Apply fixes to line 6 (the quantity mismatch)
+    const lineItems = invoice.invoice_lines || invoice.lines;
+    
+    if (lineItems && lineItems.length >= 6) {
+      const updatedLineItems = [...lineItems];
+      const line6 = updatedLineItems[5];
+      
+      // Mark as fixed by agent with smart match indicators and UoM conversion
+      updatedLineItems[5] = {
+        ...line6,
+        smart_match_applied: true,
+        smart_match_confidence: 0.96,
+        smart_match_reason: 'Unit conversion applied: 54 bags × 50kg/bag = 2700kg',
+        agent_fixed: true,
+        uom_conversion: {
+          invoice_qty: 54,
+          invoice_uom: 'bags',
+          po_qty: 2700,
+          po_uom: 'kg',
+          conversion_factor: 50,
+          explanation: 'Converted 54 bags to 2700kg (50kg per bag)'
+        }
+      };
+      
+      // Update invoice data
+      const updatedInvoice = {
+        ...invoice,
+        invoice_lines: updatedLineItems,
+        lines: updatedLineItems,
+        _lastUpdated: Date.now()
+      };
+      
+      setInvoice(updatedInvoice);
+      
+      showToast('Invoice reprocessed successfully', 'success');
+    }
+    
+    setIsReprocessing(false);
+  };
 
+  const handleInvoiceUpdate = async (updatedData: any) => {
     // Detect if PO was just assigned (changed from empty to populated)
     const hadNoPO = !invoice.po_numbers_cached || invoice.po_numbers_cached.length === 0;
     const nowHasPO = updatedData.po_numbers_cached && updatedData.po_numbers_cached.length > 0;
@@ -125,7 +173,13 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     // Detect if line items were updated (user accepted suggestion, edited line, etc.)
     const linesChanged = JSON.stringify(invoice.lines) !== JSON.stringify(updatedData.lines);
 
-    setInvoice(updatedData);
+    // Force React to recognize this as a new object by adding a timestamp
+    const forceUpdate = {
+      ...updatedData,
+      _lastUpdated: Date.now()
+    };
+    setInvoice(forceUpdate);
+    
     // Keep agent-pending fields to show purple dot indicator in read-only mode
     // They indicate values that came from agent suggestions
 
@@ -227,6 +281,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   };
 
   const [isSaving, setIsSaving] = useState(false);
+  const [isReprocessing, setIsReprocessing] = useState(false);
   const [isPdfCollapsed, setIsPdfCollapsed] = useState(false);
   const [pdfPanelSize, setPdfPanelSize] = useState(50); // Track PDF panel size for auto-zoom
   const [activeTab, setActiveTab] = useState<TabId>('details');
@@ -616,6 +671,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           {/* Full width tabs */}
           <div className="flex-1 overflow-hidden">
             <InvoiceTabs
+              key={invoice._lastUpdated || 'initial'}
               invoiceId={invoiceId}
               invoiceData={invoice}
               matchResults={matchResults}
@@ -691,6 +747,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
 
         {/* Invoice Tabs (Read-only) - RIGHT PANEL */}
         <InvoiceTabs
+          key={invoice._lastUpdated || 'initial'}
           invoiceId={invoiceId}
           invoiceData={invoice}
           matchResults={matchResults}
@@ -901,6 +958,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
         onAssignUser={onAssignUser}
         workflowStatus={workflowStatus || invoice.status}
         onAgentToggle={() => setIsAgentPanelOpen(!isAgentPanelOpen)}
+        onReprocess={handleTopBarReprocess}
+        isReprocessing={isReprocessing}
       />
 
       {/* Main Content Area */}
@@ -947,6 +1006,13 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           onViewField={handleViewField}
         />
       )}
+
+      {/* Floating Agent Chat Creator */}
+      <FloatingAgentChatButton onClick={() => setIsAgentChatOpen(true)} />
+      <AgentChatDrawer 
+        isOpen={isAgentChatOpen} 
+        onClose={() => setIsAgentChatOpen(false)} 
+      />
     </div>
   );
 }

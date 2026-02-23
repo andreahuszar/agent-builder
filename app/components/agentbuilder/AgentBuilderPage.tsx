@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect } from "react"
+import { useEffect, useRef } from "react"
 import { useState } from "react"
 import { Button } from "@/app/components/ui/button"
 import { AgentBuilder } from "./AgentBuilder"
@@ -57,7 +57,15 @@ interface AgentBuilderPageProps {
 }
 
 export default function AgentBuilderPage({ hideNavigation = false, defaultMode = "observe" }: AgentBuilderPageProps = {}) {
-  const [mode, setMode] = useState<Mode>(defaultMode)
+  const [mode, setMode] = useState<Mode>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('agentbuilder-mode')
+      if (stored && ['observe', 'build', 'build2', 'executive-dashboard', 'documents'].includes(stored)) {
+        return stored as Mode
+      }
+    }
+    return defaultMode
+  })
   const [sidebarOpen, setSidebarOpen] = useState(true)
 
   // Initialize agents from localStorage if available, otherwise use default agents
@@ -513,15 +521,114 @@ ERROR HANDLING:
   }
 
   const [agents, setAgents] = useState<Agent[]>(getInitialAgents())
+  
+  // Restore editingAgent from sessionStorage if it exists (for handling remounts)
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('agentbuilder-editing-agent')
+      if (stored) {
+        try {
+          return JSON.parse(stored)
+        } catch (e) {
+          console.error('Failed to parse editingAgent from sessionStorage:', e)
+        }
+      }
+    }
+    return null
+  })
 
-  // Check URL for view parameter on mount
+  // Check URL for view parameter on mount - ONLY RUN ONCE (use sessionStorage to persist across remounts)
   useEffect(() => {
+    // Check sessionStorage to see if we've already processed the current URL params
+    const currentUrl = window.location.href
+    const processedKey = `agentbuilder-processed-${currentUrl}`
+    const hasProcessed = sessionStorage.getItem(processedKey) === 'true'
+    
+    // If we've already processed these URL params, don't process again
+    if (hasProcessed) {
+      return;
+    }
+    
     const params = new URLSearchParams(window.location.search)
     const view = params.get('view')
     const agentName = params.get('agent')
+    const isNewAgent = params.get('newAgent') === 'true'
+    const modeParam = params.get('mode')
     
+    // If creating a new agent from floating chat (priority check - do this first)
+    if (isNewAgent) {
+      const prompt = params.get('prompt') || ''
+      const stage = params.get('stage') || 'data-capture'
+      const agentMode = params.get('agentMode') || 'suggest'
+      const skillsStr = params.get('skills') || ''
+      const skills = skillsStr ? skillsStr.split(',').filter(s => s.trim()) : []
+      const lane = params.get('lane') || 'Data Quality'
+      
+      console.log('[AgentBuilderPage] Creating new agent from URL params:', {
+        stage,
+        mode: agentMode,
+        skillsCount: skills.length,
+        lane,
+        promptLength: prompt.length
+      })
+      
+      // Create new agent with pre-filled data
+      const newAgent: Agent = {
+        id: Date.now().toString(),
+        name: 'New Agent',
+        stage: stage,
+        mode: agentMode as 'auto-apply' | 'suggest' | 'observe',
+        prompt: prompt,
+        skills: skills,
+        active: false,
+        lane: lane
+      }
+      
+      // DON'T clear URL params - let the sessionStorage flag prevent re-processing
+      
+      // CRITICAL: Save ALL state to storage BEFORE React state updates
+      // This ensures state is available when component remounts (triggered by Settings page)
+      const updatedAgents = [...agents, newAgent]
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('agents', JSON.stringify(updatedAgents))
+        sessionStorage.setItem('agentbuilder-editing-agent', JSON.stringify(newAgent))
+        sessionStorage.setItem('agentbuilder-mode', 'build2')
+        sessionStorage.setItem('agentbuilder-preview-mode', 'false')
+      }
+      
+      // Now trigger React state updates (these may cause remounts, but storage is already saved)
+      setAgents(updatedAgents)
+      setEditingAgent(newAgent)
+      setMode('build2')
+      setIsPreviewMode(false)
+      
+      // Expand the relevant stage
+      setExpandedStages(prev => {
+        const newSet = new Set(prev)
+        newSet.add(stage)
+        return newSet
+      })
+      
+      console.log('[AgentBuilderPage] New agent set, mode set to build2')
+      
+      // Mark URL as processed in sessionStorage to prevent re-processing on remounts
+      sessionStorage.setItem(`agentbuilder-processed-${currentUrl}`, 'true')
+      
+      return // Don't process agent name parameter if we're creating new
+    }
+    
+    // Check for explicit mode parameter in URL
+    if (modeParam === 'executive-dashboard') {
+      setMode('executive-dashboard')
+      sessionStorage.setItem(`agentbuilder-processed-${currentUrl}`, 'true')
+      return
+    }
+    
+    // Legacy view parameter support
     if (view === 'executive-dashboard') {
       setMode('executive-dashboard')
+      sessionStorage.setItem(`agentbuilder-processed-${currentUrl}`, 'true')
+      return
     }
     
     // If agent parameter is provided, find and preview that agent
@@ -539,6 +646,7 @@ ERROR HANDLING:
             return newSet
           })
         }
+        sessionStorage.setItem(`agentbuilder-processed-${currentUrl}`, 'true')
       }
     }
   }, [agents])
@@ -590,8 +698,13 @@ ERROR HANDLING:
     }
   }, [mode])
 
-  const [editingAgent, setEditingAgent] = useState<Agent | null>(null)
-  const [isPreviewMode, setIsPreviewMode] = useState(false)
+  const [isPreviewMode, setIsPreviewMode] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const stored = sessionStorage.getItem('agentbuilder-preview-mode')
+      return stored === 'true'
+    }
+    return false
+  })
   const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
   const [testingAgent, setTestingAgent] = useState<Agent | null>(null)
   const [dateRange, setDateRange] = useState<"7days" | "30days" | "3months">("7days")
@@ -1115,13 +1228,14 @@ ERROR HANDLING:
                   onStateChange={handlePromptAndSkillsUpdate}
                 />
               )}
-              {mode === "build2" && (
-                <AgentBuilder2
-                  agents={agents}
-                  onCreateAgent={handleCreateAgentForStage}
-                  currentAgent={editingAgent}
-                  onAgentSelect={setEditingAgent}
-                  onSaveAgent={handleSaveAgent}
+              {mode === "build2" && (() => {
+                return (
+                  <AgentBuilder2
+                    agents={agents}
+                    onCreateAgent={handleCreateAgentForStage}
+                    currentAgent={editingAgent}
+                    onAgentSelect={setEditingAgent}
+                    onSaveAgent={handleSaveAgent}
                   isPreviewMode={isPreviewMode}
                   onToggleActive={toggleAgentActive}
                   onEditAgent={handleEditAgent}
@@ -1131,7 +1245,8 @@ ERROR HANDLING:
                   onCloseTest={handleCloseTest}
                   agentMetrics={agentMetrics}
                 />
-              )}
+                );
+              })()}
               {mode === "executive-dashboard" && (
                 <div className="w-full h-full overflow-y-auto">
                   <ExecutiveDashboardClient />

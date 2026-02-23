@@ -117,7 +117,7 @@ export function DetailsTab({
   matchResults = [],
   approvalLimit = 2500,
   poComparisonData,
-  onStatusUpdate
+  onStatusUpdate,
 }: DetailsTabProps) {
   // Track which field's AI suggestion is expanded
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
@@ -224,6 +224,7 @@ export function DetailsTab({
   const [isAdditionalDetailsExpanded, setIsAdditionalDetailsExpanded] = useState(false);
   const [isLineItemsExpanded, setIsLineItemsExpanded] = useState(true); // Start expanded
   const [isLineItemsFullscreen, setIsLineItemsFullscreen] = useState(false);
+  const [hasActiveAgents, setHasActiveAgents] = useState(false);
   
   // Ref for scrolling to Additional Invoice Details section
   const additionalDetailsRef = useRef<HTMLDivElement>(null);
@@ -286,6 +287,7 @@ export function DetailsTab({
     }, 100);
   };
 
+
   // Handle ESC key to exit fullscreen
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -327,6 +329,48 @@ export function DetailsTab({
       }));
     }
   }, [isEditing, agentPendingFields]);
+
+  // Check for active agents that can fix quantity mismatches
+  useEffect(() => {
+    const checkForActiveAgents = () => {
+      if (typeof window !== 'undefined') {
+        const stored = localStorage.getItem('agents');
+        
+        if (stored) {
+          try {
+            const agents = JSON.parse(stored);
+            
+            // Check if there's an active agent with matching stage (matching) and relevant skills
+            const activeMatchingAgent = agents.some((agent: any) => 
+              agent.active && 
+              agent.stage === 'matching' && 
+              (agent.skills?.includes('Intelligent Matching') || agent.skills?.includes('Find Purchase Orders'))
+            );
+            
+            setHasActiveAgents(activeMatchingAgent);
+          } catch (e) {
+            setHasActiveAgents(false);
+          }
+        } else {
+          setHasActiveAgents(false);
+        }
+      }
+    };
+
+    // Check on mount
+    checkForActiveAgents();
+
+    // Listen for storage events (when agents are saved in another tab or window)
+    window.addEventListener('storage', checkForActiveAgents);
+
+    // Also check periodically in case localStorage is updated in the same tab
+    const interval = setInterval(checkForActiveAgents, 2000);
+
+    return () => {
+      window.removeEventListener('storage', checkForActiveAgents);
+      clearInterval(interval);
+    };
+  }, []);
 
   // Clear fieldToFocus after entering edit mode (allow time for autofocus)
   useEffect(() => {
@@ -1178,6 +1222,7 @@ export function DetailsTab({
                       {validationCounts.warningCount} warning{validationCounts.warningCount !== 1 ? 's' : ''}
                     </span>
                   )}
+                  {/* Reprocess with AI button - DEBUG: Always show for testing */}
                 </>
               )}
             </div>
@@ -2871,6 +2916,7 @@ export function DetailsTab({
             )}
 
             <LineItemsPreviewPanel
+              key={`lines-${invoiceData._lastUpdated || 'initial'}-${invoiceData.lines?.[5]?.smart_match_applied}`}
               invoiceLines={invoiceData.lines || []}
               poLines={invoiceData.po_lines}
               poDataList={mergedPoComparisonData?.poDataList}
