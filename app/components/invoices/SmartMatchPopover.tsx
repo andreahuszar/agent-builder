@@ -16,6 +16,7 @@ interface SmartMatchPopoverProps {
     qty_ordered: number;
     unit_price: number;
   };
+  confidence?: number; // Confidence score (0-1, will be displayed as percentage)
   onUnmatch: () => void;
   onClose?: () => void;
   children: React.ReactNode;
@@ -28,6 +29,7 @@ export function SmartMatchPopover({
   poDescription,
   invoiceLine,
   poLine,
+  confidence,
   onUnmatch,
   onClose,
   children,
@@ -61,9 +63,14 @@ export function SmartMatchPopover({
           <div className="flex items-center gap-2 mb-3">
             <Zap className="h-4 w-4 text-purple-600" />
             <span className="text-sm font-semibold text-purple-900">Smart Match Applied</span>
+            {confidence !== undefined && (
+              <span className="ml-auto mr-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
+                {Math.round(confidence * 100)}% confidence
+              </span>
+            )}
             <button
               onClick={handleClose}
-              className="ml-auto p-0.5 rounded hover:bg-purple-100 transition-colors"
+              className={`${confidence !== undefined ? '' : 'ml-auto'} p-0.5 rounded hover:bg-purple-100 transition-colors`}
               title="Close"
             >
               <X className="h-3.5 w-3.5 text-gray-600" />

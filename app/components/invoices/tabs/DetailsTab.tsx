@@ -271,6 +271,20 @@ export function DetailsTab({
       }
     }
   };
+  
+  // Handler for financial/amount variances click - scrolls to line items section
+  const handleFinancialValidationClick = () => {
+    // Expand line items if collapsed
+    setIsLineItemsExpanded(true);
+    
+    // Scroll to line items section after a brief delay to allow expansion animation
+    setTimeout(() => {
+      lineItemsContainerRef.current?.scrollIntoView({ 
+        behavior: 'smooth', 
+        block: 'start' 
+      });
+    }, 100);
+  };
 
   // Handle ESC key to exit fullscreen
   useEffect(() => {
@@ -1183,6 +1197,7 @@ export function DetailsTab({
                       issues={filteredValidationIssues.financial}
                       defaultExpanded={true}
                       compact={true}
+                      onHeaderClick={handleFinancialValidationClick}
                     />
                   )}
                   {filteredValidationIssues.process.length > 0 && (

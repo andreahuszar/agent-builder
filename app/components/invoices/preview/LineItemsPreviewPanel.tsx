@@ -2340,6 +2340,7 @@ export function LineItemsPreviewPanel({
                                         poDescription={matchedPO.item_description || matchedPO.description}
                                         invoiceLine={line}
                                         poLine={matchedPO}
+                                        confidence={(line as any).smart_match_confidence}
                                         onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
                                         open={openPopoverId === `invoice-${line.id || `line-${line.line_no}`}`}
                                         onOpenChange={(open) => setOpenPopoverId(open ? `invoice-${line.id || `line-${line.line_no}`}` : null)}
@@ -3470,6 +3471,7 @@ export function LineItemsPreviewPanel({
                                       poDescription={matchedPO.item_description || matchedPO.description}
                                       invoiceLine={line}
                                       poLine={matchedPO}
+                                      confidence={(line as any).smart_match_confidence}
                                       onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
                                       open={openPopoverId === `invoice-detailed-${line.id || `line-${line.line_no}`}`}
                                       onOpenChange={(open) => setOpenPopoverId(open ? `invoice-detailed-${line.id || `line-${line.line_no}`}` : null)}
@@ -3976,6 +3978,7 @@ export function LineItemsPreviewPanel({
                                         poDescription={matchedPO.item_description || matchedPO.description}
                                         invoiceLine={line}
                                         poLine={matchedPO}
+                                        confidence={(line as any).smart_match_confidence}
                                         onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
                                         open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}`}
                                         onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-${line.id || `line-${line.line_no}`}` : null)}
@@ -4416,7 +4419,7 @@ export function LineItemsPreviewPanel({
                                         </Tooltip.Trigger>
                                       </UomMatchPopover>
                                     ) : (
-                                      <SmartMatchPopover invoiceDescription={line.description} poDescription={matchedPO.item_description || matchedPO.description} invoiceLine={line} poLine={matchedPO} onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
+                                      <SmartMatchPopover invoiceDescription={line.description} poDescription={matchedPO.item_description || matchedPO.description} invoiceLine={line} poLine={matchedPO} confidence={(line as any).smart_match_confidence} onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
                                             <Zap className="h-3.5 w-3.5 text-purple-600" />

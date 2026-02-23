@@ -612,7 +612,11 @@ export const generateBaselineInvoices = (): Invoice[] => {
       line_total: 2400.00,
       po_line_id: 'po-line-9011-4',
       gr_line_id: null,
-      ses_line_id: null
+      ses_line_id: null,
+      // AI Smart Match applied with high confidence
+      smart_match_applied: true,
+      smart_match_confidence: 0.92,
+      smart_match_reason: 'Smart matching applied: Grounds maintenance service matched by vendor, description pattern, and billing cycle'
     },
     {
       id: 'line-baseline-po2-5',
