@@ -1,4 +1,5 @@
 'use client';
+// Updated: Removed TeachRuleDrawer and "+" hover buttons
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Maximize2, Minimize2, X, AlertCircle, ChevronDown, CheckCircle, Check, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical, Zap, Sparkles, List, ArrowDownWideNarrow } from 'lucide-react';
@@ -14,7 +15,6 @@ import { UomMatchPopover } from '../UomMatchPopover';
 import { useToast } from '@/app/components/ui/Toast';
 import { SparkleButton } from '../SparkleButton';
 import { CustomRulePopover, UnitConversionRule } from '../CustomRulePopover';
-import { TeachRuleDrawer } from '../TeachRuleDrawer';
 import { AddPODrawer } from '../AddPODrawer';
 import { POLineUsage, ResolvedPOLine, POWithLines } from '@/types/api';
 
@@ -337,8 +337,6 @@ export function LineItemsPreviewPanel({
   const [rejectedSuggestions, setRejectedSuggestions] = useState<Set<string>>(new Set());
   const [openSuggestionId, setOpenSuggestionId] = useState<string | null>(null);
   const [customRules, setCustomRules] = useState<Map<string, UnitConversionRule>>(new Map());
-  const [teachRuleDrawerOpen, setTeachRuleDrawerOpen] = useState(false);
-  const [selectedLineForRule, setSelectedLineForRule] = useState<InvoiceLineItem | null>(null);
   const [viewMode, setViewMode] = useState<'default' | 'grouped'>('default');
   const [matchedItemsExpanded, setMatchedItemsExpanded] = useState(true);
   const [poLineSearchQuery, setPoLineSearchQuery] = useState('');
@@ -717,57 +715,12 @@ export function LineItemsPreviewPanel({
     setOpenSuggestionId(null);
   };
 
-  // Handle opening teach rule drawer
-  const handleOpenTeachRuleDrawer = (line: InvoiceLineItem) => {
-    setSelectedLineForRule(line);
-    setTeachRuleDrawerOpen(true);
-  };
-
-  // Handle confirming custom rule
-  const handleConfirmRule = (rule: any) => {
-    if (!selectedLineForRule) return;
-
-    const lineId = selectedLineForRule.id || `line-${selectedLineForRule.line_no}`;
-
-    // Create custom rule object
-    const newRule: UnitConversionRule = {
-      id: `rule-${Date.now()}`,
-      lineId: lineId,
-      description: rule.naturalLanguage,
-      fromUnit: rule.fromUnit,
-      fromQuantity: rule.fromQuantity,
-      toUnit: rule.toUnit,
-      toQuantity: rule.toQuantity,
-      vendorName: "BuildTech Supplies Ltd",
-      createdBy: "User", // TODO: Get actual user name
-      createdAt: new Date()
-    };
-
-    // Add rule to custom rules map
-    setCustomRules(prev => {
-      const updated = new Map(prev);
-      updated.set(lineId, newRule);
-      return updated;
-    });
-
-    // Remove from unmatched lines if it was there
-    setUnmatchedLines(prev => {
-      const updated = new Set(prev);
-      updated.delete(lineId);
-      return updated;
-    });
-
-    // Close drawer
-    setTeachRuleDrawerOpen(false);
-    setSelectedLineForRule(null);
-
-    showToast('Conversion rule applied! This line is now matched.', 'success');
-  };
-
-  // Handle editing custom rule
-  const handleEditRule = (line: InvoiceLineItem) => {
-    setSelectedLineForRule(line);
-    setTeachRuleDrawerOpen(true);
+  // Check if line has suggestion and it's not yet accepted/rejected
+  const hasSuggestion = (line: InvoiceLineItem): boolean => {
+    const lineId = line.id || `line-${line.line_no}`;
+    return !!line.suggested_po_match &&
+           !acceptedSuggestions.has(lineId) &&
+           !rejectedSuggestions.has(lineId);
   };
 
   // Handle removing custom rule
@@ -780,15 +733,6 @@ export function LineItemsPreviewPanel({
 
     setOpenPopoverId(null);
     showToast('Custom conversion rule removed.', 'info');
-  };
-
-
-  // Check if line has suggestion and it's not yet accepted/rejected
-  const hasSuggestion = (line: InvoiceLineItem): boolean => {
-    const lineId = line.id || `line-${line.line_no}`;
-    return !!line.suggested_po_match &&
-           !acceptedSuggestions.has(lineId) &&
-           !rejectedSuggestions.has(lineId);
   };
 
   // ============================================================================
@@ -2337,7 +2281,6 @@ export function LineItemsPreviewPanel({
                                         poQty={matchedPO.qty_ordered}
                                         poUom={matchedPO.uom}
                                         lineTotal={line.line_total}
-                                        onEdit={() => handleEditRule(line)}
                                         onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)}
                                         open={openPopoverId === `invoice-${line.id || `line-${line.line_no}`}`}
                                         onOpenChange={(open) => setOpenPopoverId(open ? `invoice-${line.id || `line-${line.line_no}`}` : null)}
@@ -2402,30 +2345,7 @@ export function LineItemsPreviewPanel({
                                     </Tooltip.Portal>
                                   </Tooltip.Root>
                                 </Tooltip.Provider>
-                              ) : (
-                                // PRIORITY 3: Show purple + icon on hover when no other icon
-                                <Tooltip.Provider>
-                                  <Tooltip.Root delayDuration={200}>
-                                    <Tooltip.Trigger asChild>
-                                      <button
-                                        onClick={() => handleOpenTeachRuleDrawer(line)}
-                                        className="inline-flex items-center justify-center cursor-pointer flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                      >
-                                        <Plus className="h-4 w-4 text-purple-600" />
-                                      </button>
-                                    </Tooltip.Trigger>
-                                    <Tooltip.Portal>
-                                      <Tooltip.Content
-                                        style={{ zIndex: 9999 }}
-                                        className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg"
-                                      >
-                                        Add custom rule
-                                        <Tooltip.Arrow className="fill-gray-900" />
-                                      </Tooltip.Content>
-                                    </Tooltip.Portal>
-                                  </Tooltip.Root>
-                                </Tooltip.Provider>
-                              )}
+                              ) : null}
                             </td>
                           <td className="px-1.5 py-2 text-xs text-left">
                             {status === 'variance' && (
@@ -3491,7 +3411,6 @@ export function LineItemsPreviewPanel({
                                       poQty={matchedPO.qty_ordered}
                                       poUom={matchedPO.uom}
                                       lineTotal={line.line_total}
-                                      onEdit={() => handleEditRule(line)}
                                       onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)}
                                       open={openPopoverId === `invoice-detailed-${line.id || `line-${line.line_no}`}`}
                                       onOpenChange={(open) => setOpenPopoverId(open ? `invoice-detailed-${line.id || `line-${line.line_no}`}` : null)}
@@ -3541,45 +3460,9 @@ export function LineItemsPreviewPanel({
                                       </Tooltip.Trigger>
                                     </SmartMatchPopover>
                                   )}
-                                  <Tooltip.Portal>
-                                    <Tooltip.Content
-                                      style={{ zIndex: 9999 }}
-                                        className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]"
-                                      sideOffset={5}
-                                    >
-                                      <div className="space-y-1">
-                                        <p className="font-semibold">Smart Match Applied</p>
-                                        <p>Click to review or unmatch</p>
-                                      </div>
-                                      <Tooltip.Arrow className="fill-gray-900" />
-                                    </Tooltip.Content>
-                                  </Tooltip.Portal>
                                 </Tooltip.Root>
                               </Tooltip.Provider>
-                            ) : (
-                              // Show purple + icon on hover when no other icon
-                              <Tooltip.Provider>
-                                <Tooltip.Root delayDuration={200}>
-                                  <Tooltip.Trigger asChild>
-                                    <button
-                                      onClick={() => handleOpenTeachRuleDrawer(line)}
-                                      className="inline-flex items-center justify-center cursor-pointer flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                                    >
-                                      <Plus className="h-4 w-4 text-purple-600" />
-                                    </button>
-                                  </Tooltip.Trigger>
-                                  <Tooltip.Portal>
-                                    <Tooltip.Content
-                                      style={{ zIndex: 9999 }}
-                                      className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg"
-                                    >
-                                      Add custom rule
-                                      <Tooltip.Arrow className="fill-gray-900" />
-                                    </Tooltip.Content>
-                                  </Tooltip.Portal>
-                                </Tooltip.Root>
-                              </Tooltip.Provider>
-                            )}
+                            ) : null}
                           </td>
                         <td className="px-1.5 py-2 text-xs text-left">
                           {status === 'variance' && (
@@ -4005,7 +3888,6 @@ export function LineItemsPreviewPanel({
                                         poQty={matchedPO.qty_ordered}
                                         poUom={matchedPO.uom}
                                         lineTotal={line.line_total}
-                                        onEdit={() => handleEditRule(line)}
                                         onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)}
                                         open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}`}
                                         onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-${line.id || `line-${line.line_no}`}` : null)}
@@ -4066,24 +3948,7 @@ export function LineItemsPreviewPanel({
                                     </Tooltip.Portal>
                                   </Tooltip.Root>
                                 </Tooltip.Provider>
-                              ) : (
-                                // PRIORITY 3: Show purple + icon on hover
-                                <Tooltip.Provider>
-                                  <Tooltip.Root delayDuration={200}>
-                                    <Tooltip.Trigger asChild>
-                                      <button onClick={() => handleOpenTeachRuleDrawer(line)} className="inline-flex items-center justify-center cursor-pointer flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Plus className="h-4 w-4 text-purple-600" />
-                                      </button>
-                                    </Tooltip.Trigger>
-                                    <Tooltip.Portal>
-                                      <Tooltip.Content style={{zIndex: 9999}} className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg">
-                                        Add custom rule
-                                        <Tooltip.Arrow className="fill-gray-900" />
-                                      </Tooltip.Content>
-                                    </Tooltip.Portal>
-                                  </Tooltip.Root>
-                                </Tooltip.Provider>
-                              )}
+                              ) : null}
                             </td>
                             <td className="px-1.5 py-2 text-xs text-left">
                               {status === 'matched' && (
@@ -4476,7 +4341,7 @@ export function LineItemsPreviewPanel({
                                 <Tooltip.Provider>
                                   <Tooltip.Root delayDuration={200}>
                                     {hasCustomRule(line) ? (
-                                      <CustomRulePopover rule={getCustomRule(line)!} invoiceQty={line.qty} invoiceUom={line.uom} poQty={matchedPO.qty_ordered} poUom={matchedPO.uom} lineTotal={line.line_total} onEdit={() => handleEditRule(line)} onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
+                                      <CustomRulePopover rule={getCustomRule(line)!} invoiceQty={line.qty} invoiceUom={line.uom} poQty={matchedPO.qty_ordered} poUom={matchedPO.uom} lineTotal={line.line_total} onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
                                             <Zap className="h-3.5 w-3.5 text-purple-600" />
@@ -4506,22 +4371,6 @@ export function LineItemsPreviewPanel({
                                           <p className="font-semibold">Smart Match Applied</p>
                                           <p>Click to review or unmatch</p>
                                         </div>
-                                        <Tooltip.Arrow className="fill-gray-900" />
-                                      </Tooltip.Content>
-                                    </Tooltip.Portal>
-                                  </Tooltip.Root>
-                                </Tooltip.Provider>
-                              ) : (
-                                <Tooltip.Provider>
-                                  <Tooltip.Root delayDuration={200}>
-                                    <Tooltip.Trigger asChild>
-                                      <button onClick={() => handleOpenTeachRuleDrawer(line)} className="inline-flex items-center justify-center cursor-pointer flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Plus className="h-4 w-4 text-purple-600" />
-                                      </button>
-                                    </Tooltip.Trigger>
-                                    <Tooltip.Portal>
-                                      <Tooltip.Content style={{zIndex: 9999}} className="bg-gray-900 text-white text-xs px-2 py-1 rounded shadow-lg">
-                                        Add custom rule
                                         <Tooltip.Arrow className="fill-gray-900" />
                                       </Tooltip.Content>
                                     </Tooltip.Portal>
@@ -4796,33 +4645,6 @@ export function LineItemsPreviewPanel({
             )}
           </>
         )}
-
-        {/* Teach Rule Drawer */}
-        <TeachRuleDrawer
-          open={teachRuleDrawerOpen}
-          onClose={() => {
-            setTeachRuleDrawerOpen(false);
-            setSelectedLineForRule(null);
-          }}
-          invoiceLine={selectedLineForRule ? {
-            qty: selectedLineForRule.qty,
-            uom: selectedLineForRule.uom,
-            description: selectedLineForRule.description,
-            unit_price: selectedLineForRule.unit_price,
-            line_total: selectedLineForRule.line_total
-          } : null}
-          poLine={selectedLineForRule ? (() => {
-            const matchedPO = poLines.find(po => po.id === selectedLineForRule.po_line_id);
-            return matchedPO ? {
-              qty_ordered: matchedPO.qty_ordered,
-              uom: matchedPO.uom,
-              description: matchedPO.description,
-              unit_price: matchedPO.unit_price
-            } : null;
-          })() : null}
-          vendorName="BuildTech Supplies Ltd"
-          onConfirm={handleConfirmRule}
-        />
 
         {/* Add PO Drawer */}
         {onAddPO && (
