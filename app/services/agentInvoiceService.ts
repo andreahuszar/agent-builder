@@ -12,7 +12,7 @@ type Invoice = Partial<UnifiedInvoice>;
 
 // Module-level cache to persist invoices across client-side navigations
 // Cache version: increment this to bust cache when invoice generation logic changes
-const CACHE_VERSION = 6; // Bust cache to ensure bulk commodities tolerance agent shows correctly
+const CACHE_VERSION = 7; // Removed 3 invoices from Non-PO exceptions table
 let cachedInvoices: Invoice[] | null = null;
 let cacheTimestamp: number = 0;
 let cacheVersion: number = 0;
@@ -105,8 +105,11 @@ export function generateAgentProcessedInvoices(serverAgents?: AgentConfig[]): In
     stage: 'verification', // Start at verification stage
   });
   
-  // Take only first 15 scenarios
-  const scenarios = allScenarios.slice(0, 15);
+  // Take first 15 scenarios but exclude scenarios at indices 2, 3, 4 (lines 3-5 in table)
+  const scenarios = [
+    ...allScenarios.slice(0, 2),   // Keep first 2 scenarios (indices 0-1)
+    ...allScenarios.slice(5, 17)   // Skip 3 scenarios, take next 12 (indices 5-16)
+  ];
   
   console.log('[AgentInvoiceService] Generated scenarios:', scenarios.length);
   
