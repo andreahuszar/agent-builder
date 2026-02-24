@@ -746,27 +746,47 @@ ERROR HANDLING:
     agents.forEach((agent) => {
       // Only generate metrics for pre-loaded agents (IDs 2-10), not newly created ones
       if (agent.id && agent.id.length <= 2) {
-        const baseEvaluated = Math.floor((Math.random() * 3000 + 1000) * baseMultiplier)
-        const actedOnPercent = agent.mode === "auto-apply" ? 0.85 : agent.mode === "suggest" ? 0.6 : 0
+        let baseEvaluated: number
+        let createdDate: Date
+        let avgRuntimeMs: number
+        
+        // Special metrics for OCR Agent (id: "2") - show substantial activity
+        if (agent.id === "2") {
+          // OCR Agent has been very active - processes most invoices
+          baseEvaluated = Math.floor(8500 * baseMultiplier) // High volume
+          
+          // Created 75 days ago (established agent)
+          createdDate = new Date()
+          createdDate.setDate(createdDate.getDate() - 75)
+          
+          // Fast runtime for OCR processing
+          avgRuntimeMs = 185 // ~185ms average
+        } else {
+          // Regular metrics for other agents
+          baseEvaluated = Math.floor((Math.random() * 3000 + 1000) * baseMultiplier)
+          
+          // Generate created date (30-90 days ago)
+          const daysAgo = Math.floor(Math.random() * 60) + 30
+          createdDate = new Date()
+          createdDate.setDate(createdDate.getDate() - daysAgo)
+          
+          // Generate average runtime (50ms-500ms range)
+          avgRuntimeMs = Math.floor(Math.random() * 450) + 50
+        }
+        
+        const actedOnPercent = agent.mode === "auto-apply" ? 0.92 : agent.mode === "suggest" ? 0.6 : 0
         const actedOn = Math.floor(baseEvaluated * actedOnPercent)
         const referred = baseEvaluated - actedOn
-
-        // Generate created date (30-90 days ago)
-        const daysAgo = Math.floor(Math.random() * 60) + 30
-        const createdDate = new Date()
-        createdDate.setDate(createdDate.getDate() - daysAgo)
 
         // Generate last run date (within last 24 hours for active agents, null for inactive)
         let lastRunDate: string | null = null
         if (agent.active) {
-          const hoursAgo = Math.floor(Math.random() * 24)
+          // OCR Agent runs very frequently - last run within 2 hours
+          const hoursAgo = agent.id === "2" ? Math.random() * 2 : Math.floor(Math.random() * 24)
           const lastRun = new Date()
           lastRun.setHours(lastRun.getHours() - hoursAgo)
           lastRunDate = lastRun.toISOString()
         }
-
-        // Generate average runtime (50ms-500ms range)
-        const avgRuntimeMs = Math.floor(Math.random() * 450) + 50
 
         // Calculate invoices processed (assuming ~15 lines per invoice)
         const invoicesProcessed = Math.floor(baseEvaluated / 15)
