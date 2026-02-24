@@ -233,13 +233,8 @@ function transformScenarioToInvoice(
   // Parse routing rules from agent prompt
   let routingApprover: { name: string; email: string } | null = null;
   if (routingAgent) {
-    console.log('[AgentInvoiceService] ========== IT ROUTING AGENT DEBUG ==========');
-    console.log('[AgentInvoiceService] Agent name:', routingAgent.name);
-    console.log('[AgentInvoiceService] Full prompt:', routingAgent.prompt);
     const parsedRules = parseAgentPrompt(routingAgent.prompt);
     routingApprover = parsedRules.routingApprover || null;
-    console.log('[AgentInvoiceService] Parsed approver result:', routingApprover);
-    console.log('[AgentInvoiceService] ========================================');
   }
   
   const hasRoutingAgent = !!routingAgent && !!routingApprover;

@@ -72,9 +72,6 @@ export default function AgentBuilderPage({ hideNavigation = false, defaultMode =
 
   // Initialize agents from localStorage if available, otherwise use default agents
   const getInitialAgents = (): Agent[] => {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b66162'},body:JSON.stringify({sessionId:'b66162',location:'AgentBuilderPage.tsx:74',message:'getInitialAgents called',data:{},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     const defaultAgents = [
     {
       id: "2",
@@ -527,21 +524,12 @@ ERROR HANDLING:
     if (typeof window !== 'undefined') {
       try {
         const stored = localStorage.getItem('agents')
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b66162'},body:JSON.stringify({sessionId:'b66162',location:'AgentBuilderPage.tsx:529',message:'localStorage check',data:{hasStored:!!stored,storedLength:stored?.length},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-        // #endregion
         if (stored) {
           const parsed = JSON.parse(stored)
-          // #region agent log
-          fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b66162'},body:JSON.stringify({sessionId:'b66162',location:'AgentBuilderPage.tsx:533',message:'localStorage parsed',data:{isArray:Array.isArray(parsed),parsedLength:parsed?.length},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-          // #endregion
           if (Array.isArray(parsed) && parsed.length > 0) {
             // CORRUPTION DETECTION: If we have >100 agents, it's likely corrupted localStorage
             if (parsed.length > 100) {
               console.error('[AgentBuilderPage] Detected corrupted localStorage with', parsed.length, 'agents - clearing and using defaults');
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b66162'},body:JSON.stringify({sessionId:'b66162',location:'AgentBuilderPage.tsx:541',message:'CORRUPTION DETECTED - clearing localStorage',data:{corruptedCount:parsed.length},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-              // #endregion
               localStorage.removeItem('agents');
               return defaultAgents;
             }
@@ -576,16 +564,10 @@ ERROR HANDLING:
             }
             
             if (missingAgents.length > 0) {
-              // #region agent log
-              fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b66162'},body:JSON.stringify({sessionId:'b66162',location:'AgentBuilderPage.tsx:564',message:'Returning merged agents',data:{parsedCount:parsed.length,missingCount:missingAgents.length,totalReturned:parsed.length+missingAgents.length},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-              // #endregion
               return [...parsed, ...missingAgents]
             }
             
             console.log('[AgentBuilderPage] Loaded agents from localStorage:', parsed.length)
-            // #region agent log
-            fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b66162'},body:JSON.stringify({sessionId:'b66162',location:'AgentBuilderPage.tsx:571',message:'Returning parsed agents',data:{agentCount:parsed.length},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-            // #endregion
             return parsed
           }
         }
@@ -596,19 +578,10 @@ ERROR HANDLING:
     
     // Return default agents if localStorage is empty or on server
     console.log('[AgentBuilderPage] Using default agents')
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b66162'},body:JSON.stringify({sessionId:'b66162',location:'AgentBuilderPage.tsx:590',message:'Returning default agents',data:{defaultAgentsCount:defaultAgents.length},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     return defaultAgents
   }
 
-  const [agents, setAgents] = useState<Agent[]>(() => {
-    const initial = getInitialAgents();
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b66162'},body:JSON.stringify({sessionId:'b66162',location:'AgentBuilderPage.tsx:598',message:'useState initialization',data:{agentCount:initial.length,stages:initial.reduce((acc,a)=>{acc[a.stage]=(acc[a.stage]||0)+1;return acc;},{})},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-    return initial;
-  })
+  const [agents, setAgents] = useState<Agent[]>(getInitialAgents())
   
   // Restore editingAgent from sessionStorage if it exists (for handling remounts)
   const [editingAgent, setEditingAgent] = useState<Agent | null>(() => {
@@ -962,15 +935,7 @@ ERROR HANDLING:
     ...stage,
     agents: agents.filter((agent) => agent.stage === stage.id),
     activeCount: agents.filter((agent) => agent.stage === stage.id && agent.active).length,
-    inactiveCount: (() => {
-      const count = agents.filter((agent) => agent.stage === stage.id && !agent.active).length;
-      // #region agent log
-      if (stage.id === 'matching' && count > 100) {
-        fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b66162'},body:JSON.stringify({sessionId:'b66162',location:'AgentBuilderPage.tsx:935',message:'MASSIVE inactive count in matching',data:{totalAgents:agents.length,inactiveMatchingCount:count,stageId:stage.id,sampleAgents:agents.filter(a=>a.stage==='matching'&&!a.active).slice(0,5).map(a=>({id:a.id,name:a.name,active:a.active}))},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-      }
-      // #endregion
-      return count;
-    })(),
+    inactiveCount: agents.filter((agent) => agent.stage === stage.id && !agent.active).length,
   }))
 
   const toggleStage = (stageId: string) => {
@@ -1032,9 +997,6 @@ ERROR HANDLING:
         const updated = [...prev, newAgent]
         console.log("[AgentBuilderPage] Agent count after creation:", updated.length)
         console.log("[AgentBuilderPage] All agents:", updated.map((a) => `${a.name} (${a.stage}) [${a.active ? 'active' : 'inactive'}]`))
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b66162'},body:JSON.stringify({sessionId:'b66162',location:'AgentBuilderPage.tsx:1025',message:'Agent created',data:{prevCount:prev.length,newCount:updated.length,newAgentName:newAgent.name,newAgentStage:newAgent.stage},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-        // #endregion
         return updated
       })
       setEditingAgent(newAgent)

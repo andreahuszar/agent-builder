@@ -126,29 +126,21 @@ export function parseAgentPrompt(prompt: string): {
   const routeToPattern = /route\s+(?:for\s+approval\s+)?to\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*\(([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\)/i;
   const routeToMatch = prompt.match(routeToPattern);
   
-  console.log('[parseAgentPrompt] Testing Pattern 1:', { matches: !!routeToMatch, prompt: prompt.substring(0, 300) });
-  
   if (routeToMatch) {
     routingApprover = {
       name: routeToMatch[1].trim(),
       email: routeToMatch[2].trim()
     };
-    console.log('[parseAgentPrompt] Pattern 1 matched:', routingApprover);
   } else {
     // Pattern 2: "Assigned approver: [Name] ([email])"
     const assignedPattern = /Assigned\s+approver:\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s*\(([a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,})\)/i;
     const assignedMatch = prompt.match(assignedPattern);
-    
-    console.log('[parseAgentPrompt] Testing Pattern 2:', { matches: !!assignedMatch });
     
     if (assignedMatch) {
       routingApprover = {
         name: assignedMatch[1].trim(),
         email: assignedMatch[2].trim()
       };
-      console.log('[parseAgentPrompt] Pattern 2 matched:', routingApprover);
-    } else {
-      console.warn('[parseAgentPrompt] No approver patterns matched. Prompt excerpt:', prompt.substring(0, 400));
     }
   }
   
