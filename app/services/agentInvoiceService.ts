@@ -12,7 +12,7 @@ type Invoice = Partial<UnifiedInvoice>;
 
 // Module-level cache to persist invoices across client-side navigations
 // Cache version: increment this to bust cache when invoice generation logic changes
-const CACHE_VERSION = 6; // Bust cache to ensure bulk commodities tolerance agent shows correctly
+const CACHE_VERSION = 8; // Filter to show only IT-routed invoices (SI-010011, 2026/00013)
 let cachedInvoices: Invoice[] | null = null;
 let cacheTimestamp: number = 0;
 let cacheVersion: number = 0;
@@ -105,28 +105,31 @@ export function generateAgentProcessedInvoices(serverAgents?: AgentConfig[]): In
     stage: 'verification', // Start at verification stage
   });
   
-  // Take only first 15 scenarios
-  const scenarios = allScenarios.slice(0, 15);
+  // Keep only IT-routed invoices (indices 11 and 13) to show IT routing agent effect
+  // These correspond to invoice numbers SI-010011 and 2026/00013
+  const originalIndices = [11, 13];
+  const scenarios = originalIndices.map(idx => allScenarios[idx]);
   
   console.log('[AgentInvoiceService] Generated scenarios:', scenarios.length);
   
   // Process each scenario through agents
   const processedInvoices: Invoice[] = [];
   
-  scenarios.forEach((scenario, index) => {
-    console.log('[AgentInvoiceService] Processing scenario', index + 1);
-    const invoiceId = `agent-processed-${index + 1}`;
+  scenarios.forEach((scenario, loopIndex) => {
+    const originalIndex = originalIndices[loopIndex]; // Use original index (11 or 13)
+    console.log('[AgentInvoiceService] Processing scenario', originalIndex + 1);
+    const invoiceId = `agent-processed-${originalIndex + 1}`;
     
     // Process through each active agent
     const agentResults = agents.map(agent => 
       simulateAgentProcessing(scenario, agent)
     );
     
-    console.log('[AgentInvoiceService] Agent results for scenario', index + 1, ':', agentResults.length);
+    console.log('[AgentInvoiceService] Agent results for scenario', originalIndex + 1, ':', agentResults.length);
     
     // Transform scenario and agent results into invoice format
-    // Pass the actual index (0-14) for deterministic line item assignment
-    const invoice = transformScenarioToInvoice(invoiceId, scenario, agentResults, agents, index);
+    // Pass the original index (11 or 13) for correct invoice number formatting
+    const invoice = transformScenarioToInvoice(invoiceId, scenario, agentResults, agents, originalIndex);
     console.log('[AgentInvoiceService] Transformed invoice:', invoice.id, invoice.invoice_number, 'Issues:', invoice.issues);
     processedInvoices.push(invoice);
   });
