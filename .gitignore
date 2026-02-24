@@ -66,4 +66,9 @@ current-state.png
 *.db-journal
 docker-compose.override.yml
 postgres_data/
-.cursor/debug.log
+
+# Cursor debug files
+.cursor/debug*.log
+
+# Cache files
+.agents-cache.json
