@@ -84,7 +84,7 @@ export function AgentDetailsView({
   const [editedName, setEditedName] = useState(agent.name)
   const [promptView, setPromptView] = useState<"basic" | "advanced" | "flowchart">("basic")
   const [conflicts, setConflicts] = useState<ConflictType[]>([])
-  const [isConflictCardDismissed, setIsConflictCardDismissed] = useState(false)
+  const [isConflictCardDismissed, setIsConflictCardDismissed] = useState(true)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   
   // Local state for editable fields - only saved when "Save agent" is clicked
@@ -92,9 +92,9 @@ export function AgentDetailsView({
   const [localStage, setLocalStage] = useState(agent.stage)
   const [localLane, setLocalLane] = useState(agent.lane || '')
 
-  // Reset dismiss state when agent changes
+  // Reset dismiss state when agent changes (collapsed by default)
   useEffect(() => {
-    setIsConflictCardDismissed(false)
+    setIsConflictCardDismissed(true)
   }, [agent.id])
 
   // Sync local state when agent prop changes
