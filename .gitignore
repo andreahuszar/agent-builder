@@ -69,6 +69,3 @@ postgres_data/
 
 # Cursor debug files
 .cursor/debug*.log
-
-# Cache files
-.agents-cache.json
