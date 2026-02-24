@@ -235,6 +235,7 @@ function transformScenarioToInvoice(
   if (routingAgent) {
     const parsedRules = parseAgentPrompt(routingAgent.prompt);
     routingApprover = parsedRules.routingApprover || null;
+    console.log('[AgentInvoiceService] Routing agent:', routingAgent.name, 'Parsed approver:', routingApprover);
   }
   
   const hasRoutingAgent = !!routingAgent && !!routingApprover;
