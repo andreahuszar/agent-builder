@@ -12,7 +12,7 @@ type Invoice = Partial<UnifiedInvoice>;
 
 // Module-level cache to persist invoices across client-side navigations
 // Cache version: increment this to bust cache when invoice generation logic changes
-const CACHE_VERSION = 8; // Filter to show only IT-routed invoices (SI-010011, 2026/00013)
+const CACHE_VERSION = 9; // Force IT-routed invoices to be Non-PO for consistent routing
 let cachedInvoices: Invoice[] | null = null;
 let cacheTimestamp: number = 0;
 let cacheVersion: number = 0;
@@ -108,7 +108,19 @@ export function generateAgentProcessedInvoices(serverAgents?: AgentConfig[]): In
   // Keep only IT-routed invoices (indices 11 and 13) to show IT routing agent effect
   // These correspond to invoice numbers SI-010011 and 2026/00013
   const originalIndices = [11, 13];
-  const scenarios = originalIndices.map(idx => allScenarios[idx]);
+  const scenarios = originalIndices.map(idx => {
+    const scenario = { ...allScenarios[idx] };
+    // Force IT-related scenarios to be Non-PO so routing agent can demonstrate its effect
+    if (scenario.stageData.matching) {
+      scenario.stageData.matching = {
+        ...scenario.stageData.matching,
+        hasPO: false,
+        poNumber: undefined,
+        matchStatus: 'no_match'
+      };
+    }
+    return scenario;
+  });
   
   console.log('[AgentInvoiceService] Generated scenarios:', scenarios.length);
   
