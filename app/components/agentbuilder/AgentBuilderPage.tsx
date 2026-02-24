@@ -527,7 +527,7 @@ ERROR HANDLING:
         if (stored) {
           const parsed = JSON.parse(stored)
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // Check if pre-built agents (IDs "9", "10") exist in stored agents
+            // Check if pre-built agents (IDs "9", "10", "11") exist in stored agents
             const missingAgents = []
             
             const hasTechSupplyAgent = parsed.some(a => a.id === "9")
@@ -545,6 +545,15 @@ ERROR HANDLING:
               if (bankDetailsAgent) {
                 console.log('[AgentBuilderPage] Adding Bank details checker agent to stored agents')
                 missingAgents.push(bankDetailsAgent)
+              }
+            }
+            
+            const hasFieldNormalisationAgent = parsed.some(a => a.id === "11")
+            if (!hasFieldNormalisationAgent) {
+              const fieldNormalisationAgent = defaultAgents.find(a => a.id === "11")
+              if (fieldNormalisationAgent) {
+                console.log('[AgentBuilderPage] Adding Field Normalisation agent to stored agents')
+                missingAgents.push(fieldNormalisationAgent)
               }
             }
             
