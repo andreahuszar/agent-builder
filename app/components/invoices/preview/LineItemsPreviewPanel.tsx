@@ -2155,7 +2155,7 @@ export function LineItemsPreviewPanel({
                       <th className="px-1 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
                       <th className="px-1 text-left text-xs font-medium text-gray-800 uppercase w-16">SKU</th>
                       <th className="px-1 text-right text-xs font-medium text-gray-800 uppercase w-12">Qty</th>
-                      <th className="px-1 text-center text-xs font-medium text-gray-800 uppercase w-10">UOM</th>
+                      <th className="px-1 text-center text-xs font-medium text-gray-800 uppercase w-16">UOM</th>
                       <th className="px-1 text-right text-xs font-medium text-gray-800 uppercase w-16">Price</th>
                       <th className="pl-1 pr-2 text-right text-xs font-medium text-gray-800 uppercase w-20">Total</th>
                       {!useDetailedVarianceColumns && showPO && (
@@ -2435,13 +2435,13 @@ export function LineItemsPreviewPanel({
                               return <span className={hasVariance ? 'font-bold text-red-600' : ''}>{line.qty}</span>;
                             })()}
                           </td>
-                          <td className="px-1 py-2 text-xs text-center text-gray-950 w-10">
+                          <td className="px-1 py-2 text-xs text-center text-gray-950 w-16">
                             {isEditMode ? (
                               <input
                                 type="text"
                                 value={line.uom}
                                 onChange={(e) => handleLineChange(lineIndex, 'uom', e.target.value)}
-                                className="w-10 px-1 py-0.5 text-xs text-center border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
+                                className="w-16 px-1 py-0.5 text-xs text-center border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                               />
                             ) : (
                               line.uom
@@ -2893,7 +2893,7 @@ export function LineItemsPreviewPanel({
                       <th className="px-1 text-left text-xs font-medium text-gray-800 uppercase">Description</th>
                       <th className="px-1 text-left text-xs font-medium text-gray-800 uppercase w-16">SKU</th>
                       <th className="px-1 text-right text-xs font-medium text-gray-800 uppercase w-8">Qty</th>
-                      <th className="px-1 text-center text-xs font-medium text-gray-800 uppercase w-10">UOM</th>
+                      <th className="px-1 text-center text-xs font-medium text-gray-800 uppercase w-16">UOM</th>
                       <th className="px-1 text-right text-xs font-medium text-gray-800 uppercase w-16">Price</th>
                       <th className="pl-1 pr-2 text-right text-xs font-medium text-gray-800 uppercase w-20">Total</th>
                     </tr>
@@ -2954,7 +2954,7 @@ export function LineItemsPreviewPanel({
                               {matchedPO.qty_ordered}
                             </span>
                           </td>
-                          <td className="px-1 py-2 text-xs text-center text-gray-950 w-10">
+                          <td className="px-1 py-2 text-xs text-center text-gray-950 w-16">
                             <span className={
                               invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01 && !hasCustomRuleMatch(invLine, matchedPO) && !hasMatchedUomDifference(invLine, matchedPO) && invLine.uom.toLowerCase() !== matchedPO.uom.toLowerCase()
                                 ? 'font-bold text-red-600'
