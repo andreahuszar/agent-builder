@@ -12,7 +12,7 @@ type Invoice = Partial<UnifiedInvoice>;
 
 // Module-level cache to persist invoices across client-side navigations
 // Cache version: increment this to bust cache when invoice generation logic changes
-const CACHE_VERSION = 12; // Force Railway deployment cache bust for IT-routed invoices
+const CACHE_VERSION = 13; // Add validation for IT scenario indices to prevent undefined invoices
 let cachedInvoices: Invoice[] | null = null;
 let cacheTimestamp: number = 0;
 let cacheVersion: number = 0;
@@ -107,22 +107,33 @@ export function generateAgentProcessedInvoices(serverAgents?: AgentConfig[]): In
   
   // Keep only IT-routed invoices (indices 11 and 13) to show IT routing agent effect
   // These correspond to invoice numbers SI-010011 and 2026/00013
-  const originalIndices = [11, 13];
-  const scenarios = originalIndices.map(idx => {
-    const scenario = { ...allScenarios[idx] };
-    // Force IT-related scenarios to be Non-PO so routing agent can demonstrate its effect
-    if (scenario.stageData.matching) {
-      scenario.stageData.matching = {
-        ...scenario.stageData.matching,
-        hasPO: false,
-        poNumber: undefined,
-        matchStatus: 'no_match'
-      };
-    }
-    return scenario;
-  });
+  console.log('[AgentInvoiceService] Total scenarios available:', allScenarios.length);
   
-  console.log('[AgentInvoiceService] Generated scenarios:', scenarios.length);
+  const originalIndices = [11, 13];
+  let scenarios = originalIndices
+    .filter(idx => idx < allScenarios.length) // Only keep valid indices
+    .map(idx => {
+      const scenario = { ...allScenarios[idx] };
+      // Force IT-related scenarios to be Non-PO so routing agent can demonstrate its effect
+      if (scenario && scenario.stageData && scenario.stageData.matching) {
+        scenario.stageData.matching = {
+          ...scenario.stageData.matching,
+          hasPO: false,
+          poNumber: undefined,
+          matchStatus: 'no_match'
+        };
+      }
+      return scenario;
+    })
+    .filter(s => s !== undefined); // Remove any undefined scenarios
+  
+  console.log('[AgentInvoiceService] Filtered scenarios for IT routing:', scenarios.length);
+  
+  // If we don't have enough IT scenarios, fall back to showing all scenarios
+  if (scenarios.length === 0) {
+    console.warn('[AgentInvoiceService] No IT scenarios found, using all scenarios instead');
+    scenarios = allScenarios.slice(0, 15);
+  }
   
   // Process each scenario through agents
   const processedInvoices: Invoice[] = [];
