@@ -523,16 +523,27 @@ ERROR HANDLING:
     // Client-side only - check localStorage and merge with defaults
     if (typeof window !== 'undefined') {
       try {
+        // Version-based cache invalidation: bump this when default agent prompts change
+        const AGENTS_VERSION = 'v3'
+        const storedVersion = localStorage.getItem('agents-version')
+        if (storedVersion !== AGENTS_VERSION) {
+          console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')
+          localStorage.removeItem('agents')
+          localStorage.setItem('agents-version', AGENTS_VERSION)
+          return defaultAgents
+        }
+
         const stored = localStorage.getItem('agents')
         if (stored) {
           const parsed = JSON.parse(stored)
           if (Array.isArray(parsed) && parsed.length > 0) {
-            // CORRUPTION DETECTION: If we have >100 agents, it's likely corrupted localStorage
+            // CORRUPTION DETECTION
             if (parsed.length > 100) {
-              console.error('[AgentBuilderPage] Detected corrupted localStorage with', parsed.length, 'agents - clearing and using defaults');
-              localStorage.removeItem('agents');
-              return defaultAgents;
+              console.error('[AgentBuilderPage] CORRUPTION DETECTED:', parsed.length, 'agents. Resetting.')
+              localStorage.removeItem('agents')
+              return defaultAgents
             }
+
             // Check if pre-built agents (IDs "9", "10", "11") exist in stored agents
             const missingAgents = []
             
