@@ -43,13 +43,13 @@ export function WorkflowVisualizer({
   agentMetrics,
   onAgentClick,
 }: WorkflowVisualizerProps) {
-  // State to track which stages are expanded (Ingestion open by default)
+  // State to track which stages are expanded (Invoice Import open by default)
   const [expandedStages, setExpandedStages] = useState<Set<string>>(
     new Set(["ingestion"])
   )
 
   const stages = [
-    { id: "ingestion", name: "Ingestion", description: "Receive and validate invoices" },
+    { id: "ingestion", name: "Invoice Import", description: "Receive and validate invoices" },
     { id: "data-capture", name: "Data Capture", description: "Extract line items and amounts" },
     { id: "verification", name: "Verification", description: "Validate data accuracy" },
     { id: "matching", name: "Matching", description: "Match to purchase orders" },

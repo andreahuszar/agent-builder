@@ -80,7 +80,7 @@ export default function AgentBuilderPage({ hideNavigation = false, defaultMode =
       prompt: `ROLE: Optical Character Recognition and Field Extraction Agent - exclusively extracts structured data from invoice documents using OCR technology
 
 INPUTS:
-- Validated documents from Ingestion stage (PDF, XLSX, CSV, PNG/JPG)
+- Validated documents from Invoice Import stage (PDF, XLSX, CSV, PNG/JPG)
 - OCR engine output
 - Vendor-specific extraction templates
 
@@ -792,7 +792,7 @@ ERROR HANDLING:
   }, [agentMetrics])
 
   const stages = [
-    { id: "ingestion", name: "Ingestion" },
+    { id: "ingestion", name: "Invoice Import" },
     { id: "data-capture", name: "Data Capture" },
     { id: "verification", name: "Verification" },
     { id: "matching", name: "Matching" },

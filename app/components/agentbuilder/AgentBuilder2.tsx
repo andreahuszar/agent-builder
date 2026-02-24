@@ -43,7 +43,7 @@ interface AgentBuilder2Props {
 }
 
 const WORKFLOW_STAGES = [
-  { id: "ingestion", name: "Ingestion" },
+  { id: "ingestion", name: "Invoice Import" },
   { id: "data-capture", name: "Data Capture" },
   { id: "verification", name: "Verification" },
   { id: "matching", name: "Matching" },

@@ -52,7 +52,7 @@ const STAGE_LANES: Record<string, string[]> = {
 }
 
 const stages = [
-  { id: "ingestion", name: "Ingestion" },
+  { id: "ingestion", name: "Invoice Import" },
   { id: "data-capture", name: "Data Capture" },
   { id: "verification", name: "Verification" },
   { id: "matching", name: "Matching" },
@@ -628,7 +628,7 @@ export function AgentDetailsView({
                 className="w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3cpath%20d%3D%22M7%207l3-3%203%203m0%206l-3%203-3-3%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3c%2Fsvg%3E')] bg-[length:1.25rem] bg-[center_right_0.5rem] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="">Select stage</option>
-                <option value="ingestion">Ingestion</option>
+                <option value="ingestion">Invoice Import</option>
                 <option value="data-capture">Data capture</option>
                 <option value="verification">Verification</option>
                 <option value="matching">Matching</option>
