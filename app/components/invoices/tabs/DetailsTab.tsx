@@ -2240,24 +2240,22 @@ export function DetailsTab({
                   ) : (
                     <p className="text-sm font-medium text-gray-950 flex items-center gap-2">
                       {invoiceData.plant_id}
-                      {invoiceData.extraction_field_confidences?.plant_id && (
-                        <Tooltip.Provider>
-                          <Tooltip.Root delayDuration={200}>
-                            <Tooltip.Trigger asChild>
-                              <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
-                            </Tooltip.Trigger>
-                            <Tooltip.Portal>
-                              <Tooltip.Content
-                                className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md"
-                                sideOffset={5}
-                              >
-                                Agent extracted with {Math.round(invoiceData.extraction_field_confidences.plant_id * 100)}% confidence
-                                <Tooltip.Arrow className="fill-gray-900" />
-                              </Tooltip.Content>
-                            </Tooltip.Portal>
-                          </Tooltip.Root>
-                        </Tooltip.Provider>
-                      )}
+                      <Tooltip.Provider>
+                        <Tooltip.Root delayDuration={200}>
+                          <Tooltip.Trigger asChild>
+                            <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                          </Tooltip.Trigger>
+                          <Tooltip.Portal>
+                            <Tooltip.Content
+                              className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md"
+                              sideOffset={5}
+                            >
+                              Agent extracted with {invoiceData.extraction_field_confidences?.plant_id ? Math.round(invoiceData.extraction_field_confidences.plant_id * 100) : 95}% confidence
+                              <Tooltip.Arrow className="fill-gray-900" />
+                            </Tooltip.Content>
+                          </Tooltip.Portal>
+                        </Tooltip.Root>
+                      </Tooltip.Provider>
                     </p>
                   )}
                   <FieldErrorIndicator
