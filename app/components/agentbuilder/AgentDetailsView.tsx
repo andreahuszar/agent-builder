@@ -947,7 +947,10 @@ export function AgentDetailsView({
 
         {/* Performance Metrics */}
         <div className="bg-white rounded-lg p-6 border border-gray-200">
-          <h2 className="text-sm font-semibold text-gray-950 mb-4">Performance metrics</h2>
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-sm font-semibold text-gray-950">Performance metrics</h2>
+            <span className="text-xs text-gray-500">Last 7 days</span>
+          </div>
           {agentMetrics ? (
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-white rounded-lg p-4 border border-gray-200">
