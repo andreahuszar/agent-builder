@@ -723,7 +723,7 @@ ERROR HANDLING:
         console.log('[AgentBuilderPage] Agent already selected:', agentName)
       }
     }
-  }, [agents, editingAgent])
+  }, [agents]) // Removed editingAgent to prevent URL override when manually clicking agents
 
   // Save agents to localStorage and sync to server whenever they change
   useEffect(() => {
@@ -947,13 +947,27 @@ ERROR HANDLING:
   const handlePreviewAgent = (agent: Agent) => {
     setEditingAgent(agent)
     setIsPreviewMode(true)
-    setMode("build")
+    setMode("build2")
+    
+    // Clear URL agent parameter to prevent interference with manual selection
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('agent')
+      window.history.replaceState({}, '', url.toString())
+    }
   }
 
   const handleEditAgent = (agent: Agent) => {
     setEditingAgent(agent)
     setIsPreviewMode(false)
-    setMode("build")
+    setMode("build2")
+    
+    // Clear URL agent parameter to prevent interference with manual selection
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href)
+      url.searchParams.delete('agent')
+      window.history.replaceState({}, '', url.toString())
+    }
   }
 
   const handleSaveAgent = (updatedAgent: Agent) => {
