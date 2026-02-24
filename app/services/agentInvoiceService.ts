@@ -12,7 +12,7 @@ type Invoice = Partial<UnifiedInvoice>;
 
 // Module-level cache to persist invoices across client-side navigations
 // Cache version: increment this to bust cache when invoice generation logic changes
-const CACHE_VERSION = 10; // Add tax calculation variance to IT-routed invoices (exception requirement)
+const CACHE_VERSION = 11; // Update SI-010011 line item to IT-related (Adobe Creative Cloud)
 let cachedInvoices: Invoice[] | null = null;
 let cacheTimestamp: number = 0;
 let cacheVersion: number = 0;
@@ -592,10 +592,11 @@ function transformScenarioToInvoice(
     { sku: 'EVT-445', description: 'Corporate Event Catering', qty: 150, uom: 'EA' },
     // Facilities & Maintenance
     { sku: 'FAC-223', description: 'Office Cleaning Services', qty: 4, uom: 'WK' },
-    { sku: 'UTL-889', description: 'Electricity & Utilities', qty: 1, uom: 'MO' },
+    // IT Software & Services (index 11 for SI-010011)
+    { sku: 'SW-445', description: 'Adobe Creative Cloud Enterprise License', qty: 50, uom: 'EA' },
     // Food & Perishables (more items)
     { sku: 'FOD-003', description: 'Fresh Meat - Beef & Poultry', qty: 120, uom: 'KG' },
-    // Telecommunications
+    // IT Telecommunications (index 13 for 2026/00013)
     { sku: 'TEL-334', description: 'Internet & Broadband Services', qty: 1, uom: 'MO' },
     // Food & Perishables (invoice F2600014 will be index 14, needs qty ~150)
     { sku: 'FOD-004', description: 'Frozen Foods - Ready Meals', qty: 150, uom: 'KG' }
