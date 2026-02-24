@@ -75,7 +75,7 @@ export default function AgentBuilderPage({ hideNavigation = false, defaultMode =
     const defaultAgents = [
     {
       id: "2",
-      name: "OCR Agent",
+      name: "OCR and Field Extraction Agent",
       stage: "data-capture",
       active: true,
       mode: "auto-apply",
