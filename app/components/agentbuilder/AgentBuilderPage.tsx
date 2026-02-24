@@ -536,6 +536,15 @@ ERROR HANDLING:
           fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b66162'},body:JSON.stringify({sessionId:'b66162',location:'AgentBuilderPage.tsx:533',message:'localStorage parsed',data:{isArray:Array.isArray(parsed),parsedLength:parsed?.length},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
           // #endregion
           if (Array.isArray(parsed) && parsed.length > 0) {
+            // CORRUPTION DETECTION: If we have >100 agents, it's likely corrupted localStorage
+            if (parsed.length > 100) {
+              console.error('[AgentBuilderPage] Detected corrupted localStorage with', parsed.length, 'agents - clearing and using defaults');
+              // #region agent log
+              fetch('http://127.0.0.1:7242/ingest/7ce79cee-5c59-4083-8710-3081faad7e8e',{method:'POST',headers:{'Content-Type':'application/json','X-Debug-Session-Id':'b66162'},body:JSON.stringify({sessionId:'b66162',location:'AgentBuilderPage.tsx:541',message:'CORRUPTION DETECTED - clearing localStorage',data:{corruptedCount:parsed.length},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
+              // #endregion
+              localStorage.removeItem('agents');
+              return defaultAgents;
+            }
             // Check if pre-built agents (IDs "9", "10", "11") exist in stored agents
             const missingAgents = []
             
