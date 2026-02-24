@@ -12,7 +12,7 @@ type Invoice = Partial<UnifiedInvoice>;
 
 // Module-level cache to persist invoices across client-side navigations
 // Cache version: increment this to bust cache when invoice generation logic changes
-const CACHE_VERSION = 9; // Force IT-routed invoices to be Non-PO for consistent routing
+const CACHE_VERSION = 10; // Add tax calculation variance to IT-routed invoices (exception requirement)
 let cachedInvoices: Invoice[] | null = null;
 let cacheTimestamp: number = 0;
 let cacheVersion: number = 0;
@@ -317,14 +317,15 @@ function transformScenarioToInvoice(
   ];
   const invoiceNumber = invoiceFormats[invoiceIndex % invoiceFormats.length];
   
-  // Calculate amounts (only 20% have tax errors) - MUST BE BEFORE auto_corrections
-  const hasTaxError = Math.random() < 0.2;
+  // Calculate amounts - Make IT-routed invoices (index 11, 13) have tax errors to show as exceptions
+  // Index 11 = SI-010011, Index 13 = 2026/00013
+  const hasTaxError = invoiceIndex === 11 || invoiceIndex === 13;
   let calculatedSubtotal: number;
   let calculatedTaxTotal: number;
   let calculatedTotal: number;
   
   if (hasTaxError) {
-    // Incorrect tax calculation (tax is 20% too high)
+    // Incorrect tax calculation (tax is 20% too high) - creates variance exception
     calculatedSubtotal = scenario.amount / (1 + taxRate * 1.2);
     calculatedTaxTotal = calculatedSubtotal * taxRate * 1.2;
     calculatedTotal = scenario.amount;
