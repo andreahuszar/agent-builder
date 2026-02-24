@@ -12,7 +12,7 @@ type Invoice = Partial<UnifiedInvoice>;
 
 // Module-level cache to persist invoices across client-side navigations
 // Cache version: increment this to bust cache when invoice generation logic changes
-const CACHE_VERSION = 15; // Fix IT routing agent prompt to include email for approver parsing
+const CACHE_VERSION = 16; // Add debug logging for approver parsing on Railway
 let cachedInvoices: Invoice[] | null = null;
 let cacheTimestamp: number = 0;
 let cacheVersion: number = 0;
@@ -233,8 +233,10 @@ function transformScenarioToInvoice(
   // Parse routing rules from agent prompt
   let routingApprover: { name: string; email: string } | null = null;
   if (routingAgent) {
+    console.log('[AgentInvoiceService] Routing agent prompt:', routingAgent.prompt);
     const parsedRules = parseAgentPrompt(routingAgent.prompt);
     routingApprover = parsedRules.routingApprover || null;
+    console.log('[AgentInvoiceService] Routing agent:', routingAgent.name, 'Parsed approver:', routingApprover);
   }
   
   const hasRoutingAgent = !!routingAgent && !!routingApprover;

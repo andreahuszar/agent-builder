@@ -15,7 +15,8 @@ const AGENTS_CACHE_PATH = path.join(process.cwd(), '.agents-cache.json');
 function getDefaultActiveAgents(): AgentConfig[] {
   // Return a minimal set of key agents that should always be active
   // These match the pre-built agents from AgentBuilderPage
-  return [
+  console.log('[AgentLoader] Constructing default hardcoded agents');
+  const defaults = [
     {
       name: "OCR and Field Extraction Agent",
       stage: "data-capture",
@@ -50,6 +51,14 @@ OUTPUT:
       skills: ["Route for Approval", "Find Vendor Information"]
     }
   ];
+  
+  // Log IT routing agent details for debugging
+  const itAgent = defaults.find(a => a.name === "Routing approval for IT spend");
+  if (itAgent) {
+    console.log('[AgentLoader] IT Routing agent prompt excerpt:', itAgent.prompt.substring(0, 200));
+  }
+  
+  return defaults;
 }
 
 /**
