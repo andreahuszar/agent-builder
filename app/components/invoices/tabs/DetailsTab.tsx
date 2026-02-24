@@ -2247,7 +2247,7 @@ export function DetailsTab({
                         normalizedValue="UK-4432"
                         agentName="Field Normalisation Agent"
                         confidence={invoiceData.extraction_field_confidences?.plant_id ? Math.round(invoiceData.extraction_field_confidences.plant_id * 100) : 95}
-                        explanation="Agent standardized the Plant ID format by adding the country prefix 'UK-' to ensure consistent formatting across all invoices."
+                        explanation="Agent standardised the Plant ID format by adding prefix 'UK-' based on the receiving mailbox: accounts.payable.uk@xelix.com"
                       >
                         <button className="p-0.5 rounded hover:bg-purple-100 transition-colors">
                           <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />

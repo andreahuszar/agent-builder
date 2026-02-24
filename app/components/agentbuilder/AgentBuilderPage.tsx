@@ -170,6 +170,50 @@ ERROR HANDLING:
       skills: ["Extract text", "Verify Data"],
     },
     {
+      id: "11",
+      name: "Field Normalisation Agent",
+      stage: "data-capture",
+      active: true,
+      mode: "auto-apply",
+      prompt: `ROLE: Field Normalisation Agent - standardizes extracted field values to ensure consistent formatting across all invoices
+
+INPUTS:
+- Raw extracted data from OCR Agent
+- Field normalization rules and patterns
+- Standard formatting templates
+
+STEPS:
+1. Identify fields requiring normalization (dates, IDs, references, codes)
+2. Apply standardization rules based on field type
+3. Add prefixes/suffixes for consistency (e.g., country codes, location identifiers)
+4. Validate normalized values against expected patterns
+5. Flag any values that cannot be automatically normalized
+
+FIELD NORMALIZATION RULES:
+- Plant IDs: Add country prefix (e.g., "4432" → "UK-4432")
+- Date formats: Standardize to ISO format (YYYY-MM-DD)
+- Phone numbers: Add country codes and standard formatting
+- Currency codes: Ensure 3-letter ISO codes (USD, GBP, EUR)
+- Tax IDs: Apply country-specific formatting rules
+
+VALIDATIONS:
+- Normalized value must match expected pattern for field type
+- Original value must be preserved for audit trail
+- Confidence score must be >= 90% for auto-application
+
+OUTPUT:
+- Normalized field values in standard format
+- Original values stored in backup fields
+- Confidence score for each normalization
+
+ERROR HANDLING:
+- If normalization rule uncertain → Suggest correction for manual review
+- If value doesn't match any pattern → Flag for human review
+- If multiple normalization options exist → Present alternatives`,
+      lane: "Field Normalisation",
+      skills: ["Extract Text", "Verify Data", "Process Documents"],
+    },
+    {
       id: "3",
       name: "High value invoices",
       stage: "verification",
@@ -541,21 +585,19 @@ ERROR HANDLING:
 
   // Check URL for view parameter on mount - ONLY RUN ONCE (use sessionStorage to persist across remounts)
   useEffect(() => {
-    // Check sessionStorage to see if we've already processed the current URL params
     const currentUrl = window.location.href
-    const processedKey = `agentbuilder-processed-${currentUrl}`
-    const hasProcessed = sessionStorage.getItem(processedKey) === 'true'
-    
-    // If we've already processed these URL params, don't process again
-    if (hasProcessed) {
-      return;
-    }
-    
     const params = new URLSearchParams(window.location.search)
     const view = params.get('view')
     const agentName = params.get('agent')
     const isNewAgent = params.get('newAgent') === 'true'
     const modeParam = params.get('mode')
+    
+    console.log('[AgentBuilderPage] URL processing check:', {
+      agentName,
+      agentsCount: agents.length,
+      currentUrl,
+      editingAgentName: editingAgent?.name
+    })
     
     // If creating a new agent from floating chat (priority check - do this first)
     if (isNewAgent) {
@@ -635,23 +677,44 @@ ERROR HANDLING:
     
     // If agent parameter is provided, find and preview that agent
     if (agentName && agents.length > 0) {
-      const agent = agents.find(a => a.name.toLowerCase().includes(agentName.toLowerCase()))
-      if (agent) {
-        setEditingAgent(agent)
-        setIsPreviewMode(true)
-        setMode('build2') // Use Agent Builder 2 UI
-        // Expand the stage containing this agent
-        if (agent.stage) {
-          setExpandedStages(prev => {
-            const newSet = new Set(prev)
-            newSet.add(agent.stage)
-            return newSet
-          })
+      // Only process if we're not already viewing this agent
+      if (editingAgent?.name !== agentName) {
+        console.log('[AgentBuilderPage] Looking for agent:', agentName)
+        console.log('[AgentBuilderPage] Available agents:', agents.map(a => a.name))
+        
+        // Try exact match first, then case-insensitive contains
+        let agent = agents.find(a => a.name === agentName)
+        if (!agent) {
+          agent = agents.find(a => a.name.toLowerCase() === agentName.toLowerCase())
         }
-        sessionStorage.setItem(`agentbuilder-processed-${currentUrl}`, 'true')
+        if (!agent) {
+          agent = agents.find(a => a.name.toLowerCase().includes(agentName.toLowerCase()))
+        }
+        
+        if (agent) {
+          console.log('[AgentBuilderPage] Found agent:', agent.name, 'id:', agent.id)
+          setEditingAgent(agent)
+          setIsPreviewMode(false) // Set to false so user can edit
+          setMode('build2') // Use Agent Builder 2 UI
+          
+          // Expand the stage containing this agent
+          if (agent.stage) {
+            setExpandedStages(prev => {
+              const newSet = new Set(prev)
+              newSet.add(agent.stage)
+              return newSet
+            })
+          }
+          
+          console.log('[AgentBuilderPage] Agent selected successfully')
+        } else {
+          console.warn('[AgentBuilderPage] Agent not found:', agentName)
+        }
+      } else {
+        console.log('[AgentBuilderPage] Agent already selected:', agentName)
       }
     }
-  }, [agents])
+  }, [agents, editingAgent])
 
   // Save agents to localStorage and sync to server whenever they change
   useEffect(() => {
@@ -742,6 +805,16 @@ ERROR HANDLING:
       lastRunDate: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
       avgRuntimeMs: 185,
       invoicesProcessed: 567
+    },
+    // Initial metrics for Field Normalisation Agent (id: "11")
+    "11": {
+      evaluated: 7200,
+      actedOn: 6840,
+      referred: 360,
+      createdDate: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(),
+      lastRunDate: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString(),
+      avgRuntimeMs: 95,
+      invoicesProcessed: 480
     }
   })
 
@@ -772,6 +845,16 @@ ERROR HANDLING:
           
           // Fast runtime for OCR processing
           avgRuntimeMs = 185 // ~185ms average
+        } else if (agent.id === "11") {
+          // Field Normalisation Agent - moderate activity
+          baseEvaluated = Math.floor(7200 * baseMultiplier)
+          
+          // Created 60 days ago
+          createdDate = new Date()
+          createdDate.setDate(createdDate.getDate() - 60)
+          
+          // Very fast runtime for field normalization
+          avgRuntimeMs = 95 // ~95ms average
         } else {
           // Regular metrics for other agents
           baseEvaluated = Math.floor((Math.random() * 3000 + 1000) * baseMultiplier)
