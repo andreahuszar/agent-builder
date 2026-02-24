@@ -656,7 +656,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
       sku: 'MA-145784',
       description: 'Landscaping Sand',
       qty: 54,
-      uom: 'EACH',
+      uom: 'EACH 20kg',
       unit_price: 50.00,
       net_amount: 2700.00,
       line_total: 2700.00,
