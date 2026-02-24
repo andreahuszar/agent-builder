@@ -92,7 +92,7 @@ export function FieldNormalizationPopover({
           {/* Agent Link */}
           <div className="pt-3 border-t border-purple-200">
             <a 
-              href="/settings?tab=agents&subtab=agent-builder-2"
+              href={`/settings?tab=ap-automation&agent=${encodeURIComponent(agentName)}#automation-agent-builder-2`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-purple-600 hover:text-purple-700 hover:underline flex items-center gap-1"
