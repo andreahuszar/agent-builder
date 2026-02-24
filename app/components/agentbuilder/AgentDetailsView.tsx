@@ -86,16 +86,40 @@ export function AgentDetailsView({
   const [conflicts, setConflicts] = useState<ConflictType[]>([])
   const [isConflictCardDismissed, setIsConflictCardDismissed] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  
+  // Local state for editable fields - only saved when "Save agent" is clicked
+  const [localMode, setLocalMode] = useState(agent.mode || 'auto-apply')
+  const [localStage, setLocalStage] = useState(agent.stage)
+  const [localLane, setLocalLane] = useState(agent.lane || '')
 
   // Reset dismiss state when agent changes
   useEffect(() => {
     setIsConflictCardDismissed(false)
   }, [agent.id])
 
+  // Sync local state when agent prop changes
+  useEffect(() => {
+    setLocalMode(agent.mode || 'auto-apply')
+    setLocalStage(agent.stage)
+    setLocalLane(agent.lane || '')
+  }, [agent.id, agent.mode, agent.stage, agent.lane])
+
   // Handle delete confirmation
   const handleDelete = () => {
     onDelete(agent.id)
     setShowDeleteConfirm(false)
+  }
+
+  // Handle save - update agent with all local changes then persist
+  const handleSaveChanges = () => {
+    onUpdateAgent({
+      ...agent,
+      name: editedName.trim(),
+      mode: localMode,
+      stage: localStage,
+      lane: localLane
+    })
+    onSave()
   }
 
   // Extract KEY ACTIONS from prompt with special handling for routing/approval/thresholds
@@ -211,13 +235,10 @@ export function AgentDetailsView({
   }
 
   const handleSaveName = () => {
-    if (editedName.trim() && editedName !== agent.name) {
-      onUpdateAgent({
-        ...agent,
-        name: editedName.trim(),
-      })
+    // Just exit edit mode - actual save happens when "Save agent" button is clicked
+    if (editedName.trim()) {
+      setIsEditingName(false)
     }
-    setIsEditingName(false)
   }
 
   const handleCancelEdit = () => {
@@ -650,8 +671,8 @@ export function AgentDetailsView({
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-2">Mode</label>
               <select 
-                value={agent.mode || "auto-apply"} 
-                onChange={(e) => onUpdateAgent({ ...agent, mode: e.target.value as 'observe' | 'suggest' | 'auto-apply' })}
+                value={localMode} 
+                onChange={(e) => setLocalMode(e.target.value as 'observe' | 'suggest' | 'auto-apply')}
                 className="w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3cpath%20d%3D%22M7%207l3-3%203%203m0%206l-3%203-3-3%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3c%2Fsvg%3E')] bg-[length:1.25rem] bg-[center_right_0.5rem] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="observe">Observe</option>
@@ -662,8 +683,11 @@ export function AgentDetailsView({
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-2">Stage</label>
               <select 
-                value={agent.stage || ""} 
-                onChange={(e) => onUpdateAgent({ ...agent, stage: e.target.value, lane: '' })}
+                value={localStage || ""} 
+                onChange={(e) => {
+                  setLocalStage(e.target.value)
+                  setLocalLane('') // Reset lane when stage changes
+                }}
                 className="w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3cpath%20d%3D%22M7%207l3-3%203%203m0%206l-3%203-3-3%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3c%2Fsvg%3E')] bg-[length:1.25rem] bg-[center_right_0.5rem] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="">Select stage</option>
@@ -678,13 +702,13 @@ export function AgentDetailsView({
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-2">Lane</label>
               <select 
-                value={agent.lane || ""}
-                onChange={(e) => onUpdateAgent({ ...agent, lane: e.target.value })}
+                value={localLane}
+                onChange={(e) => setLocalLane(e.target.value)}
                 className="w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3cpath%20d%3D%22M7%207l3-3%203%203m0%206l-3%203-3-3%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3c%2Fsvg%3E')] bg-[length:1.25rem] bg-[center_right_0.5rem] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="">Select a lane</option>
-                {agent.stage && STAGE_LANES[agent.stage] ? (
-                  STAGE_LANES[agent.stage].map((laneOption) => (
+                {localStage && STAGE_LANES[localStage] ? (
+                  STAGE_LANES[localStage].map((laneOption) => (
                     <option key={laneOption} value={laneOption}>
                       {laneOption}
                     </option>
@@ -693,7 +717,7 @@ export function AgentDetailsView({
                   <option disabled>No stage selected</option>
                 )}
               </select>
-              {!agent.stage && (
+              {!localStage && (
                 <p className="text-xs text-gray-500 mt-1">Please select a stage first</p>
               )}
             </div>
@@ -966,7 +990,7 @@ export function AgentDetailsView({
             Delete agent
           </button>
           <button
-            onClick={onSave}
+            onClick={handleSaveChanges}
             className="flex items-center gap-2 px-6 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors"
           >
             <Save className="h-4 w-4" />
