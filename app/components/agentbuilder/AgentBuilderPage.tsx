@@ -17,6 +17,7 @@ import { Textarea } from "@/app/components/ui/textarea"
 import { Checkbox } from "@/app/components/ui/checkbox"
 import ExecutiveDashboardClient from "@/app/components/executive-dashboard/ExecutiveDashboardClient"
 import { clearInvoiceCache } from "@/app/services/agentInvoiceService"
+import { useToast } from "@/app/components/ui/Toast"
 
 type Mode = "chat" | "observe" | "build" | "build2" | "executive-dashboard" | "documents"
 
@@ -67,6 +68,7 @@ export default function AgentBuilderPage({ hideNavigation = false, defaultMode =
     return defaultMode
   })
   const [sidebarOpen, setSidebarOpen] = useState(true)
+  const { showToast } = useToast()
 
   // Initialize agents from localStorage if available, otherwise use default agents
   const getInitialAgents = (): Agent[] => {
@@ -852,6 +854,7 @@ ERROR HANDLING:
         return updated
       })
       setEditingAgent(updatedAgent)
+      showToast(`Agent "${updatedAgent.name}" updated successfully`, 'success')
     } else {
       // Create new agent (ID should already be set from handleCreateNewAgent)
       // Set active: true by default so new agents are immediately synced and used
@@ -868,6 +871,7 @@ ERROR HANDLING:
         return updated
       })
       setEditingAgent(newAgent)
+      showToast(`Agent "${newAgent.name}" created successfully`, 'success')
       // Auto-expand the stage where the new agent was created
       if (newAgent.stage) {
         console.log("[AgentBuilderPage] Auto-expanding stage:", newAgent.stage)

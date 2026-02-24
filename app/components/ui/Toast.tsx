@@ -2,7 +2,7 @@
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
 import * as ToastPrimitive from '@radix-ui/react-toast';
-import { X, Info } from 'lucide-react';
+import { X, Info, CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react';
 
 interface Toast {
   id: string;
@@ -41,28 +41,57 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
     setToasts((prev) => prev.filter((t) => t.id !== id));
   }, []);
 
+  const getToastStyles = (type: Toast['type']) => {
+    switch (type) {
+      case 'success':
+        return {
+          icon: <CheckCircle2 className="h-5 w-5 text-green-600 flex-shrink-0" />,
+          className: 'bg-white border-l-4 border-l-green-600 border-t border-r border-b border-gray-300'
+        };
+      case 'error':
+        return {
+          icon: <AlertCircle className="h-5 w-5 text-red-600 flex-shrink-0" />,
+          className: 'bg-white border-l-4 border-l-red-600 border-t border-r border-b border-gray-300'
+        };
+      case 'warning':
+        return {
+          icon: <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0" />,
+          className: 'bg-white border-l-4 border-l-amber-600 border-t border-r border-b border-gray-300'
+        };
+      case 'info':
+      default:
+        return {
+          icon: <Info className="h-5 w-5 text-purple-900 flex-shrink-0" />,
+          className: 'bg-white border-l-4 border-l-purple-900 border-t border-r border-b border-gray-300'
+        };
+    }
+  };
+
   return (
     <ToastContext.Provider value={{ showToast }}>
       <ToastPrimitive.Provider swipeDirection="left">
         {children}
-        {toasts.map((toast) => (
-          <ToastPrimitive.Root
-            key={toast.id}
-            className="bg-white border border-gray-300 rounded-lg shadow-lg p-4 flex items-center gap-3 min-w-[300px] max-w-[500px] data-[state=open]:animate-in data-[state=open]:slide-in-from-right data-[state=closed]:animate-out data-[state=closed]:slide-out-to-top data-[state=closed]:fade-out data-[swipe=end]:animate-out data-[swipe=end]:slide-out-to-left"
-            duration={4000}
-          >
-            <Info className="h-5 w-5 text-purple-900 flex-shrink-0" />
-            <ToastPrimitive.Description className="flex-1 text-sm text-gray-950">
-              {toast.message}
-            </ToastPrimitive.Description>
-            <ToastPrimitive.Close
-              className="p-1 rounded hover:bg-gray-100 transition-colors"
-              onClick={() => removeToast(toast.id)}
+        {toasts.map((toast) => {
+          const styles = getToastStyles(toast.type);
+          return (
+            <ToastPrimitive.Root
+              key={toast.id}
+              className={`${styles.className} rounded-lg shadow-lg p-4 flex items-center gap-3 min-w-[300px] max-w-[500px] data-[state=open]:animate-in data-[state=open]:slide-in-from-right data-[state=closed]:animate-out data-[state=closed]:slide-out-to-top data-[state=closed]:fade-out data-[swipe=end]:animate-out data-[swipe=end]:slide-out-to-left`}
+              duration={4000}
             >
-              <X className="h-4 w-4 text-gray-600" />
-            </ToastPrimitive.Close>
-          </ToastPrimitive.Root>
-        ))}
+              {styles.icon}
+              <ToastPrimitive.Description className="flex-1 text-sm text-gray-950">
+                {toast.message}
+              </ToastPrimitive.Description>
+              <ToastPrimitive.Close
+                className="p-1 rounded hover:bg-gray-100 transition-colors"
+                onClick={() => removeToast(toast.id)}
+              >
+                <X className="h-4 w-4 text-gray-600" />
+              </ToastPrimitive.Close>
+            </ToastPrimitive.Root>
+          );
+        })}
         <ToastPrimitive.Viewport className="fixed top-4 right-4 flex flex-col gap-2 w-[390px] max-w-[100vw] z-[100]" />
       </ToastPrimitive.Provider>
     </ToastContext.Provider>
