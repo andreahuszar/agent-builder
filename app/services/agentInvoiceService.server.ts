@@ -70,11 +70,22 @@ export function loadActiveAgentsServer(): AgentConfig[] {
     
     if (!fs.existsSync(AGENTS_CACHE_PATH)) {
       console.log('[AgentLoader] Cache file does not exist, using default agents');
+      // #region agent log
+      const logPath = '/Users/xelix/Desktop/XIP/xelix-inv-processing-full-poc/.cursor/debug-b66162.log';
+      const logEntry = JSON.stringify({sessionId:'b66162',location:'agentInvoiceService.server.ts:63',message:'Cache file missing, using defaults',data:{cachePath:AGENTS_CACHE_PATH},timestamp:Date.now(),hypothesisId:'E'}) + '\n';
+      try { fs.appendFileSync(logPath, logEntry); } catch {}
+      // #endregion
       return getDefaultActiveAgents();
     }
     
     const data = fs.readFileSync(AGENTS_CACHE_PATH, 'utf-8');
     const agents = JSON.parse(data);
+    
+    // #region agent log
+    const logPath = '/Users/xelix/Desktop/XIP/xelix-inv-processing-full-poc/.cursor/debug-b66162.log';
+    const logEntry = JSON.stringify({sessionId:'b66162',location:'agentInvoiceService.server.ts:77',message:'Agents loaded from cache file',data:{agentCount:agents?.length,isArray:Array.isArray(agents),cacheFileSize:data.length},timestamp:Date.now(),hypothesisId:'E'}) + '\n';
+    try { fs.appendFileSync(logPath, logEntry); } catch {}
+    // #endregion
     
     console.log('[AgentLoader] Loaded agents from cache:', agents.length);
     
