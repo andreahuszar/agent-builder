@@ -462,7 +462,9 @@ export function AgentBuilder2({
 
                 {expandedStages.has(stage.id) && stage.agents.length > 0 && (
                   <div className="space-y-1 mt-1 ml-2 pl-4 border-l border-gray-200">
-                    {stage.agents.map((agent) => (
+                    {stage.agents.map((agent) => {
+                      const isSelected = currentAgent?.id === agent.id
+                      return (
                       <div
                         key={agent.id}
                         onClick={() => {
@@ -474,7 +476,11 @@ export function AgentBuilder2({
                             setShowDetails(false)
                           }
                         }}
-                        className="flex items-center gap-2 p-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors group cursor-pointer"
+                        className={`flex items-center gap-2 p-2.5 rounded-lg transition-colors group cursor-pointer ${
+                          isSelected 
+                            ? 'bg-purple-50 border-2 border-purple-900 hover:bg-purple-100' 
+                            : 'bg-gray-50 hover:bg-gray-100 border-2 border-transparent'
+                        }`}
                       >
                         <Button
                           variant="ghost"
@@ -505,7 +511,8 @@ export function AgentBuilder2({
                           <Pencil className="w-3.5 h-3.5" />
                         </Button>
                       </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
               </div>
