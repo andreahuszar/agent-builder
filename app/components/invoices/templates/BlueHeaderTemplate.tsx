@@ -245,7 +245,7 @@ export function BlueHeaderTemplate({
               <div className="font-bold">
                 <FieldWithOCR fieldName="plant_id">
                   <SelectableText label="Plant ID">
-                    {invoice.plant_id}
+                    {invoice.original_plant_id || invoice.plant_id}
                   </SelectableText>
                 </FieldWithOCR>
               </div>

@@ -687,6 +687,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     customer_no: 'W4828999',
     job_number: 'WO-2025-445',
     plant_id: 'UK-4432',
+    original_plant_id: '4432', // Original value from scanned document
     currency: 'GBP',
     subtotal: baselinePO2Subtotal,
     tax_total: baselinePO2Tax,
