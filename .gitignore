@@ -71,4 +71,4 @@ postgres_data/
 .cursor/debug*.log
 
 # Cache files
-.agents-cache.json
+# .agents-cache.json - tracked so Railway has agent configs on deployment
