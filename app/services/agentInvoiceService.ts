@@ -12,7 +12,7 @@ type Invoice = Partial<UnifiedInvoice>;
 
 // Module-level cache to persist invoices across client-side navigations
 // Cache version: increment this to bust cache when invoice generation logic changes
-const CACHE_VERSION = 11; // Update SI-010011 line item to IT-related (Adobe Creative Cloud)
+const CACHE_VERSION = 12; // Force Railway deployment cache bust for IT-routed invoices
 let cachedInvoices: Invoice[] | null = null;
 let cacheTimestamp: number = 0;
 let cacheVersion: number = 0;
