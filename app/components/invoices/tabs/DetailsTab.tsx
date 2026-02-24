@@ -55,6 +55,7 @@ import { FieldConfidencePill } from '../FieldConfidencePill';
 import { CustomFieldIndicator } from '../CustomFieldIndicator';
 import { CloseMatchPopover } from '../CloseMatchPopover';
 import { BankDetailsVerificationPopover } from '../BankDetailsVerificationPopover';
+import { FieldNormalizationPopover } from '../FieldNormalizationPopover';
 import { VendorSwapPopover } from '../VendorSwapPopover';
 import { AccountingAutoCodingPopover } from '../AccountingAutoCodingPopover';
 import { FraudRiskBanner } from '../FraudRiskBanner';
@@ -2240,22 +2241,18 @@ export function DetailsTab({
                   ) : (
                     <p className="text-sm font-medium text-gray-950 flex items-center gap-2">
                       {invoiceData.plant_id}
-                      <Tooltip.Provider>
-                        <Tooltip.Root delayDuration={200}>
-                          <Tooltip.Trigger asChild>
-                            <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
-                          </Tooltip.Trigger>
-                          <Tooltip.Portal>
-                            <Tooltip.Content
-                              className="z-50 rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md"
-                              sideOffset={5}
-                            >
-                              Agent extracted with {invoiceData.extraction_field_confidences?.plant_id ? Math.round(invoiceData.extraction_field_confidences.plant_id * 100) : 95}% confidence
-                              <Tooltip.Arrow className="fill-gray-900" />
-                            </Tooltip.Content>
-                          </Tooltip.Portal>
-                        </Tooltip.Root>
-                      </Tooltip.Provider>
+                      <FieldNormalizationPopover
+                        fieldName="Plant ID"
+                        originalValue="4432"
+                        normalizedValue="UK-4432"
+                        agentName="Field Normalisation Agent"
+                        confidence={invoiceData.extraction_field_confidences?.plant_id ? Math.round(invoiceData.extraction_field_confidences.plant_id * 100) : 95}
+                        explanation="Agent standardized the Plant ID format by adding the country prefix 'UK-' to ensure consistent formatting across all invoices."
+                      >
+                        <button className="p-0.5 rounded hover:bg-purple-100 transition-colors">
+                          <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                        </button>
+                      </FieldNormalizationPopover>
                     </p>
                   )}
                   <FieldErrorIndicator
