@@ -37,7 +37,16 @@ function getDefaultActiveAgents(): AgentConfig[] {
       stage: "approval",
       lane: "Approval Routing",
       mode: "auto-apply",
-      prompt: "ROLE: IT Spend Approval Routing Agent - routes non-PO IT invoices to Thomas Eaton",
+      prompt: `ROLE: IT Spend Approval Routing Agent - exclusively routes non-PO invoices for software and IT services to designated approver
+
+AGENT INSTRUCTIONS:
+
+If any non PO invoice relates to the procurement of software / IT services, route for approval to Thomas Eaton (thomas.eaton@xx.com)
+
+OUTPUT:
+- Approval routing status: Routed to IT Approver
+- Assigned approver: Thomas Eaton (thomas.eaton@xx.com) for IT spend invoices
+- Routing reason: "Non-PO invoice for software/IT services"`,
       skills: ["Route for Approval", "Find Vendor Information"]
     }
   ];
