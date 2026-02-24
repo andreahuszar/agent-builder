@@ -732,7 +732,18 @@ ERROR HANDLING:
     "Find Vendor Information",
   ]
 
-  const [agentMetrics, setAgentMetrics] = useState<Record<string, AgentMetrics>>({})
+  const [agentMetrics, setAgentMetrics] = useState<Record<string, AgentMetrics>>({
+    // Initial metrics for OCR Agent (id: "2")
+    "2": {
+      evaluated: 8500,
+      actedOn: 7820,
+      referred: 680,
+      createdDate: new Date(Date.now() - 75 * 24 * 60 * 60 * 1000).toISOString(),
+      lastRunDate: new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString(),
+      avgRuntimeMs: 185,
+      invoicesProcessed: 567
+    }
+  })
 
   const formatNumber = (num: number) => {
     return new Intl.NumberFormat("en-US").format(num)
