@@ -4,6 +4,7 @@ import { useState, useEffect } from "react"
 import { Agent } from "./AgentBuilderPage"
 import { Pencil, Clock, Trash2, Save, Check, X, AlertTriangle } from "lucide-react"
 import { Button } from "@/app/components/ui/button"
+import { Card } from "@/app/components/ui/card"
 
 interface AgentMetrics {
   evaluated: number
@@ -84,11 +85,18 @@ export function AgentDetailsView({
   const [promptView, setPromptView] = useState<"basic" | "advanced" | "flowchart">("basic")
   const [conflicts, setConflicts] = useState<ConflictType[]>([])
   const [isConflictCardDismissed, setIsConflictCardDismissed] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
 
   // Reset dismiss state when agent changes
   useEffect(() => {
     setIsConflictCardDismissed(false)
   }, [agent.id])
+
+  // Handle delete confirmation
+  const handleDelete = () => {
+    onDelete(agent.id)
+    setShowDeleteConfirm(false)
+  }
 
   // Extract KEY ACTIONS from prompt with special handling for routing/approval/thresholds
   const extractKeyActions = (prompt: string) => {
@@ -460,7 +468,38 @@ export function AgentDetailsView({
   const flowchartSteps = extractFlowchartSteps(agent.prompt || '')
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
+    <>
+      {/* Delete Confirmation Modal */}
+      {showDeleteConfirm && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <Card className="w-full max-w-md p-6 m-4">
+            <div className="space-y-4">
+              <div className="flex items-start gap-3">
+                <div className="w-10 h-10 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
+                  <Trash2 className="w-5 h-5 text-red-500" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-lg font-semibold">Delete Agent</h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Are you sure you want to delete "{agent.name}"? This action cannot be undone.
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button variant="outline" onClick={() => setShowDeleteConfirm(false)}>
+                  Cancel
+                </Button>
+                <Button variant="destructive" onClick={handleDelete} className="gap-2">
+                  <Trash2 className="w-4 h-4" />
+                  Delete Agent
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      <div className="flex-1 flex flex-col overflow-hidden bg-gray-50">
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto p-6 space-y-6">
         {/* Header */}
@@ -920,7 +959,7 @@ export function AgentDetailsView({
       <div className="border-t border-gray-200 bg-white px-6 py-4">
         <div className="max-w-4xl mx-auto flex items-center justify-end gap-4">
           <button
-            onClick={() => onDelete(agent.id)}
+            onClick={() => setShowDeleteConfirm(true)}
             className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-white border border-red-600 hover:bg-red-50 rounded-md transition-colors"
           >
             <Trash2 className="h-4 w-4" />
@@ -936,5 +975,6 @@ export function AgentDetailsView({
         </div>
       </div>
     </div>
+    </>
   )
 }
