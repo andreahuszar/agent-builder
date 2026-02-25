@@ -1449,6 +1449,11 @@ export function LineItemsPreviewPanel({
   const getLineStatus = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): 'variance' | 'matched' | 'missing' => {
     const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
 
+    // Agent-fixed lines (e.g. after reprocess) are always matched
+    if ((invoiceLine as any).agent_fixed) {
+      return 'matched';
+    }
+
     // Check accepted suggestions FIRST (treat as matched)
     if (acceptedSuggestions.has(lineId)) {
       return 'matched';
