@@ -643,6 +643,13 @@ Flag any discrepancies for manual review`,
     
     // If creating a new agent from floating chat (priority check - do this first)
     if (isNewAgent) {
+      // Guard: only process once per unique URL to prevent duplicate agents on re-renders
+      const processedKey = `agentbuilder-processed-${currentUrl}`
+      if (sessionStorage.getItem(processedKey) === 'true') {
+        console.log('[AgentBuilderPage] New agent URL already processed, skipping')
+        return
+      }
+
       const prompt = params.get('prompt') || ''
       const stage = params.get('stage') || 'data-capture'
       const agentMode = params.get('agentMode') || 'suggest'
@@ -699,6 +706,16 @@ Flag any discrepancies for manual review`,
       
       // Mark URL as processed in sessionStorage to prevent re-processing on remounts
       sessionStorage.setItem(`agentbuilder-processed-${currentUrl}`, 'true')
+      
+      // Strip newAgent params from URL so back-navigation / re-renders don't retrigger
+      const cleanUrl = new URL(window.location.href)
+      cleanUrl.searchParams.delete('newAgent')
+      cleanUrl.searchParams.delete('prompt')
+      cleanUrl.searchParams.delete('stage')
+      cleanUrl.searchParams.delete('agentMode')
+      cleanUrl.searchParams.delete('skills')
+      cleanUrl.searchParams.delete('lane')
+      window.history.replaceState({}, '', cleanUrl.toString())
       
       return // Don't process agent name parameter if we're creating new
     }
