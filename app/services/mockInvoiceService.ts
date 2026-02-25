@@ -570,7 +570,17 @@ export const generateBaselineInvoices = (): Invoice[] => {
     // Display configuration for green Premier Office Supplies template
     display_config: {
       template: 'green-premier'
-    }
+    },
+    // Agent actions taken during processing
+    agent_actions: [
+      {
+        agent_name: 'PO Matching Agent',
+        action: 'No purchase order found — close match identified',
+        status: 'warning',
+        detail: 'No PO reference was present on this invoice, but a close match (PO-2025-8901) was found in the system with 99% confidence. User confirmation is required before the PO can be assigned.',
+        agent_id: '12'
+      }
+    ]
   } as Invoice);
 
   // ========================================================================
