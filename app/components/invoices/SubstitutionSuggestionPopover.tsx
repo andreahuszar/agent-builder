@@ -101,7 +101,7 @@ export function SubstitutionSuggestionPopover({
             {/* Header - matches AISuggestionCard */}
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="h-4 w-4 text-purple-600 animate-pulse" />
-              <span className="text-sm font-semibold text-purple-900">Suggested Substitution Match</span>
+              <span className="text-sm font-semibold text-purple-900">Smart Match Suggestion</span>
               <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-orange-200 text-orange-800">
                 {confidencePercent}% confidence
               </span>
