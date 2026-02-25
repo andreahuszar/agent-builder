@@ -74,7 +74,8 @@
     "stage": "data-capture",
     "lane": "Header vs Line Split",
     "mode": "auto-apply",
-    "prompt": "ROLE: Customer Reference Number Extraction Agent - extracts the customer reference number from invoice data for TechSupply Solutions\n\nKEY ACTIONS:\nSearch the extracted invoice data for the customer reference number\nIf no customer reference number is present, then flag for review",
+    "prompt": "ROLE: Customer Reference Number Extraction Agent - exclusively extracts the customer reference number from invoice data for TechSupply Solutions\n\nINPUTS: Extracted invoice data from the Data Capture phase\n\nSTEPS:\n1. Search the extracted invoice data for the customer reference number pattern (2 letters + 6 numbers)\n2. Validate the extracted customer reference number to ensure it matches the expected format\n3. If the customer reference number is found, output it in a structured format (e.g., JSON)\n\nVALIDATIONS:\n- The customer reference number should be in the format of 2 letters followed by 6 numbers\n- The extracted number should be 8 characters long\n\nOUTPUT: Extracted customer reference number in a structured format (e.g., JSON)\n\nERROR HANDLING:\n- If the customer reference number is not found, flag the invoice for manual review\n- If the extracted number does not match the expected format, log an error and notify the administrator\n\nREFERENCED_DOCUMENTS: None",
+    "basicPromptOverride": "ROLE: Customer Reference Number Extraction Agent - extracts the customer reference number from invoice data for TechSupply Solutions\n\nKEY ACTIONS:\nSearch the extracted invoice data for the customer reference number\nIf no customer reference number is present, then flag for review",
     "skills": [
       "Verify Data",
       "Find Vendor Information"

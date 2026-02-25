@@ -37,6 +37,7 @@ export type Agent = {
   active: boolean
   mode?: "observe" | "suggest" | "auto-apply"
   prompt?: string
+  basicPromptOverride?: string
   lane?: string
   skills?: string[]
   documents?: AgentDocument[]
@@ -456,7 +457,27 @@ ERROR HANDLING:
       stage: "data-capture",
       active: true,
       mode: "auto-apply",
-      prompt: `ROLE: Customer Reference Number Extraction Agent - extracts the customer reference number from invoice data for TechSupply Solutions
+      prompt: `ROLE: Customer Reference Number Extraction Agent - exclusively extracts the customer reference number from invoice data for TechSupply Solutions
+
+INPUTS: Extracted invoice data from the Data Capture phase
+
+STEPS:
+1. Search the extracted invoice data for the customer reference number pattern (2 letters + 6 numbers)
+2. Validate the extracted customer reference number to ensure it matches the expected format
+3. If the customer reference number is found, output it in a structured format (e.g., JSON)
+
+VALIDATIONS:
+- The customer reference number should be in the format of 2 letters followed by 6 numbers
+- The extracted number should be 8 characters long
+
+OUTPUT: Extracted customer reference number in a structured format (e.g., JSON)
+
+ERROR HANDLING:
+- If the customer reference number is not found, flag the invoice for manual review
+- If the extracted number does not match the expected format, log an error and notify the administrator
+
+REFERENCED_DOCUMENTS: None`,
+      basicPromptOverride: `ROLE: Customer Reference Number Extraction Agent - extracts the customer reference number from invoice data for TechSupply Solutions
 
 KEY ACTIONS:
 Search the extracted invoice data for the customer reference number
@@ -509,7 +530,7 @@ ERROR HANDLING:
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v4'
+        const AGENTS_VERSION = 'v5'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')
