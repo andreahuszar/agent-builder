@@ -780,7 +780,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
         detail: 'Line 4: PO line description differs in wording but matched automatically at 92% confidence. Line 5: Possible semantic match found at 78% confidence — below the auto-assignment threshold. User confirmation required.',
         agent_id: '13'
       }
-    ]
+    ],
+    suppress_validation_fields: ['line_5']
   } as Invoice);
 
   // ========================================================================

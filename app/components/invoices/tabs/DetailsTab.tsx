@@ -675,6 +675,7 @@ export function DetailsTab({
     if (!lineItemsValidationState) return validationIssues;
 
     const suppressedCategories: string[] = (invoiceData as any).suppress_validation_categories || [];
+    const suppressedFields: string[] = (invoiceData as any).suppress_validation_fields || [];
 
     const filtered: typeof validationIssues = {
       financial: [],
@@ -691,6 +692,8 @@ export function DetailsTab({
       if (suppressedCategories.includes(category)) return;
 
       filtered[category] = validationIssues[category].filter(issue => {
+        // Skip specific fields suppressed by invoice data
+        if (issue.field && suppressedFields.includes(issue.field)) return false;
         // Remove "Invoice has line item variances" when all lines are matched
         if (issue.field === 'match_status' && lineItemsValidationState.allLinesMatched) {
           return false;
