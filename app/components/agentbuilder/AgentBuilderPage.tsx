@@ -771,8 +771,10 @@ Any match below 90% confidence is flagged for manual review — only matches at 
       const skillsStr = params.get('skills') || ''
       const skills = skillsStr ? skillsStr.split(',').filter(s => s.trim()) : []
       const lane = params.get('lane') || 'Data Quality'
+      const name = params.get('name') || 'New Agent'
       
       console.log('[AgentBuilderPage] Creating new agent from URL params:', {
+        name,
         stage,
         mode: agentMode,
         skillsCount: skills.length,
@@ -783,7 +785,7 @@ Any match below 90% confidence is flagged for manual review — only matches at 
       // Create new agent with pre-filled data
       const newAgent: Agent = {
         id: Date.now().toString(),
-        name: 'New Agent',
+        name: name,
         stage: stage,
         mode: agentMode as 'auto-apply' | 'suggest' | 'observe',
         prompt: prompt,
@@ -830,6 +832,7 @@ Any match below 90% confidence is flagged for manual review — only matches at 
       cleanUrl.searchParams.delete('agentMode')
       cleanUrl.searchParams.delete('skills')
       cleanUrl.searchParams.delete('lane')
+      cleanUrl.searchParams.delete('name')
       window.history.replaceState({}, '', cleanUrl.toString())
       
       return // Don't process agent name parameter if we're creating new
