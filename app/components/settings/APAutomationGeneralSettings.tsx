@@ -20,6 +20,7 @@ interface APSettings {
     excel: boolean;
     images: boolean;
     csv: boolean;
+    word: boolean;
   };
   approvalThreshold: number;
   autoApproveUnder: number;
@@ -44,7 +45,7 @@ export default function APAutomationGeneralSettings() {
     autoProcessing: true,
     ocrThreshold: 85,
     duplicateDetection: true,
-    fileFormats: { pdf: true, excel: true, images: true, csv: true },
+    fileFormats: { pdf: true, excel: true, images: true, csv: true, word: false },
     approvalThreshold: 5000,
     autoApproveUnder: 1000,
     dualApprovalOver: 25000,
@@ -221,6 +222,13 @@ export default function APAutomationGeneralSettings() {
                       onCheckedChange={(checked) => updateNestedSetting('fileFormats', 'csv', checked as boolean)}
                     />
                     <span className="text-sm text-gray-950">CSV</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={settings.fileFormats.word}
+                      onCheckedChange={(checked) => updateNestedSetting('fileFormats', 'word', checked as boolean)}
+                    />
+                    <span className="text-sm text-gray-950">Word (DOCX, DOC)</span>
                   </div>
                 </div>
               </div>
