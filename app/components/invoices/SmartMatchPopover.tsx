@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Zap, X, ChevronRight, ChevronDown, Check, AlertTriangle } from 'lucide-react';
+import { Zap, X, ChevronRight, ChevronDown, Check, AlertTriangle, ExternalLink } from 'lucide-react';
 
 interface SmartMatchPopoverProps {
   invoiceDescription: string;
@@ -147,6 +147,19 @@ export function SmartMatchPopover({
           >
             Unmatch
           </button>
+
+          {/* Agent link */}
+          <div className="mt-2.5 pt-2.5 border-t border-purple-200">
+            <a
+              href="/settings?tab=ap-automation&agent=Semantic%20Match%20Agent#automation-agent-builder-2"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-purple-700 hover:text-purple-900 transition-colors"
+            >
+              <ExternalLink className="h-3 w-3 flex-shrink-0" />
+              View Semantic Match Agent in Agent Builder →
+            </a>
+          </div>
 
           <Popover.Arrow className="fill-purple-300" />
         </Popover.Content>
