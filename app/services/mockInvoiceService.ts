@@ -580,7 +580,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
         detail: 'No PO reference was present on this invoice, but a close match (PO-2025-8901) was found in the system with 99% confidence. User confirmation is required before the PO can be assigned.',
         agent_id: '12'
       }
-    ]
+    ],
+    suppress_validation_categories: ['process']
   } as Invoice);
 
   // ========================================================================
