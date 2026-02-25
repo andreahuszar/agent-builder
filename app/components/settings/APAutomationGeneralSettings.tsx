@@ -45,7 +45,7 @@ export default function APAutomationGeneralSettings() {
     autoProcessing: true,
     ocrThreshold: 85,
     duplicateDetection: true,
-    fileFormats: { pdf: true, excel: true, images: true, csv: true, word: false },
+    fileFormats: { pdf: true, excel: true, images: true, csv: true, word: true },
     approvalThreshold: 5000,
     autoApproveUnder: 1000,
     dualApprovalOver: 25000,
@@ -197,10 +197,10 @@ export default function APAutomationGeneralSettings() {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Checkbox
-                      checked={settings.fileFormats.pdf}
-                      onCheckedChange={(checked) => updateNestedSetting('fileFormats', 'pdf', checked as boolean)}
+                      checked={settings.fileFormats.csv}
+                      onCheckedChange={(checked) => updateNestedSetting('fileFormats', 'csv', checked as boolean)}
                     />
-                    <span className="text-sm text-gray-950">PDF</span>
+                    <span className="text-sm text-gray-950">CSV</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox
@@ -218,10 +218,10 @@ export default function APAutomationGeneralSettings() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox
-                      checked={settings.fileFormats.csv}
-                      onCheckedChange={(checked) => updateNestedSetting('fileFormats', 'csv', checked as boolean)}
+                      checked={settings.fileFormats.pdf}
+                      onCheckedChange={(checked) => updateNestedSetting('fileFormats', 'pdf', checked as boolean)}
                     />
-                    <span className="text-sm text-gray-950">CSV</span>
+                    <span className="text-sm text-gray-950">PDF</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Checkbox
