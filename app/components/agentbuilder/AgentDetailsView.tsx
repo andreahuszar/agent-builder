@@ -765,24 +765,30 @@ export function AgentDetailsView({
           {/* Basic View */}
           {promptView === "basic" && (
             <>
-              {/* Role */}
-              {extractRole(agent.prompt || "") && (
-                <div className="mb-4">
-                  <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">ROLE:</h3>
-                  <p className="text-sm text-gray-700">{extractRole(agent.prompt || "")}</p>
-                </div>
-              )}
+              {agent.basicPromptOverride ? (
+                <div className="text-sm text-gray-700 whitespace-pre-wrap">{agent.basicPromptOverride}</div>
+              ) : (
+                <>
+                  {/* Role */}
+                  {extractRole(agent.prompt || "") && (
+                    <div className="mb-4">
+                      <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">ROLE:</h3>
+                      <p className="text-sm text-gray-700">{extractRole(agent.prompt || "")}</p>
+                    </div>
+                  )}
 
-              {/* Key Actions */}
-              {keyActions.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">KEY ACTIONS:</h3>
-                  <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
-                    {keyActions.map((action, index) => (
-                      <li key={index}>{action}</li>
-                    ))}
-                  </ol>
-                </div>
+                  {/* Key Actions */}
+                  {keyActions.length > 0 && (
+                    <div>
+                      <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">KEY ACTIONS:</h3>
+                      <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
+                        {keyActions.map((action, index) => (
+                          <li key={index}>{action}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+                </>
               )}
             </>
           )}

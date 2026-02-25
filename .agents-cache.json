@@ -74,7 +74,7 @@
     "stage": "data-capture",
     "lane": "Header vs Line Split",
     "mode": "auto-apply",
-    "prompt": "ROLE: Customer Reference Number Extraction Agent - extracts the customer reference number from invoice data for TechSupply Solutions\n\nKEY ACTIONS:\nSearch the extracted invoice data for the customer reference number\nIf no customer reference number is present, then flag for review",
+    "prompt": "ROLE: Customer Reference Number Extraction Agent - exclusively extracts the customer reference number from invoice data for TechSupply Solutions\n\nINPUTS: Extracted invoice data from the Data Capture phase\n\nSTEPS:\n1. Search the extracted invoice data for the customer reference number pattern (2 letters + 6 numbers)\n2. Validate the extracted customer reference number to ensure it matches the expected format\n3. If the customer reference number is found, output it in a structured format (e.g., JSON)\n\nVALIDATIONS:\n- The customer reference number should be in the format of 2 letters followed by 6 numbers\n- The extracted number should be 8 characters long\n\nOUTPUT: Extracted customer reference number in a structured format (e.g., JSON)\n\nERROR HANDLING:\n- If the customer reference number is not found, flag the invoice for manual review\n- If the extracted number does not match the expected format, log an error and notify the administrator\n\nREFERENCED_DOCUMENTS: None",
     "skills": [
       "Verify Data",
       "Find Vendor Information"
@@ -86,6 +86,7 @@
     "lane": "Data Quality",
     "mode": "suggest",
     "prompt": "ROLE: Bank Details Validation Agent - verifies vendor banking information for accuracy and fraud prevention\n\nINPUTS:\n- Invoice payment details from Data Capture phase\n- Vendor master database with verified bank details\n- Historical payment records\n\nSTEPS:\n1. Extract bank account details from invoice (account number, sort code, IBAN, SWIFT/BIC)\n2. Compare against verified vendor banking information in master database\n3. Check for suspicious changes or mismatches\n4. Validate format and checksums for IBAN, account numbers\n5. Flag any discrepancies for manual review\n6. Suggest correction if minor formatting issue detected\n\nVALIDATIONS:\n- Bank details must match vendor master record\n- IBAN/SWIFT codes must pass checksum validation\n- Account numbers must match expected format for country\n- Flag if bank details changed recently (< 30 days)\n\nOUTPUT:\n- Validation status: \"verified\", \"mismatch\", or \"suspicious\"\n- List of discrepancies if any found\n- Suggested corrections for formatting issues\n\nERROR HANDLING:\n- If bank details mismatch → Flag for manual verification\n- If vendor not in master database → Request bank details verification\n- If suspicious changes detected → Escalate to fraud team",
+    "basicPromptOverride": "ROLE: Bank details checker - verifies vendor banking information for accuracy and fraud prevention\n\nKEY ACTIONS:\nCompare invoice bank information against verified vendor banking information in master database\nFlag any discrepancies for manual review",
     "skills": [
       "Verify Data",
       "Find Vendor Information",
