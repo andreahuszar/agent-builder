@@ -83,13 +83,27 @@
   {
     "name": "Bank details checker",
     "stage": "verification",
-    "lane": "Data Quality",
+    "lane": "Supplier Master Validation",
     "mode": "suggest",
     "prompt": "ROLE: Bank Details Validation Agent - verifies vendor banking information for accuracy and fraud prevention\n\nINPUTS:\n- Invoice payment details from Data Capture phase\n- Vendor master database with verified bank details\n- Historical payment records\n\nSTEPS:\n1. Extract bank account details from invoice (account number, sort code, IBAN, SWIFT/BIC)\n2. Compare against verified vendor banking information in master database\n3. Check for suspicious changes or mismatches\n4. Validate format and checksums for IBAN, account numbers\n5. Flag any discrepancies for manual review\n6. Suggest correction if minor formatting issue detected\n\nVALIDATIONS:\n- Bank details must match vendor master record\n- IBAN/SWIFT codes must pass checksum validation\n- Account numbers must match expected format for country\n- Flag if bank details changed recently (< 30 days)\n\nOUTPUT:\n- Validation status: \"verified\", \"mismatch\", or \"suspicious\"\n- List of discrepancies if any found\n- Suggested corrections for formatting issues\n\nERROR HANDLING:\n- If bank details mismatch → Flag for manual verification\n- If vendor not in master database → Request bank details verification\n- If suspicious changes detected → Escalate to fraud team",
-    "basicPromptOverride": "ROLE: Bank details checker - verifies vendor banking information for accuracy and fraud prevention\n\nKEY ACTIONS:\nCompare invoice bank information against verified vendor banking information in master database\nFlag any discrepancies for manual review",
     "skills": [
       "Verify Data",
       "Find Vendor Information",
+      "Flag Issues"
+    ]
+  },
+  {
+    "id": "12",
+    "name": "PO Matching Agent",
+    "stage": "verification",
+    "lane": "Confidence Scoring",
+    "mode": "auto-apply",
+    "active": true,
+    "prompt": "ROLE: PO Matching Agent - automatically matches invoices to existing Purchase Orders when no PO reference is provided\n\nINPUTS:\n- Invoice data from Data Capture phase (vendor, amount, line items, dates)\n- Purchase Order database with active and historical POs\n- Vendor master data\n\nSTEPS:\n1. Check if invoice contains a PO reference number\n2. If PO reference exists, pass to standard PO matching workflow\n3. If no PO reference, extract key invoice attributes: vendor name, invoice amount, line item descriptions, invoice date\n4. Query PO database for open POs matching the vendor\n5. Score each candidate PO against invoice attributes using weighted matching criteria\n6. Calculate overall confidence score (0-100%) for each potential match\n7. If confidence >= 90%: auto-suggest the match for approval\n8. If confidence < 90%: reject the invoice and flag for manual review with reason\n\nMATCHING CRITERIA (weighted):\n- Vendor name match: 30%\n- Amount match (within 5% tolerance): 25%\n- Line item description similarity: 25%\n- Date range (invoice date within PO validity period): 10%\n- Currency match: 10%\n\nCONFIDENCE THRESHOLDS:\n- >= 90%: Suggest match, route for approval\n- 70-89%: Flag for manual review with suggested match\n- < 70%: Reject invoice, no match found\n\nVALIDATIONS:\n- PO must be active and not fully consumed\n- Invoice amount must not exceed remaining PO value\n- Vendor must match PO vendor record\n\nOUTPUT:\n- Match status: \"matched\", \"rejected\", or \"review\"\n- Confidence score (0-100%)\n- Matched PO number (if found)\n- Reason for rejection or review flag\n\nERROR HANDLING:\n- If vendor not found in master data → Flag for manual review\n- If multiple POs match with similar confidence → Present top 3 for manual selection\n- If PO is expired → Reject and notify approver",
+    "basicPromptOverride": "ROLE: PO matching - tries to match invoices to existing PO's if no PO is referenced\n\nKEY ACTIONS:\nReject any invoice without a Purchase Order, unless there is a greater than 90% confidence we can find a match in the system",
+    "skills": [
+      "Match Documents",
+      "Verify Data",
       "Flag Issues"
     ]
   }

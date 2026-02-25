@@ -534,13 +534,70 @@ Flag any discrepancies for manual review`,
       lane: "Data Quality",
       skills: ["Verify Data", "Find Vendor Information", "Flag Issues"],
     },
+    {
+      id: "12",
+      name: "PO Matching Agent",
+      stage: "verification",
+      active: true,
+      mode: "auto-apply",
+      prompt: `ROLE: PO Matching Agent - automatically matches invoices to existing Purchase Orders when no PO reference is provided
+
+INPUTS:
+- Invoice data from Data Capture phase (vendor, amount, line items, dates)
+- Purchase Order database with active and historical POs
+- Vendor master data
+
+STEPS:
+1. Check if invoice contains a PO reference number
+2. If PO reference exists, pass to standard PO matching workflow
+3. If no PO reference, extract key invoice attributes: vendor name, invoice amount, line item descriptions, invoice date
+4. Query PO database for open POs matching the vendor
+5. Score each candidate PO against invoice attributes using weighted matching criteria
+6. Calculate overall confidence score (0-100%) for each potential match
+7. If confidence >= 90%: auto-suggest the match for approval
+8. If confidence < 90%: reject the invoice and flag for manual review with reason
+
+MATCHING CRITERIA (weighted):
+- Vendor name match: 30%
+- Amount match (within 5% tolerance): 25%
+- Line item description similarity: 25%
+- Date range (invoice date within PO validity period): 10%
+- Currency match: 10%
+
+CONFIDENCE THRESHOLDS:
+- >= 90%: Suggest match, route for approval
+- 70–89%: Flag for manual review with suggested match
+- < 70%: Reject invoice, no match found
+
+VALIDATIONS:
+- PO must be active and not fully consumed
+- Invoice amount must not exceed remaining PO value
+- Vendor must match PO vendor record
+
+OUTPUT:
+- Match status: "matched", "rejected", or "review"
+- Confidence score (0–100%)
+- Matched PO number (if found)
+- Reason for rejection or review flag
+
+ERROR HANDLING:
+- If vendor not found in master data → Flag for manual review
+- If multiple POs match with similar confidence → Present top 3 for manual selection
+- If PO is expired → Reject and notify approver`,
+      basicPromptOverride: `ROLE: PO matching - tries to match invoices to existing PO's if no PO is referenced
+
+KEY ACTIONS:
+Reject any invoice without a Purchase Order, unless there is a greater than 90% confidence we can find a match in the system`,
+      lane: "Confidence Scoring",
+      skills: ["Match Documents", "Verify Data", "Flag Issues"],
+    },
     ]
     
     // Client-side only - check localStorage and merge with defaults
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v7'
+        const AGENTS_VERSION = 'v8'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')
