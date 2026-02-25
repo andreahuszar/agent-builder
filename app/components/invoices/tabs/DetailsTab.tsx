@@ -1230,6 +1230,47 @@ export function DetailsTab({
           </div>
           {isValidationExpanded && (
             <div className="px-4 py-3 bg-white border-b border-gray-200">
+              {/* Agent Action Cards */}
+              {invoiceData.agent_actions && invoiceData.agent_actions.length > 0 && (
+                <div className="mb-3 space-y-2">
+                  {invoiceData.agent_actions.map((action: { agent_name: string; action: string; status: string; detail?: string; agent_id?: string }, idx: number) => (
+                    <div
+                      key={idx}
+                      className="flex items-start gap-2.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2.5"
+                    >
+                      <Sparkles className="h-3.5 w-3.5 text-purple-600 flex-shrink-0 mt-0.5" fill="currentColor" />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-semibold text-purple-900">{action.agent_name}</span>
+                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
+                            action.status === 'failed'
+                              ? 'bg-red-100 text-red-700'
+                              : action.status === 'warning'
+                              ? 'bg-amber-100 text-amber-700'
+                              : 'bg-green-100 text-green-700'
+                          }`}>
+                            {action.status === 'failed' ? 'Action required' : action.status === 'warning' ? 'Warning' : 'Completed'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-950 mt-0.5">{action.action}</p>
+                        {action.detail && (
+                          <p className="text-xs text-gray-500 mt-0.5">{action.detail}</p>
+                        )}
+                        {action.agent_id && (
+                          <a
+                            href={`/settings?tab=ap-automation&agent=${encodeURIComponent(action.agent_name)}#automation-agent-builder-2`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1 text-xs text-purple-700 hover:text-purple-900 mt-1 transition-colors"
+                          >
+                            View agent →
+                          </a>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
               {filteredAllValidationsPassed ? (
                 <div className="flex items-center gap-2 text-green-700">
                   <CheckCircle className="h-5 w-5" />

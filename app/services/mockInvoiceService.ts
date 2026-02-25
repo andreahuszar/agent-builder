@@ -177,6 +177,16 @@ export const generateBaselineInvoices = (): Invoice[] => {
           { number: 'INV3745-04', date: 'Nov 22, 2025', amount: '$7,200.00' }
         ]
       }
+    ],
+    // Agent actions taken during processing
+    agent_actions: [
+      {
+        agent_name: 'TechSupply Customer Reference no. extraction',
+        action: 'Could not find Customer Reference ID',
+        status: 'failed',
+        detail: 'Searched extracted invoice data for a customer reference number matching the expected format. No matching field was found on this invoice.',
+        agent_id: '9'
+      }
     ]
   } as Invoice);
 
