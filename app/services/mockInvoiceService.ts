@@ -395,7 +395,17 @@ export const generateBaselineInvoices = (): Invoice[] => {
     // Display configuration for simple table invoice template
     display_config: {
       template: 'simple-table-invoice'
-    }
+    },
+    // Agent actions taken during processing
+    agent_actions: [
+      {
+        agent_name: 'Bank details checker',
+        action: 'Bank detail discrepancy detected',
+        status: 'failed',
+        detail: 'Invoice bank account number does not match the verified bank details on file for Fleet Inc. in the vendor master database. Invoice flagged for manual review.',
+        agent_id: '10'
+      }
+    ]
   } as Invoice);
 
   // ============================================================================
