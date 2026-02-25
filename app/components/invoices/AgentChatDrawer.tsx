@@ -1,10 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { X, ExternalLink } from 'lucide-react';
-import { ChatInterface, type ChatInterfaceRef } from '@/app/components/agentbuilder/ChatInterface';
-import { analyzePromptForAgent } from '@/app/utils/agentPromptAnalyzer';
-import type { AgentDocument } from '@/app/components/agentbuilder/AgentBuilderPage';
+import { ScriptedChatInterface } from './ScriptedChatInterface';
 
 interface AgentChatDrawerProps {
   isOpen: boolean;
@@ -14,77 +12,68 @@ interface AgentChatDrawerProps {
 export function AgentChatDrawer({ isOpen, onClose }: AgentChatDrawerProps) {
   const [generatedPrompt, setGeneratedPrompt] = useState('');
   const [generatedSkills, setGeneratedSkills] = useState<string[]>([]);
-  const [detectedStage, setDetectedStage] = useState('');
-  const [detectedLane, setDetectedLane] = useState('');
+  const [agentName, setAgentName] = useState('');
+  const [agentStage, setAgentStage] = useState('');
+  const [agentLane, setAgentLane] = useState('');
+  const [agentMode, setAgentMode] = useState('');
   const [canApply, setCanApply] = useState(false);
-  const [sessionDocuments, setSessionDocuments] = useState<AgentDocument[]>([]);
-  const chatRef = useRef<ChatInterfaceRef>(null);
+  const [chatKey, setChatKey] = useState(0); // increment to remount scripted chat on close
 
   // Reset state when drawer closes
   useEffect(() => {
     if (!isOpen) {
       setGeneratedPrompt('');
       setGeneratedSkills([]);
-      setDetectedStage('');
-      setDetectedLane('');
+      setAgentName('');
+      setAgentStage('');
+      setAgentLane('');
+      setAgentMode('');
       setCanApply(false);
-      setSessionDocuments([]);
-      // Clear chat when reopened
-      setTimeout(() => {
-        chatRef.current?.clearChat();
-      }, 300);
+      // Remount the scripted chat so it starts fresh next open
+      setTimeout(() => setChatKey(k => k + 1), 300);
     }
   }, [isOpen]);
 
   // Handle ESC key to close
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose();
-      }
+      if (e.key === 'Escape' && isOpen) onClose();
     };
     window.addEventListener('keydown', handleEsc);
     return () => window.removeEventListener('keydown', handleEsc);
   }, [isOpen, onClose]);
 
-  const handlePromptGenerated = (prompt: string, skills: string[], documents?: AgentDocument[]) => {
+  const handlePromptGenerated = (
+    prompt: string,
+    skills: string[],
+    name: string,
+    stage: string,
+    lane: string,
+    mode: string
+  ) => {
     setGeneratedPrompt(prompt);
     setGeneratedSkills(skills);
+    setAgentName(name);
+    setAgentStage(stage);
+    setAgentLane(lane);
+    setAgentMode(mode);
     setCanApply(true);
-    if (documents) {
-      setSessionDocuments(documents);
-    }
   };
 
   const handleApplyPrompt = () => {
-    // Analyze prompt to suggest stage and mode
-    const analysis = analyzePromptForAgent(generatedPrompt);
-    
-    // Use detected stage from chat or fall back to analyzer
-    const stage = detectedStage || analysis.suggestedStage;
-    const mode = analysis.suggestedMode;
-    
-    // Build URL parameters
     const params = new URLSearchParams({
       tab: 'ap-automation',
       newAgent: 'true',
       prompt: generatedPrompt,
-      stage: stage,
-      agentMode: mode,
-      skills: generatedSkills.join(',')
+      stage: agentStage,
+      agentMode: agentMode,
+      skills: generatedSkills.join(','),
+      lane: agentLane,
+      name: agentName,
     });
-    
-    // Add lane if detected
-    if (detectedLane) {
-      params.set('lane', detectedLane);
-    }
-    
+
     const url = `/settings?${params.toString()}#automation-agent-builder-2`;
-    
-    // Open Settings page with Agent Builder 2 tab in new window
     window.open(url, '_blank');
-    
-    // Close drawer
     onClose();
   };
 
@@ -102,17 +91,13 @@ export function AgentChatDrawer({ isOpen, onClose }: AgentChatDrawerProps) {
       {/* Drawer */}
       <div
         className="fixed right-0 top-0 h-full w-full sm:w-[500px] bg-white shadow-2xl z-40 flex flex-col transition-transform duration-300 ease-out"
-        style={{
-          transform: isOpen ? 'translateX(0)' : 'translateX(100%)'
-        }}
+        style={{ transform: isOpen ? 'translateX(0)' : 'translateX(100%)' }}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-white">
           <div>
             <h2 className="text-lg font-semibold text-gray-900">Create Agent</h2>
-            <p className="text-sm text-gray-600 mt-0.5">
-              Describe what you want the agent to do
-            </p>
+            <p className="text-sm text-gray-600 mt-0.5">Describe what you want the agent to do</p>
           </div>
           <button
             onClick={onClose}
@@ -123,13 +108,11 @@ export function AgentChatDrawer({ isOpen, onClose }: AgentChatDrawerProps) {
           </button>
         </div>
 
-        {/* Chat Interface */}
+        {/* Scripted Chat */}
         <div className="flex-1 overflow-hidden">
-          <ChatInterface
-            ref={chatRef}
+          <ScriptedChatInterface
+            key={chatKey}
             onPromptGenerated={handlePromptGenerated}
-            onStageDetected={setDetectedStage}
-            onLaneDetected={setDetectedLane}
           />
         </div>
 
