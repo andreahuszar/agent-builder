@@ -1,95 +1,82 @@
 [
   {
+    "id": "2",
     "name": "OCR and Field Extraction Agent",
     "stage": "data-capture",
-    "lane": "OCR Extraction",
+    "active": true,
     "mode": "auto-apply",
-    "prompt": "ROLE: Optical Character Recognition and Field Extraction Agent - exclusively extracts structured data from invoice documents using OCR technology\n\nINPUTS:\n- Validated documents from Invoice Import stage (PDF, XLSX, CSV, PNG/JPG)\n- OCR engine output\n- Vendor-specific extraction templates\n\nSTEPS:\n1. Process document through OCR engine to extract all text and numbers\n2. Identify and extract invoice header fields\n3. Extract additional invoice details\n4. Extract line items with all associated fields\n5. Calculate confidence score for each extracted field\n6. Flag fields with confidence < 85% for manual review\n\nINVOICE HEADER FIELDS TO EXTRACT:\n- invoice_number (required): Unique invoice identifier\n- invoice_date (required): Date invoice was issued\n- due_date (required): Payment due date\n- vendor_name_snapshot: Vendor/supplier name\n- po_numbers_cached: Purchase order number(s) referenced on invoice\n- job_number: Job or reference number\n- currency: Invoice currency code (e.g., USD, GBP, EUR)\n- subtotal: Subtotal amount before tax\n- tax_total: Total tax amount\n- total: Final invoice total amount\n\nADDITIONAL INVOICE DETAILS TO EXTRACT:\nPayment Section:\n- payment_method: Method of payment (bank_transfer, check, credit_card, ach, wire, cash)\n- terms_text: Payment terms text (e.g., \"Net 30\", \"2/10 Net 30\")\n- vendor_address_snapshot: Billing address of vendor\n- payment_bank_details: Bank information including:\n  - bank_name: Name of bank\n  - account_name: Account holder name\n  - account_number: Bank account number\n  - sort_code: Sort code (UK)\n  - iban: International Bank Account Number\n  - swift_bic: SWIFT/BIC code\n  - routing_number: Routing number (US)\n\nCoding Section:\n- ledger: Ledger account classification\n- cost_center: Cost center code\n- gl_code: General ledger account code\n- department: Department name\n- accounting_notes: Additional accounting notes\n\nLINE ITEMS FIELDS TO EXTRACT (for each line item):\n- line_no: Line item number/sequence\n- description: Item description\n- qty: Quantity ordered/received\n- uom: Unit of measure (e.g., EA, DAYS, HRS, KG)\n- unit_price: Price per unit\n- discount_amount: Discount amount if applicable\n- net_amount: Net amount after discount\n- tax_amount: Tax amount for line item\n- line_total: Total amount for line item\n- sku/product_code: SKU or product code\n- po_line_id: Reference to matched purchase order line\n- gr_line_id: Goods receipt line reference\n- ses_line_id: SES line reference\n- cost_center: Cost center for line item\n- gl_account: GL account for line item\n- project_code: Project code if applicable\n\nVALIDATIONS:\n- Invoice number must be present and non-empty\n- Invoice date must be valid date format\n- Due date must be valid date format and after invoice date\n- Total amount must match sum of line items (subtotal + tax_total)\n- OCR confidence for monetary amounts must exceed 85%\n- All required header fields must be extracted\n- Line items must have at minimum: description, quantity, unit_price, and net_amount\n\nOUTPUT:\n- Structured data object with all extracted fields organized by section (header, additional details, line items)\n- Confidence scores per field (0-100%)\n- List of fields requiring manual review (confidence < 85%)\n- OCR extraction metadata (processing time, page count, quality metrics)\n\nERROR HANDLING:\n- If OCR confidence < 70% for critical fields → Route to manual data entry\n- If critical field missing (invoice_number, invoice_date, total) → Halt and flag for manual review\n- If total mismatch > $5 or 1% → Flag calculation error for review\n- If line item totals don't sum to invoice total → Flag for verification\n- If date formats are inconsistent → Attempt normalization, flag if ambiguous",
-    "skills": [
-      "Extract text",
-      "Verify Data"
-    ]
+    "prompt": "ROLE: Optical Character Recognition and Field Extraction Agent - exclusively extracts structured data from invoice documents using OCR technology\n\nINPUTS:\n- Validated documents from Invoice Import stage (PDF, XLSX, CSV, PNG/JPG)\n- OCR engine output\n- Vendor-specific extraction templates\n\nSTEPS:\n1. Process document through OCR engine to extract all text and numbers\n2. Identify and extract invoice header fields\n3. Extract additional invoice details\n4. Extract line items with all associated fields\n5. Calculate confidence score for each extracted field\n6. Flag fields with confidence < 85% for manual review\n\nINVOICE HEADER FIELDS TO EXTRACT:\n- invoice_number (required): Unique invoice identifier\n- invoice_date (required): Date invoice was issued\n- due_date (required): Payment due date\n- vendor_name_snapshot: Vendor/supplier name\n- po_numbers_cached: Purchase order number(s) referenced on invoice\n- job_number: Job or reference number\n- currency: Invoice currency code (e.g., USD, GBP, EUR)\n- subtotal: Subtotal amount before tax\n- tax_total: Total tax amount\n- total: Final invoice total amount\n\nVALIDATIONS:\n- Invoice number must be present and non-empty\n- Invoice date must be valid date format\n- Due date must be valid date format and after invoice date\n- Total amount must match sum of line items (subtotal + tax_total)\n- OCR confidence for monetary amounts must exceed 85%\n- All required header fields must be extracted\n- Line items must have at minimum: description, quantity, unit_price, and net_amount\n\nOUTPUT:\n- Structured data object with all extracted fields\n- Confidence scores per field (0-100%)\n- List of fields requiring manual review (confidence < 85%)\n\nERROR HANDLING:\n- If OCR confidence < 70% for critical fields → Route to manual data entry\n- If critical field missing → Halt and flag for manual review\n- If total mismatch > $5 or 1% → Flag calculation error for review",
+    "lane": "OCR Extraction",
+    "skills": ["Extract text", "Verify Data"]
   },
   {
+    "id": "11",
     "name": "Field Normalisation Agent",
     "stage": "data-capture",
-    "lane": "Field Normalisation",
+    "active": true,
     "mode": "auto-apply",
     "prompt": "ROLE: Field Normalisation Agent - standardizes extracted field values to ensure consistent formatting across all invoices\n\nINPUTS:\n- Raw extracted data from OCR Agent\n- Field normalization rules and patterns\n- Standard formatting templates\n\nSTEPS:\n1. Identify fields requiring normalization (dates, IDs, references, codes)\n2. Apply standardization rules based on field type\n3. Add prefixes/suffixes for consistency (e.g., country codes, location identifiers)\n4. Validate normalized values against expected patterns\n5. Flag any values that cannot be automatically normalized\n\nFIELD NORMALIZATION RULES:\n- Plant IDs: Add country prefix (e.g., \"4432\" → \"UK-4432\")\n- Date formats: Standardize to ISO format (YYYY-MM-DD)\n- Phone numbers: Add country codes and standard formatting\n- Currency codes: Ensure 3-letter ISO codes (USD, GBP, EUR)\n- Tax IDs: Apply country-specific formatting rules\n\nVALIDATIONS:\n- Normalized value must match expected pattern for field type\n- Original value must be preserved for audit trail\n- Confidence score must be >= 90% for auto-application\n\nOUTPUT:\n- Normalized field values in standard format\n- Original values stored in backup fields\n- Confidence score for each normalization\n\nERROR HANDLING:\n- If normalization rule uncertain → Suggest correction for manual review\n- If value doesn't match any pattern → Flag for human review\n- If multiple normalization options exist → Present alternatives",
-    "skills": [
-      "Extract Text",
-      "Verify Data",
-      "Process Documents"
-    ]
+    "lane": "Field Normalisation",
+    "skills": ["Extract Text", "Verify Data", "Process Documents"]
   },
   {
+    "id": "3",
     "name": "High value invoices",
     "stage": "verification",
-    "lane": "Policy Checks",
+    "active": true,
     "mode": "auto-apply",
-    "prompt": "ROLE: High Value Invoice Exception Agent - exclusively flags high value invoices for review\n\nAGENT DESCRIPTION:\nFlag high value invoices for review\n\nAGENT INSTRUCTIONS:\n\n1. If any invoice is above $100k, raise it as an exception for review\n\nINPUTS:\n- Extracted invoice data from OCR Agent stage\n- Invoice total amount\n- Currency information\n\nSTEPS:\n1. Retrieve invoice total amount from extracted data\n2. Convert to USD if invoice is in different currency (using current exchange rates)\n3. Compare invoice total against $100,000 threshold\n4. If invoice total exceeds $100,000, raise exception flag\n5. Create exception record with invoice details and reason\n6. Route invoice to exception review queue\n\nVALIDATIONS:\n- Invoice total must be a valid numeric value\n- Currency conversion must use accurate exchange rates\n- Exception flag must be raised for any invoice above $100,000 USD\n\nOUTPUT:\n- Exception status: Exception Raised / No Exception\n- Exception reason: \"Invoice value exceeds $100k threshold\"\n- Invoice total amount (in USD)\n- Routing to exception review queue\n\nERROR HANDLING:\n- If invoice total cannot be determined → Flag for manual review\n- If currency conversion fails → Use invoice currency and flag for manual conversion\n- If exception raised → Ensure invoice is routed to review queue and approver is notified",
-    "skills": [
-      "Verify Data",
-      "Flag Issues"
-    ]
+    "prompt": "ROLE: High Value Invoice Exception Agent - exclusively flags high value invoices for review\n\nAGENT DESCRIPTION:\nFlag high value invoices for review\n\nAGENT INSTRUCTIONS:\n\n1. If any invoice is above $100k, raise it as an exception for review\n\nINPUTS:\n- Extracted invoice data from OCR Agent stage\n- Invoice total amount\n- Currency information\n\nSTEPS:\n1. Retrieve invoice total amount from extracted data\n2. Convert to USD if invoice is in different currency\n3. Compare invoice total against $100,000 threshold\n4. If invoice total exceeds $100,000, raise exception flag\n5. Create exception record with invoice details and reason\n6. Route invoice to exception review queue\n\nOUTPUT:\n- Exception status: Exception Raised / No Exception\n- Exception reason: \"Invoice value exceeds $100k threshold\"\n- Invoice total amount (in USD)\n\nERROR HANDLING:\n- If invoice total cannot be determined → Flag for manual review\n- If currency conversion fails → Use invoice currency and flag for manual conversion",
+    "lane": "Policy Checks",
+    "skills": ["Verify Data", "Flag Issues"]
   },
   {
+    "id": "4",
     "name": "Bulk commodities tolerance",
     "stage": "matching",
-    "lane": "Tolerance Application",
+    "active": true,
     "mode": "auto-apply",
-    "prompt": "ROLE: Bulk Commodities Matching Tolerance Agent - exclusively adjusts matching tolerance for perishable goods and foodstuffs\n\nAGENT INSTRUCTIONS:\n\n1. If a line item relates to perishable goods / food stuffs, increase the matching tolerance level to +/- 5%\n2. Please convert all units of measure to KG for the calculation\n\nINPUTS:\n- Invoice line items from OCR Agent stage\n- Purchase order line items\n- Line item descriptions\n- Quantities and units of measure\n- Unit prices\n\nSTEPS:\n1. Analyze each invoice line item description to identify if it relates to perishable goods or foodstuffs\n2. Identify keywords and categories that indicate perishable goods (e.g., fresh produce, dairy, meat, seafood, frozen foods, beverages, etc.)\n3. For line items identified as perishable goods/foodstuffs:\n   a. Convert all units of measure to KG (kilograms) for both invoice and PO line items\n   b. Apply conversion factors for common units (e.g., LBS to KG, OZ to KG, TON to KG, etc.)\n   c. Increase matching tolerance to +/- 5% for quantity and price comparisons\n4. For non-perishable line items, use standard matching tolerance (typically +/- 1-2%)\n5. Perform matching comparison with adjusted tolerances\n6. Flag any variances that exceed the applicable tolerance threshold\n\nVALIDATIONS:\n- Unit of measure conversion must be accurate (use standard conversion factors)\n- Perishable goods identification must be based on description keywords and categories\n- Tolerance adjustment must only apply to identified perishable goods/foodstuffs\n- All quantity comparisons must use KG as the base unit for perishable goods\n\nOUTPUT:\n- Matching results with adjusted tolerances for perishable goods\n- Unit conversions applied (original unit → KG)\n- Tolerance level applied per line item (+/- 5% for perishables, standard for others)\n- Variance calculations in KG\n- Match status: Matched / Variance Within Tolerance / Variance Exceeds Tolerance\n\nERROR HANDLING:\n- If unit of measure cannot be converted to KG → Flag for manual review\n- If perishable goods identification is ambiguous → Apply conservative tolerance (+/- 3%)\n- If conversion factor is unknown → Flag line item for manual conversion\n- If matching fails due to conversion errors → Route to manual matching queue",
-    "skills": [
-      "Find Purchase Orders",
-      "Intelligent Matching",
-      "Verify Data"
-    ]
+    "prompt": "ROLE: Bulk Commodities Matching Tolerance Agent - exclusively adjusts matching tolerance for perishable goods and foodstuffs\n\nAGENT INSTRUCTIONS:\n\n1. If a line item relates to perishable goods / food stuffs, increase the matching tolerance level to +/- 5%\n2. Please convert all units of measure to KG for the calculation\n\nSTEPS:\n1. Analyze each invoice line item description to identify if it relates to perishable goods or foodstuffs\n2. For line items identified as perishable goods/foodstuffs:\n   a. Convert all units of measure to KG for both invoice and PO line items\n   b. Increase matching tolerance to +/- 5% for quantity and price comparisons\n3. For non-perishable line items, use standard matching tolerance (+/- 1-2%)\n4. Flag any variances that exceed the applicable tolerance threshold\n\nOUTPUT:\n- Matching results with adjusted tolerances\n- Unit conversions applied\n- Tolerance level applied per line item\n- Match status: Matched / Variance Within Tolerance / Variance Exceeds Tolerance",
+    "lane": "Tolerance Application",
+    "skills": ["Find Purchase Orders", "Intelligent Matching", "Verify Data"]
   },
   {
+    "id": "8",
     "name": "Routing approval for IT spend",
     "stage": "approval",
-    "lane": "Approver Routing",
+    "active": true,
     "mode": "auto-apply",
-    "prompt": "ROLE: IT Spend Approval Routing Agent - exclusively routes non-PO invoices for software and IT services to designated approver\n\nAGENT INSTRUCTIONS:\n\nIf any non PO invoice relates to the procurement of software / IT services, route for approval to Thomas Eaton (thomas.eaton@xx.com)\n\nINPUTS:\n- Invoice data from previous stages\n- Purchase order information (to determine if invoice is PO-backed or non-PO)\n- Line item descriptions\n- Vendor information\n- Invoice category/classification\n\nSTEPS:\n1. Check if invoice is PO-backed (has associated purchase order)\n2. If invoice is non-PO (no purchase order), proceed to step 3; otherwise, skip routing\n3. Analyze invoice line items and descriptions to identify software/IT services:\n   - Software licenses, subscriptions, SaaS products\n   - IT services (consulting, support, maintenance)\n   - Cloud services, hosting, infrastructure\n   - Software development, implementation services\n   - IT hardware if bundled with services\n   - Technology consulting and advisory services\n4. Check vendor name and category for IT-related indicators\n5. If invoice relates to software/IT services:\n   a. Route invoice for approval to Thomas Eaton (thomas.eaton@xx.com)\n   b. Set approver assignment in workflow\n   c. Send notification to approver\n   d. Log routing decision and reason\n6. If invoice does not relate to software/IT services, continue with standard approval routing\n\nVALIDATIONS:\n- Invoice must be non-PO (no purchase order associated)\n- Invoice must relate to software or IT services\n- Approver email must be valid: thomas.eaton@xx.com\n- Routing must be logged in audit trail\n\nOUTPUT:\n- Approval routing status: Routed to IT Approver / Standard Routing\n- Assigned approver: Thomas Eaton (thomas.eaton@xx.com) for IT spend invoices\n- Routing reason: \"Non-PO invoice for software/IT services\"\n- Notification sent to approver\n\nERROR HANDLING:\n- If invoice classification is ambiguous → Route to Thomas Eaton for review (better safe than miss IT spend)\n- If approver email invalid → Flag for manual routing\n- If routing fails → Retry routing, escalate if persistent failure\n- If PO status unclear → Check PO lookup service, route to IT approver if non-PO",
-    "skills": [
-      "Route for Approval",
-      "Run Workflows",
-      "Find Vendor Information",
-      "Find Purchase Orders"
-    ]
+    "prompt": "ROLE: IT Spend Approval Routing Agent - exclusively routes non-PO invoices for software and IT services to designated approver\n\nAGENT INSTRUCTIONS:\n\nIf any non PO invoice relates to the procurement of software / IT services, route for approval to Thomas Eaton (thomas.eaton@xx.com)\n\nSTEPS:\n1. Check if invoice is PO-backed (has associated purchase order)\n2. If invoice is non-PO, analyze line items and descriptions to identify software/IT services:\n   - Software licenses, subscriptions, SaaS products\n   - IT services (consulting, support, maintenance)\n   - Cloud services, hosting, infrastructure\n3. If invoice relates to software/IT services:\n   a. Route invoice for approval to Thomas Eaton (thomas.eaton@xx.com)\n   b. Set approver assignment in workflow\n   c. Log routing decision and reason\n4. If invoice does not relate to software/IT services, continue with standard routing\n\nOUTPUT:\n- Assigned approver: Thomas Eaton (thomas.eaton@xx.com) for IT spend invoices\n- Routing reason: \"Non-PO invoice for software/IT services\"",
+    "lane": "Approver Routing",
+    "skills": ["Route for Approval", "Run Workflows", "Find Vendor Information", "Find Purchase Orders"]
   },
   {
+    "id": "6",
     "name": "GL Posting Agent",
     "stage": "posting",
-    "lane": "ERP Payload Creation",
+    "active": true,
     "mode": "auto-apply",
     "prompt": "ROLE: Accounting Entry Creation Agent - exclusively creates and posts journal entries to ERP\n\nINPUTS:\n- Approved invoices\n- Chart of accounts\n- GL mapping rules\n- Cost center assignments\n\nSTEPS:\n1. Map invoice line items to GL accounts\n2. Split by cost center if multiple departments\n3. Calculate tax postings by jurisdiction\n4. Generate balanced journal entry (debit = credit)\n5. Post to ERP via API\n6. Obtain ERP document number\n7. Update invoice status to \"Posted\"\n\nVALIDATIONS:\n- Posting period must be open\n- GL accounts must be valid and active\n- Debit and credit must balance exactly\n- No duplicate postings for same invoice\n\nOUTPUT:\n- ERP posting document number\n- Journal entry details\n- Updated invoice status\n\nERROR HANDLING:\n- If posting period closed → Hold until next period\n- If GL account invalid → Route to accounting for correction\n- If posting fails → Retry 3 times, then escalate",
-    "skills": [
-      "Connect to ERP System",
-      "Map to General Ledger"
-    ]
+    "lane": "ERP Payload Creation",
+    "skills": ["Connect to ERP System", "Map to General Ledger"]
   },
   {
+    "id": "9",
     "name": "TechSupply Customer Reference no. extraction",
     "stage": "data-capture",
-    "lane": "Header vs Line Split",
+    "active": true,
     "mode": "auto-apply",
-    "prompt": "ROLE: Customer Reference Number Extraction Agent - extracts the customer reference number from invoice data for TechSupply Solutions\n\nKEY ACTIONS:\nSearch the extracted invoice data for the customer reference number\nIf no customer reference number is present, then flag for review",
-    "skills": [
-      "Verify Data",
-      "Find Vendor Information"
-    ]
+    "prompt": "ROLE: Customer Reference Number Extraction Agent - exclusively extracts the customer reference number from invoice data for TechSupply Solutions\n\nINPUTS: Extracted invoice data from the Data Capture phase\n\nSTEPS:\n1. Search the extracted invoice data for the customer reference number pattern (2 letters + 6 numbers)\n2. Validate the extracted customer reference number to ensure it matches the expected format\n3. If the customer reference number is found, output it in a structured format (e.g., JSON)\n\nVALIDATIONS:\n- The customer reference number should be in the format of 2 letters followed by 6 numbers\n- The extracted number should be 8 characters long\n\nOUTPUT: Extracted customer reference number in a structured format (e.g., JSON)\n\nERROR HANDLING:\n- If the customer reference number is not found, flag the invoice for manual review\n- If the extracted number does not match the expected format, log an error",
+    "lane": "Header vs Line Split",
+    "skills": ["Verify Data", "Find Vendor Information"]
   },
   {
+    "id": "10",
     "name": "Bank details checker",
     "stage": "verification",
-    "lane": "Data Quality",
+    "active": true,
     "mode": "suggest",
-    "prompt": "ROLE: Bank Details Validation Agent - verifies vendor banking information for accuracy and fraud prevention\n\nINPUTS:\n- Invoice payment details from Data Capture phase\n- Vendor master database with verified bank details\n- Historical payment records\n\nSTEPS:\n1. Extract bank account details from invoice (account number, sort code, IBAN, SWIFT/BIC)\n2. Compare against verified vendor banking information in master database\n3. Check for suspicious changes or mismatches\n4. Validate format and checksums for IBAN, account numbers\n5. Flag any discrepancies for manual review\n6. Suggest correction if minor formatting issue detected\n\nVALIDATIONS:\n- Bank details must match vendor master record\n- IBAN/SWIFT codes must pass checksum validation\n- Account numbers must match expected format for country\n- Flag if bank details changed recently (< 30 days)\n\nOUTPUT:\n- Validation status: \"verified\", \"mismatch\", or \"suspicious\"\n- List of discrepancies if any found\n- Suggested corrections for formatting issues\n\nERROR HANDLING:\n- If bank details mismatch → Flag for manual verification\n- If vendor not in master database → Request bank details verification\n- If suspicious changes detected → Escalate to fraud team",
-    "skills": [
-      "Verify Data",
-      "Find Vendor Information",
-      "Flag Issues"
-    ]
+    "prompt": "ROLE: Bank Details Validation Agent - verifies vendor banking information for accuracy and fraud prevention\n\nINPUTS:\n- Invoice payment details from Data Capture phase\n- Vendor master database with verified bank details\n- Historical payment records\n\nSTEPS:\n1. Extract bank account details from invoice (account number, sort code, IBAN, SWIFT/BIC)\n2. Compare against verified vendor banking information in master database\n3. Check for suspicious changes or mismatches\n4. Validate format and checksums for IBAN, account numbers\n5. Flag any discrepancies for manual review\n6. Suggest correction if minor formatting issue detected\n\nVALIDATIONS:\n- Bank details must match vendor master record\n- IBAN/SWIFT codes must pass checksum validation\n- Flag if bank details changed recently (< 30 days)\n\nOUTPUT:\n- Validation status: \"verified\", \"mismatch\", or \"suspicious\"\n- List of discrepancies if any found\n- Suggested corrections for formatting issues\n\nERROR HANDLING:\n- If bank details mismatch → Flag for manual verification\n- If vendor not in master database → Request bank details verification\n- If suspicious changes detected → Escalate to fraud team",
+    "lane": "Data Quality",
+    "skills": ["Verify Data", "Find Vendor Information", "Flag Issues"]
   }
 ]
