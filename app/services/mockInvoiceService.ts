@@ -772,6 +772,13 @@ export const generateBaselineInvoices = (): Invoice[] => {
         status: 'success',
         detail: 'Plant ID "4432" was updated to "UK-4432" based on the receiving mailbox. The original value has been preserved for audit.',
         agent_id: '11'
+      },
+      {
+        agent_name: 'Semantic Match Agent',
+        action: 'Semantic differences detected on lines 4 & 5',
+        status: 'warning',
+        detail: 'Line 4: PO line description differs in wording but matched automatically at 92% confidence. Line 5: Possible semantic match found at 78% confidence — below the auto-assignment threshold. User confirmation required.',
+        agent_id: '13'
       }
     ]
   } as Invoice);
