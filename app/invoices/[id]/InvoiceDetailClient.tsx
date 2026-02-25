@@ -124,31 +124,47 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     // Simulate AI processing delay
     await new Promise(resolve => setTimeout(resolve, 1500));
     
-    // Apply fixes to line 6 (the quantity mismatch)
     const lineItems = invoice.invoice_lines || invoice.lines;
     
     if (lineItems && lineItems.length >= 6) {
       const updatedLineItems = [...lineItems];
+
+      // Line 5 (index 4): resolve substitution suggestion → mark as matched
+      const line5 = updatedLineItems[4];
+      if (line5) {
+        updatedLineItems[4] = {
+          ...line5,
+          po_line_id: line5.suggested_po_match?.po_line_id || 'po-line-9011-5',
+          suggested_po_match: undefined,
+          status: 'matched',
+          smart_match_applied: true,
+          smart_match_confidence: 0.92,
+          smart_match_reason: 'Semantic match accepted: "Pleated air filters MERV 8" matched to "Air Filters MERV 9 - EQ-800111"',
+          agent_fixed: true,
+        };
+      }
+
+      // Line 6 (index 5): apply UoM conversion and mark as matched
       const line6 = updatedLineItems[5];
+      if (line6) {
+        updatedLineItems[5] = {
+          ...line6,
+          status: 'matched',
+          smart_match_applied: true,
+          smart_match_confidence: 0.96,
+          smart_match_reason: 'Unit conversion applied: 54 bags × 50kg/bag = 2700kg',
+          agent_fixed: true,
+          uom_conversion: {
+            invoice_qty: 54,
+            invoice_uom: 'bags',
+            po_qty: 2700,
+            po_uom: 'kg',
+            conversion_factor: 50,
+            explanation: 'Converted 54 bags to 2700kg (50kg per bag)'
+          }
+        };
+      }
       
-      // Mark as fixed by agent with smart match indicators and UoM conversion
-      updatedLineItems[5] = {
-        ...line6,
-        smart_match_applied: true,
-        smart_match_confidence: 0.96,
-        smart_match_reason: 'Unit conversion applied: 54 bags × 50kg/bag = 2700kg',
-        agent_fixed: true,
-        uom_conversion: {
-          invoice_qty: 54,
-          invoice_uom: 'bags',
-          po_qty: 2700,
-          po_uom: 'kg',
-          conversion_factor: 50,
-          explanation: 'Converted 54 bags to 2700kg (50kg per bag)'
-        }
-      };
-      
-      // Update invoice data
       const updatedInvoice = {
         ...invoice,
         invoice_lines: updatedLineItems,
@@ -157,7 +173,6 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       };
       
       setInvoice(updatedInvoice);
-      
       showToast('Invoice reprocessed successfully', 'success');
     }
     
