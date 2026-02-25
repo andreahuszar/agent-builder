@@ -1260,7 +1260,7 @@ export function DetailsTab({
                         </div>
                         <p className="text-xs text-gray-950 mt-0.5">{action.action}</p>
                         {action.detail && (
-                          <p className="text-xs text-gray-500 mt-0.5">{action.detail}</p>
+                          <p className="text-xs text-gray-700 mt-0.5">{action.detail}</p>
                         )}
                         {action.links_to === 'additional_details' && (
                           <p className="text-xs text-purple-600 mt-1">Click to view bank details →</p>
