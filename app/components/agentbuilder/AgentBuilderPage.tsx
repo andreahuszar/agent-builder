@@ -591,13 +591,71 @@ Reject any invoice without a Purchase Order, unless there is a greater than 90% 
       lane: "Confidence Scoring",
       skills: ["Match Documents", "Verify Data", "Flag Issues"],
     },
+    {
+      id: "13",
+      name: "Semantic Match Agent",
+      stage: "verification",
+      active: true,
+      mode: "auto-apply",
+      prompt: `ROLE: Semantic Match Agent - identifies Purchase Order line items that are semantically equivalent to invoice line items, even when the exact wording differs
+
+INPUTS:
+- Invoice line item descriptions from Data Capture phase
+- Open PO line item descriptions from Purchase Order database
+- Vendor master data
+
+STEPS:
+1. For each invoice line item, check for an exact text match against PO line descriptions
+2. If no exact match found, compute semantic similarity scores between the invoice line and all candidate PO lines
+3. Rank candidate PO lines by similarity score
+4. Apply confidence thresholds to determine action per line
+5. Output match status, confidence score, and suggested PO line reference for each invoice line
+
+SEMANTIC EQUIVALENCE EXAMPLES:
+- "Grounds maintenance" → "Landscaping services"
+- "IT support" → "Information Technology Services"
+- "Courier" → "Delivery charges"
+- "Office supplies" → "Printer paper and stationery"
+- "Daily rate" → "Per diem charge"
+- Abbreviations, synonyms, category vs specific item descriptions
+
+CONFIDENCE THRESHOLDS:
+- >= 95%: Auto-suggest match, route for approval
+- 90–94%: Suggest match, route for approval with confidence score displayed
+- < 90%: Flag for manual review — present best candidate(s) but require human confirmation
+- No candidate found: Treat line as unmatched, block invoice progression until resolved
+
+VALIDATIONS:
+- Matched PO line must be active and not fully consumed
+- Invoice line amount must not exceed remaining PO line value
+- Vendor must match PO vendor record
+
+OUTPUT:
+- Match status per line: "exact", "semantic", "review", or "unmatched"
+- Confidence score (0–100%) for each suggested match
+- Suggested PO line reference and description
+- Reason for review flag where applicable
+
+ERROR HANDLING:
+- If multiple PO lines score similarly → Present top 3 candidates for manual selection
+- If no PO line scores above 50% → Mark as unmatched and escalate
+- If PO line is already fully consumed → Exclude from candidates and notify reviewer`,
+      basicPromptOverride: `ROLE: Semantic Match Agent — identifies Purchase Order line items that are semantically equivalent to invoice line items, even when the exact wording differs
+
+KEY ACTIONS:
+Match invoice line item descriptions to PO line items using semantic similarity, not just exact text
+Flag any invoice lines where no exact match exists but a likely semantic match is found (e.g. "Grounds maintenance" → "Landscaping services")
+Any match below 90% confidence is flagged for manual review — only matches at or above 90% confidence are suggested for auto-assignment`,
+      lane: "Confidence Scoring",
+      skills: ["Match Documents", "Verify Data", "Flag Issues"],
+    },
     ]
     
     // Client-side only - check localStorage and merge with defaults
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v8'
+        const AGENTS_VERSION = 'v9'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')

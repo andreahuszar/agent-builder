@@ -177,7 +177,19 @@ export const generateBaselineInvoices = (): Invoice[] => {
           { number: 'INV3745-04', date: 'Nov 22, 2025', amount: '$7,200.00' }
         ]
       }
-    ]
+    ],
+    // Agent actions taken during processing
+    agent_actions: [
+      {
+        agent_name: 'TechSupply Customer Reference no. extraction',
+        action: 'Could not find Customer Reference ID',
+        status: 'failed',
+        detail: 'Searched extracted invoice data for a customer reference number matching the expected format. No matching field was found on this invoice.',
+        agent_id: '9'
+      }
+    ],
+    // Suppress specific validation categories (agent action cards replace these)
+    suppress_validation_categories: ['data_quality']
   } as Invoice);
 
   // ========================================================================
@@ -385,7 +397,19 @@ export const generateBaselineInvoices = (): Invoice[] => {
     // Display configuration for simple table invoice template
     display_config: {
       template: 'simple-table-invoice'
-    }
+    },
+    // Agent actions taken during processing
+    agent_actions: [
+      {
+        agent_name: 'Bank details checker',
+        action: 'Bank detail discrepancy detected',
+        status: 'failed',
+        detail: 'Invoice bank account number does not match the verified bank details on file for Fleet Inc. in the vendor master database. Invoice flagged for manual review.',
+        agent_id: '10',
+        links_to: 'additional_details'
+      }
+    ],
+    suppress_validation_categories: ['risk']
   } as Invoice);
 
   // ============================================================================
@@ -546,7 +570,18 @@ export const generateBaselineInvoices = (): Invoice[] => {
     // Display configuration for green Premier Office Supplies template
     display_config: {
       template: 'green-premier'
-    }
+    },
+    // Agent actions taken during processing
+    agent_actions: [
+      {
+        agent_name: 'PO Matching Agent',
+        action: 'No purchase order found — close match identified',
+        status: 'warning',
+        detail: 'No PO reference was present on this invoice, but a close match (PO-2025-8901) was found in the system with 99% confidence. User confirmation is required before the PO can be assigned.',
+        agent_id: '12'
+      }
+    ],
+    suppress_validation_categories: ['process']
   } as Invoice);
 
   // ========================================================================
@@ -728,7 +763,25 @@ export const generateBaselineInvoices = (): Invoice[] => {
     // Agent extracted fields
     extraction_field_confidences: {
       plant_id: 0.95 // High confidence extraction by agent
-    }
+    },
+    // Agent actions taken during processing
+    agent_actions: [
+      {
+        agent_name: 'Field Normalisation Agent',
+        action: 'Plant ID normalised to include country prefix',
+        status: 'success',
+        detail: 'Plant ID "4432" was updated to "UK-4432" based on the receiving mailbox. The original value has been preserved for audit.',
+        agent_id: '11'
+      },
+      {
+        agent_name: 'Semantic Match Agent',
+        action: 'Semantic differences detected on lines 4 & 5',
+        status: 'warning',
+        detail: 'Line 4: PO line description differs in wording but matched automatically at 92% confidence. Line 5: Possible semantic match found at 78% confidence — below the auto-assignment threshold. User confirmation required.',
+        agent_id: '13'
+      }
+    ],
+    suppress_validation_fields: ['line_5']
   } as Invoice);
 
   // ========================================================================
