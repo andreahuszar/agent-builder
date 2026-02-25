@@ -122,9 +122,9 @@ export function CloseMatchPopover({
           {/* Header */}
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="h-4 w-4 text-purple-600" fill="currentColor" />
-            <span className="text-sm font-semibold text-purple-900">AI PO Match Suggestion</span>
+            <span className="text-sm font-semibold text-purple-900">Smart Match Suggestion</span>
             <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-green-200 text-green-800">
-              {confidencePercent}% match
+              {confidencePercent}% confidence
             </span>
             <button
               onClick={handleClose}
@@ -239,6 +239,19 @@ export function CloseMatchPopover({
             >
               Assign PO
             </button>
+          </div>
+
+          {/* Agent link */}
+          <div className="mt-2.5 pt-2.5 border-t border-purple-200">
+            <a
+              href="/settings?tab=ap-automation&agent=PO%20Matching%20Agent#automation-agent-builder-2"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-purple-700 hover:text-purple-900 transition-colors"
+            >
+              <ExternalLink className="h-3 w-3 flex-shrink-0" />
+              View PO Matching Agent in Agent Builder →
+            </a>
           </div>
 
           <Popover.Arrow className="fill-purple-300" />
