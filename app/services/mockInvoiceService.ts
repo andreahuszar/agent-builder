@@ -187,7 +187,9 @@ export const generateBaselineInvoices = (): Invoice[] => {
         detail: 'Searched extracted invoice data for a customer reference number matching the expected format. No matching field was found on this invoice.',
         agent_id: '9'
       }
-    ]
+    ],
+    // Suppress specific validation categories (agent action cards replace these)
+    suppress_validation_categories: ['data_quality']
   } as Invoice);
 
   // ========================================================================

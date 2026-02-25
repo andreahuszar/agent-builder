@@ -674,6 +674,8 @@ export function DetailsTab({
     // If no reactive state yet, return original issues
     if (!lineItemsValidationState) return validationIssues;
 
+    const suppressedCategories: string[] = (invoiceData as any).suppress_validation_categories || [];
+
     const filtered: typeof validationIssues = {
       financial: [],
       process: [],
@@ -685,6 +687,9 @@ export function DetailsTab({
 
     // Filter each category
     (Object.keys(validationIssues) as Array<keyof typeof validationIssues>).forEach(category => {
+      // Skip entire category if suppressed by invoice data
+      if (suppressedCategories.includes(category)) return;
+
       filtered[category] = validationIssues[category].filter(issue => {
         // Remove "Invoice has line item variances" when all lines are matched
         if (issue.field === 'match_status' && lineItemsValidationState.allLinesMatched) {
