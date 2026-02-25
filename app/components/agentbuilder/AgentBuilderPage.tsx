@@ -526,6 +526,11 @@ ERROR HANDLING:
 - If bank details mismatch → Flag for manual verification
 - If vendor not in master database → Request bank details verification
 - If suspicious changes detected → Escalate to fraud team`,
+      basicPromptOverride: `ROLE: Bank details checker - verifies vendor banking information for accuracy and fraud prevention
+
+KEY ACTIONS:
+Compare invoice bank information against verified vendor banking information in master database
+Flag any discrepancies for manual review`,
       lane: "Data Quality",
       skills: ["Verify Data", "Find Vendor Information", "Flag Issues"],
     },
@@ -535,7 +540,7 @@ ERROR HANDLING:
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v6'
+        const AGENTS_VERSION = 'v7'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')
