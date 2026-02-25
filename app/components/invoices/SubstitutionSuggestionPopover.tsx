@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Sparkles, X, ChevronRight, ChevronDown, Check, AlertTriangle } from 'lucide-react';
+import { Sparkles, X, ChevronRight, ChevronDown, Check, AlertTriangle, ExternalLink } from 'lucide-react';
 
 interface SubstitutionSuggestionPopoverProps {
   invoiceDescription: string;
@@ -198,6 +198,19 @@ export function SubstitutionSuggestionPopover({
               <Check className="h-4 w-4" />
               Accept
             </button>
+          </div>
+
+          {/* Agent link */}
+          <div className="px-4 pb-3 pt-0 border-t-0">
+            <a
+              href="/settings?tab=ap-automation&agent=Semantic%20Match%20Agent#automation-agent-builder-2"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-1.5 text-xs text-purple-700 hover:text-purple-900 transition-colors"
+            >
+              <ExternalLink className="h-3 w-3 flex-shrink-0" />
+              View Semantic Match Agent in Agent Builder →
+            </a>
           </div>
 
           <Popover.Arrow className="fill-purple-300" />
