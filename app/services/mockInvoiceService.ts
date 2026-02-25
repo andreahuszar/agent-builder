@@ -763,7 +763,17 @@ export const generateBaselineInvoices = (): Invoice[] => {
     // Agent extracted fields
     extraction_field_confidences: {
       plant_id: 0.95 // High confidence extraction by agent
-    }
+    },
+    // Agent actions taken during processing
+    agent_actions: [
+      {
+        agent_name: 'Field Normalisation Agent',
+        action: 'Plant ID normalised to include country prefix',
+        status: 'success',
+        detail: 'Plant ID "4432" was updated to "UK-4432" based on the receiving mailbox. The original value has been preserved for audit.',
+        agent_id: '11'
+      }
+    ]
   } as Invoice);
 
   // ========================================================================
