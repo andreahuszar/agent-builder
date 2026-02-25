@@ -1238,10 +1238,11 @@ export function DetailsTab({
               {/* Agent Action Cards */}
               {invoiceData.agent_actions && invoiceData.agent_actions.length > 0 && (
                 <div className="mb-3 space-y-2">
-                  {invoiceData.agent_actions.map((action: { agent_name: string; action: string; status: string; detail?: string; agent_id?: string }, idx: number) => (
+                  {invoiceData.agent_actions.map((action: { agent_name: string; action: string; status: string; detail?: string; agent_id?: string; links_to?: string }, idx: number) => (
                     <div
                       key={idx}
-                      className="flex items-start gap-2.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2.5"
+                      className={`flex items-start gap-2.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2.5 ${action.links_to === 'additional_details' ? 'cursor-pointer hover:bg-purple-100 transition-colors' : ''}`}
+                      onClick={action.links_to === 'additional_details' ? handleRiskIndicatorClick : undefined}
                     >
                       <Sparkles className="h-3.5 w-3.5 text-purple-600 flex-shrink-0 mt-0.5" fill="currentColor" />
                       <div className="flex-1 min-w-0">
@@ -1260,6 +1261,9 @@ export function DetailsTab({
                         <p className="text-xs text-gray-950 mt-0.5">{action.action}</p>
                         {action.detail && (
                           <p className="text-xs text-gray-500 mt-0.5">{action.detail}</p>
+                        )}
+                        {action.links_to === 'additional_details' && (
+                          <p className="text-xs text-purple-600 mt-1">Click to view bank details →</p>
                         )}
                       </div>
                     </div>

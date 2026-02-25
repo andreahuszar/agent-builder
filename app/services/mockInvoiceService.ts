@@ -405,7 +405,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
         action: 'Bank detail discrepancy detected',
         status: 'failed',
         detail: 'Invoice bank account number does not match the verified bank details on file for Fleet Inc. in the vendor master database. Invoice flagged for manual review.',
-        agent_id: '10'
+        agent_id: '10',
+        links_to: 'additional_details'
       }
     ],
     suppress_validation_categories: ['risk']
