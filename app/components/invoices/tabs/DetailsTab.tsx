@@ -1256,16 +1256,6 @@ export function DetailsTab({
                         {action.detail && (
                           <p className="text-xs text-gray-500 mt-0.5">{action.detail}</p>
                         )}
-                        {action.agent_id && (
-                          <a
-                            href={`/settings?tab=ap-automation&agent=${encodeURIComponent(action.agent_name)}#automation-agent-builder-2`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 text-xs text-purple-700 hover:text-purple-900 mt-1 transition-colors"
-                          >
-                            View agent →
-                          </a>
-                        )}
                       </div>
                     </div>
                   ))}
