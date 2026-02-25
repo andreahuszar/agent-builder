@@ -211,6 +211,11 @@ ERROR HANDLING:
 - If normalization rule uncertain → Suggest correction for manual review
 - If value doesn't match any pattern → Flag for human review
 - If multiple normalization options exist → Present alternatives`,
+      basicPromptOverride: `ROLE: Field normalisation agent
+
+KEY ACTIONS:
+For invoices with a Plant ID, check which mailbox received the invoice
+Add a prefix of EU-, UK- or US- according to the receiving mailbox`,
       lane: "Field Normalisation",
       skills: ["Extract Text", "Verify Data", "Process Documents"],
     },
@@ -530,7 +535,7 @@ ERROR HANDLING:
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v5'
+        const AGENTS_VERSION = 'v6'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')
