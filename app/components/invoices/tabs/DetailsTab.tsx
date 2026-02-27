@@ -2403,8 +2403,8 @@ export function DetailsTab({
               ) : null}
 
               {/* Financial Row 3: Total (full width on left) */}
-              <div ref={(el) => fieldRefs.current['total'] = el} className="bg-purple-50 py-2 -ml-3 pl-3 pr-3">
-                <label className="flex items-center text-xs font-bold text-gray-900 mb-0 min-h-[16px]">
+              <div ref={(el) => fieldRefs.current['total'] = el}>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Total
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.total} isEditMode={isEditing} />
@@ -2422,7 +2422,7 @@ export function DetailsTab({
                     onBlur={handleFieldBlur}
                   />
                 ) : (
-                  <p className="text-sm font-bold text-gray-950">
+                  <p className="text-sm font-medium text-gray-950">
                     {formatCurrency(invoiceData.total || calculatedTotal, invoiceData.currency)}
                   </p>
                 )}

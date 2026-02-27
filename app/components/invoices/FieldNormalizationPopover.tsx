@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
 import { Zap, X } from 'lucide-react';
 
@@ -24,15 +24,20 @@ export function FieldNormalizationPopover({
   confidence = 95,
   explanation,
   children,
-  open,
+  open: controlledOpen,
   onOpenChange,
 }: FieldNormalizationPopoverProps) {
-  const handleClose = () => {
-    onOpenChange?.(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+  const isControlled = controlledOpen !== undefined;
+  const open = isControlled ? controlledOpen : internalOpen;
+
+  const handleOpenChange = (val: boolean) => {
+    if (!isControlled) setInternalOpen(val);
+    onOpenChange?.(val);
   };
 
   return (
-    <Popover.Root open={open} onOpenChange={onOpenChange}>
+    <Popover.Root open={open} onOpenChange={handleOpenChange}>
       <Popover.Trigger asChild>
         {children}
       </Popover.Trigger>
@@ -47,7 +52,7 @@ export function FieldNormalizationPopover({
             <Zap className="h-4 w-4 text-purple-600" />
             <span className="text-sm font-semibold text-purple-900">Field Normalized by Agent</span>
             <button
-              onClick={handleClose}
+              onClick={() => handleOpenChange(false)}
               className="ml-auto p-0.5 rounded hover:bg-purple-100 transition-colors"
               title="Close"
             >
@@ -69,9 +74,6 @@ export function FieldNormalizationPopover({
               <div className="text-xs text-gray-950 bg-white px-2 py-1.5 rounded border border-gray-200">
                 {originalValue}
               </div>
-            </div>
-            <div className="flex items-center justify-center py-1">
-              <div className="text-purple-600">↓</div>
             </div>
             <div>
               <div className="text-xs font-medium text-gray-800 mb-0.5">Normalized Value</div>
