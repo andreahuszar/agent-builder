@@ -181,11 +181,12 @@ export const generateBaselineInvoices = (): Invoice[] => {
     // Agent actions taken during processing
     agent_actions: [
       {
-        agent_name: 'TechSupply Customer Reference no. extraction',
+        agent_name: 'TechSupply Customer ID',
         action: 'Could not find Customer Reference ID',
         status: 'failed',
         detail: 'Searched extracted invoice data for a customer reference number matching the expected format. No matching field was found on this invoice.',
-        agent_id: '9'
+        agent_id: '9',
+        mode: 'auto-apply'
       }
     ],
     // Suppress specific validation categories (agent action cards replace these)
@@ -406,7 +407,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
         status: 'failed',
         detail: 'Invoice bank account number does not match the verified bank details on file for Fleet Inc. in the vendor master database. Invoice flagged for manual review.',
         agent_id: '10',
-        links_to: 'additional_details'
+        links_to: 'additional_details',
+        mode: 'auto-apply'
       }
     ],
     suppress_validation_categories: ['risk']
@@ -578,7 +580,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
         action: 'No purchase order found — close match identified',
         status: 'warning',
         detail: 'No PO reference was present on this invoice, but a close match (PO-2025-8901) was found in the system with 99% confidence. User confirmation is required before the PO can be assigned.',
-        agent_id: '12'
+        agent_id: '12',
+        mode: 'auto-apply'
       }
     ],
     suppress_validation_categories: ['process']
@@ -771,14 +774,16 @@ export const generateBaselineInvoices = (): Invoice[] => {
         action: 'Plant ID normalised to include country prefix',
         status: 'success',
         detail: 'Plant ID "4432" was updated to "UK-4432" based on the receiving mailbox. The original value has been preserved for audit.',
-        agent_id: '11'
+        agent_id: '11',
+        mode: 'auto-apply'
       },
       {
         agent_name: 'Semantic Match Agent',
         action: 'Semantic differences detected on lines 4 & 5',
         status: 'warning',
         detail: 'Line 4: PO line description differs in wording but matched automatically at 92% confidence. Line 5: Possible semantic match found at 78% confidence — below the auto-assignment threshold. User confirmation required.',
-        agent_id: '13'
+        agent_id: '13',
+        mode: 'auto-apply'
       }
     ],
     suppress_validation_fields: ['line_5'],

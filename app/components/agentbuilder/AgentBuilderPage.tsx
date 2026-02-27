@@ -212,7 +212,7 @@ ERROR HANDLING:
 - If multiple normalization options exist → Present alternatives`,
       basicPromptOverride: `ROLE: Field normalisation agent
 
-KEY ACTIONS:
+INSTRUCTIONS:
 For invoices with a Plant ID, check which mailbox received the invoice
 Add a prefix of EU-, UK- or US- according to the receiving mailbox`,
       lane: "Field Normalisation",
@@ -457,7 +457,7 @@ ERROR HANDLING:
     },
     {
       id: "9",
-      name: "TechSupply Customer Reference no. extraction",
+      name: "TechSupply Customer ID",
       stage: "data-capture",
       active: true,
       mode: "auto-apply",
@@ -483,7 +483,7 @@ ERROR HANDLING:
 REFERENCED_DOCUMENTS: None`,
       basicPromptOverride: `ROLE: Customer Reference Number Extraction Agent - extracts the customer reference number from invoice data for TechSupply Solutions
 
-KEY ACTIONS:
+INSTRUCTIONS:
 Search the extracted invoice data for the customer reference number
 If no customer reference number is present, then flag for review`,
       lane: "Header vs Line Split",
@@ -527,7 +527,7 @@ ERROR HANDLING:
 - If suspicious changes detected → Escalate to fraud team`,
       basicPromptOverride: `ROLE: Bank details checker - verifies vendor banking information for accuracy and fraud prevention
 
-KEY ACTIONS:
+INSTRUCTIONS:
 Compare invoice bank information against verified vendor banking information in master database
 Flag any discrepancies for manual review`,
       lane: "Data Quality",
@@ -585,7 +585,7 @@ ERROR HANDLING:
 - If PO is expired → Reject and notify approver`,
       basicPromptOverride: `ROLE: PO matching - tries to match invoices to existing PO's if no PO is referenced
 
-KEY ACTIONS:
+INSTRUCTIONS:
 Reject any invoice without a Purchase Order, unless there is a greater than 90% confidence we can find a match in the system`,
       lane: "Confidence Scoring",
       skills: ["Match Documents", "Verify Data", "Flag Issues"],
@@ -641,7 +641,7 @@ ERROR HANDLING:
 - If PO line is already fully consumed → Exclude from candidates and notify reviewer`,
       basicPromptOverride: `ROLE: Semantic Match Agent — identifies Purchase Order line items that are semantically equivalent to invoice line items, even when the exact wording differs
 
-KEY ACTIONS:
+INSTRUCTIONS:
 Match invoice line item descriptions to PO line items using semantic similarity, not just exact text
 Flag any invoice lines where no exact match exists but a likely semantic match is found (e.g. "Grounds maintenance" → "Landscaping services")
 Any match below 90% confidence is flagged for manual review — only matches at or above 90% confidence are suggested for auto-assignment`,
@@ -654,7 +654,7 @@ Any match below 90% confidence is flagged for manual review — only matches at 
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v9'
+        const AGENTS_VERSION = 'v11'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')
@@ -1305,7 +1305,7 @@ Any match below 90% confidence is flagged for manual review — only matches at 
         .filter(line => /^\d+\./.test(line.trim()))
         .slice(0, 5) // Limit to first 5 steps
         .join('\n')
-      basicPrompt += `KEY ACTIONS:\n${keyActions}`
+      basicPrompt += `INSTRUCTIONS:\n${keyActions}`
     }
     
     return basicPrompt || "No simplified version available"

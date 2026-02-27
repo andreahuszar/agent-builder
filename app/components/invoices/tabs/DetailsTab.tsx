@@ -1248,7 +1248,7 @@ export function DetailsTab({
               {/* Agent Action Cards */}
               {invoiceData.agent_actions && invoiceData.agent_actions.length > 0 && (
                 <div className="mb-3 space-y-2">
-                  {invoiceData.agent_actions.map((action: { agent_name: string; action: string; status: string; detail?: string; agent_id?: string; links_to?: string }, idx: number) => {
+                  {invoiceData.agent_actions.map((action: { agent_name: string; action: string; status: string; detail?: string; agent_id?: string; links_to?: string; mode?: string }, idx: number) => {
                     const isExpanded = expandedAgentCards.has(idx);
                     const toggleExpanded = (e: React.MouseEvent) => {
                       e.stopPropagation();
@@ -1269,7 +1269,18 @@ export function DetailsTab({
                           onClick={toggleExpanded}
                         >
                           <Bot className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
-                          <span className="text-xs font-semibold text-purple-900 flex-1">{action.agent_name}</span>
+                          <span className="text-xs font-semibold text-purple-900 flex-1">Active agent — {action.agent_name}</span>
+                          {action.mode && (
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+                              action.mode === 'auto-apply'
+                                ? 'bg-green-100 text-green-700'
+                                : action.mode === 'suggest'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {action.mode === 'auto-apply' ? 'Auto Apply' : action.mode === 'suggest' ? 'Suggest' : 'Observe'}
+                            </span>
+                          )}
                           {isExpanded ? (
                             <ChevronUp className="h-3.5 w-3.5 text-purple-400 flex-shrink-0" />
                           ) : (
