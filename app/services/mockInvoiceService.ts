@@ -781,7 +781,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
         agent_id: '13'
       }
     ],
-    suppress_validation_fields: ['line_5']
+    suppress_validation_fields: ['line_5'],
+    exceptions_count_override: 3
   } as Invoice);
 
   // ========================================================================

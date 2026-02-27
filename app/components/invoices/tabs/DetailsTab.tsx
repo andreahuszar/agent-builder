@@ -27,6 +27,7 @@ import {
   FileText,
   Package,
   Sparkles,
+  Bot,
   AlertCircle,
   Shield,
   Zap,
@@ -70,6 +71,7 @@ import {
   ValidationIssue,
   ValidationCategory
 } from '../ValidationCard';
+import { calculateInvoiceExceptions } from '@/app/utils/exceptionCounter';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -120,6 +122,8 @@ export function DetailsTab({
   poComparisonData,
   onStatusUpdate,
 }: DetailsTabProps) {
+  // Track which agent action cards are expanded (collapsed by default)
+  const [expandedAgentCards, setExpandedAgentCards] = useState<Set<number>>(new Set());
   // Track which field's AI suggestion is expanded
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
   // Track which field should be focused when entering edit mode
@@ -158,6 +162,13 @@ export function DetailsTab({
       }
     };
   }, [poComparisonData, addedPOs]);
+
+  // Total exceptions count (mirrors the toolbar pill); respects per-invoice override for demo data
+  const totalExceptionsCount = useMemo(() => {
+    if (invoiceData?.exceptions_count_override != null) return invoiceData.exceptions_count_override as number;
+    const result = calculateInvoiceExceptions(invoiceData, matchResults, mergedPoComparisonData, approvalLimit);
+    return result.counts.total;
+  }, [invoiceData, matchResults, mergedPoComparisonData, approvalLimit]);
 
   // Handler for adding a new PO to the invoice
   const handleAddPOToInvoice = useCallback((poNumber: string, poData: any) => {
@@ -1221,14 +1232,10 @@ export function DetailsTab({
                 <>
                   <AlertTriangle className={`h-4 w-4 ${validationCounts.errorCount > 0 ? 'text-red-600' : 'text-purple-600'}`} />
                   <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Validation Results</h3>
-                  {validationCounts.errorCount > 0 && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                      {validationCounts.errorCount} exception{validationCounts.errorCount !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                  {validationCounts.warningCount > 0 && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                      {validationCounts.warningCount} warning{validationCounts.warningCount !== 1 ? 's' : ''}
+                  {totalExceptionsCount > 0 && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+                      <AlertTriangle className="h-3 w-3" />
+                      {totalExceptionsCount} exception{totalExceptionsCount !== 1 ? 's' : ''}
                     </span>
                   )}
                   {/* Reprocess with AI button - DEBUG: Always show for testing */}
@@ -1241,36 +1248,52 @@ export function DetailsTab({
               {/* Agent Action Cards */}
               {invoiceData.agent_actions && invoiceData.agent_actions.length > 0 && (
                 <div className="mb-3 space-y-2">
-                  {invoiceData.agent_actions.map((action: { agent_name: string; action: string; status: string; detail?: string; agent_id?: string; links_to?: string }, idx: number) => (
-                    <div
-                      key={idx}
-                      className={`flex items-start gap-2.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2.5 ${action.links_to === 'additional_details' ? 'cursor-pointer hover:bg-purple-100 transition-colors' : ''}`}
-                      onClick={action.links_to === 'additional_details' ? handleRiskIndicatorClick : undefined}
-                    >
-                      <Sparkles className="h-3.5 w-3.5 text-purple-600 flex-shrink-0 mt-0.5" fill="currentColor" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-semibold text-purple-900">{action.agent_name}</span>
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                            action.status === 'failed'
-                              ? 'bg-red-100 text-red-700'
-                              : action.status === 'warning'
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-green-100 text-green-700'
-                          }`}>
-                            {action.status === 'failed' ? 'Action required' : action.status === 'warning' ? 'Warning' : 'Completed'}
-                          </span>
+                  {invoiceData.agent_actions.map((action: { agent_name: string; action: string; status: string; detail?: string; agent_id?: string; links_to?: string }, idx: number) => {
+                    const isExpanded = expandedAgentCards.has(idx);
+                    const toggleExpanded = (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      setExpandedAgentCards(prev => {
+                        const next = new Set(prev);
+                        if (next.has(idx)) { next.delete(idx); } else { next.add(idx); }
+                        return next;
+                      });
+                    };
+                    return (
+                      <div
+                        key={idx}
+                        className="rounded-lg border border-purple-200 bg-purple-50 overflow-hidden"
+                      >
+                        {/* Collapsed header — always visible */}
+                        <div
+                          className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-purple-100 transition-colors select-none"
+                          onClick={toggleExpanded}
+                        >
+                          <Bot className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                          <span className="text-xs font-semibold text-purple-900 flex-1">{action.agent_name}</span>
+                          {isExpanded ? (
+                            <ChevronUp className="h-3.5 w-3.5 text-purple-400 flex-shrink-0" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5 text-purple-400 flex-shrink-0" />
+                          )}
                         </div>
-                        <p className="text-xs text-gray-950 mt-0.5">{action.action}</p>
-                        {action.detail && (
-                          <p className="text-xs text-gray-950 mt-0.5">{action.detail}</p>
-                        )}
-                        {action.links_to === 'additional_details' && (
-                          <p className="text-xs text-purple-600 mt-1">Click to view bank details →</p>
+                        {/* Expanded body */}
+                        {isExpanded && (
+                          <div
+                            className={`px-3 pb-2.5 border-t border-purple-200 pt-2 ${action.links_to === 'additional_details' ? 'cursor-pointer hover:bg-purple-100 transition-colors' : ''}`}
+                            onClick={action.links_to === 'additional_details' ? handleRiskIndicatorClick : undefined}
+                          >
+                            <p className="text-xs text-gray-950">{action.action}</p>
+                            {action.detail && (
+                              <p className="text-xs text-gray-950 mt-0.5">{action.detail}</p>
+                            )}
+                            {action.links_to === 'additional_details' && (
+                              <p className="text-xs text-purple-600 mt-1">Click to view bank details →</p>
+                            )}
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
               {filteredAllValidationsPassed ? (
@@ -1287,6 +1310,7 @@ export function DetailsTab({
                       defaultExpanded={true}
                       compact={true}
                       onHeaderClick={handleFinancialValidationClick}
+                      hideHeader={true}
                     />
                   )}
                   {filteredValidationIssues.process.length > 0 && (

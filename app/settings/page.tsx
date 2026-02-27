@@ -33,8 +33,6 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
         setActiveSubTab('dashboard');
       } else if (hash.includes('agent-builder-2')) {
         setActiveSubTab('agent-builder-2');
-      } else if (hash.includes('agent-builder')) {
-        setActiveSubTab('agent-builder');
       } else if (hash.includes('documents')) {
         setActiveSubTab('documents');
       }
@@ -94,7 +92,7 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                     : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                 } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
               >
-                Agent Builder 2
+                Agent Builder
               </button>
               <button
                 onClick={() => handleSubTabChange('documents')}
@@ -123,7 +121,6 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
           <div className="flex-1 overflow-auto">
             {activeSubTab === 'general-settings' && <APAutomationGeneralSettings />}
             {activeSubTab === 'dashboard' && <AgentBuilderPage key="dashboard" hideNavigation={true} defaultMode="executive-dashboard" />}
-            {activeSubTab === 'agent-builder' && <AgentBuilderPage key="builder1" hideNavigation={true} defaultMode="build" />}
             {activeSubTab === 'agent-builder-2' && <AgentBuilderPage key="builder2" hideNavigation={true} defaultMode="build2" />}
             {activeSubTab === 'documents' && <AgentBuilderPage key="documents" hideNavigation={true} defaultMode="documents" />}
           </div>
@@ -215,7 +212,7 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                     : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
                 } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
               >
-                Agent Builder 2
+                Agent Builder
               </button>
               <button
                 onClick={() => handleSubTabChange('documents')}
@@ -234,7 +231,6 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
           <div className="flex-1 overflow-auto">
             {activeSubTab === 'general-settings' && <APAutomationGeneralSettings />}
             {activeSubTab === 'dashboard' && <AgentBuilderPage hideNavigation={true} defaultMode="executive-dashboard" />}
-            {activeSubTab === 'agent-builder' && <AgentBuilderPage hideNavigation={true} defaultMode="build" />}
             {activeSubTab === 'agent-builder-2' && <AgentBuilderPage hideNavigation={true} defaultMode="build2" />}
             {activeSubTab === 'documents' && <AgentBuilderPage hideNavigation={true} defaultMode="documents" />}
           </div>

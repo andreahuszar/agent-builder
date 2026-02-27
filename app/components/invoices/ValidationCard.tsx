@@ -43,6 +43,7 @@ interface ValidationCardProps {
   defaultExpanded?: boolean;
   compact?: boolean;
   onHeaderClick?: () => void; // Optional custom click handler instead of accordion behavior
+  hideHeader?: boolean; // Remove header, render issues directly with category styling
 }
 
 const categoryConfig: Record<ValidationCategory, {
@@ -129,7 +130,8 @@ export function ValidationCard({
   title,
   defaultExpanded = true,
   compact = false,
-  onHeaderClick
+  onHeaderClick,
+  hideHeader = false,
 }: ValidationCardProps) {
   const [isExpanded, setIsExpanded] = useState(defaultExpanded);
 
@@ -164,6 +166,61 @@ export function ValidationCard({
 
   if (issues.length === 0) {
     return null;
+  }
+
+  // Headerless variant — renders issues directly inside a pink/red card
+  if (hideHeader) {
+    return (
+      <div className={`rounded-lg border ${displayConfig.borderColor} ${displayConfig.bgColor} overflow-hidden`}>
+        <div className="divide-y divide-red-100">
+          {issues.map((issue) => {
+            const severityConf = severityConfig[issue.severity];
+            const SeverityIcon = severityConf.icon;
+            return (
+              <div key={issue.id} className={`${compact ? 'px-3 py-2' : 'px-4 py-3'}`}>
+                <div className="flex items-start gap-3">
+                  <Icon className={`${compact ? 'h-4 w-4' : 'h-5 w-5'} ${useErrorStyling ? 'text-red-600' : displayConfig.color} flex-shrink-0 mt-0.5`} />
+                  <div className="flex-1 min-w-0">
+                    <p className={`${compact ? 'text-xs' : 'text-sm'} font-medium text-gray-950`}>
+                      {issue.message}
+                    </p>
+                    {issue.details && (
+                      <p className={`${compact ? 'text-xs' : 'text-sm'} text-gray-700 mt-0.5`}>
+                        {issue.details}
+                      </p>
+                    )}
+                    {(issue.expectedValue !== undefined || issue.actualValue !== undefined) && (
+                      <div className="mt-1.5 text-xs space-y-0.5">
+                        {issue.actualValue !== undefined && (
+                          <div>
+                            <span className="text-gray-700">Actual:</span>{' '}
+                            <span className="font-mono text-gray-950">{issue.actualValue}</span>
+                          </div>
+                        )}
+                        {issue.expectedValue !== undefined && (
+                          <div>
+                            <span className="text-gray-700">Expected:</span>{' '}
+                            <span className="font-mono text-gray-950">{issue.expectedValue}</span>
+                          </div>
+                        )}
+                        {issue.variance !== undefined && (
+                          <div>
+                            <span className="text-gray-700">Variance:</span>{' '}
+                            <span className={`font-mono ${issue.variance > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                              {issue.variance > 0 ? '+' : ''}{issue.variance}%
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
   }
 
   return (
