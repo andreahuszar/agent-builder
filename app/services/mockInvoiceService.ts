@@ -784,6 +784,14 @@ export const generateBaselineInvoices = (): Invoice[] => {
         detail: 'Line 4: PO line description differs in wording but matched automatically at 92% confidence. Line 5: Possible semantic match found at 78% confidence — below the auto-assignment threshold. User confirmation required.',
         agent_id: '13',
         mode: 'auto-apply'
+      },
+      {
+        agent_name: 'Substitution Agent',
+        action: 'Possible product substitution flagged on line 5',
+        status: 'warning',
+        detail: 'Line 5: Part number and description differ from PO but unit of measure, unit price and quantity match. Confidence score is 78% — below the 90% threshold. Manual review required.',
+        agent_id: '15',
+        mode: 'auto-apply'
       }
     ],
     suppress_validation_fields: ['line_5'],

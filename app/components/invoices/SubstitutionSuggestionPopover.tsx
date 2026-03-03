@@ -101,7 +101,7 @@ export function SubstitutionSuggestionPopover({
             {/* Header - matches AISuggestionCard */}
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="h-4 w-4 text-purple-600 animate-pulse" />
-              <span className="text-sm font-semibold text-purple-900">Semantic Match Agent</span>
+              <span className="text-sm font-semibold text-purple-900">Substitution Agent</span>
               <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-orange-200 text-orange-800">
                 {confidencePercent}% confidence
               </span>
@@ -118,9 +118,8 @@ export function SubstitutionSuggestionPopover({
             <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-md">
               <p className="text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Instructions</p>
               <ul className="list-disc list-inside space-y-1 text-xs text-gray-700">
-                <li>Match invoice line item descriptions to PO line items using semantic similarity, not just exact text</li>
-                <li>Flag any invoice lines where no exact match exists but a likely semantic match is found</li>
-                <li>Any match below 90% confidence is flagged for manual review — only matches at or above 90% confidence are auto-assigned</li>
+                <li>Where a part number or description differs from the PO but unit of measure, unit price and quantity are the same, flag as a potential substitution</li>
+                <li>Only auto-suggest the match if confidence is 90% or above — flag anything below 90% for manual review</li>
               </ul>
             </div>
 
@@ -206,13 +205,13 @@ export function SubstitutionSuggestionPopover({
           {/* Agent link */}
           <div className="px-4 pb-3 pt-0 border-t-0">
             <a
-              href="/settings?agent=Semantic%20Match%20Agent#automation-agent-builder-2"
+              href="/settings?agent=Substitution%20Agent#automation-agent-builder-2"
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-xs text-purple-700 hover:text-purple-900 transition-colors"
             >
               <ExternalLink className="h-3 w-3 flex-shrink-0" />
-              View Semantic Match Agent in Agent Builder →
+              View Substitution Agent in Agent Builder →
             </a>
           </div>
 
