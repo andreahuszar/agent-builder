@@ -1313,15 +1313,7 @@ export function DetailsTab({
             <div className="px-4 py-3 bg-white border-b border-gray-200">
               {/* Agent Action Cards */}
               {(() => {
-                const isBankMismatchInvoice = invoiceData.invoice_number === 'IV472-884';
-                const bankCheckerCard = !isBankMismatchInvoice ? [{
-                  agent_name: 'Bank details checker',
-                  action: 'Bank details verified',
-                  status: 'passed',
-                  mode: 'auto-apply',
-                  agent_id: '10',
-                }] : [];
-                const allCards = [...bankCheckerCard, ...(invoiceData.agent_actions || [])];
+                const allCards = [...(invoiceData.agent_actions || [])];
                 if (allCards.length === 0) return null;
                 return (
                 <div className="mb-3 space-y-2">
