@@ -27,6 +27,7 @@ import {
   FileText,
   Package,
   Sparkles,
+  Bot,
   AlertCircle,
   Shield,
   Zap,
@@ -70,6 +71,7 @@ import {
   ValidationIssue,
   ValidationCategory
 } from '../ValidationCard';
+import { calculateInvoiceExceptions } from '@/app/utils/exceptionCounter';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -120,6 +122,28 @@ export function DetailsTab({
   poComparisonData,
   onStatusUpdate,
 }: DetailsTabProps) {
+  // Track which agent action cards are expanded (collapsed by default)
+  const [expandedAgentCards, setExpandedAgentCards] = useState<Set<number>>(new Set());
+  // Agents loaded from localStorage for role lookup
+  const [storedAgents, setStoredAgents] = useState<Array<{ name: string; prompt?: string; basicPromptOverride?: string }>>([]);
+  useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('agents') : null;
+      if (raw) setStoredAgents(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, []);
+
+  // Map agent name → role description extracted from prompt
+  const agentRoleMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const agent of storedAgents) {
+      const source = agent.basicPromptOverride || agent.prompt || '';
+      const match = source.match(/ROLE:\s*([\s\S]*?)(?=\n\s*\n?\s*INSTRUCTIONS:|$)/i);
+      if (match) map[agent.name] = match[1].replace(/\n/g, ' ').trim();
+    }
+    return map;
+  }, [storedAgents]);
+
   // Track which field's AI suggestion is expanded
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
   // Track which field should be focused when entering edit mode
@@ -158,6 +182,13 @@ export function DetailsTab({
       }
     };
   }, [poComparisonData, addedPOs]);
+
+  // Total exceptions count (mirrors the toolbar pill); respects per-invoice override for demo data
+  const totalExceptionsCount = useMemo(() => {
+    if (invoiceData?.exceptions_count_override != null) return invoiceData.exceptions_count_override as number;
+    const result = calculateInvoiceExceptions(invoiceData, matchResults, mergedPoComparisonData, approvalLimit);
+    return result.counts.total;
+  }, [invoiceData, matchResults, mergedPoComparisonData, approvalLimit]);
 
   // Handler for adding a new PO to the invoice
   const handleAddPOToInvoice = useCallback((poNumber: string, poData: any) => {
@@ -229,6 +260,8 @@ export function DetailsTab({
   
   // Ref for scrolling to Additional Invoice Details section
   const additionalDetailsRef = useRef<HTMLDivElement>(null);
+  // Ref for scrolling to Bank Details within Additional Invoice Details
+  const bankDetailsRef = useRef<HTMLDivElement>(null);
   const [isLineItemsEditMode, setIsLineItemsEditMode] = useState(false);
   const [lineItemsErrorCount, setLineItemsErrorCount] = useState<number | null>(null); // Track reactive error count from LineItemsPreviewPanel
   const [lineItemsValidationState, setLineItemsValidationState] = useState<LineItemsValidationState | null>(null); // Track reactive validation state for filtering warnings
@@ -418,6 +451,8 @@ export function DetailsTab({
 
   // Field refs for error navigation
   const fieldRefs = useRef<{ [key: string]: HTMLElement | null }>({});
+  // Ref for the ValidationCard container — scroll target fallback
+  const validationCardsRef = useRef<HTMLDivElement>(null);
 
   // Ref for Agent Suggestion card to detect clicks outside
   const suggestionCardRef = useRef<HTMLDivElement>(null);
@@ -745,6 +780,45 @@ export function DetailsTab({
     });
     return { errorCount, warningCount };
   }, [filteredValidationIssues]);
+
+  // Scroll to the first validation error field when the exceptions pill is clicked
+  const handleExceptionsPillClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    // IV472-884: exception is a bank details change — open Additional Details and scroll to bank details
+    if (invoiceData.invoice_number === 'IV472-884') {
+      setIsAdditionalDetailsExpanded(true);
+      setTimeout(() => {
+        bankDetailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 120);
+      return;
+    }
+    // Ensure the validation accordion is open first
+    if (!isValidationExpanded) setIsValidationExpanded(true);
+    // Wait one frame so the accordion DOM is visible before scrolling
+    requestAnimationFrame(() => {
+      // Collect all issues sorted errors-first
+      const allIssues = [
+        ...filteredValidationIssues.financial,
+        ...filteredValidationIssues.process,
+        ...filteredValidationIssues.compliance,
+        ...filteredValidationIssues.risk,
+        ...filteredValidationIssues.data_quality,
+        ...filteredValidationIssues.delivery,
+      ].sort((a, b) => {
+        const order = { error: 0, warning: 1, info: 2 };
+        return (order[a.severity as keyof typeof order] ?? 3) - (order[b.severity as keyof typeof order] ?? 3);
+      });
+      // Try to find a fieldRef for the first issue
+      for (const issue of allIssues) {
+        if (issue.field && fieldRefs.current[issue.field]) {
+          fieldRefs.current[issue.field]!.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+      }
+      // Fallback: scroll to the ValidationCard container
+      validationCardsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [invoiceData.invoice_number, isValidationExpanded, filteredValidationIssues]);
 
   // Count errors in Additional Details section (payment and coding fields)
   const additionalDetailsErrorCount = useMemo(() => {
@@ -1221,15 +1295,14 @@ export function DetailsTab({
                 <>
                   <AlertTriangle className={`h-4 w-4 ${validationCounts.errorCount > 0 ? 'text-red-600' : 'text-purple-600'}`} />
                   <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Validation Results</h3>
-                  {validationCounts.errorCount > 0 && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                      {validationCounts.errorCount} exception{validationCounts.errorCount !== 1 ? 's' : ''}
-                    </span>
-                  )}
-                  {validationCounts.warningCount > 0 && (
-                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-                      {validationCounts.warningCount} warning{validationCounts.warningCount !== 1 ? 's' : ''}
-                    </span>
+                  {totalExceptionsCount > 0 && (
+                    <button
+                      onClick={handleExceptionsPillClick}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
+                    >
+                      <AlertTriangle className="h-3 w-3" />
+                      {totalExceptionsCount} exception{totalExceptionsCount !== 1 ? 's' : ''}
+                    </button>
                   )}
                   {/* Reprocess with AI button - DEBUG: Always show for testing */}
                 </>
@@ -1239,47 +1312,85 @@ export function DetailsTab({
           {isValidationExpanded && (
             <div className="px-4 py-3 bg-white border-b border-gray-200">
               {/* Agent Action Cards */}
-              {invoiceData.agent_actions && invoiceData.agent_actions.length > 0 && (
+              {(() => {
+                const isBankMismatchInvoice = invoiceData.invoice_number === 'IV472-884';
+                const bankCheckerCard = !isBankMismatchInvoice ? [{
+                  agent_name: 'Bank details checker',
+                  action: 'Bank details verified',
+                  status: 'passed',
+                  mode: 'auto-apply',
+                  agent_id: '10',
+                }] : [];
+                const allCards = [...bankCheckerCard, ...(invoiceData.agent_actions || [])];
+                if (allCards.length === 0) return null;
+                return (
                 <div className="mb-3 space-y-2">
-                  {invoiceData.agent_actions.map((action: { agent_name: string; action: string; status: string; detail?: string; agent_id?: string; links_to?: string }, idx: number) => (
-                    <div
-                      key={idx}
-                      className={`flex items-start gap-2.5 rounded-lg border border-purple-200 bg-purple-50 px-3 py-2.5 ${action.links_to === 'additional_details' ? 'cursor-pointer hover:bg-purple-100 transition-colors' : ''}`}
-                      onClick={action.links_to === 'additional_details' ? handleRiskIndicatorClick : undefined}
-                    >
-                      <Sparkles className="h-3.5 w-3.5 text-purple-600 flex-shrink-0 mt-0.5" fill="currentColor" />
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-semibold text-purple-900">{action.agent_name}</span>
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium ${
-                            action.status === 'failed'
-                              ? 'bg-red-100 text-red-700'
-                              : action.status === 'warning'
-                              ? 'bg-amber-100 text-amber-700'
-                              : 'bg-green-100 text-green-700'
-                          }`}>
-                            {action.status === 'failed' ? 'Action required' : action.status === 'warning' ? 'Warning' : 'Completed'}
-                          </span>
+                  {allCards.map((action: { agent_name: string; action: string; status: string; detail?: string; agent_id?: string; links_to?: string; mode?: string }, idx: number) => {
+                    const isExpanded = expandedAgentCards.has(idx);
+                    const toggleExpanded = (e: React.MouseEvent) => {
+                      e.stopPropagation();
+                      setExpandedAgentCards(prev => {
+                        const next = new Set(prev);
+                        if (next.has(idx)) { next.delete(idx); } else { next.add(idx); }
+                        return next;
+                      });
+                    };
+                    return (
+                      <div
+                        key={idx}
+                        className="rounded-lg border border-purple-200 bg-purple-50 overflow-hidden"
+                      >
+                        {/* Collapsed header — always visible */}
+                        <div
+                          className="flex items-center gap-2 px-3 py-2 cursor-pointer hover:bg-purple-100 transition-colors select-none"
+                          onClick={toggleExpanded}
+                        >
+                          <Bot className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                          <span className="text-xs font-semibold text-purple-900 flex-1">Active agent — {action.agent_name}</span>
+                          {action.mode && (
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium flex-shrink-0 ${
+                              action.mode === 'auto-apply'
+                                ? 'bg-green-100 text-green-700'
+                                : action.mode === 'suggest'
+                                ? 'bg-blue-100 text-blue-700'
+                                : 'bg-gray-100 text-gray-600'
+                            }`}>
+                              {action.mode === 'auto-apply' ? 'Auto Apply' : action.mode === 'suggest' ? 'Suggest' : 'Observe'}
+                            </span>
+                          )}
+                          {isExpanded ? (
+                            <ChevronUp className="h-3.5 w-3.5 text-purple-400 flex-shrink-0" />
+                          ) : (
+                            <ChevronDown className="h-3.5 w-3.5 text-purple-400 flex-shrink-0" />
+                          )}
                         </div>
-                        <p className="text-xs text-gray-950 mt-0.5">{action.action}</p>
-                        {action.detail && (
-                          <p className="text-xs text-gray-950 mt-0.5">{action.detail}</p>
-                        )}
-                        {action.links_to === 'additional_details' && (
-                          <p className="text-xs text-purple-600 mt-1">Click to view bank details →</p>
+                        {/* Expanded body */}
+                        {isExpanded && (
+                          <div
+                            className={`px-3 pb-2.5 border-t border-purple-200 pt-2 ${action.links_to === 'additional_details' ? 'cursor-pointer hover:bg-purple-100 transition-colors' : ''}`}
+                            onClick={action.links_to === 'additional_details' ? handleRiskIndicatorClick : undefined}
+                          >
+                            <p className="text-xs text-gray-600 italic">
+                              {agentRoleMap[action.agent_name] || action.action}
+                            </p>
+                            {action.links_to === 'additional_details' && (
+                              <p className="text-xs text-purple-600 mt-1">Click to view bank details →</p>
+                            )}
+                          </div>
                         )}
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
-              )}
+                );
+              })()}
               {filteredAllValidationsPassed ? (
                 <div className="flex items-center gap-2 text-green-700">
                   <CheckCircle className="h-5 w-5" />
                   <span className="text-sm font-medium">All validation checks have passed. Invoice is ready for posting.</span>
                 </div>
               ) : (
-                <ValidationCardContainer>
+                <ValidationCardContainer ref={validationCardsRef}>
                   {filteredValidationIssues.financial.length > 0 && (
                     <ValidationCard
                       category="financial"
@@ -1287,6 +1398,7 @@ export function DetailsTab({
                       defaultExpanded={true}
                       compact={true}
                       onHeaderClick={handleFinancialValidationClick}
+                      hideHeader={true}
                     />
                   )}
                   {filteredValidationIssues.process.length > 0 && (
@@ -2293,7 +2405,7 @@ export function DetailsTab({
                         explanation="Agent standardised the Plant ID format by adding prefix 'UK-' based on the receiving mailbox: accounts.payable.uk@xelix.com"
                       >
                         <button className="p-0.5 rounded hover:bg-purple-100 transition-colors">
-                          <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                          <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" fill="currentColor" />
                         </button>
                       </FieldNormalizationPopover>
                     </p>
@@ -2341,18 +2453,9 @@ export function DetailsTab({
 
                       if (hasValue) {
                         return (
-                          <div className="flex items-center">
-                            <p className="text-sm font-medium text-gray-950">
-                              {invoiceData.vehicle_registration_no}
-                            </p>
-                            <CustomFieldIndicator
-                              fieldLabel="Vehicle Registration No."
-                              fieldValue={invoiceData.vehicle_registration_no}
-                              vendorName={invoiceData.vendor_name_snapshot}
-                              fieldName="vehicle_registration_no"
-                              onFieldFocus={onFieldFocus}
-                            />
-                          </div>
+                          <p className="text-sm font-medium text-gray-950">
+                            {invoiceData.vehicle_registration_no}
+                          </p>
                         );
                       }
 
@@ -2368,8 +2471,8 @@ export function DetailsTab({
               ) : null}
 
               {/* Financial Row 3: Total (full width on left) */}
-              <div ref={(el) => fieldRefs.current['total'] = el} className="bg-purple-50 py-2 -ml-3 pl-3 pr-3">
-                <label className="flex items-center text-xs font-bold text-gray-900 mb-0 min-h-[16px]">
+              <div ref={(el) => fieldRefs.current['total'] = el}>
+                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     Total
                     <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.total} isEditMode={isEditing} />
@@ -2387,7 +2490,7 @@ export function DetailsTab({
                     onBlur={handleFieldBlur}
                   />
                 ) : (
-                  <p className="text-sm font-bold text-gray-950">
+                  <p className="text-sm font-medium text-gray-950">
                     {formatCurrency(invoiceData.total || calculatedTotal, invoiceData.currency)}
                   </p>
                 )}
@@ -2536,8 +2639,33 @@ export function DetailsTab({
                 </div>
               )}
               {invoiceData.payment_bank_details && Object.keys(invoiceData.payment_bank_details).some(key => invoiceData.payment_bank_details[key]) && (
-                <div className={`${getFullSpan()} mt-3`}>
-                  <label className="flex items-center text-xs font-medium text-gray-700 mb-2 min-h-[20px]">Bank Details</label>
+                <div ref={bankDetailsRef} className={`${getFullSpan()} mt-3`}>
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-2 min-h-[20px]">
+                    Bank Details
+                    <Tooltip.Provider>
+                      <Tooltip.Root>
+                        <Tooltip.Trigger asChild>
+                          <span className="inline-flex items-center justify-center p-0.5 rounded bg-purple-100 cursor-default">
+                            <Zap
+                              className="h-3 w-3 text-purple-600"
+                              fill={invoiceData.invoice_number !== 'IV472-884' ? 'currentColor' : 'none'}
+                            />
+                          </span>
+                        </Tooltip.Trigger>
+                        <Tooltip.Portal>
+                          <Tooltip.Content
+                            className="bg-gray-900 text-white px-2 py-1 rounded text-xs max-w-xs z-50"
+                            sideOffset={5}
+                          >
+                            {invoiceData.invoice_number !== 'IV472-884'
+                              ? 'Verified by Bank Details Checker agent against master vendor data'
+                              : 'Bank Details Checker agent detected a mismatch — review required'}
+                            <Tooltip.Arrow className="fill-gray-900" />
+                          </Tooltip.Content>
+                        </Tooltip.Portal>
+                      </Tooltip.Root>
+                    </Tooltip.Provider>
+                  </label>
                   <div className={`rounded-md p-3 space-y-2 ${
                     invoiceData.validation_warnings?.some((w: any) =>
                       w.field === 'payment_bank_details' && (w.category === 'risk' || w.type === 'bank_details_change')
@@ -2590,7 +2718,7 @@ export function DetailsTab({
                               onClick={() => setIsBankVerifyOpen(true)}
                               className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors font-medium"
                             >
-                              <Shield className="h-3 w-3" />
+                              <Zap className="h-3 w-3" />
                               Mismatch Detected
                             </button>
                           </BankDetailsVerificationPopover>

@@ -179,9 +179,8 @@ export function InvoiceTabs({
     [matchResults, invoiceData, poComparisonData, acceptedLineSuggestions]
   );
 
-  // Count ALL exceptions for badge (errors + warnings + info)
-  // Badge shows simplified total, MatchingTab shows detailed categorized breakdown
-  const totalIssuesCount = exceptionResult.counts.total;
+  // Count ALL exceptions for badge; respects per-invoice override for demo data
+  const totalIssuesCount = (invoiceData as any)?.exceptions_count_override ?? exceptionResult.counts.total;
 
   // Calculate missing/invalid fields count for Details tab
   // This MUST match the exact logic in InvoiceDetailClient calculateMissingFieldsCount

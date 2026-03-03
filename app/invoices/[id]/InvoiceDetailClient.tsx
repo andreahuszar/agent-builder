@@ -950,8 +950,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
     [matchResults, invoice, poComparisonData, acceptedLineSuggestions]
   );
 
-  // Total exceptions count for the status bar
-  const totalExceptionsCount = exceptionResult.counts.total;
+  // Total exceptions count for the status bar; respects per-invoice override for demo data
+  const totalExceptionsCount = (invoice as any)?.exceptions_count_override ?? exceptionResult.counts.total;
 
   // Keep these for backward compatibility with save logic
   const missingFieldsCount = calculateMissingFieldsCount();
@@ -1003,6 +1003,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           context={selectedContext}
           onAccept={handleTeachingAccept}
           onCancel={handleTeachingCancel}
+          vendorName={invoice.vendor_name_snapshot}
         />
       )}
 

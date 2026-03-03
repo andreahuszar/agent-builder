@@ -11,6 +11,7 @@ interface TeachingConfirmationModalProps {
   context: string;
   onAccept: (value: string) => void;
   onCancel: () => void;
+  vendorName?: string;
 }
 
 export function TeachingConfirmationModal({
@@ -19,7 +20,11 @@ export function TeachingConfirmationModal({
   context,
   onAccept,
   onCancel,
+  vendorName,
 }: TeachingConfirmationModalProps) {
+  const isTechSupplyCustomerID =
+    vendorName?.toLowerCase().includes('techsupply') &&
+    fieldLabel.toLowerCase().includes('customer');
   return (
     <>
       {/* Popover Card */}
@@ -28,7 +33,7 @@ export function TeachingConfirmationModal({
           {/* Header */}
           <div className="flex items-center gap-2 mb-3">
             <Sparkles className="h-4 w-4 text-purple-600 animate-pulse" />
-            <span className="text-sm font-semibold text-purple-900">Confirm & Teach Agent</span>
+            <span className="text-sm font-semibold text-purple-900">{isTechSupplyCustomerID ? 'TechSupply Customer ID' : 'Confirm & Teach Agent'}</span>
             <button
               onClick={onCancel}
               className="ml-auto p-0.5 rounded hover:bg-purple-100 transition-colors"

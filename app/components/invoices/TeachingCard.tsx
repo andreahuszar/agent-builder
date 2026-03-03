@@ -28,7 +28,7 @@ export function TeachingCard({
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-purple-600 animate-pulse" />
-        <span className="text-sm font-semibold text-purple-900">Teach the Agent</span>
+        <span className="text-sm font-semibold text-purple-900">{isTechSupplyCustomerID ? 'TechSupply Customer ID' : 'Teach the Agent'}</span>
         <button
           onClick={onClose}
           className="ml-auto p-0.5 rounded hover:bg-purple-100 transition-colors"
@@ -64,14 +64,14 @@ export function TeachingCard({
         {/* Show link to TechSupply agent if applicable */}
         {isTechSupplyCustomerID && (
           <Link
-            href="/settings?agent=TechSupply%20Customer%20Reference#automation-agent-builder-2"
+            href="/settings?agent=TechSupply%20Customer%20ID#automation-agent-builder-2"
             target="_blank"
             rel="noopener noreferrer"
             className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
             onClick={onClose}
           >
             <Bot className="h-4 w-4" />
-            View TechSupply Agent
+            View agent
           </Link>
         )}
       </div>

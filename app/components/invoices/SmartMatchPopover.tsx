@@ -61,7 +61,7 @@ export function SmartMatchPopover({
         >
           {/* Header */}
           <div className="flex items-center gap-2 mb-3">
-            <Zap className="h-4 w-4 text-purple-600" />
+            <Zap className="h-4 w-4 text-purple-600" fill="currentColor" />
             <span className="text-sm font-semibold text-purple-900">Smart Match Applied</span>
             {confidence !== undefined && (
               <span className="ml-auto mr-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">

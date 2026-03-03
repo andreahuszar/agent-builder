@@ -122,7 +122,7 @@ export function AgentDetailsView({
     onSave()
   }
 
-  // Extract KEY ACTIONS from prompt with special handling for routing/approval/thresholds
+  // Extract INSTRUCTIONS from prompt with special handling for routing/approval/thresholds
   const extractKeyActions = (prompt: string) => {
     const actions: string[] = []
     
@@ -766,7 +766,38 @@ export function AgentDetailsView({
           {promptView === "basic" && (
             <>
               {agent.basicPromptOverride ? (
-                <div className="text-sm text-gray-700 whitespace-pre-wrap">{agent.basicPromptOverride}</div>
+                (() => {
+                  const text = agent.basicPromptOverride!;
+                  const roleMatch = text.match(/ROLE:\s*([\s\S]*?)(?=\n\s*\n?\s*INSTRUCTIONS:|$)/i);
+                  const instructionsMatch = text.match(/INSTRUCTIONS:\s*([\s\S]*?)$/i);
+                  const roleText = roleMatch ? roleMatch[1].trim() : null;
+                  const instructionLines = instructionsMatch
+                    ? instructionsMatch[1].split('\n').map(l => l.replace(/^[-•*]\s*/, '').trim()).filter(Boolean)
+                    : [];
+                  return (
+                    <>
+                      {roleText && (
+                        <div className="mb-4">
+                          <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">ROLE:</h3>
+                          <p className="text-sm text-gray-700">{roleText}</p>
+                        </div>
+                      )}
+                      {instructionLines.length > 0 && (
+                        <div>
+                          <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">INSTRUCTIONS:</h3>
+                          <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
+                            {instructionLines.map((line, i) => (
+                              <li key={i}>{line}</li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
+                      {!roleText && instructionLines.length === 0 && (
+                        <div className="text-sm text-gray-700 whitespace-pre-wrap">{text}</div>
+                      )}
+                    </>
+                  );
+                })()
               ) : (
                 <>
                   {/* Role */}
@@ -780,12 +811,12 @@ export function AgentDetailsView({
                   {/* Key Actions */}
                   {keyActions.length > 0 && (
                     <div>
-                      <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">KEY ACTIONS:</h3>
-                      <ol className="list-decimal list-inside space-y-1 text-sm text-gray-700">
+                      <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">INSTRUCTIONS:</h3>
+                      <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
                         {keyActions.map((action, index) => (
                           <li key={index}>{action}</li>
                         ))}
-                      </ol>
+                      </ul>
                     </div>
                   )}
                 </>
@@ -931,17 +962,17 @@ export function AgentDetailsView({
 
           {/* Test Agent Banner */}
           {onOpenTest && (
-            <div className="bg-gradient-to-r from-purple-100 to-purple-200 rounded-lg p-4 mt-4">
+            <div className="rounded-lg p-4 mt-4 border border-gray-200">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-purple-300/40 flex items-center justify-center">
-                    <span className="text-purple-700 text-lg">🧪</span>
+                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                    <span className="text-gray-600 text-lg">🧪</span>
                   </div>
-                  <span className="text-purple-900 text-sm font-medium">Test agent against Historical invoice data?</span>
+                  <span className="text-gray-950 text-sm font-medium">Test agent against Historical invoice data?</span>
                 </div>
                 <button
                   onClick={onOpenTest}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm font-medium"
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors text-sm font-medium"
                 >
                   <span>🔬</span>
                   Test agent
@@ -1000,7 +1031,7 @@ export function AgentDetailsView({
           </button>
           <button
             onClick={handleSaveChanges}
-            className="flex items-center gap-2 px-6 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-700 rounded-md transition-colors"
+            className="flex items-center gap-2 px-6 py-2 text-sm font-medium text-white bg-purple-900 hover:bg-purple-800 rounded-md transition-colors"
           >
             <Save className="h-4 w-4" />
             Save agent

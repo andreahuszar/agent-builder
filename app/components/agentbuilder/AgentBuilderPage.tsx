@@ -3,7 +3,6 @@
 import { useEffect, useRef } from "react"
 import { useState } from "react"
 import { Button } from "@/app/components/ui/button"
-import { AgentBuilder } from "./AgentBuilder"
 import { AgentBuilder2 } from "./AgentBuilder2"
 import { WorkflowVisualizer } from "./WorkflowVisualizer"
 import { DocumentsLibrary } from "./DocumentsLibrary"
@@ -19,7 +18,7 @@ import ExecutiveDashboardClient from "@/app/components/executive-dashboard/Execu
 import { clearInvoiceCache } from "@/app/services/agentInvoiceService"
 import { useToast } from "@/app/components/ui/Toast"
 
-type Mode = "chat" | "observe" | "build" | "build2" | "executive-dashboard" | "documents"
+type Mode = "chat" | "observe" | "build2" | "executive-dashboard" | "documents"
 
 export type AgentDocument = {
   id: string
@@ -211,9 +210,9 @@ ERROR HANDLING:
 - If normalization rule uncertain → Suggest correction for manual review
 - If value doesn't match any pattern → Flag for human review
 - If multiple normalization options exist → Present alternatives`,
-      basicPromptOverride: `ROLE: Field normalisation agent
+      basicPromptOverride: `ROLE: Check Plant ID field format and normalise depending on receiving mailbox
 
-KEY ACTIONS:
+INSTRUCTIONS:
 For invoices with a Plant ID, check which mailbox received the invoice
 Add a prefix of EU-, UK- or US- according to the receiving mailbox`,
       lane: "Field Normalisation",
@@ -458,7 +457,7 @@ ERROR HANDLING:
     },
     {
       id: "9",
-      name: "TechSupply Customer Reference no. extraction",
+      name: "TechSupply Customer ID",
       stage: "data-capture",
       active: true,
       mode: "auto-apply",
@@ -484,8 +483,8 @@ ERROR HANDLING:
 REFERENCED_DOCUMENTS: None`,
       basicPromptOverride: `ROLE: Customer Reference Number Extraction Agent - extracts the customer reference number from invoice data for TechSupply Solutions
 
-KEY ACTIONS:
-Search the extracted invoice data for the customer reference number
+INSTRUCTIONS:
+Search the invoice data for the customer reference number on all invoices from TechSupply Solutions
 If no customer reference number is present, then flag for review`,
       lane: "Header vs Line Split",
       skills: ["Verify Data", "Find Vendor Information"],
@@ -528,7 +527,7 @@ ERROR HANDLING:
 - If suspicious changes detected → Escalate to fraud team`,
       basicPromptOverride: `ROLE: Bank details checker - verifies vendor banking information for accuracy and fraud prevention
 
-KEY ACTIONS:
+INSTRUCTIONS:
 Compare invoice bank information against verified vendor banking information in master database
 Flag any discrepancies for manual review`,
       lane: "Data Quality",
@@ -586,7 +585,7 @@ ERROR HANDLING:
 - If PO is expired → Reject and notify approver`,
       basicPromptOverride: `ROLE: PO matching - tries to match invoices to existing PO's if no PO is referenced
 
-KEY ACTIONS:
+INSTRUCTIONS:
 Reject any invoice without a Purchase Order, unless there is a greater than 90% confidence we can find a match in the system`,
       lane: "Confidence Scoring",
       skills: ["Match Documents", "Verify Data", "Flag Issues"],
@@ -642,7 +641,7 @@ ERROR HANDLING:
 - If PO line is already fully consumed → Exclude from candidates and notify reviewer`,
       basicPromptOverride: `ROLE: Semantic Match Agent — identifies Purchase Order line items that are semantically equivalent to invoice line items, even when the exact wording differs
 
-KEY ACTIONS:
+INSTRUCTIONS:
 Match invoice line item descriptions to PO line items using semantic similarity, not just exact text
 Flag any invoice lines where no exact match exists but a likely semantic match is found (e.g. "Grounds maintenance" → "Landscaping services")
 Any match below 90% confidence is flagged for manual review — only matches at or above 90% confidence are suggested for auto-assignment`,
@@ -655,7 +654,7 @@ Any match below 90% confidence is flagged for manual review — only matches at 
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v9'
+        const AGENTS_VERSION = 'v13'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')
@@ -932,13 +931,6 @@ Any match below 90% confidence is flagged for manual review — only matches at 
     }
   }, [agents])
 
-  // Effect to auto-create new agent when switching to build mode with no agent selected
-  useEffect(() => {
-    if (mode === "build" && !editingAgent && !testingAgent) {
-      console.log("[v0] Auto-creating new agent when entering build mode")
-      handleCreateNewAgent()
-    }
-  }, [mode])
 
   const [isPreviewMode, setIsPreviewMode] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -1313,7 +1305,7 @@ Any match below 90% confidence is flagged for manual review — only matches at 
         .filter(line => /^\d+\./.test(line.trim()))
         .slice(0, 5) // Limit to first 5 steps
         .join('\n')
-      basicPrompt += `KEY ACTIONS:\n${keyActions}`
+      basicPrompt += `INSTRUCTIONS:\n${keyActions}`
     }
     
     return basicPrompt || "No simplified version available"
@@ -1392,115 +1384,6 @@ Any match below 90% confidence is flagged for manual review — only matches at 
 
         {/* Main Content Area */}
         <main className="flex-1 overflow-hidden flex bg-background">
-          {/* Left Panel: Agent List/Sidebar */}
-          {mode === "build" && sidebarOpen && (
-            <aside className="w-80 border-r border-border bg-card flex flex-col overflow-hidden">
-              <div className="p-4 border-b border-border flex items-center justify-between">
-                <h2 className="text-base font-bold text-foreground uppercase tracking-wide">Agents</h2>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setSidebarOpen(false)}
-                  className="h-8 w-8 p-0"
-                  title="Collapse sidebar"
-                >
-                  <PanelLeftClose className="h-4 w-4" />
-                </Button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-4">
-                <div className="space-y-1">
-                  {agentsByStage.map((stage) => (
-                    <div key={stage.id} className="rounded-lg overflow-hidden">
-                      <button
-                        onClick={() => toggleStage(stage.id)}
-                        className="w-full flex items-center gap-2 p-2.5 hover:bg-muted/50 transition-colors rounded-lg"
-                      >
-                        {expandedStages.has(stage.id) ? (
-                          <ChevronDown className="w-4 h-4 text-foreground/60" />
-                        ) : (
-                          <ChevronRight className="w-4 h-4 text-foreground/60" />
-                        )}
-                        <div className="flex-1 text-left">
-                          <div className="text-sm font-medium text-foreground">{stage.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            {stage.activeCount} active, {stage.inactiveCount} inactive
-                          </div>
-                        </div>
-                      </button>
-
-                      {expandedStages.has(stage.id) && stage.agents.length > 0 && (
-                        <div className="space-y-1 mt-1 ml-2 pl-4 border-l border-border/50">
-                          {stage.agents.map((agent) => (
-                            <div
-                              key={agent.id}
-                              onClick={() => handlePreviewAgent(agent)}
-                              className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/30 hover:bg-muted transition-colors group cursor-pointer"
-                            >
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className={`w-7 h-7 shrink-0 ${agent.active ? "text-green-500 hover:text-green-600" : "text-muted-foreground hover:text-foreground"}`}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  toggleAgentActive(agent.id)
-                                }}
-                              >
-                                <Power className="w-3.5 h-3.5" />
-                              </Button>
-                              <div
-                                className={`w-2 h-2 rounded-full shrink-0 ${agent.active ? "bg-green-500" : "bg-muted-foreground/40"}`}
-                              />
-                              <div className="flex-1 min-w-0">
-                                <div className="text-sm font-medium text-foreground truncate">{agent.name}</div>
-                              </div>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="w-7 h-7 opacity-0 group-hover:opacity-100 transition-opacity shrink-0"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  handleEditAgent(agent)
-                                }}
-                              >
-                                <Pencil className="w-3.5 h-3.5" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="p-4 border-t border-border">
-                <Button
-                  variant="default"
-                  className="w-full justify-start gap-2 bg-[oklch(0.38_0.15_291)] hover:bg-[oklch(0.35_0.15_291)]"
-                  onClick={handleCreateNewAgent}
-                >
-                  <Plus className="w-4 h-4" />
-                  New Agent
-                </Button>
-              </div>
-            </aside>
-          )}
-
-          {/* Collapsed Sidebar Toggle Button */}
-          {mode === "build" && !sidebarOpen && (
-            <div className="border-r border-border bg-card flex flex-col items-center py-4">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSidebarOpen(true)}
-                className="h-10 w-10 p-0"
-                title="Expand sidebar"
-              >
-                <PanelLeftOpen className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
 
           {/* Center: Main Content */}
           <div className="flex-1 overflow-hidden flex">
@@ -1513,28 +1396,6 @@ Any match below 90% confidence is flagged for manual review — only matches at 
                   onCreateAgent={handleCreateAgentForStage}
                   agentMetrics={agentMetrics}
                   onAgentClick={handlePreviewAgent}
-                />
-              )}
-              {mode === "build" && (
-                <AgentBuilder
-                  agent={testingAgent || editingAgent ? {
-                    ...(testingAgent || editingAgent)!,
-                    lane: (testingAgent || editingAgent)?.lane || ""
-                  } : null}
-                  onSave={handleSaveAgent}
-                  isPreview={isPreviewMode}
-                  onEdit={handleEdit}
-                  onToggleActive={toggleAgentActive}
-                  onOpenTest={() => editingAgent && handleTestAgent(editingAgent)}
-                  testingAgent={!!testingAgent}
-                  editingAgent={!!editingAgent}
-                  showTestModal={!!testingAgent}
-                  allAgents={agents}
-                  onDelete={handleDeleteAgent}
-                  agentMetrics={editingAgent?.id ? agentMetrics[editingAgent.id] : undefined}
-                  onPromptGenerated={handlePromptGenerated}
-                  currentAgent={editingAgent}
-                  onStateChange={handlePromptAndSkillsUpdate}
                 />
               )}
               {mode === "build2" && (() => {
@@ -1568,216 +1429,6 @@ Any match below 90% confidence is flagged for manual review — only matches at 
               )}
             </div>
 
-            {/* Right: Prompt and Skills */}
-            {mode === "build" && (
-              <div className="w-[580px] bg-card flex flex-col overflow-hidden">
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
-                  <h2 className="text-lg font-bold text-foreground">Agent Summary</h2>
-                  {/* Agent Statistics - show for agents with metrics */}
-                  {editingAgent?.id && agentMetrics[editingAgent.id] && (
-                    <Card className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <h4 className="text-sm font-semibold">Performance</h4>
-                        <span className="text-xs text-muted-foreground">Last 24 hours</span>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">Evaluated</span>
-                          <span className="text-sm font-semibold">{formatNumber(agentMetrics[editingAgent.id].evaluated)}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">Acted On</span>
-                          <span className="text-sm font-semibold text-green-600 dark:text-green-400">{formatNumber(agentMetrics[editingAgent.id].actedOn)}</span>
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-muted-foreground">Referred</span>
-                          <span className="text-sm font-semibold text-amber-600 dark:text-amber-400">{formatNumber(agentMetrics[editingAgent.id].referred)}</span>
-                        </div>
-                      </div>
-                    </Card>
-                  )}
-                  
-                  {/* Show stats pending message for saved agents without metrics */}
-                  {editingAgent?.id && !agentMetrics[editingAgent.id] && isPreviewMode && (
-                    <Card className="p-4 bg-muted/50">
-                      <div className="flex items-start gap-3">
-                        <div className="text-muted-foreground">
-                          <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path
-                              strokeLinecap="round"
-                              strokeLinejoin="round"
-                              strokeWidth={2}
-                              d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                          </svg>
-                        </div>
-                        <p className="text-sm text-muted-foreground">Stats will be shown once agent has been live for 24 hours</p>
-                      </div>
-                    </Card>
-                  )}
-                  
-                  {/* Prompt Section */}
-                  <Card className="p-6 flex flex-col" style={{ height: "500px" }}>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Label htmlFor="system-prompt" className="text-sm font-semibold">System Prompt</Label>
-                        <button
-                          onClick={handleCopyPrompt}
-                          className="p-1.5 rounded hover:bg-gray-100 transition-colors"
-                          title="Copy prompt to clipboard"
-                        >
-                          {promptCopied ? (
-                            <Check className="h-3.5 w-3.5 text-green-600" />
-                          ) : (
-                            <Copy className="h-3.5 w-3.5 text-gray-500" />
-                          )}
-                        </button>
-                      </div>
-                      <div className="flex gap-2">
-                        <div className="flex rounded-md border border-border overflow-hidden">
-                          <button
-                            onClick={() => setPromptView("basic")}
-                            className={`px-3 py-1 text-xs font-medium transition-colors ${
-                              promptView === "basic"
-                                ? "bg-purple-900 text-white"
-                                : "bg-background text-muted-foreground hover:bg-muted"
-                            }`}
-                          >
-                            Basic
-                          </button>
-                          <button
-                            onClick={() => setPromptView("advanced")}
-                            className={`px-3 py-1 text-xs font-medium transition-colors ${
-                              promptView === "advanced"
-                                ? "bg-purple-900 text-white"
-                                : "bg-background text-muted-foreground hover:bg-muted"
-                            }`}
-                          >
-                            Advanced
-                          </button>
-                          <button
-                            onClick={() => setPromptView("flowchart")}
-                            className={`px-3 py-1 text-xs font-medium transition-colors ${
-                              promptView === "flowchart"
-                                ? "bg-purple-900 text-white"
-                                : "bg-background text-muted-foreground hover:bg-muted"
-                            }`}
-                          >
-                            Flowchart
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Referenced Documents Chips */}
-                    {editingAgent?.documents && editingAgent.documents.length > 0 && (
-                      <div className="mt-3 mb-3">
-                        <span className="text-xs text-muted-foreground mb-2 block">Referenced Documents:</span>
-                        <div className="flex flex-wrap gap-2">
-                          {editingAgent.documents.map((doc) => (
-                            <button
-                              key={doc.id}
-                              onClick={() => {
-                                const link = document.createElement('a')
-                                link.href = doc.filePath
-                                link.download = doc.name
-                                link.click()
-                              }}
-                              className="flex items-center gap-1.5 px-2 py-1 bg-background border border-border rounded-md text-xs hover:bg-accent transition-colors group"
-                              title="Click to download"
-                            >
-                              <FileText className="w-3 h-3 text-muted-foreground" />
-                              <span className="max-w-[120px] truncate">{doc.name}</span>
-                              <svg className="w-3 h-3 text-muted-foreground group-hover:text-foreground" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5M16.5 12L12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                              </svg>
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {promptView === "flowchart" ? (
-                      <PromptFlowchart 
-                        prompt={currentPrompt} 
-                        stage={editingAgent?.stage}
-                        mode={editingAgent?.mode}
-                      />
-                    ) : promptView === "basic" ? (
-                      <div className="space-y-2 flex-1 flex flex-col min-h-0">
-                        <Textarea
-                          id="system-prompt-basic"
-                          value={generateBasicPrompt(currentPrompt)}
-                          readOnly
-                          placeholder="Simplified view of the agent's key instructions..."
-                          className="font-mono text-sm bg-muted/50 cursor-not-allowed flex-1 resize-none"
-                          disabled={true}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          This is a simplified view showing only the essential instructions. Switch to <strong>Advanced</strong> to see the complete prompt with all details, validations, and error handling.
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 flex-1 flex flex-col min-h-0">
-                        <Textarea
-                          id="system-prompt"
-                          value={currentPrompt}
-                          readOnly
-                          placeholder="Define the agent's behavior and instructions..."
-                          className="font-mono text-sm bg-muted/50 cursor-not-allowed flex-1 resize-none"
-                          disabled={true}
-                        />
-                        <p className="text-xs text-muted-foreground">
-                          This prompt defines how the agent will process data at its deployment stage. <strong>This field can only be updated using the "Apply to Prompt" button in the AI Configuration Assistant</strong> to ensure security and prevent malicious prompt injection.
-                        </p>
-                      </div>
-                    )}
-                  </Card>
-
-                  {/* Skills Section */}
-                  <Card className="p-6">
-                    <div className="flex items-center justify-between mb-3">
-                      <div>
-                        <h3 className="text-sm font-semibold">Skills & Capabilities</h3>
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {currentSkills.length} of {AVAILABLE_SKILLS.length} selected
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {AVAILABLE_SKILLS.map((skill) => {
-                        const isSelected = currentSkills.includes(skill)
-                        return (
-                          <button
-                            key={skill}
-                            onClick={() => {
-                              if (!isPreviewMode) {
-                                const newSkills = isSelected
-                                  ? currentSkills.filter((s) => s !== skill)
-                                  : [...currentSkills, skill]
-                                setCurrentSkills(newSkills)
-                                if (editingAgent) {
-                                  setEditingAgent({ ...editingAgent, skills: newSkills })
-                                }
-                              }
-                            }}
-                            disabled={isPreviewMode}
-                            className={`px-3 py-1.5 rounded-md text-xs font-medium transition-all ${
-                              isSelected
-                                ? "bg-primary text-primary-foreground shadow-sm"
-                                : "bg-muted hover:bg-muted/80 text-muted-foreground hover:text-foreground"
-                            } ${isPreviewMode ? "cursor-default" : "cursor-pointer"}`}
-                          >
-                            {isSelected && <span className="mr-1">✓</span>}
-                            {skill}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </Card>
-                </div>
-              </div>
-            )}
           </div>
         </main>
       </div>

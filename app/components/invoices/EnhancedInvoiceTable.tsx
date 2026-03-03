@@ -1076,12 +1076,12 @@ export function EnhancedInvoiceTable({
               </th>
 
               {/* 13. Aging (from due date) */}
-              <th scope="col" className="px-3 py-2.5 text-right text-sm font-semibold text-gray-800">
+              <th scope="col" className="px-3 py-2.5 text-right text-sm font-semibold text-gray-800 whitespace-nowrap">
                 <button
                   onClick={() => handleSort('aging')}
                   className="flex items-end gap-1 hover:text-gray-900 justify-end w-full text-right"
                 >
-                  Aging (from due date)
+                  Aging
                   {getSortIcon('aging')}
                 </button>
               </th>

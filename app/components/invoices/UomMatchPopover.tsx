@@ -62,7 +62,7 @@ export function UomMatchPopover({
         >
           {/* Header */}
           <div className="flex items-center gap-2 mb-3">
-            <Zap className="h-4 w-4 text-purple-600" />
+            <Zap className="h-4 w-4 text-purple-600" fill="currentColor" />
             <span className="text-sm font-semibold text-purple-900">Smart Match Applied</span>
             <button
               onClick={handleClose}
