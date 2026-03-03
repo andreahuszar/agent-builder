@@ -112,7 +112,7 @@ export function BankDetailsVerificationPopover({
               {/* Header */}
               <div className="flex items-center gap-2 mb-3">
                 <Shield className="h-4 w-4 text-purple-600" />
-                <span className="text-sm font-semibold text-purple-900">Bank Account Mismatch Detected</span>
+                <span className="text-sm font-semibold text-purple-900">Bank details checker</span>
                 <button
                   onClick={handleClose}
                   className="ml-auto p-0.5 rounded hover:bg-purple-100 transition-colors"
@@ -122,17 +122,13 @@ export function BankDetailsVerificationPopover({
                 </button>
               </div>
 
-              {/* Verification Required Alert */}
-              <div className="mb-3 p-3 bg-red-50 border border-red-200 rounded-md">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 text-red-600 flex-shrink-0 mt-0.5" />
-                  <div className="flex-1">
-                    <p className="text-xs font-semibold text-red-900 mb-1">Verification Required</p>
-                    <p className="text-xs text-red-800 leading-relaxed">
-                      The bank account on this invoice differs from the Master Vendor Data (MVD) on file for this vendor. Verification is required before payment can be processed.
-                    </p>
-                  </div>
-                </div>
+              {/* Agent Instructions */}
+              <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-md">
+                <p className="text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Instructions</p>
+                <ul className="list-disc list-inside space-y-1 text-xs text-gray-700">
+                  <li>Compare invoice bank information against verified vendor banking information in master database</li>
+                  <li>Flag any discrepancies for manual review</li>
+                </ul>
               </div>
 
               {/* Side-by-Side Comparison */}
@@ -250,7 +246,7 @@ export function BankDetailsVerificationPopover({
                   onClick={handleClose}
                 >
                   <Bot className="h-4 w-4" />
-                  View Bank Details Checker Agent
+                  View agent
                 </Link>
               </div>
             </div>

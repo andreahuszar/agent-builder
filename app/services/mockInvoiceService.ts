@@ -550,7 +550,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     // Close match AI suggestion for PO
     close_match_po: {
       po_number: 'PO-2025-8901',
-      confidence: 1.0,
+      confidence: 0.98,
       matching_factors: {
         vendor_match: true,
         date_proximity_days: 3,      // PO created Oct 18, invoice Oct 21
@@ -581,7 +581,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
         status: 'warning',
         detail: 'No PO reference was present on this invoice, but a close match (PO-2025-8901) was found in the system with 99% confidence. User confirmation is required before the PO can be assigned.',
         agent_id: '12',
-        mode: 'auto-apply'
+        mode: 'suggest'
       }
     ],
     suppress_validation_categories: ['process']

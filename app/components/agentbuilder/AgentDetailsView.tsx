@@ -99,6 +99,7 @@ export function AgentDetailsView({
 
   // Sync local state when agent prop changes
   useEffect(() => {
+    setEditedName(agent.name)
     setLocalMode(agent.mode || 'auto-apply')
     setLocalStage(agent.stage)
     setLocalLane(agent.lane || '')
@@ -556,7 +557,7 @@ export function AgentDetailsView({
               </div>
             ) : (
               <>
-                <h1 className="text-xl font-semibold text-gray-950">{agent.name}</h1>
+                <h1 className="text-xl font-semibold text-gray-950">{editedName}</h1>
                 <button
                   onClick={() => setIsEditingName(true)}
                   className="p-1.5 hover:bg-gray-200 rounded transition-colors"

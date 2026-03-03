@@ -1839,7 +1839,7 @@ export function DetailsTab({
                         className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
                       >
                         <Sparkles className="h-3.5 w-3.5" />
-                        Match Found
+                        {invoiceData.invoice_number === 'POS-2025-8842' ? 'Flagged by agent' : 'Match Found'}
                       </button>
                     </CloseMatchPopover>
                   )}
@@ -1964,7 +1964,7 @@ export function DetailsTab({
                       className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
                     >
                       <Sparkles className="h-3 w-3" />
-                      Find Match
+                      {invoiceData.invoice_number === 'INV3745-02' ? 'Flagged by agent' : 'Find Match'}
                     </button>
                   )}
                 </label>
@@ -2719,7 +2719,7 @@ export function DetailsTab({
                               className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors font-medium"
                             >
                               <Zap className="h-3 w-3" />
-                              Mismatch Detected
+                              Flagged by agent
                             </button>
                           </BankDetailsVerificationPopover>
                         </div>
