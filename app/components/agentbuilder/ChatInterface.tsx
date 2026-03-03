@@ -75,6 +75,9 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
   const [isProcessing, setIsProcessing] = useState(false)
   const [questionCount, setQuestionCount] = useState(0)
   const [sessionDocuments, setSessionDocuments] = useState<Attachment[]>([])
+  const [scriptedMode, setScriptedMode] = useState(false)
+  const [scriptStep, setScriptStep] = useState(0)
+  const [scriptData, setScriptData] = useState<{ mailbox?: string; suggestFormats?: boolean; signature?: string }>({})
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -92,6 +95,9 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
     setInput("")
     setQuestionCount(0)
     setSessionDocuments([])
+    setScriptedMode(false)
+    setScriptStep(0)
+    setScriptData({})
   }
 
   // Expose clearChat to parent component
@@ -171,8 +177,158 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
     setSessionDocuments([])
   }
 
+  const assembleAgentPrompt = (data: { mailbox?: string; suggestFormats?: boolean; signature?: string }): { prompt: string; skills: string[] } => {
+    const mailbox = data.mailbox || 'your AP mailbox'
+    const signature = data.signature || 'AP Team'
+    const prompt = `ROLE: File Format Rejection Agent — automatically rejects invoice files submitted in unsupported formats and notifies the vendor by email
+
+INSTRUCTIONS:
+- Check the file extension of each incoming invoice. If the file is in .docx format, reject it immediately.
+- Connect to ${mailbox} and compose an automated reply to the original sender
+
+INPUTS:
+- Incoming invoice file (format/extension)
+- Connected mailbox: ${mailbox}
+- Sender email address
+
+STEPS:
+1. Check the file extension of each incoming invoice
+2. If the file is in .docx format, reject it immediately
+3. Connect to ${mailbox} and compose an automated reply to the original sender
+4. The reply should explain that .docx files are not accepted as invoice submissions
+5. Suggest PDF, XLSX, or JPG as acceptable file formats
+6. Sign off the email as: ${signature}
+7. Log the rejection and email confirmation for audit purposes
+
+VALIDATIONS:
+- Only reject .docx files — all other formats pass through to normal processing
+- Ensure the reply email is sent before marking the file as rejected
+
+OUTPUT:
+- Rejection status per file
+- Confirmation of automated email sent to vendor
+
+ERROR HANDLING:
+- If mailbox connection fails → flag for manual follow-up and notify the AP team
+- If sender email cannot be determined → flag the file for manual review
+
+EMAIL_TEMPLATE:
+From: ${mailbox}
+To: {{vendor_email}}
+Subject: Invoice Submission Rejected — Unsupported File Format
+
+Dear Vendor,
+
+Thank you for your recent invoice submission. Unfortunately, we are unable to process your invoice as it was submitted in an unsupported file format (.docx).
+
+To ensure your invoice can be processed promptly, please resubmit using one of the following accepted formats:
+
+  • PDF
+  • XLSX
+  • JPG
+
+If you have any questions regarding this, please don't hesitate to get in touch.
+
+Kind regards,
+${signature}`
+
+    return { prompt, skills: ["Send Messages", "Process Documents", "Flag Issues"] }
+  }
+
+  const handleEnterScriptedMode = () => {
+    setScriptedMode(true)
+    setScriptStep(1)
+    setTimeout(() => inputRef.current?.focus(), 100)
+  }
+
+  const SCRIPTED_USER_MESSAGES: Record<number, string> = {
+    1: "I would like to automatically reject any invoice which comes in Word .docx format and send an automated email to the vendor which explains why it was rejected",
+    2: "invoicing@xelix.com",
+    3: "Please!",
+    4: "Xelix AP Team",
+  }
+
+  const SCRIPTED_DATA = {
+    mailbox: "invoicing@xelix.com",
+    suggestFormats: true,
+    signature: "Xelix AP Team",
+  }
+
+  const handleScriptedSend = (_userInput: string) => {
+    const scriptedContent = SCRIPTED_USER_MESSAGES[scriptStep] ?? _userInput
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: scriptedContent,
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, userMessage])
+    setInput("")
+    setTimeout(() => inputRef.current?.focus(), 100)
+
+    if (scriptStep === 1) {
+      setScriptStep(2)
+      setTimeout(() => {
+        setMessages((prev) => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "I can help with that! Which mailbox should I connect to to send replies?",
+          timestamp: new Date(),
+        }])
+      }, 350)
+    } else if (scriptStep === 2) {
+      setScriptStep(3)
+      setTimeout(() => {
+        setMessages((prev) => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "Should I suggest other formats as acceptable alternatives? (PDF, XLSX, JPG)",
+          timestamp: new Date(),
+        }])
+      }, 350)
+    } else if (scriptStep === 3) {
+      setScriptStep(4)
+      setTimeout(() => {
+        setMessages((prev) => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "How should the reply be signed off?",
+          timestamp: new Date(),
+        }])
+      }, 350)
+    } else if (scriptStep === 4) {
+      setScriptStep(5)
+      const assembled = assembleAgentPrompt(SCRIPTED_DATA)
+      setTimeout(() => {
+        setMessages((prev) => [...prev,
+          {
+            id: (Date.now() + 1).toString(),
+            role: "assistant",
+            content: "Here's the agent configuration I've built based on our conversation:",
+            timestamp: new Date(),
+          },
+          {
+            id: (Date.now() + 2).toString(),
+            role: "assistant",
+            content: "",
+            generatedPrompt: assembled.prompt,
+            suggestedSkills: assembled.skills,
+            timestamp: new Date(),
+          },
+        ])
+        if (onStageDetected) onStageDetected("ingestion")
+        if (onLaneDetected) onLaneDetected("File Triage")
+      }, 350)
+    }
+  }
+
   const handleSend = async () => {
     if (!input.trim() || isProcessing) return
+
+    if (scriptedMode) {
+      handleScriptedSend(input.trim())
+      return
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -611,11 +767,17 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
-              placeholder="Describe what your agent should do..."
+              placeholder={scriptedMode ? "Type your reply..." : "Describe what your agent should do..."}
               className="flex-1 text-sm"
               disabled={isProcessing}
             />
-            <Button onClick={handleSend} size="icon" className="h-9 w-9" disabled={isProcessing || !input.trim()}>
+            <Button
+              onClick={input.trim() ? handleSend : (!scriptedMode && !currentPrompt?.trim() && !isProcessing ? handleEnterScriptedMode : undefined)}
+              size="icon"
+              className="h-9 w-9"
+              disabled={isProcessing || (!input.trim() && (scriptedMode || !!currentPrompt?.trim()))}
+              title={!input.trim() && !scriptedMode && !currentPrompt?.trim() ? "Start guided setup" : undefined}
+            >
               <Send className="w-4 h-4" />
             </Button>
           </div>
