@@ -1527,6 +1527,91 @@ export const generateBaselineInvoices = (): Invoice[] => {
   } as Invoice);
 
   // ========================================================================
+  // ADDITIONAL PO EXCEPTION INVOICES (x17)
+  // ========================================================================
+
+  const poExceptions = [
+    { id: 'po-exc-1',  invoice_number: 'HES-Q4-2025-8814', vendor: 'Hartley Electrical Supplies', vendor_id: 'VND0081234', tax_id: '772 441 09', invoiceDate: '2025-10-03', total: 14820.00, subtotal: 12350.00, tax: 2470.00, currency: 'GBP', issues: ['Price Variance'],    po: 'PO-4401-UK', dept: 'Facilities',     cc: 'CC-1102', desc: [['Cable Management Trays', 50, 'EA', 45.00], ['Electrical Conduit 20mm', 200, 'M', 8.25], ['Junction Boxes (IP65)', 30, 'EA', 22.50]] },
+    { id: 'po-exc-2',  invoice_number: 'NCL/INV/25-10-0092', vendor: 'Nordic Cold Chain Ltd', vendor_id: 'VND0091827', tax_id: 'SE881203440101', invoiceDate: '2025-10-07', total: 38220.00, subtotal: 31850.00, tax: 6370.00, currency: 'SEK', issues: ['Quantity Mismatch'], po: 'PO-5512-SE', dept: 'Operations',    cc: 'CC-2204', desc: [['Refrigerated Transport (per km)', 1200, 'KM', 18.50], ['Cold Storage Handling Fee', 8, 'DAY', 325.00], ['Temperature Logging Device Rental', 3, 'EA', 210.00]] },
+    { id: 'po-exc-3',  invoice_number: 'MERID-2025-10441', vendor: 'Meridian Cleaning Services', vendor_id: 'VND0073345', tax_id: '334 892 17', invoiceDate: '2025-10-10', total: 8640.00, subtotal: 7200.00, tax: 1440.00, currency: 'GBP', issues: ['Price Variance'],    po: 'PO-3308-UK', dept: 'Facilities',     cc: 'CC-1102', desc: [['Deep Clean - Office Floors 1-3', 3, 'EA', 1400.00], ['Window Cleaning External', 1, 'EA', 850.00], ['Consumables Restocking', 1, 'EA', 750.00]] },
+    { id: 'po-exc-4',  invoice_number: 'APEX-IT-25-7731', vendor: 'Apex IT Solutions Ltd', vendor_id: 'VND0054489', tax_id: 'GB556127830', invoiceDate: '2025-10-14', total: 47400.00, subtotal: 39500.00, tax: 7900.00, currency: 'GBP', issues: ['Line Item Variance'], po: 'PO-6620-IT', dept: 'IT',           cc: 'CC-3301', desc: [['Dell Latitude 5540 Laptops', 10, 'EA', 1450.00], ['Docking Stations USB-C', 10, 'EA', 285.00], ['Extended Warranty 3yr', 10, 'EA', 215.00], ['Setup & Imaging Fee', 10, 'EA', 75.00]] },
+    { id: 'po-exc-5',  invoice_number: 'SLG-FR-OCT-2025-0044', vendor: 'Seabourne Logistics Group', vendor_id: 'VND0062213', tax_id: 'FR44376022B', invoiceDate: '2025-10-17', total: 26580.00, subtotal: 22150.00, tax: 4430.00, currency: 'EUR', issues: ['Price Variance'],    po: 'PO-7714-FR', dept: 'Supply Chain', cc: 'CC-4405', desc: [['Ocean Freight - FCL 40ft', 2, 'CONT', 6800.00], ['Port Handling Charges', 2, 'EA', 875.00], ['Customs Documentation', 1, 'EA', 450.00], ['Insurance Premium', 1, 'EA', 1650.00]] },
+    { id: 'po-exc-6',  invoice_number: 'PPM/25/3309', vendor: 'Premier Print & Media', vendor_id: 'VND0038871', tax_id: '227 534 91', invoiceDate: '2025-10-21', total: 5916.00, subtotal: 4930.00, tax: 986.00, currency: 'GBP', issues: ['Quantity Mismatch'], po: 'PO-2205-MK', dept: 'Marketing',    cc: 'CC-5506', desc: [['A4 Brochures Full Colour (250gsm)', 5000, 'EA', 0.62], ['Roll-up Banner Stands', 4, 'EA', 185.00], ['Exhibition Display Panels', 2, 'EA', 440.00]] },
+    { id: 'po-exc-7',  invoice_number: 'CES-MFG-2025-1187', vendor: 'Castleford Engineering Svcs', vendor_id: 'VND0019923', tax_id: '119 348 65', invoiceDate: '2025-10-24', total: 68400.00, subtotal: 57000.00, tax: 11400.00, currency: 'GBP', issues: ['Line Item Variance'], po: 'PO-8831-MF', dept: 'Manufacturing', cc: 'CC-6607', desc: [['Conveyor Belt Refurbishment', 1, 'EA', 28500.00], ['Pneumatic Actuator Replacements', 6, 'EA', 2750.00], ['Planned Maintenance Labour', 80, 'HR', 95.00]] },
+    { id: 'po-exc-8',  invoice_number: 'TOI-2025-OCT-556', vendor: 'Thornton Office Interiors', vendor_id: 'VND0027756', tax_id: '662 019 38', invoiceDate: '2025-10-28', total: 19080.00, subtotal: 15900.00, tax: 3180.00, currency: 'GBP', issues: ['Price Variance'],    po: 'PO-1109-FK', dept: 'Facilities',     cc: 'CC-1102', desc: [['Executive Desk 1800mm', 6, 'EA', 1250.00], ['Ergonomic Task Chair', 6, 'EA', 485.00], ['Mobile Pedestal Unit', 6, 'EA', 215.00], ['Delivery & Installation', 1, 'EA', 750.00]] },
+    { id: 'po-exc-9',  invoice_number: 'BSCS-US-2025-4421', vendor: 'BlueSky Cloud Services', vendor_id: 'VND0045678', tax_id: 'US774821560', invoiceDate: '2025-11-03', total: 44640.00, subtotal: 37200.00, tax: 7440.00, currency: 'USD', issues: ['Price Variance'],    po: 'PO-9940-US', dept: 'IT',           cc: 'CC-3301', desc: [['Azure Reserved Instance 1yr (8-core)', 3, 'EA', 7400.00], ['Managed Backup Service (monthly)', 12, 'MTH', 425.00], ['Disaster Recovery Setup', 1, 'EA', 1500.00]] },
+    { id: 'po-exc-10', invoice_number: 'KSS/NOV25/0078', vendor: 'Kestrel Security Systems', vendor_id: 'VND0033391', tax_id: '338 504 72', invoiceDate: '2025-11-05', total: 11160.00, subtotal: 9300.00, tax: 1860.00, currency: 'GBP', issues: ['Quantity Mismatch'], po: 'PO-3317-FK', dept: 'Facilities',     cc: 'CC-1103', desc: [['IP CCTV Cameras (4K)', 8, 'EA', 480.00], ['Network Video Recorder 16ch', 1, 'EA', 1250.00], ['Cable & Installation Labour', 40, 'HR', 65.00], ['Annual Monitoring Contract', 1, 'EA', 850.00]] },
+    { id: 'po-exc-11', invoice_number: 'RCC-HR-2025-Q4-019', vendor: 'Redwood Catering Co.', vendor_id: 'VND0088124', tax_id: '501 677 34', invoiceDate: '2025-11-07', total: 7320.00, subtotal: 6100.00, tax: 1220.00, currency: 'GBP', issues: ['Price Variance'],    po: 'PO-4428-HR', dept: 'HR',           cc: 'CC-7701', desc: [['Board Meeting Catering (12 pax)', 3, 'EA', 850.00], ['Working Lunch Packages (20 pax)', 8, 'EA', 325.00], ['Staff Celebration Buffet', 1, 'EA', 1150.00]] },
+    { id: 'po-exc-12', invoice_number: 'VFM-DE-25-9933', vendor: 'Vanguard Fleet Management', vendor_id: 'VND0071245', tax_id: 'DE889312070', invoiceDate: '2025-11-10', total: 33840.00, subtotal: 28200.00, tax: 5640.00, currency: 'EUR', issues: ['Line Item Variance'], po: 'PO-6635-DE', dept: 'Operations',    cc: 'CC-4406', desc: [['Vehicle Service & MOT (x5)', 5, 'EA', 420.00], ['Tyre Replacements (x12)', 12, 'EA', 185.00], ['Fleet GPS Tracking Annual Fee', 8, 'EA', 320.00], ['Fuel Card Management Fee', 12, 'MTH', 195.00]] },
+    { id: 'po-exc-13', invoice_number: 'HL-RD-INV-25-0441', vendor: 'Halcyon Labs Ltd', vendor_id: 'VND0012367', tax_id: 'CHE-223.845.910', invoiceDate: '2025-11-12', total: 60840.00, subtotal: 50700.00, tax: 10140.00, currency: 'CHF', issues: ['Price Variance'],    po: 'PO-7752-CH', dept: 'R&D',          cc: 'CC-8801', desc: [['Laboratory Reagents - Batch Q4', 1, 'LOT', 18500.00], ['Pipette Calibration Service', 12, 'EA', 225.00], ['Chemical Storage Cabinets', 4, 'EA', 1875.00], ['Fume Hood Annual Certification', 2, 'EA', 650.00]] },
+    { id: 'po-exc-14', invoice_number: 'CTA-2025-1144-TRN', vendor: 'Compass Training Academy', vendor_id: 'VND0059012', tax_id: '667 190 45', invoiceDate: '2025-11-14', total: 16800.00, subtotal: 14000.00, tax: 2800.00, currency: 'GBP', issues: ['Quantity Mismatch'], po: 'PO-2241-HR', dept: 'HR',           cc: 'CC-7702', desc: [['PRINCE2 Practitioner - 5 delegates', 5, 'EA', 1450.00], ['Excel Advanced Workshop', 15, 'EA', 295.00], ['Leadership Coaching Sessions', 6, 'HR', 275.00]] },
+    { id: 'po-exc-15', invoice_number: 'IBF-MFG-25-7812', vendor: 'Ironbridge Steel Fabricators', vendor_id: 'VND0006678', tax_id: '114 023 88', invoiceDate: '2025-11-17', total: 93600.00, subtotal: 78000.00, tax: 15600.00, currency: 'GBP', issues: ['Line Item Variance'], po: 'PO-9968-MF', dept: 'Manufacturing', cc: 'CC-6608', desc: [['Structural Steel Beams IPE300 (12m)', 40, 'EA', 1250.00], ['Steel Plate 10mm (2400x1200)', 25, 'EA', 680.00], ['Cutting & Fabrication Labour', 120, 'HR', 85.00], ['Delivery & Offloading', 2, 'EA', 450.00]] },
+    { id: 'po-exc-16', invoice_number: 'ADM-NOV-2025-0622', vendor: 'Aurora Digital Marketing', vendor_id: 'VND0048390', tax_id: '556 733 12', invoiceDate: '2025-11-19', total: 24000.00, subtotal: 20000.00, tax: 4000.00, currency: 'GBP', issues: ['Price Variance'],    po: 'PO-1124-MK', dept: 'Marketing',    cc: 'CC-5507', desc: [['PPC Campaign Management (Q4)', 3, 'MTH', 3500.00], ['SEO Technical Audit', 1, 'EA', 4800.00], ['Social Media Content Pack', 3, 'MTH', 1900.00]] },
+    { id: 'po-exc-17', invoice_number: 'AMS/25/NOV/3387', vendor: 'Ashford Medical Supplies', vendor_id: 'VND0094561', tax_id: '332 918 76', invoiceDate: '2025-11-21', total: 9960.00, subtotal: 8300.00, tax: 1660.00, currency: 'GBP', issues: ['Quantity Mismatch'], po: 'PO-5539-FK', dept: 'Facilities',     cc: 'CC-1104', desc: [['First Aid Kits (BSI Compliant)', 20, 'EA', 85.00], ['Defibrillator AED Unit', 2, 'EA', 1450.00], ['First Aid Refresher Training', 10, 'EA', 120.00], ['PPE Restocking Bundle', 5, 'EA', 195.00]] },
+  ];
+
+  poExceptions.forEach((exc, i) => {
+    const excDate = new Date(exc.invoiceDate);
+    const excDueDate = new Date(excDate);
+    excDueDate.setDate(excDueDate.getDate() + 30);
+
+    const lines = exc.desc.map((d, idx) => ({
+      id: `line-${exc.id}-${idx + 1}`,
+      line_no: idx + 1,
+      description: d[0] as string,
+      qty: d[1] as number,
+      uom: d[2] as string,
+      unit_price: d[3] as number,
+      net_amount: (d[1] as number) * (d[3] as number),
+      line_total: (d[1] as number) * (d[3] as number),
+      po_line_id: `PO-LINE-${exc.id}-${idx + 1}`,
+      gr_line_id: null,
+      ses_line_id: null,
+    }));
+
+    mockInvoices.push({
+      id: exc.id,
+      invoice_number: exc.invoice_number,
+      vendor_name_snapshot: exc.vendor,
+      vendor_id: exc.vendor_id,
+      vendor_tax_id_snapshot: exc.tax_id,
+      vendor_address_snapshot: '1 Business Park, London, EC2A 4NE',
+      vendor_email: `ap@${exc.vendor.toLowerCase().replace(/[^a-z]/g, '')}.com`,
+      vendor_phone: '+44 20 7946 0000',
+      customer_no: `CUST-${1000 + i}`,
+      job_number: `JN-${3000 + i}`,
+      invoice_date: excDate.toISOString().split('T')[0],
+      due_date: excDueDate.toISOString().split('T')[0],
+      email_received_date: excDate.toISOString().split('T')[0],
+      payment_terms: '30',
+      currency: exc.currency,
+      subtotal: exc.subtotal,
+      tax_total: exc.tax,
+      tax_rate_percent: 20,
+      total: exc.total,
+      status: 'verification',
+      match_status: exc.match_status,
+      type: 'PO',
+      vendor_requires_po: true,
+      vendor_is_verified: true,
+      approval_status: 'pending',
+      issues: exc.issues,
+      assigned_to_name: 'James Wilson',
+      assigned_to_user_id: 'user-4',
+      cost_center: exc.cc,
+      department: exc.dept,
+      po_numbers_cached: [exc.po],
+      gr_numbers: [],
+      docType: 'Invoice',
+      created_at: excDate.toISOString(),
+      updated_at: excDate.toISOString(),
+      data_ingestion_date: excDate.toISOString().split('T')[0],
+      lines,
+      invoice_lines: lines,
+    } as Invoice);
+  });
+
+  // ========================================================================
   // AUTO-REJECT INVOICE #1 - MISSING PO FOR 30+ DAYS
   // ========================================================================
   const autoReject1Date = new Date(now);
@@ -2401,7 +2486,7 @@ export const isMockInvoice = (id: string): boolean => {
   }
 
   // Updated prefixes for baseline approach and other mock scenarios
-  const mockPrefixes = ['baseline-', 'missing-po-', 'fraud-risk-', 'auto-reject-', 'sla-', 'agent-processed-'];
+  const mockPrefixes = ['baseline-', 'missing-po-', 'fraud-risk-', 'auto-reject-', 'sla-', 'agent-processed-', 'po-exc-'];
   const isMock = mockPrefixes.some(prefix => id.startsWith(prefix));
 
   if (DEBUG_MOCK) {

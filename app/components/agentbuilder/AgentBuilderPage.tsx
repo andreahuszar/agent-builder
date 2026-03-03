@@ -210,7 +210,7 @@ ERROR HANDLING:
 - If normalization rule uncertain → Suggest correction for manual review
 - If value doesn't match any pattern → Flag for human review
 - If multiple normalization options exist → Present alternatives`,
-      basicPromptOverride: `ROLE: Field normalisation agent
+      basicPromptOverride: `ROLE: Check Plant ID field format and normalise depending on receiving mailbox
 
 INSTRUCTIONS:
 For invoices with a Plant ID, check which mailbox received the invoice
@@ -484,7 +484,7 @@ REFERENCED_DOCUMENTS: None`,
       basicPromptOverride: `ROLE: Customer Reference Number Extraction Agent - extracts the customer reference number from invoice data for TechSupply Solutions
 
 INSTRUCTIONS:
-Search the extracted invoice data for the customer reference number
+Search the invoice data for the customer reference number on all invoices from TechSupply Solutions
 If no customer reference number is present, then flag for review`,
       lane: "Header vs Line Split",
       skills: ["Verify Data", "Find Vendor Information"],
@@ -654,7 +654,7 @@ Any match below 90% confidence is flagged for manual review — only matches at 
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v11'
+        const AGENTS_VERSION = 'v13'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')

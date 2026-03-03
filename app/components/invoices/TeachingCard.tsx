@@ -28,7 +28,7 @@ export function TeachingCard({
       {/* Header */}
       <div className="flex items-center gap-2 mb-3">
         <Sparkles className="h-4 w-4 text-purple-600 animate-pulse" />
-        <span className="text-sm font-semibold text-purple-900">Teach the Agent</span>
+        <span className="text-sm font-semibold text-purple-900">{isTechSupplyCustomerID ? 'TechSupply Customer ID' : 'Teach the Agent'}</span>
         <button
           onClick={onClose}
           className="ml-auto p-0.5 rounded hover:bg-purple-100 transition-colors"
@@ -71,7 +71,7 @@ export function TeachingCard({
             onClick={onClose}
           >
             <Bot className="h-4 w-4" />
-            View TechSupply Agent
+            View agent
           </Link>
         )}
       </div>

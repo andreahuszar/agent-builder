@@ -1003,6 +1003,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           context={selectedContext}
           onAccept={handleTeachingAccept}
           onCancel={handleTeachingCancel}
+          vendorName={invoice.vendor_name_snapshot}
         />
       )}
 

@@ -124,6 +124,25 @@ export function DetailsTab({
 }: DetailsTabProps) {
   // Track which agent action cards are expanded (collapsed by default)
   const [expandedAgentCards, setExpandedAgentCards] = useState<Set<number>>(new Set());
+  // Agents loaded from localStorage for role lookup
+  const [storedAgents, setStoredAgents] = useState<Array<{ name: string; prompt?: string; basicPromptOverride?: string }>>([]);
+  useEffect(() => {
+    try {
+      const raw = typeof window !== 'undefined' ? localStorage.getItem('agents') : null;
+      if (raw) setStoredAgents(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, []);
+
+  // Map agent name → role description extracted from prompt
+  const agentRoleMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    for (const agent of storedAgents) {
+      const source = agent.basicPromptOverride || agent.prompt || '';
+      const match = source.match(/ROLE:\s*([\s\S]*?)(?=\n\s*\n?\s*INSTRUCTIONS:|$)/i);
+      if (match) map[agent.name] = match[1].replace(/\n/g, ' ').trim();
+    }
+    return map;
+  }, [storedAgents]);
   // Track which field's AI suggestion is expanded
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
   // Track which field should be focused when entering edit mode
@@ -1246,9 +1265,20 @@ export function DetailsTab({
           {isValidationExpanded && (
             <div className="px-4 py-3 bg-white border-b border-gray-200">
               {/* Agent Action Cards */}
-              {invoiceData.agent_actions && invoiceData.agent_actions.length > 0 && (
+              {(() => {
+                const isBankMismatchInvoice = invoiceData.invoice_number === 'IV472-884';
+                const bankCheckerCard = !isBankMismatchInvoice ? [{
+                  agent_name: 'Bank details checker',
+                  action: 'Bank details verified',
+                  status: 'passed',
+                  mode: 'auto-apply',
+                  agent_id: '10',
+                }] : [];
+                const allCards = [...bankCheckerCard, ...(invoiceData.agent_actions || [])];
+                if (allCards.length === 0) return null;
+                return (
                 <div className="mb-3 space-y-2">
-                  {invoiceData.agent_actions.map((action: { agent_name: string; action: string; status: string; detail?: string; agent_id?: string; links_to?: string; mode?: string }, idx: number) => {
+                  {allCards.map((action: { agent_name: string; action: string; status: string; detail?: string; agent_id?: string; links_to?: string; mode?: string }, idx: number) => {
                     const isExpanded = expandedAgentCards.has(idx);
                     const toggleExpanded = (e: React.MouseEvent) => {
                       e.stopPropagation();
@@ -1293,10 +1323,9 @@ export function DetailsTab({
                             className={`px-3 pb-2.5 border-t border-purple-200 pt-2 ${action.links_to === 'additional_details' ? 'cursor-pointer hover:bg-purple-100 transition-colors' : ''}`}
                             onClick={action.links_to === 'additional_details' ? handleRiskIndicatorClick : undefined}
                           >
-                            <p className="text-xs text-gray-950">{action.action}</p>
-                            {action.detail && (
-                              <p className="text-xs text-gray-950 mt-0.5">{action.detail}</p>
-                            )}
+                            <p className="text-xs text-gray-600 italic">
+                              {agentRoleMap[action.agent_name] || action.action}
+                            </p>
                             {action.links_to === 'additional_details' && (
                               <p className="text-xs text-purple-600 mt-1">Click to view bank details →</p>
                             )}
@@ -1306,7 +1335,8 @@ export function DetailsTab({
                     );
                   })}
                 </div>
-              )}
+                );
+              })()}
               {filteredAllValidationsPassed ? (
                 <div className="flex items-center gap-2 text-green-700">
                   <CheckCircle className="h-5 w-5" />
@@ -2376,18 +2406,9 @@ export function DetailsTab({
 
                       if (hasValue) {
                         return (
-                          <div className="flex items-center">
-                            <p className="text-sm font-medium text-gray-950">
-                              {invoiceData.vehicle_registration_no}
-                            </p>
-                            <CustomFieldIndicator
-                              fieldLabel="Vehicle Registration No."
-                              fieldValue={invoiceData.vehicle_registration_no}
-                              vendorName={invoiceData.vendor_name_snapshot}
-                              fieldName="vehicle_registration_no"
-                              onFieldFocus={onFieldFocus}
-                            />
-                          </div>
+                          <p className="text-sm font-medium text-gray-950">
+                            {invoiceData.vehicle_registration_no}
+                          </p>
                         );
                       }
 
@@ -2572,7 +2593,29 @@ export function DetailsTab({
               )}
               {invoiceData.payment_bank_details && Object.keys(invoiceData.payment_bank_details).some(key => invoiceData.payment_bank_details[key]) && (
                 <div className={`${getFullSpan()} mt-3`}>
-                  <label className="flex items-center text-xs font-medium text-gray-700 mb-2 min-h-[20px]">Bank Details</label>
+                  <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-2 min-h-[20px]">
+                    Bank Details
+                    {invoiceData.invoice_number !== 'IV472-884' && (
+                      <Tooltip.Provider>
+                        <Tooltip.Root>
+                          <Tooltip.Trigger asChild>
+                            <span className="inline-flex items-center justify-center p-0.5 rounded bg-purple-100 cursor-default">
+                              <Zap className="h-3 w-3 text-purple-600" />
+                            </span>
+                          </Tooltip.Trigger>
+                          <Tooltip.Portal>
+                            <Tooltip.Content
+                              className="bg-gray-900 text-white px-2 py-1 rounded text-xs max-w-xs z-50"
+                              sideOffset={5}
+                            >
+                              Verified by Bank Details Checker agent against master vendor data
+                              <Tooltip.Arrow className="fill-gray-900" />
+                            </Tooltip.Content>
+                          </Tooltip.Portal>
+                        </Tooltip.Root>
+                      </Tooltip.Provider>
+                    )}
+                  </label>
                   <div className={`rounded-md p-3 space-y-2 ${
                     invoiceData.validation_warnings?.some((w: any) =>
                       w.field === 'payment_bank_details' && (w.category === 'risk' || w.type === 'bank_details_change')

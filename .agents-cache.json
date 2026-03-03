@@ -23,6 +23,17 @@
     ]
   },
   {
+    "name": "High value invoices",
+    "stage": "verification",
+    "lane": "Policy Checks",
+    "mode": "auto-apply",
+    "prompt": "ROLE: High Value Invoice Exception Agent - exclusively flags high value invoices for review\n\nAGENT DESCRIPTION:\nFlag high value invoices for review\n\nAGENT INSTRUCTIONS:\n\n1. If any invoice is above $100k, raise it as an exception for review\n\nINPUTS:\n- Extracted invoice data from OCR Agent stage\n- Invoice total amount\n- Currency information\n\nSTEPS:\n1. Retrieve invoice total amount from extracted data\n2. Convert to USD if invoice is in different currency (using current exchange rates)\n3. Compare invoice total against $100,000 threshold\n4. If invoice total exceeds $100,000, raise exception flag\n5. Create exception record with invoice details and reason\n6. Route invoice to exception review queue\n\nVALIDATIONS:\n- Invoice total must be a valid numeric value\n- Currency conversion must use accurate exchange rates\n- Exception flag must be raised for any invoice above $100,000 USD\n\nOUTPUT:\n- Exception status: Exception Raised / No Exception\n- Exception reason: \"Invoice value exceeds $100k threshold\"\n- Invoice total amount (in USD)\n- Routing to exception review queue\n\nERROR HANDLING:\n- If invoice total cannot be determined → Flag for manual review\n- If currency conversion fails → Use invoice currency and flag for manual conversion\n- If exception raised → Ensure invoice is routed to review queue and approver is notified",
+    "skills": [
+      "Verify Data",
+      "Flag Issues"
+    ]
+  },
+  {
     "name": "Bulk commodities tolerance",
     "stage": "matching",
     "lane": "Tolerance Application",
