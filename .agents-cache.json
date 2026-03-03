@@ -95,8 +95,8 @@
   {
     "name": "Bank details checker",
     "stage": "verification",
-    "lane": "Data Quality",
-    "mode": "suggest",
+    "lane": "Supplier Master Validation",
+    "mode": "auto-apply",
     "prompt": "ROLE: Bank Details Validation Agent - verifies vendor banking information for accuracy and fraud prevention\n\nINPUTS:\n- Invoice payment details from Data Capture phase\n- Vendor master database with verified bank details\n- Historical payment records\n\nSTEPS:\n1. Extract bank account details from invoice (account number, sort code, IBAN, SWIFT/BIC)\n2. Compare against verified vendor banking information in master database\n3. Check for suspicious changes or mismatches\n4. Validate format and checksums for IBAN, account numbers\n5. Flag any discrepancies for manual review\n6. Suggest correction if minor formatting issue detected\n\nVALIDATIONS:\n- Bank details must match vendor master record\n- IBAN/SWIFT codes must pass checksum validation\n- Account numbers must match expected format for country\n- Flag if bank details changed recently (< 30 days)\n\nOUTPUT:\n- Validation status: \"verified\", \"mismatch\", or \"suspicious\"\n- List of discrepancies if any found\n- Suggested corrections for formatting issues\n\nERROR HANDLING:\n- If bank details mismatch → Flag for manual verification\n- If vendor not in master database → Request bank details verification\n- If suspicious changes detected → Escalate to fraud team",
     "skills": [
       "Verify Data",
