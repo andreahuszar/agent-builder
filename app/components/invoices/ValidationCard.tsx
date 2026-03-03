@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, forwardRef } from 'react';
 import { 
   ChevronDown, 
   AlertTriangle, 
@@ -362,10 +362,12 @@ export function ValidationSuccessCard() {
 }
 
 // Container for multiple validation cards
-export function ValidationCardContainer({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="space-y-3">
-      {children}
-    </div>
-  );
-}
+export const ValidationCardContainer = forwardRef<HTMLDivElement, { children: React.ReactNode }>(
+  function ValidationCardContainer({ children }, ref) {
+    return (
+      <div ref={ref} className="space-y-3">
+        {children}
+      </div>
+    );
+  }
+);

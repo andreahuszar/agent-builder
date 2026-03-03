@@ -143,6 +143,7 @@ export function DetailsTab({
     }
     return map;
   }, [storedAgents]);
+
   // Track which field's AI suggestion is expanded
   const [expandedSuggestion, setExpandedSuggestion] = useState<string | null>(null);
   // Track which field should be focused when entering edit mode
@@ -259,6 +260,8 @@ export function DetailsTab({
   
   // Ref for scrolling to Additional Invoice Details section
   const additionalDetailsRef = useRef<HTMLDivElement>(null);
+  // Ref for scrolling to Bank Details within Additional Invoice Details
+  const bankDetailsRef = useRef<HTMLDivElement>(null);
   const [isLineItemsEditMode, setIsLineItemsEditMode] = useState(false);
   const [lineItemsErrorCount, setLineItemsErrorCount] = useState<number | null>(null); // Track reactive error count from LineItemsPreviewPanel
   const [lineItemsValidationState, setLineItemsValidationState] = useState<LineItemsValidationState | null>(null); // Track reactive validation state for filtering warnings
@@ -448,6 +451,8 @@ export function DetailsTab({
 
   // Field refs for error navigation
   const fieldRefs = useRef<{ [key: string]: HTMLElement | null }>({});
+  // Ref for the ValidationCard container — scroll target fallback
+  const validationCardsRef = useRef<HTMLDivElement>(null);
 
   // Ref for Agent Suggestion card to detect clicks outside
   const suggestionCardRef = useRef<HTMLDivElement>(null);
@@ -775,6 +780,45 @@ export function DetailsTab({
     });
     return { errorCount, warningCount };
   }, [filteredValidationIssues]);
+
+  // Scroll to the first validation error field when the exceptions pill is clicked
+  const handleExceptionsPillClick = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    // IV472-884: exception is a bank details change — open Additional Details and scroll to bank details
+    if (invoiceData.invoice_number === 'IV472-884') {
+      setIsAdditionalDetailsExpanded(true);
+      setTimeout(() => {
+        bankDetailsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 120);
+      return;
+    }
+    // Ensure the validation accordion is open first
+    if (!isValidationExpanded) setIsValidationExpanded(true);
+    // Wait one frame so the accordion DOM is visible before scrolling
+    requestAnimationFrame(() => {
+      // Collect all issues sorted errors-first
+      const allIssues = [
+        ...filteredValidationIssues.financial,
+        ...filteredValidationIssues.process,
+        ...filteredValidationIssues.compliance,
+        ...filteredValidationIssues.risk,
+        ...filteredValidationIssues.data_quality,
+        ...filteredValidationIssues.delivery,
+      ].sort((a, b) => {
+        const order = { error: 0, warning: 1, info: 2 };
+        return (order[a.severity as keyof typeof order] ?? 3) - (order[b.severity as keyof typeof order] ?? 3);
+      });
+      // Try to find a fieldRef for the first issue
+      for (const issue of allIssues) {
+        if (issue.field && fieldRefs.current[issue.field]) {
+          fieldRefs.current[issue.field]!.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          return;
+        }
+      }
+      // Fallback: scroll to the ValidationCard container
+      validationCardsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [invoiceData.invoice_number, isValidationExpanded, filteredValidationIssues]);
 
   // Count errors in Additional Details section (payment and coding fields)
   const additionalDetailsErrorCount = useMemo(() => {
@@ -1252,10 +1296,13 @@ export function DetailsTab({
                   <AlertTriangle className={`h-4 w-4 ${validationCounts.errorCount > 0 ? 'text-red-600' : 'text-purple-600'}`} />
                   <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Validation Results</h3>
                   {totalExceptionsCount > 0 && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+                    <button
+                      onClick={handleExceptionsPillClick}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
+                    >
                       <AlertTriangle className="h-3 w-3" />
                       {totalExceptionsCount} exception{totalExceptionsCount !== 1 ? 's' : ''}
-                    </span>
+                    </button>
                   )}
                   {/* Reprocess with AI button - DEBUG: Always show for testing */}
                 </>
@@ -1343,7 +1390,7 @@ export function DetailsTab({
                   <span className="text-sm font-medium">All validation checks have passed. Invoice is ready for posting.</span>
                 </div>
               ) : (
-                <ValidationCardContainer>
+                <ValidationCardContainer ref={validationCardsRef}>
                   {filteredValidationIssues.financial.length > 0 && (
                     <ValidationCard
                       category="financial"
@@ -2358,7 +2405,7 @@ export function DetailsTab({
                         explanation="Agent standardised the Plant ID format by adding prefix 'UK-' based on the receiving mailbox: accounts.payable.uk@xelix.com"
                       >
                         <button className="p-0.5 rounded hover:bg-purple-100 transition-colors">
-                          <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" />
+                          <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" fill="currentColor" />
                         </button>
                       </FieldNormalizationPopover>
                     </p>
@@ -2592,29 +2639,32 @@ export function DetailsTab({
                 </div>
               )}
               {invoiceData.payment_bank_details && Object.keys(invoiceData.payment_bank_details).some(key => invoiceData.payment_bank_details[key]) && (
-                <div className={`${getFullSpan()} mt-3`}>
+                <div ref={bankDetailsRef} className={`${getFullSpan()} mt-3`}>
                   <label className="flex items-center gap-1.5 text-xs font-medium text-gray-700 mb-2 min-h-[20px]">
                     Bank Details
-                    {invoiceData.invoice_number !== 'IV472-884' && (
-                      <Tooltip.Provider>
-                        <Tooltip.Root>
-                          <Tooltip.Trigger asChild>
-                            <span className="inline-flex items-center justify-center p-0.5 rounded bg-purple-100 cursor-default">
-                              <Zap className="h-3 w-3 text-purple-600" />
-                            </span>
-                          </Tooltip.Trigger>
-                          <Tooltip.Portal>
-                            <Tooltip.Content
-                              className="bg-gray-900 text-white px-2 py-1 rounded text-xs max-w-xs z-50"
-                              sideOffset={5}
-                            >
-                              Verified by Bank Details Checker agent against master vendor data
-                              <Tooltip.Arrow className="fill-gray-900" />
-                            </Tooltip.Content>
-                          </Tooltip.Portal>
-                        </Tooltip.Root>
-                      </Tooltip.Provider>
-                    )}
+                    <Tooltip.Provider>
+                      <Tooltip.Root>
+                        <Tooltip.Trigger asChild>
+                          <span className="inline-flex items-center justify-center p-0.5 rounded bg-purple-100 cursor-default">
+                            <Zap
+                              className="h-3 w-3 text-purple-600"
+                              fill={invoiceData.invoice_number !== 'IV472-884' ? 'currentColor' : 'none'}
+                            />
+                          </span>
+                        </Tooltip.Trigger>
+                        <Tooltip.Portal>
+                          <Tooltip.Content
+                            className="bg-gray-900 text-white px-2 py-1 rounded text-xs max-w-xs z-50"
+                            sideOffset={5}
+                          >
+                            {invoiceData.invoice_number !== 'IV472-884'
+                              ? 'Verified by Bank Details Checker agent against master vendor data'
+                              : 'Bank Details Checker agent detected a mismatch — review required'}
+                            <Tooltip.Arrow className="fill-gray-900" />
+                          </Tooltip.Content>
+                        </Tooltip.Portal>
+                      </Tooltip.Root>
+                    </Tooltip.Provider>
                   </label>
                   <div className={`rounded-md p-3 space-y-2 ${
                     invoiceData.validation_warnings?.some((w: any) =>
@@ -2668,7 +2718,7 @@ export function DetailsTab({
                               onClick={() => setIsBankVerifyOpen(true)}
                               className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors font-medium"
                             >
-                              <Shield className="h-3 w-3" />
+                              <Zap className="h-3 w-3" />
                               Mismatch Detected
                             </button>
                           </BankDetailsVerificationPopover>

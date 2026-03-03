@@ -2258,11 +2258,7 @@ export function LineItemsPreviewPanel({
                                     >
                                       <Tooltip.Trigger asChild>
                                         <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                          <Sparkles
-                                            className="h-4 w-4"
-                                            fill="currentColor"
-                                            style={{ fill: 'url(#sparkle-gradient)', stroke: 'url(#sparkle-gradient)' }}
-                                          />
+                                          <Sparkles className="h-4 w-4 text-purple-600" />
                                         </span>
                                       </Tooltip.Trigger>
                                     </SubstitutionSuggestionPopover>
@@ -2292,7 +2288,7 @@ export function LineItemsPreviewPanel({
                                       >
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" fill="currentColor" />
                                           </span>
                                         </Tooltip.Trigger>
                                       </CustomRulePopover>
@@ -2313,7 +2309,7 @@ export function LineItemsPreviewPanel({
                                       >
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" fill="currentColor" />
                                           </span>
                                         </Tooltip.Trigger>
                                       </UomMatchPopover>
@@ -2330,7 +2326,7 @@ export function LineItemsPreviewPanel({
                                       >
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" fill="currentColor" />
                                           </span>
                                         </Tooltip.Trigger>
                                       </SmartMatchPopover>
@@ -3865,11 +3861,7 @@ export function LineItemsPreviewPanel({
                                     >
                                       <Tooltip.Trigger asChild>
                                         <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                          <Sparkles
-                                            className="h-4 w-4"
-                                            fill="currentColor"
-                                            style={{ fill: 'url(#sparkle-gradient)', stroke: 'url(#sparkle-gradient)' }}
-                                          />
+                                          <Sparkles className="h-4 w-4 text-purple-600" />
                                         </span>
                                       </Tooltip.Trigger>
                                     </SubstitutionSuggestionPopover>
@@ -3899,7 +3891,7 @@ export function LineItemsPreviewPanel({
                                       >
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" fill="currentColor" />
                                           </span>
                                         </Tooltip.Trigger>
                                       </CustomRulePopover>
@@ -3920,7 +3912,7 @@ export function LineItemsPreviewPanel({
                                       >
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" fill="currentColor" />
                                           </span>
                                         </Tooltip.Trigger>
                                       </UomMatchPopover>
@@ -3937,7 +3929,7 @@ export function LineItemsPreviewPanel({
                                       >
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" fill="currentColor" />
                                           </span>
                                         </Tooltip.Trigger>
                                       </SmartMatchPopover>
@@ -4326,11 +4318,7 @@ export function LineItemsPreviewPanel({
                                     >
                                       <Tooltip.Trigger asChild>
                                         <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                          <Sparkles
-                                            className="h-4 w-4"
-                                            fill="currentColor"
-                                            style={{ fill: 'url(#sparkle-gradient)', stroke: 'url(#sparkle-gradient)' }}
-                                          />
+                                          <Sparkles className="h-4 w-4 text-purple-600" />
                                         </span>
                                       </Tooltip.Trigger>
                                     </SubstitutionSuggestionPopover>
@@ -4349,7 +4337,7 @@ export function LineItemsPreviewPanel({
                                       <CustomRulePopover rule={getCustomRule(line)!} invoiceQty={line.qty} invoiceUom={line.uom} poQty={matchedPO.qty_ordered} poUom={matchedPO.uom} lineTotal={line.line_total} onRemove={() => handleRemoveRule(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" fill="currentColor" />
                                           </span>
                                         </Tooltip.Trigger>
                                       </CustomRulePopover>
@@ -4357,7 +4345,7 @@ export function LineItemsPreviewPanel({
                                       <UomMatchPopover invoiceQty={line.uom_conversion!.invoice_qty} invoiceUom={line.uom_conversion!.invoice_uom} invoiceUnitPrice={line.unit_price} poQty={line.uom_conversion!.po_qty} poUom={line.uom_conversion!.po_uom} poUnitPrice={matchedPO.unit_price} conversionFactor={line.uom_conversion!.conversion_factor} conversionExplanation={line.uom_conversion!.explanation} lineTotal={line.line_total} onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" fill="currentColor" />
                                           </span>
                                         </Tooltip.Trigger>
                                       </UomMatchPopover>
@@ -4365,7 +4353,7 @@ export function LineItemsPreviewPanel({
                                       <SmartMatchPopover invoiceDescription={line.description} poDescription={matchedPO.item_description || matchedPO.description} invoiceLine={line} poLine={matchedPO} confidence={(line as any).smart_match_confidence} onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
-                                            <Zap className="h-3.5 w-3.5 text-purple-600" />
+                                            <Zap className="h-3.5 w-3.5 text-purple-600" fill="currentColor" />
                                           </span>
                                         </Tooltip.Trigger>
                                       </SmartMatchPopover>
