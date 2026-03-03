@@ -643,8 +643,8 @@ ERROR HANDLING:
 
 INSTRUCTIONS:
 Match invoice line item descriptions to PO line items using semantic similarity, not just exact text
-Flag any invoice lines where no exact match exists but a likely semantic match is found (e.g. "Grounds maintenance" → "Landscaping services")
-Any match below 90% confidence is flagged for manual review — only matches at or above 90% confidence are suggested for auto-assignment`,
+Flag any invoice lines where no exact match exists but a likely semantic match is found
+Any match below 90% confidence is flagged for manual review - only matches at or above 90% confidence are auto-assigned`,
       lane: "Confidence Scoring",
       skills: ["Match Documents", "Verify Data", "Flag Issues"],
     },
@@ -654,7 +654,7 @@ Any match below 90% confidence is flagged for manual review — only matches at 
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v13'
+        const AGENTS_VERSION = 'v14'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')

@@ -49,8 +49,8 @@ export function FieldNormalizationPopover({
         >
           {/* Header */}
           <div className="flex items-center gap-2 mb-3">
-            <Zap className="h-4 w-4 text-purple-600" />
-            <span className="text-sm font-semibold text-purple-900">Field Normalized by Agent</span>
+            <Zap className="h-4 w-4 text-purple-600" fill="currentColor" />
+            <span className="text-sm font-semibold text-purple-900">{agentName}</span>
             <button
               onClick={() => handleOpenChange(false)}
               className="ml-auto p-0.5 rounded hover:bg-purple-100 transition-colors"
@@ -60,11 +60,13 @@ export function FieldNormalizationPopover({
             </button>
           </div>
 
-          {/* Agent Info */}
-          <div className="bg-purple-100 rounded-md px-3 py-2 mb-3 border border-purple-200">
-            <p className="text-xs text-gray-950">
-              <span className="font-semibold">{agentName}</span> normalized this field with {confidence}% confidence
-            </p>
+          {/* Agent Instructions */}
+          <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-md">
+            <p className="text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Instructions</p>
+            <ul className="list-disc list-inside space-y-1 text-xs text-gray-700">
+              <li>For invoices with a Plant ID, check which mailbox received the invoice</li>
+              <li>Add a prefix of EU-, UK- or US- according to the receiving mailbox</li>
+            </ul>
           </div>
 
           {/* Value Comparison */}
@@ -83,23 +85,15 @@ export function FieldNormalizationPopover({
             </div>
           </div>
 
-          {/* Explanation */}
-          <div className="bg-white rounded-md px-3 py-2 border border-gray-200 mb-3">
-            <div className="text-xs font-medium text-gray-800 mb-1">Why this was normalized</div>
-            <p className="text-xs text-gray-700">
-              {explanation}
-            </p>
-          </div>
-
           {/* Agent Link */}
           <div className="pt-3 border-t border-purple-200">
-            <a 
-              href={`/settings?tab=ap-automation&agent=${encodeURIComponent(agentName)}#automation-agent-builder-2`}
+            <a
+              href={`/settings?agent=${encodeURIComponent(agentName)}#automation-agent-builder-2`}
               target="_blank"
               rel="noopener noreferrer"
               className="text-xs text-purple-600 hover:text-purple-700 hover:underline flex items-center gap-1"
             >
-              View {agentName} in Agent Builder →
+              View agent in Agent Builder →
             </a>
           </div>
 
