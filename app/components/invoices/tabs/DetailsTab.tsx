@@ -244,6 +244,7 @@ export function DetailsTab({
 
   const [isEditing, setIsEditing] = useState(getInitialEditState());
   const [editedData, setEditedData] = useState(invoiceData);
+  const [plantIdReverted, setPlantIdReverted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showFab, setShowFab] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -2387,19 +2388,22 @@ export function DetailsTab({
                     />
                   ) : (
                     <p className="text-sm font-medium text-gray-950 flex items-center gap-2">
-                      {invoiceData.plant_id}
-                      <FieldNormalizationPopover
-                        fieldName="Plant ID"
-                        originalValue="4432"
-                        normalizedValue="UK-4432"
-                        agentName="Field Normalisation Agent"
-                        confidence={invoiceData.extraction_field_confidences?.plant_id ? Math.round(invoiceData.extraction_field_confidences.plant_id * 100) : 95}
-                        explanation="Agent standardised the Plant ID format by adding prefix 'UK-' based on the receiving mailbox: accounts.payable.uk@xelix.com"
-                      >
-                        <button className="p-0.5 rounded hover:bg-purple-100 transition-colors">
-                          <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" fill="currentColor" />
-                        </button>
-                      </FieldNormalizationPopover>
+                      {plantIdReverted ? '4432' : invoiceData.plant_id}
+                      {!plantIdReverted && (
+                        <FieldNormalizationPopover
+                          fieldName="Plant ID"
+                          originalValue="4432"
+                          normalizedValue="UK-4432"
+                          agentName="Field Normalisation Agent"
+                          confidence={invoiceData.extraction_field_confidences?.plant_id ? Math.round(invoiceData.extraction_field_confidences.plant_id * 100) : 95}
+                          explanation="Agent standardised the Plant ID format by adding prefix 'UK-' based on the receiving mailbox: accounts.payable.uk@xelix.com"
+                          onUndo={() => setPlantIdReverted(true)}
+                        >
+                          <button className="p-0.5 rounded hover:bg-purple-100 transition-colors">
+                            <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" fill="currentColor" />
+                          </button>
+                        </FieldNormalizationPopover>
+                      )}
                     </p>
                   )}
                   <FieldErrorIndicator
