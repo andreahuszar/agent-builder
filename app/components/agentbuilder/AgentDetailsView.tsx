@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react"
 import { Agent } from "./AgentBuilderPage"
-import { Pencil, Clock, Trash2, Save, Check, X, AlertTriangle } from "lucide-react"
+import { Pencil, Clock, Trash2, Save, Check, X, AlertTriangle, ChevronDown, ChevronRight, Mail } from "lucide-react"
 import { Button } from "@/app/components/ui/button"
 import { Card } from "@/app/components/ui/card"
 
@@ -82,6 +82,7 @@ export function AgentDetailsView({
 }: AgentDetailsViewProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(agent.name)
+  const [isEmailCardExpanded, setIsEmailCardExpanded] = useState(false)
   const [promptView, setPromptView] = useState<"basic" | "advanced" | "flowchart">("basic")
   const [conflicts, setConflicts] = useState<ConflictType[]>([])
   const [isConflictCardDismissed, setIsConflictCardDismissed] = useState(true)
@@ -127,8 +128,8 @@ export function AgentDetailsView({
   const extractKeyActions = (prompt: string) => {
     const actions: string[] = []
     
-    // Extract from AGENT INSTRUCTIONS first (often most concise)
-    const instructionsMatch = prompt.match(/AGENT INSTRUCTIONS?:([\s\S]*?)(?=\n\n(?:INPUTS?|STEPS?|VALIDATIONS?|[A-Z]{2,}):|\n\n-|$)/i)
+    // Extract from INSTRUCTIONS section (with or without "AGENT" prefix)
+    const instructionsMatch = prompt.match(/(?:AGENT )?INSTRUCTIONS?:([\s\S]*?)(?=\n\n(?:INPUTS?|STEPS?|VALIDATIONS?|[A-Z]{2,}):|\n\n-|$)/i)
     if (instructionsMatch) {
       const lines = instructionsMatch[1].split('\n').filter(line => {
         const trimmed = line.trim()
@@ -822,6 +823,35 @@ export function AgentDetailsView({
                   )}
                 </>
               )}
+
+              {/* Email Template Card — shown if prompt contains EMAIL_TEMPLATE section */}
+              {(() => {
+                const source = agent.basicPromptOverride || agent.prompt || ''
+                const emailMatch = source.match(/EMAIL_TEMPLATE:\s*([\s\S]+)$/i)
+                if (!emailMatch) return null
+                const emailContent = emailMatch[1].trim()
+                return (
+                  <div className="mt-4 rounded-lg border border-gray-200 overflow-hidden">
+                    <button
+                      onClick={() => setIsEmailCardExpanded(prev => !prev)}
+                      className="w-full flex items-center gap-2 px-3 py-2.5 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+                    >
+                      {isEmailCardExpanded ? (
+                        <ChevronDown className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                      ) : (
+                        <ChevronRight className="w-3.5 h-3.5 text-gray-500 flex-shrink-0" />
+                      )}
+                      <Mail className="w-3.5 h-3.5 text-purple-600 flex-shrink-0" />
+                      <span className="text-xs font-semibold text-gray-700 uppercase tracking-wide">Email content</span>
+                    </button>
+                    {isEmailCardExpanded && (
+                      <div className="p-4 bg-white border-t border-gray-200">
+                        <pre className="text-xs text-gray-800 whitespace-pre-wrap font-sans leading-relaxed">{emailContent}</pre>
+                      </div>
+                    )}
+                  </div>
+                )
+              })()}
             </>
           )}
 
