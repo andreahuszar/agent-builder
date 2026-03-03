@@ -1370,7 +1370,7 @@ export function DetailsTab({
                             className={`px-3 pb-2.5 border-t border-purple-200 pt-2 ${action.links_to === 'additional_details' ? 'cursor-pointer hover:bg-purple-100 transition-colors' : ''}`}
                             onClick={action.links_to === 'additional_details' ? handleRiskIndicatorClick : undefined}
                           >
-                            <p className="text-xs text-gray-600 italic">
+                            <p className="text-xs text-gray-950 italic">
                               {agentRoleMap[action.agent_name] || action.action}
                             </p>
                             {action.links_to === 'additional_details' && (

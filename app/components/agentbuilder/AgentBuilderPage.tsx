@@ -317,6 +317,52 @@ ERROR HANDLING:
       skills: ["Find Purchase Orders", "Intelligent Matching", "Verify Data"],
     },
     {
+      id: "15",
+      name: "Substitution Agent",
+      stage: "matching",
+      active: true,
+      mode: "suggest",
+      prompt: `ROLE: Substitution Agent - identifies likely product substitutions where part numbers or descriptions differ but other line item attributes match closely
+
+INPUTS:
+- Invoice line item descriptions, part numbers, unit of measure, unit price, quantity
+- Purchase order line items with equivalent fields
+
+STEPS:
+1. For each invoice line item, attempt exact match on part number and description against PO lines
+2. If no exact match found, compare remaining attributes: unit of measure, unit price, quantity
+3. If non-description attributes match and descriptions are semantically similar, treat as a potential substitution
+4. Compute an overall confidence score for the substitution match
+5. Apply confidence threshold to determine action
+
+CONFIDENCE THRESHOLDS:
+- >= 90%: Flag as likely substitution and auto-suggest for review
+- < 90%: Flag for manual review — do not auto-assign
+
+VALIDATIONS:
+- Unit of measure must match exactly
+- Unit price must match within standard tolerance (+/- 2%)
+- Quantity must match exactly
+- Description similarity must be assessed semantically, not just character match
+
+OUTPUT:
+- Match status per line: "substitution" or "review"
+- Confidence score (0–100%)
+- Suggested PO line reference
+- Reason for review flag where applicable
+
+ERROR HANDLING:
+- If no candidate PO line found → Mark as unmatched and escalate
+- If multiple candidates score similarly → Present top 3 for manual selection`,
+      basicPromptOverride: `ROLE: Substitution Agent — identifies likely product substitutions on invoice line items where the part number or description differs but other attributes match
+
+INSTRUCTIONS:
+Where a part number or description differs from the PO but unit of measure, unit price and quantity are the same, flag as a potential substitution
+Only auto-suggest the match if confidence is 90% or above — flag anything below 90% for manual review`,
+      lane: "Tolerance Application",
+      skills: ["Intelligent Matching", "Verify Data", "Flag Issues"],
+    },
+    {
       id: "8",
       name: "Routing approval for IT spend",
       stage: "approval",
@@ -536,7 +582,7 @@ Flag any discrepancies for manual review`,
     {
       id: "12",
       name: "PO Matching Agent",
-      stage: "verification",
+      stage: "matching",
       active: true,
       mode: "auto-apply",
       prompt: `ROLE: PO Matching Agent - automatically matches invoices to existing Purchase Orders when no PO reference is provided
@@ -587,13 +633,13 @@ ERROR HANDLING:
 
 INSTRUCTIONS:
 Reject any invoice without a Purchase Order, unless there is a greater than 90% confidence we can find a match in the system`,
-      lane: "Confidence Scoring",
+      lane: "PO Match",
       skills: ["Match Documents", "Verify Data", "Flag Issues"],
     },
     {
       id: "13",
       name: "Semantic Match Agent",
-      stage: "verification",
+      stage: "matching",
       active: true,
       mode: "auto-apply",
       prompt: `ROLE: Semantic Match Agent - identifies Purchase Order line items that are semantically equivalent to invoice line items, even when the exact wording differs
@@ -645,7 +691,7 @@ INSTRUCTIONS:
 Match invoice line item descriptions to PO line items using semantic similarity, not just exact text
 Flag any invoice lines where no exact match exists but a likely semantic match is found
 Any match below 90% confidence is flagged for manual review - only matches at or above 90% confidence are auto-assigned`,
-      lane: "Confidence Scoring",
+      lane: "Tolerance Application",
       skills: ["Match Documents", "Verify Data", "Flag Issues"],
     },
     ]
@@ -654,7 +700,7 @@ Any match below 90% confidence is flagged for manual review - only matches at or
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v14'
+        const AGENTS_VERSION = 'v16'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')

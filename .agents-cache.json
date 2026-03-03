@@ -46,6 +46,18 @@
     ]
   },
   {
+    "name": "Substitution Agent",
+    "stage": "matching",
+    "lane": "Tolerance Application",
+    "mode": "suggest",
+    "prompt": "ROLE: Substitution Agent - identifies likely product substitutions where part numbers or descriptions differ but other line item attributes match closely\n\nINPUTS:\n- Invoice line item descriptions, part numbers, unit of measure, unit price, quantity\n- Purchase order line items with equivalent fields\n\nSTEPS:\n1. For each invoice line item, attempt exact match on part number and description against PO lines\n2. If no exact match found, compare remaining attributes: unit of measure, unit price, quantity\n3. If non-description attributes match and descriptions are semantically similar, treat as a potential substitution\n4. Compute an overall confidence score for the substitution match\n5. Apply confidence threshold to determine action\n\nCONFIDENCE THRESHOLDS:\n- >= 90%: Flag as likely substitution and auto-suggest for review\n- < 90%: Flag for manual review — do not auto-assign\n\nVALIDATIONS:\n- Unit of measure must match exactly\n- Unit price must match within standard tolerance (+/- 2%)\n- Quantity must match exactly\n- Description similarity must be assessed semantically, not just character match\n\nOUTPUT:\n- Match status per line: \"substitution\" or \"review\"\n- Confidence score (0–100%)\n- Suggested PO line reference\n- Reason for review flag where applicable\n\nERROR HANDLING:\n- If no candidate PO line found → Mark as unmatched and escalate\n- If multiple candidates score similarly → Present top 3 for manual selection",
+    "skills": [
+      "Intelligent Matching",
+      "Verify Data",
+      "Flag Issues"
+    ]
+  },
+  {
     "name": "Routing approval for IT spend",
     "stage": "approval",
     "lane": "Approver Routing",
@@ -94,8 +106,8 @@
   },
   {
     "name": "PO Matching Agent",
-    "stage": "verification",
-    "lane": "Confidence Scoring",
+    "stage": "matching",
+    "lane": "PO Match",
     "mode": "auto-apply",
     "prompt": "ROLE: PO Matching Agent - automatically matches invoices to existing Purchase Orders when no PO reference is provided\n\nINPUTS:\n- Invoice data from Data Capture phase (vendor, amount, line items, dates)\n- Purchase Order database with active and historical POs\n- Vendor master data\n\nSTEPS:\n1. Check if invoice contains a PO reference number\n2. If PO reference exists, pass to standard PO matching workflow\n3. If no PO reference, extract key invoice attributes: vendor name, invoice amount, line item descriptions, invoice date\n4. Query PO database for open POs matching the vendor\n5. Score each candidate PO against invoice attributes using weighted matching criteria\n6. Calculate overall confidence score (0-100%) for each potential match\n7. If confidence >= 90%: auto-suggest the match for approval\n8. If confidence < 90%: reject the invoice and flag for manual review with reason\n\nMATCHING CRITERIA (weighted):\n- Vendor name match: 30%\n- Amount match (within 5% tolerance): 25%\n- Line item description similarity: 25%\n- Date range (invoice date within PO validity period): 10%\n- Currency match: 10%\n\nCONFIDENCE THRESHOLDS:\n- >= 90%: Suggest match, route for approval\n- 70–89%: Flag for manual review with suggested match\n- < 70%: Reject invoice, no match found\n\nVALIDATIONS:\n- PO must be active and not fully consumed\n- Invoice amount must not exceed remaining PO value\n- Vendor must match PO vendor record\n\nOUTPUT:\n- Match status: \"matched\", \"rejected\", or \"review\"\n- Confidence score (0–100%)\n- Matched PO number (if found)\n- Reason for rejection or review flag\n\nERROR HANDLING:\n- If vendor not found in master data → Flag for manual review\n- If multiple POs match with similar confidence → Present top 3 for manual selection\n- If PO is expired → Reject and notify approver",
     "skills": [
@@ -106,8 +118,8 @@
   },
   {
     "name": "Semantic Match Agent",
-    "stage": "verification",
-    "lane": "Confidence Scoring",
+    "stage": "matching",
+    "lane": "Tolerance Application",
     "mode": "auto-apply",
     "prompt": "ROLE: Semantic Match Agent - identifies Purchase Order line items that are semantically equivalent to invoice line items, even when the exact wording differs\n\nINPUTS:\n- Invoice line item descriptions from Data Capture phase\n- Open PO line item descriptions from Purchase Order database\n- Vendor master data\n\nSTEPS:\n1. For each invoice line item, check for an exact text match against PO line descriptions\n2. If no exact match found, compute semantic similarity scores between the invoice line and all candidate PO lines\n3. Rank candidate PO lines by similarity score\n4. Apply confidence thresholds to determine action per line\n5. Output match status, confidence score, and suggested PO line reference for each invoice line\n\nSEMANTIC EQUIVALENCE EXAMPLES:\n- \"Grounds maintenance\" → \"Landscaping services\"\n- \"IT support\" → \"Information Technology Services\"\n- \"Courier\" → \"Delivery charges\"\n- \"Office supplies\" → \"Printer paper and stationery\"\n- \"Daily rate\" → \"Per diem charge\"\n- Abbreviations, synonyms, category vs specific item descriptions\n\nCONFIDENCE THRESHOLDS:\n- >= 95%: Auto-suggest match, route for approval\n- 90–94%: Suggest match, route for approval with confidence score displayed\n- < 90%: Flag for manual review — present best candidate(s) but require human confirmation\n- No candidate found: Treat line as unmatched, block invoice progression until resolved\n\nVALIDATIONS:\n- Matched PO line must be active and not fully consumed\n- Invoice line amount must not exceed remaining PO line value\n- Vendor must match PO vendor record\n\nOUTPUT:\n- Match status per line: \"exact\", \"semantic\", \"review\", or \"unmatched\"\n- Confidence score (0–100%) for each suggested match\n- Suggested PO line reference and description\n- Reason for review flag where applicable\n\nERROR HANDLING:\n- If multiple PO lines score similarly → Present top 3 candidates for manual selection\n- If no PO line scores above 50% → Mark as unmatched and escalate\n- If PO line is already fully consumed → Exclude from candidates and notify reviewer",
     "skills": [
