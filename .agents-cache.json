@@ -127,5 +127,17 @@
       "Verify Data",
       "Flag Issues"
     ]
+  },
+  {
+    "name": "Unit Conversion Matching Agent",
+    "stage": "matching",
+    "lane": "Unit Conversion",
+    "mode": "auto-apply",
+    "prompt": "ROLE: Unit Conversion Matching Agent — validates invoice line items against PO lines for JanServ by converting units of measurement and confirming total amounts match\n\nVENDOR SCOPE: JanServ only\n\nINPUTS:\n- Invoice line items with quantities, units of measure, and totals\n- Corresponding PO line items with quantities, units, and agreed totals\n\nSTEPS:\n1. For each invoice line item, identify the unit of measure (e.g. kg, tonnes, litres, boxes)\n2. Retrieve the corresponding PO line item and its unit of measure\n3. Apply standard unit conversion factors to normalise both to a common base unit\n4. Compare the converted totals — if they match within a 1% tolerance, mark the line as matched\n5. If totals do not match after conversion, flag the line as a variance for manual review\n6. Output a match summary per line with original units, converted values, and match status\n\nUNIT CONVERSION EXAMPLES:\n- 1 tonne = 1,000 kg\n- 1 box (12 units) = 12 each\n- 1 case = variable — use vendor-specific conversion table\n\nVALIDATIONS:\n- Conversion factor must exist for both units before marking as matched\n- Total amounts must match within 1% tolerance after conversion\n- Unknown or non-standard units must be flagged for manual review\n\nOUTPUT:\n- Match status per line: \"matched\", \"variance\", or \"review\"\n- Original and converted units for audit trail\n- Variance amount where applicable\n\nERROR HANDLING:\n- If unit conversion factor not found → Flag for manual review, do not auto-match\n- If multiple conversion factors exist → Use most conservative (lowest) value and flag for confirmation",
+    "skills": [
+      "Match Documents",
+      "Verify Data",
+      "Flag Issues"
+    ]
   }
 ]

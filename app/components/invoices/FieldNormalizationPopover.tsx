@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Zap, X } from 'lucide-react';
+import { Zap, X, RotateCcw } from 'lucide-react';
 
 interface FieldNormalizationPopoverProps {
   fieldName: string;
@@ -14,6 +14,7 @@ interface FieldNormalizationPopoverProps {
   children: React.ReactNode;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
+  onUndo?: () => void;
 }
 
 export function FieldNormalizationPopover({
@@ -26,6 +27,7 @@ export function FieldNormalizationPopover({
   children,
   open: controlledOpen,
   onOpenChange,
+  onUndo,
 }: FieldNormalizationPopoverProps) {
   const [internalOpen, setInternalOpen] = useState(false);
   const isControlled = controlledOpen !== undefined;
@@ -85,8 +87,17 @@ export function FieldNormalizationPopover({
             </div>
           </div>
 
-          {/* Agent Link */}
-          <div className="pt-3 border-t border-purple-200">
+          {/* Actions */}
+          <div className="pt-3 border-t border-purple-200 flex flex-col gap-2">
+            {onUndo && (
+              <button
+                onClick={() => { onUndo(); handleOpenChange(false); }}
+                className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-medium bg-white text-purple-900 border border-purple-900 rounded-md hover:bg-purple-50 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Revert to original value
+              </button>
+            )}
             <a
               href={`/settings?agent=${encodeURIComponent(agentName)}#automation-agent-builder-2`}
               target="_blank"

@@ -166,16 +166,26 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       }
       
       // Update Semantic Match Agent card to Completed
-      const updatedAgentActions = ((invoice as any).agent_actions || []).map((a: any) =>
-        a.agent_id === '13'
-          ? {
-              ...a,
-              status: 'success',
-              action: 'Semantic differences resolved on lines 4 & 5',
-              detail: 'Line 4: auto-matched at 92% confidence. Line 5: matched at 78% confidence and confirmed by reprocessing.',
-            }
-          : a
-      );
+      const updatedAgentActions = [
+        ...((invoice as any).agent_actions || []).map((a: any) =>
+          a.agent_id === '13'
+            ? {
+                ...a,
+                status: 'success',
+                action: 'Semantic differences resolved on lines 4 & 5',
+                detail: 'Line 4: auto-matched at 92% confidence. Line 5: matched at 78% confidence and confirmed by reprocessing.',
+              }
+            : a
+        ),
+        {
+          agent_name: 'Unit Conversion Matching Agent',
+          action: 'Unit conversion applied on line 6',
+          status: 'success',
+          detail: 'Unit Conversion Matching Agent — validates invoice line items against PO lines for JanServ by converting units of measurement and confirming total amounts match',
+          agent_id: 'uom-match',
+          mode: 'auto-apply',
+        },
+      ];
 
       const updatedInvoice = {
         ...invoice,
