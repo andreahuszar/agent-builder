@@ -1363,9 +1363,20 @@ export function DetailsTab({
                             className={`px-3 pb-2.5 border-t border-purple-200 pt-2 ${action.links_to === 'additional_details' ? 'cursor-pointer hover:bg-purple-100 transition-colors' : ''}`}
                             onClick={action.links_to === 'additional_details' ? handleRiskIndicatorClick : undefined}
                           >
-                            <p className="text-xs text-gray-950 italic">
-                              {agentRoleMap[action.agent_name] || action.action}
-                            </p>
+                            {action.detail ? (
+                              <ul className="space-y-1">
+                                {action.detail.split('\n').filter(Boolean).map((line: string, i: number) => (
+                                  <li key={i} className="text-xs text-gray-950 flex gap-1.5">
+                                    <span className="text-purple-400 flex-shrink-0">—</span>
+                                    <span>{line.replace(/^-\s*/, '')}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            ) : (
+                              <p className="text-xs text-gray-950 italic">
+                                {agentRoleMap[action.agent_name] || action.action}
+                              </p>
+                            )}
                             {action.links_to === 'additional_details' && (
                               <p className="text-xs text-purple-600 mt-1">Click to view bank details →</p>
                             )}
@@ -2394,7 +2405,7 @@ export function DetailsTab({
                           fieldName="Plant ID"
                           originalValue="4432"
                           normalizedValue="UK-4432"
-                          agentName="Field Normalisation Agent"
+                          agentName="Plant ID Prefix Agent"
                           confidence={invoiceData.extraction_field_confidences?.plant_id ? Math.round(invoiceData.extraction_field_confidences.plant_id * 100) : 95}
                           explanation="Agent standardised the Plant ID format by adding prefix 'UK-' based on the receiving mailbox: accounts.payable.uk@xelix.com"
                           onUndo={() => setPlantIdReverted(true)}

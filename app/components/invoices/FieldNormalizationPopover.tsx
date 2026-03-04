@@ -62,15 +62,6 @@ export function FieldNormalizationPopover({
             </button>
           </div>
 
-          {/* Agent Instructions */}
-          <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-md">
-            <p className="text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Instructions</p>
-            <ul className="list-disc list-inside space-y-1 text-xs text-gray-700">
-              <li>For invoices with a Plant ID, check which mailbox received the invoice</li>
-              <li>Add a prefix of EU-, UK- or US- according to the receiving mailbox</li>
-            </ul>
-          </div>
-
           {/* Value Comparison */}
           <div className="space-y-2 mb-3">
             <div>

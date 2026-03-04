@@ -63,7 +63,7 @@ export function UomMatchPopover({
           {/* Header */}
           <div className="flex items-center gap-2 mb-3">
             <Zap className="h-4 w-4 text-purple-600" fill="currentColor" />
-            <span className="text-sm font-semibold text-purple-900">Smart Match Applied</span>
+            <span className="text-sm font-semibold text-purple-900">Unit Conversion Matching Agent</span>
             <button
               onClick={handleClose}
               className="ml-auto p-0.5 rounded hover:bg-purple-100 transition-colors"
@@ -71,13 +71,6 @@ export function UomMatchPopover({
             >
               <X className="h-3.5 w-3.5 text-gray-600" />
             </button>
-          </div>
-
-          {/* Explanation */}
-          <div className="bg-purple-100 rounded-md px-3 py-2 mb-3 border border-purple-200">
-            <p className="text-xs text-gray-950">
-              System matched this line based on financial data despite different units of measure
-            </p>
           </div>
 
           {/* Quantity & Rate Comparison */}

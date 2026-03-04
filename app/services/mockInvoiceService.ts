@@ -184,7 +184,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
         agent_name: 'TechSupply Customer ID',
         action: 'Could not find Customer Reference ID',
         status: 'failed',
-        detail: 'Searched extracted invoice data for a customer reference number matching the expected format. No matching field was found on this invoice.',
+        detail: '- Search the invoice data for the customer reference number on all invoices from TechSupply Solutions\n- If no customer reference number is present, then flag for review',
         agent_id: '9',
         mode: 'auto-apply'
       }
@@ -405,7 +405,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
         agent_name: 'Bank details checker',
         action: 'Bank detail discrepancy detected',
         status: 'failed',
-        detail: 'Invoice bank account number does not match the verified bank details on file for Fleet Inc. in the vendor master database. Invoice flagged for manual review.',
+        detail: '- Compare invoice bank information against verified vendor banking information in master database\n- Flag any discrepancies for manual review',
         agent_id: '10',
         links_to: 'additional_details',
         mode: 'auto-apply'
@@ -579,7 +579,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
         agent_name: 'PO Matching Agent',
         action: 'No purchase order found — close match identified',
         status: 'warning',
-        detail: 'No PO reference was present on this invoice, but a close match (PO-2025-8901) was found in the system with 99% confidence. User confirmation is required before the PO can be assigned.',
+        detail: '- Reject any invoice without a Purchase Order, unless there is a greater than 90% confidence we can find a match in the system',
         agent_id: '12',
         mode: 'suggest'
       }
@@ -770,10 +770,10 @@ export const generateBaselineInvoices = (): Invoice[] => {
     // Agent actions taken during processing
     agent_actions: [
       {
-        agent_name: 'Field Normalisation Agent',
+        agent_name: 'Plant ID Prefix Agent',
         action: 'Plant ID normalised to include country prefix',
         status: 'success',
-        detail: 'Plant ID "4432" was updated to "UK-4432" based on the receiving mailbox. The original value has been preserved for audit.',
+        detail: '- For invoices with a Plant ID, check which mailbox received the invoice\n- Add a prefix of EU-, UK- or US- according to the receiving mailbox',
         agent_id: '11',
         mode: 'auto-apply'
       },
@@ -781,7 +781,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
         agent_name: 'Semantic Match Agent',
         action: 'Semantic differences detected on lines 4 & 5',
         status: 'warning',
-        detail: 'Line 4: PO line description differs in wording but matched automatically at 92% confidence. Line 5: Possible semantic match found at 78% confidence — below the auto-assignment threshold. User confirmation required.',
+        detail: '- Match invoice line item descriptions to PO line items using semantic similarity, not just exact text\n- Flag any invoice lines where no exact match exists but a likely semantic match is found\n- Any match below 90% confidence is flagged for manual review — only matches at or above 90% confidence are auto-assigned',
         agent_id: '13',
         mode: 'auto-apply'
       },
@@ -789,7 +789,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
         agent_name: 'Substitution Agent',
         action: 'Possible product substitution flagged on line 5',
         status: 'warning',
-        detail: 'Line 5: Part number and description differ from PO but unit of measure, unit price and quantity match. Confidence score is 78% — below the 90% threshold. Manual review required.',
+        detail: '- Where a part number or description differs from the PO but unit of measure, unit price and quantity are the same, flag as a potential substitution\n- Only auto-suggest the match if confidence is 90% or above — flag anything below 90% for manual review',
         agent_id: '15',
         mode: 'auto-apply'
       }

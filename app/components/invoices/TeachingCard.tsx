@@ -46,19 +46,9 @@ export function TeachingCard({
         <div className="text-base font-semibold text-gray-950 mb-2">
           {fieldLabel}
         </div>
-        {isTechSupplyCustomerID ? (
-          <div className="text-xs text-gray-950 mt-2">
-            <span className="font-medium text-gray-900 block mb-1">Instructions:</span>
-            <ul className="list-disc list-inside space-y-1 text-gray-700">
-              <li>Search the invoice data for the customer reference number on all invoices from TechSupply Solutions</li>
-              <li>If no customer reference number is present, then flag for review</li>
-            </ul>
-          </div>
-        ) : (
-          <div className="text-xs text-gray-950 mt-2">
-            <span className="font-medium text-gray-900">Note:</span> I couldn't find "{fieldLabel}" automatically. Click on the value in the document to teach me where to look.
-          </div>
-        )}
+        <div className="text-xs text-gray-950 mt-2">
+          No customer ID was found. Please add manually or point to the value on the invoice document.
+        </div>
       </div>
 
       {/* Actions */}
