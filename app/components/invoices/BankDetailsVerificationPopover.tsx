@@ -122,15 +122,6 @@ export function BankDetailsVerificationPopover({
                 </button>
               </div>
 
-              {/* Agent Instructions */}
-              <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-md">
-                <p className="text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Instructions</p>
-                <ul className="list-disc list-inside space-y-1 text-xs text-gray-700">
-                  <li>Compare invoice bank information against verified vendor banking information in master database</li>
-                  <li>Flag any discrepancies for manual review</li>
-                </ul>
-              </div>
-
               {/* Side-by-Side Comparison */}
               <div className="mb-3">
                 <div className="text-xs font-semibold text-gray-950 mb-2">Bank Details Comparison</div>

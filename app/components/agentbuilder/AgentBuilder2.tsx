@@ -339,7 +339,6 @@ export function AgentBuilder2({
   }
 
   const handleCreateNewAgent = (stageId?: string) => {
-    // Create a new agent locally without switching views
     const newAgentId = `agent-${Date.now()}`
     const newAgent: Agent = {
       id: newAgentId,

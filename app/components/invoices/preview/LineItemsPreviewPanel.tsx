@@ -2320,6 +2320,7 @@ export function LineItemsPreviewPanel({
                                         invoiceLine={line}
                                         poLine={matchedPO}
                                         confidence={(line as any).smart_match_confidence}
+                                        agentName={(line as any).smart_match_agent}
                                         onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
                                         open={openPopoverId === `invoice-${line.id || `line-${line.line_no}`}`}
                                         onOpenChange={(open) => setOpenPopoverId(open ? `invoice-${line.id || `line-${line.line_no}`}` : null)}
@@ -2338,7 +2339,7 @@ export function LineItemsPreviewPanel({
                                         sideOffset={5}
                                       >
                                         <div className="space-y-1">
-                                          <p className="font-semibold">Smart Match Applied</p>
+                                          <p className="font-semibold">{hasUomConversion(line) && hasUomDifference(line, matchedPO) ? 'Unit Conversion Matching Agent' : 'Smart Match Applied'}</p>
                                           <p>Click to review or unmatch</p>
                                         </div>
                                         <Tooltip.Arrow className="fill-gray-900" />
@@ -3917,15 +3918,16 @@ export function LineItemsPreviewPanel({
                                         </Tooltip.Trigger>
                                       </UomMatchPopover>
                                     ) : (
-                                      <SmartMatchPopover
-                                        invoiceDescription={line.description}
-                                        poDescription={matchedPO.item_description || matchedPO.description}
-                                        invoiceLine={line}
-                                        poLine={matchedPO}
-                                        confidence={(line as any).smart_match_confidence}
-                                        onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
-                                        open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}`}
-                                        onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-${line.id || `line-${line.line_no}`}` : null)}
+                                    <SmartMatchPopover
+                                      invoiceDescription={line.description}
+                                      poDescription={matchedPO.item_description || matchedPO.description}
+                                      invoiceLine={line}
+                                      poLine={matchedPO}
+                                      confidence={(line as any).smart_match_confidence}
+                                      agentName={(line as any).smart_match_agent}
+                                      onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)}
+                                      open={openPopoverId === `invoice-grouped-${line.id || `line-${line.line_no}`}`}
+                                      onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-${line.id || `line-${line.line_no}`}` : null)}
                                       >
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
@@ -3937,7 +3939,7 @@ export function LineItemsPreviewPanel({
                                     <Tooltip.Portal>
                                       <Tooltip.Content style={{zIndex: 9999}} className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]" sideOffset={5}>
                                         <div className="space-y-1">
-                                          <p className="font-semibold">Smart Match Applied</p>
+                                          <p className="font-semibold">{hasUomConversion(line) && hasUomDifference(line, matchedPO) ? 'Unit Conversion Matching Agent' : 'Smart Match Applied'}</p>
                                           <p>Click to review or unmatch</p>
                                         </div>
                                         <Tooltip.Arrow className="fill-gray-900" />
@@ -4350,7 +4352,7 @@ export function LineItemsPreviewPanel({
                                         </Tooltip.Trigger>
                                       </UomMatchPopover>
                                     ) : (
-                                      <SmartMatchPopover invoiceDescription={line.description} poDescription={matchedPO.item_description || matchedPO.description} invoiceLine={line} poLine={matchedPO} confidence={(line as any).smart_match_confidence} onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
+                                      <SmartMatchPopover invoiceDescription={line.description} poDescription={matchedPO.item_description || matchedPO.description} invoiceLine={line} poLine={matchedPO} confidence={(line as any).smart_match_confidence} agentName={(line as any).smart_match_agent} onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
                                             <Zap className="h-3.5 w-3.5 text-purple-600" fill="currentColor" />

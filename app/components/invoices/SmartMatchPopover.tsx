@@ -17,6 +17,7 @@ interface SmartMatchPopoverProps {
     unit_price: number;
   };
   confidence?: number; // Confidence score (0-1, will be displayed as percentage)
+  agentName?: string;
   onUnmatch: () => void;
   onClose?: () => void;
   children: React.ReactNode;
@@ -30,6 +31,7 @@ export function SmartMatchPopover({
   invoiceLine,
   poLine,
   confidence,
+  agentName = 'Semantic Match Agent',
   onUnmatch,
   onClose,
   children,
@@ -62,7 +64,7 @@ export function SmartMatchPopover({
           {/* Header */}
           <div className="flex items-center gap-2 mb-3">
             <Zap className="h-4 w-4 text-purple-600" fill="currentColor" />
-            <span className="text-sm font-semibold text-purple-900">Semantic Match Agent</span>
+            <span className="text-sm font-semibold text-purple-900">{agentName}</span>
             {confidence !== undefined && (
               <span className="ml-auto mr-2 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-semibold rounded">
                 {Math.round(confidence * 100)}% confidence
@@ -75,16 +77,6 @@ export function SmartMatchPopover({
             >
               <X className="h-3.5 w-3.5 text-gray-600" />
             </button>
-          </div>
-
-          {/* Agent Instructions */}
-          <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-md">
-            <p className="text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Instructions</p>
-            <ul className="list-disc list-inside space-y-1 text-xs text-gray-700">
-              <li>Match invoice line item descriptions to PO line items using semantic similarity, not just exact text</li>
-              <li>Flag any invoice lines where no exact match exists but a likely semantic match is found</li>
-              <li>Any match below 90% confidence is flagged for manual review — only matches at or above 90% confidence are auto-assigned</li>
-            </ul>
           </div>
 
           {/* Descriptions */}

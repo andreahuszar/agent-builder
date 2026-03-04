@@ -135,14 +135,6 @@ export function CloseMatchPopover({
             </button>
           </div>
 
-          {/* Agent Instructions */}
-          <div className="mb-3 p-3 bg-purple-50 border border-purple-200 rounded-md">
-            <p className="text-xs font-semibold text-gray-700 mb-1.5 uppercase tracking-wide">Instructions</p>
-            <ul className="list-disc list-inside space-y-1 text-xs text-gray-700">
-              <li>Reject any invoice without a Purchase Order, unless there is a greater than 90% confidence we can find a match in the system</li>
-            </ul>
-          </div>
-
           {/* Suggested PO Number */}
           <div className="mb-3">
             <div className="text-xs font-medium text-gray-900 mb-1">Suggested PO Number</div>

@@ -171,11 +171,11 @@ ERROR HANDLING:
     },
     {
       id: "11",
-      name: "Field Normalisation Agent",
+      name: "Plant ID Prefix Agent",
       stage: "data-capture",
       active: true,
       mode: "auto-apply",
-      prompt: `ROLE: Field Normalisation Agent - standardizes extracted field values to ensure consistent formatting across all invoices
+      prompt: `ROLE: Plant ID Prefix Agent - standardizes extracted field values to ensure consistent formatting across all invoices
 
 INPUTS:
 - Raw extracted data from OCR Agent
@@ -700,7 +700,7 @@ Any match below 90% confidence is flagged for manual review - only matches at or
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v16'
+        const AGENTS_VERSION = 'v17'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')
@@ -1021,7 +1021,7 @@ Any match below 90% confidence is flagged for manual review - only matches at or
       avgRuntimeMs: 185,
       invoicesProcessed: 567
     },
-    // Initial metrics for Field Normalisation Agent (id: "11")
+    // Initial metrics for Plant ID Prefix Agent (id: "11")
     "11": {
       evaluated: 7200,
       actedOn: 6840,
@@ -1061,7 +1061,7 @@ Any match below 90% confidence is flagged for manual review - only matches at or
           // Fast runtime for OCR processing
           avgRuntimeMs = 185 // ~185ms average
         } else if (agent.id === "11") {
-          // Field Normalisation Agent - moderate activity
+          // Plant ID Prefix Agent - moderate activity
           baseEvaluated = Math.floor(7200 * baseMultiplier)
           
           // Created 60 days ago

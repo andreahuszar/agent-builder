@@ -11,11 +11,11 @@
     ]
   },
   {
-    "name": "Field Normalisation Agent",
+    "name": "Plant ID Prefix Agent",
     "stage": "data-capture",
     "lane": "Field Normalisation",
     "mode": "auto-apply",
-    "prompt": "ROLE: Field Normalisation Agent - standardizes extracted field values to ensure consistent formatting across all invoices\n\nINPUTS:\n- Raw extracted data from OCR Agent\n- Field normalization rules and patterns\n- Standard formatting templates\n\nSTEPS:\n1. Identify fields requiring normalization (dates, IDs, references, codes)\n2. Apply standardization rules based on field type\n3. Add prefixes/suffixes for consistency (e.g., country codes, location identifiers)\n4. Validate normalized values against expected patterns\n5. Flag any values that cannot be automatically normalized\n\nFIELD NORMALIZATION RULES:\n- Plant IDs: Add country prefix (e.g., \"4432\" → \"UK-4432\")\n- Date formats: Standardize to ISO format (YYYY-MM-DD)\n- Phone numbers: Add country codes and standard formatting\n- Currency codes: Ensure 3-letter ISO codes (USD, GBP, EUR)\n- Tax IDs: Apply country-specific formatting rules\n\nVALIDATIONS:\n- Normalized value must match expected pattern for field type\n- Original value must be preserved for audit trail\n- Confidence score must be >= 90% for auto-application\n\nOUTPUT:\n- Normalized field values in standard format\n- Original values stored in backup fields\n- Confidence score for each normalization\n\nERROR HANDLING:\n- If normalization rule uncertain → Suggest correction for manual review\n- If value doesn't match any pattern → Flag for human review\n- If multiple normalization options exist → Present alternatives",
+    "prompt": "ROLE: Plant ID Prefix Agent - standardizes extracted field values to ensure consistent formatting across all invoices\n\nINPUTS:\n- Raw extracted data from OCR Agent\n- Field normalization rules and patterns\n- Standard formatting templates\n\nSTEPS:\n1. Identify fields requiring normalization (dates, IDs, references, codes)\n2. Apply standardization rules based on field type\n3. Add prefixes/suffixes for consistency (e.g., country codes, location identifiers)\n4. Validate normalized values against expected patterns\n5. Flag any values that cannot be automatically normalized\n\nFIELD NORMALIZATION RULES:\n- Plant IDs: Add country prefix (e.g., \"4432\" → \"UK-4432\")\n- Date formats: Standardize to ISO format (YYYY-MM-DD)\n- Phone numbers: Add country codes and standard formatting\n- Currency codes: Ensure 3-letter ISO codes (USD, GBP, EUR)\n- Tax IDs: Apply country-specific formatting rules\n\nVALIDATIONS:\n- Normalized value must match expected pattern for field type\n- Original value must be preserved for audit trail\n- Confidence score must be >= 90% for auto-application\n\nOUTPUT:\n- Normalized field values in standard format\n- Original values stored in backup fields\n- Confidence score for each normalization\n\nERROR HANDLING:\n- If normalization rule uncertain → Suggest correction for manual review\n- If value doesn't match any pattern → Flag for human review\n- If multiple normalization options exist → Present alternatives",
     "skills": [
       "Extract Text",
       "Verify Data",
@@ -95,8 +95,8 @@
   {
     "name": "Bank details checker",
     "stage": "verification",
-    "lane": "Supplier Master Validation",
-    "mode": "auto-apply",
+    "lane": "Data Quality",
+    "mode": "suggest",
     "prompt": "ROLE: Bank Details Validation Agent - verifies vendor banking information for accuracy and fraud prevention\n\nINPUTS:\n- Invoice payment details from Data Capture phase\n- Vendor master database with verified bank details\n- Historical payment records\n\nSTEPS:\n1. Extract bank account details from invoice (account number, sort code, IBAN, SWIFT/BIC)\n2. Compare against verified vendor banking information in master database\n3. Check for suspicious changes or mismatches\n4. Validate format and checksums for IBAN, account numbers\n5. Flag any discrepancies for manual review\n6. Suggest correction if minor formatting issue detected\n\nVALIDATIONS:\n- Bank details must match vendor master record\n- IBAN/SWIFT codes must pass checksum validation\n- Account numbers must match expected format for country\n- Flag if bank details changed recently (< 30 days)\n\nOUTPUT:\n- Validation status: \"verified\", \"mismatch\", or \"suspicious\"\n- List of discrepancies if any found\n- Suggested corrections for formatting issues\n\nERROR HANDLING:\n- If bank details mismatch → Flag for manual verification\n- If vendor not in master database → Request bank details verification\n- If suspicious changes detected → Escalate to fraud team",
     "skills": [
       "Verify Data",
