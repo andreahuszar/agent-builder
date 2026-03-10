@@ -315,7 +315,7 @@ export function AgentBuilder2({
         name: agentName,
         stage: detectedStage || stage,
         lane: detectedLane,
-        active: true,
+        active: false,
         mode: 'auto-apply',
         prompt,
         skills,
@@ -641,6 +641,7 @@ export function AgentBuilder2({
               }}
               agentId={currentAgent?.id}
               currentPrompt={currentAgent?.prompt}
+              onOpenTest={onOpenTest}
             />
           </div>
         </div>

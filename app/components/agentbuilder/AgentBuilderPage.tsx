@@ -213,8 +213,12 @@ ERROR HANDLING:
       basicPromptOverride: `ROLE: Check Plant ID field format and normalise depending on receiving mailbox
 
 INSTRUCTIONS:
-For invoices with a Plant ID, check which mailbox received the invoice
-Add a prefix of EU-, UK- or US- according to the receiving mailbox`,
+- The Plant ID field needs a prefix of one of "UK-", "US-", "EU-".
+- If a Plant ID is missing the prefix (e.g., it's just 4 digits), add the correct prefix based on the receiving mailbox:
+  Invoices sent to accounts.payable.us@xelix.com → prefix Plant ID with US-
+  Invoices sent to accounts.payable.uk@xelix.com → prefix Plant ID with UK-
+  Invoices sent to accounts.payable.eu@xelix.com → prefix Plant ID with EU-
+- Do not change Plant IDs that already match the required pattern.`,
       lane: "Field Normalisation",
       skills: ["Extract Text", "Verify Data", "Process Documents"],
     },
@@ -530,8 +534,8 @@ REFERENCED_DOCUMENTS: None`,
       basicPromptOverride: `ROLE: Customer Reference Number Extraction Agent - extracts the customer reference number from invoice data for TechSupply Solutions
 
 INSTRUCTIONS:
-Search the invoice data for the customer reference number on all invoices from TechSupply Solutions
-If no customer reference number is present, then flag for review`,
+- Any invoice from TechSupply must contain a Customer ID
+- If a Customer ID is not extracted from the invoice, raise it as an exception`,
       lane: "Header vs Line Split",
       skills: ["Verify Data", "Find Vendor Information"],
     },
@@ -574,8 +578,7 @@ ERROR HANDLING:
       basicPromptOverride: `ROLE: Bank details checker - verifies vendor banking information for accuracy and fraud prevention
 
 INSTRUCTIONS:
-Compare invoice bank information against verified vendor banking information in master database
-Flag any discrepancies for manual review`,
+- If the bank details on the invoice are not present in the Master Vendor data for the given supplier, raise an exception`,
       lane: "Data Quality",
       skills: ["Verify Data", "Find Vendor Information", "Flag Issues"],
     },
@@ -700,7 +703,7 @@ Any match below 90% confidence is flagged for manual review - only matches at or
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v17'
+        const AGENTS_VERSION = 'v20'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')
@@ -1200,11 +1203,10 @@ Any match below 90% confidence is flagged for manual review - only matches at or
       showToast(`Agent "${updatedAgent.name}" updated successfully`, 'success')
     } else {
       // Create new agent (ID should already be set from handleCreateNewAgent)
-      // Set active: true by default so new agents are immediately synced and used
       const newAgent = {
         ...updatedAgent,
         id: updatedAgent.id || `agent-${Date.now()}`,
-        active: true,
+        active: false,
       }
       console.log("[AgentBuilderPage] Creating new agent:", newAgent.name, "Stage:", newAgent.stage, "ID:", newAgent.id, "Active:", newAgent.active)
       setAgents((prev) => {

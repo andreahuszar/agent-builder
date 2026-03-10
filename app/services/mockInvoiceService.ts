@@ -184,7 +184,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
         agent_name: 'TechSupply Customer ID',
         action: 'Could not find Customer Reference ID',
         status: 'failed',
-        detail: '- Search the invoice data for the customer reference number on all invoices from TechSupply Solutions\n- If no customer reference number is present, then flag for review',
+        detail: '- Any invoice from TechSupply must contain a Customer ID\n- If a Customer ID is not extracted from the invoice, raise it as an exception',
         agent_id: '9',
         mode: 'auto-apply'
       }
@@ -405,7 +405,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
         agent_name: 'Bank details checker',
         action: 'Bank detail discrepancy detected',
         status: 'failed',
-        detail: '- Compare invoice bank information against verified vendor banking information in master database\n- Flag any discrepancies for manual review',
+        detail: '- If the bank details on the invoice are not present in the Master Vendor data for the given supplier, raise an exception',
         agent_id: '10',
         links_to: 'additional_details',
         mode: 'auto-apply'
@@ -773,7 +773,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
         agent_name: 'Plant ID Prefix Agent',
         action: 'Plant ID normalised to include country prefix',
         status: 'success',
-        detail: '- For invoices with a Plant ID, check which mailbox received the invoice\n- Add a prefix of EU-, UK- or US- according to the receiving mailbox',
+        detail: '- The Plant ID field needs a prefix of one of "UK-", "US-", "EU-".\n- If a Plant ID is missing the prefix (e.g., it\'s just 4 digits), add the correct prefix based on the receiving mailbox:\n  accounts.payable.us@xelix.com → prefix Plant ID with US-\n  accounts.payable.uk@xelix.com → prefix Plant ID with UK-\n  accounts.payable.eu@xelix.com → prefix Plant ID with EU-\n- Do not change Plant IDs that already match the required pattern.',
         agent_id: '11',
         mode: 'auto-apply'
       },
