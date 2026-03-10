@@ -31,6 +31,7 @@ type Message = {
   attachments?: Attachment[]
   isSettingsRecommendation?: boolean
   settingsLink?: string
+  showTestButton?: boolean
 }
 
 interface ChatInterfaceProps {
@@ -40,6 +41,7 @@ interface ChatInterfaceProps {
   currentPrompt?: string
   agentId?: string
   currentAgent?: Agent | null
+  onOpenTest?: () => void
 }
 
 export interface ChatInterfaceRef {
@@ -61,7 +63,7 @@ const AVAILABLE_SKILLS = [
   "Find Vendor Information",
 ]
 
-export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({ onPromptGenerated, onStageDetected, onLaneDetected, currentPrompt, agentId, currentAgent }, ref) => {
+export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({ onPromptGenerated, onStageDetected, onLaneDetected, currentPrompt, agentId, currentAgent, onOpenTest }, ref) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -180,7 +182,7 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
   const assembleAgentPrompt = (data: { mailbox?: string; suggestFormats?: boolean; signature?: string }): { prompt: string; skills: string[] } => {
     const mailbox = data.mailbox || 'your AP mailbox'
     const signature = data.signature || 'AP Team'
-    const prompt = `ROLE: File Format Rejection Agent — automatically rejects invoice files submitted in unsupported formats and notifies the vendor by email
+    const prompt = `ROLE: Reject word formatted invoices - automatically rejects invoice files submitted in unsupported formats and notifies the vendor by email
 
 INSTRUCTIONS:
 - Check the file extension of each incoming invoice. If the file is in .docx format, reject it immediately.
@@ -554,6 +556,18 @@ ${signature}`
       } else {
         onPromptGenerated(prompt, skills, [])
       }
+
+      if (scriptedMode) {
+        setTimeout(() => {
+          setMessages((prev) => [...prev, {
+            id: Date.now().toString(),
+            role: "assistant",
+            content: "I've added this agent as inactive for now. Would you like to back-test it against your historic invoice data?",
+            showTestButton: true,
+            timestamp: new Date(),
+          }])
+        }, 400)
+      }
     }
   }
 
@@ -612,6 +626,14 @@ ${signature}`
                   className={`px-3 py-2 rounded-lg ${message.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}
                 >
                   <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                  {message.showTestButton && onOpenTest && (
+                    <button
+                      onClick={onOpenTest}
+                      className="mt-2 flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+                    >
+                      Test agent
+                    </button>
+                  )}
                 </div>
               )}
               
