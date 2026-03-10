@@ -1287,7 +1287,7 @@ export function DetailsTab({
               {filteredAllValidationsPassed ? (
                 <>
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Validation Results</h3>
+                  <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Agents</h3>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
                     Ready to post
                   </span>
@@ -1295,7 +1295,7 @@ export function DetailsTab({
               ) : (
                 <>
                   <AlertTriangle className={`h-4 w-4 ${validationCounts.errorCount > 0 ? 'text-red-600' : 'text-purple-600'}`} />
-                  <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Validation Results</h3>
+                  <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Agents</h3>
                   {totalExceptionsCount > 0 && (
                     <button
                       onClick={handleExceptionsPillClick}
