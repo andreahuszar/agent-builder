@@ -1364,18 +1364,24 @@ export function DetailsTab({
                             onClick={action.links_to === 'additional_details' ? handleRiskIndicatorClick : undefined}
                           >
                             {action.detail ? (
-                              <ul className="space-y-1">
-                                {action.detail.split('\n').filter(Boolean).map((line: string, i: number) => (
-                                  <li key={i} className="text-xs text-gray-950 flex gap-1.5">
-                                    <span className="text-purple-400 flex-shrink-0">—</span>
-                                    <span>{line.replace(/^-\s*/, '')}</span>
-                                  </li>
-                                ))}
-                              </ul>
+                              <div>
+                                <p className="text-xs font-semibold text-gray-950 uppercase tracking-wide mb-1">Instructions</p>
+                                <ul className="space-y-1">
+                                  {action.detail.split('\n').filter(Boolean).map((line: string, i: number) => (
+                                    <li key={i} className="text-xs text-gray-950 flex gap-1.5">
+                                      <span className="text-purple-400 flex-shrink-0">—</span>
+                                      <span>{line.replace(/^-\s*/, '')}</span>
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
                             ) : (
-                              <p className="text-xs text-gray-950 italic">
-                                {agentRoleMap[action.agent_name] || action.action}
-                              </p>
+                              <div>
+                                <p className="text-xs font-semibold text-gray-950 uppercase tracking-wide mb-1">Instructions</p>
+                                <p className="text-xs text-gray-950 italic">
+                                  {agentRoleMap[action.agent_name] || action.action}
+                                </p>
+                              </div>
                             )}
                             {action.links_to === 'additional_details' && (
                               <p className="text-xs text-purple-600 mt-1">Click to view bank details →</p>

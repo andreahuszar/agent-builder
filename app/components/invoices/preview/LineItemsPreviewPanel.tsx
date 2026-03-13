@@ -2078,7 +2078,7 @@ export function LineItemsPreviewPanel({
             <>
             <div ref={flexContainerRef} className="flex min-h-full w-full">
               {/* Invoice Lines */}
-              <div className="flex-shrink-0 flex-grow border-r border-gray-200">
+              <div className="flex-1 overflow-x-auto border-r border-gray-200">
                 {/* SVG gradient definition (hidden, used by icons) */}
                 <svg width="0" height="0" style={{ position: 'absolute' }}>
                   <defs>
@@ -2100,24 +2100,6 @@ export function LineItemsPreviewPanel({
                             <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                               {invoiceLines.length} {invoiceLines.length === 1 ? 'line' : 'lines'}
                             </span>
-                            {/* Hide PO toggle for non-PO invoices */}
-                            {!isNonPO && (
-                              <>
-                                <div className="h-5 w-px bg-gray-300"></div>
-                                <span className="text-xs font-medium text-gray-600">Compare to:</span>
-                                <label className="flex items-center gap-1.5">
-                                  <Switch.Root
-                                    checked={showPO}
-                                    onCheckedChange={setShowPO}
-                                    disabled={!poLines || poLines.length === 0}
-                                    className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                  >
-                                    <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
-                                  </Switch.Root>
-                                  <span className="text-xs font-medium text-gray-950">PO</span>
-                                </label>
-                              </>
-                            )}
                           </div>
 
                           {/* Right side: Edit/Save/Cancel buttons */}
@@ -2366,7 +2348,7 @@ export function LineItemsPreviewPanel({
                               </span>
                             )}
                           </td>
-                          <td className="px-1 py-2 text-xs text-gray-950">
+                          <td className="px-1 py-2 text-xs text-gray-950 overflow-hidden">
                             {isEditMode ? (
                               <input
                                 type="text"
@@ -2375,11 +2357,11 @@ export function LineItemsPreviewPanel({
                                 className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                               />
                             ) : (
-                              <div className={`truncate max-w-[160px] ${
+                              <div className={`${
                                 (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
                                   ? 'font-bold text-red-600'
                                   : ''
-                              }`} title={line.description}>
+                              } truncate`} title={line.description}>
                                 {line.description}
                               </div>
                             )}
@@ -2797,8 +2779,8 @@ export function LineItemsPreviewPanel({
               </div>
 
               {/* PO Lines */}
-              <div className="flex-shrink-0">
-                <table className="min-w-max">
+              <div className="flex-1 overflow-x-auto h-full">
+                <table className="min-w-full h-full">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
                       <th colSpan={7} className="px-4 bg-white border-b h-[36px]">
@@ -2937,12 +2919,12 @@ export function LineItemsPreviewPanel({
                           onMouseLeave={handleRowLeave}
                         >
                           <td className={`pl-3 pr-1 py-2 text-xs text-right text-gray-950 w-6 ${getPORowBorderClass(matchedPO)}`}>{matchedPO.line_no}</td>
-                          <td className="px-1 py-2 text-xs text-gray-950">
-                            <div className={`truncate max-w-[160px] ${
+                          <td className="px-1 py-2 text-xs text-gray-950 overflow-hidden">
+                            <div className={`${
                               invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && hasDescriptionDifference(invLine, matchedPO)) || hasSuggestion(invLine))
                                 ? 'font-bold text-red-600'
                                 : ''
-                            }`} title={matchedPO.description}>
+                            } truncate`} title={matchedPO.description}>
                               {matchedPO.item_description || matchedPO.description}
                             </div>
                           </td>
@@ -2986,6 +2968,10 @@ export function LineItemsPreviewPanel({
                         <td colSpan={7} className="px-1.5 py-2"></td>
                       </tr>
                     )}
+                    {/* Filler row to fill remaining vertical space */}
+                    <tr style={{ height: '100%' }}>
+                      <td colSpan={7} className="bg-white"></td>
+                    </tr>
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
                     <tr className="h-[42px] bg-gray-50">
@@ -3121,8 +3107,8 @@ export function LineItemsPreviewPanel({
                         </th>
                       </tr>
                       <tr className="h-[40px]">
-                        <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Qty Var</th>
-                        <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase">Price Var</th>
+                        <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase w-16">Qty Var</th>
+                        <th className="px-1.5 text-right text-xs font-medium text-gray-800 uppercase w-20">Price Var</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -3160,7 +3146,7 @@ export function LineItemsPreviewPanel({
                             onMouseLeave={handleRowLeave}
                           >
                             {/* Qty Variance Column */}
-                            <td className={`px-1.5 py-2 text-xs text-right ${hasAnyVariance(line, matchedPO) ? 'bg-red-50/30' : ''}`}>
+                            <td className={`px-1.5 py-2 text-xs text-right w-16 ${hasAnyVariance(line, matchedPO) ? 'bg-red-50/30' : ''}`}>
                               {matchedPO ? (
                                 // Show 0 variance if custom rule matches OR UOM conversion reconciles the difference
                                 (hasCustomRuleMatch(line, matchedPO) || hasMatchedUomDifference(line, matchedPO)) ? (
@@ -3178,7 +3164,7 @@ export function LineItemsPreviewPanel({
                             </td>
 
                             {/* Price Variance Column */}
-                            <td className={`px-1.5 py-2 text-xs text-right ${hasAnyVariance(line, matchedPO) ? 'bg-red-50/30' : ''}`}>
+                            <td className={`px-1.5 py-2 text-xs text-right w-20 ${hasAnyVariance(line, matchedPO) ? 'bg-red-50/30' : ''}`}>
                               {matchedPO ? (
                                 // Show 0 variance if custom rule matches OR UOM conversion reconciles the difference OR price variance suppressed
                                 (hasCustomRuleMatch(line, matchedPO) || hasMatchedUomDifference(line, matchedPO) || line.suppress_price_variance) ? (
@@ -3230,26 +3216,6 @@ export function LineItemsPreviewPanel({
                           <span className="flex items-center gap-1 px-2 py-0.5 bg-blue-100 text-blue-700 rounded-full text-xs font-medium">
                             {invoiceLines.length} {invoiceLines.length === 1 ? 'line' : 'lines'}
                           </span>
-                          {/* Hide PO toggle for non-PO invoices */}
-                          {!isNonPO && (
-                            <>
-                              <div className="h-5 w-px bg-gray-300"></div>
-                              <span className="text-xs font-medium text-gray-600">Compare to:</span>
-
-                              {/* PO Toggle */}
-                              <label className="flex items-center gap-1.5">
-                                <Switch.Root
-                                  checked={showPO}
-                                  onCheckedChange={setShowPO}
-                                  disabled={!poLines || poLines.length === 0}
-                                  className="w-7 h-4 bg-gray-200 rounded-full relative data-[state=checked]:bg-purple-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-                                >
-                                  <Switch.Thumb className="block w-3 h-3 bg-white rounded-full transition-transform translate-x-0.5 data-[state=checked]:translate-x-[13px]" />
-                                </Switch.Root>
-                                <span className="text-xs font-medium text-gray-950">PO</span>
-                              </label>
-                            </>
-                          )}
 
                           {/* Receipt Toggle - Hidden for now */}
                           <label className="hidden flex items-center gap-1.5">
@@ -3483,7 +3449,7 @@ export function LineItemsPreviewPanel({
                             </span>
                           )}
                         </td>
-                        <td className="px-1.5 py-2 text-xs text-gray-950">
+                        <td className="px-1.5 py-2 text-xs text-gray-950 overflow-hidden">
                           {isEditMode ? (
                             <input
                               type="text"
@@ -3492,11 +3458,11 @@ export function LineItemsPreviewPanel({
                               className="w-full px-2 py-1 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                             />
                           ) : (
-                            <div className={`truncate max-w-[400px] ${
+                            <div className={`${
                               (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
                                 ? 'font-bold text-red-600'
                                 : ''
-                            }`} title={line.description}>
+                            } truncate`} title={line.description}>
                               {line.description}
                             </div>
                           )}
@@ -3769,7 +3735,7 @@ export function LineItemsPreviewPanel({
               // Horizontal scrollable layout - Invoice table first, then PO table
               <div className="flex min-h-full w-full">
                 {/* Invoice Lines - Grouped */}
-                <div className="flex-shrink-0 flex-grow border-r border-gray-200">
+                <div className="flex-1 overflow-x-auto border-r border-gray-200">
                   <table className="w-full min-w-max">
                     {/* Same header as default view */}
                     <thead className="bg-gray-50 sticky top-0 z-10">
@@ -4617,7 +4583,7 @@ export function LineItemsPreviewPanel({
                 </div>
 
                 {/* PO Lines table - TODO: Add similar grouped rendering */}
-                <div className="flex-shrink-0">
+                <div className="flex-1 overflow-x-auto">
                   <div className="text-center py-4 text-gray-500 text-sm">
                     PO comparison not yet implemented in grouped view
                   </div>
