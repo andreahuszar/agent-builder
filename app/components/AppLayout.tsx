@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { usePathname } from 'next/navigation';
 import Navigation from './Navigation';
 import TopBar from './TopBar';
 import { MODULE_PILLS } from '@/app/constants/navigation';
@@ -14,17 +15,49 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ activeModule, children, customTopBar, hideNavigation = false }: AppLayoutProps) {
+  // usePathname() reads from Next.js router state (always the committed, correct
+  // pathname) rather than window.location which can lag in Concurrent Mode.
+  const pathname = usePathname();
+
   const [currentModule, setCurrentModule] = useState<string>(activeModule);
   const [poVisibility, setPOVisibility] = useState(false);
   const [launchpadVisibility, setLaunchpadVisibility] = useState(false);
   const [exceptionNavigation, setExceptionNavigation] = useState(true);
 
-  // Initialize with default view - Invoices for invoice-processing, Automation for settings, first pill for others
-  const pills = MODULE_PILLS[activeModule];
-  const defaultView = activeModule === 'invoice-processing' ? 'invoices' :
-                      activeModule === 'settings' ? 'automation' :
-                      (pills && pills.length > 0 ? pills[0].id : '');
-  const [currentView, setCurrentView] = useState<string>(defaultView);
+  // Initialize currentView from the current URL. Uses pathname from Next.js router
+  // (immune to pushState race conditions) and window.location.hash for hash pills.
+  // Skips pathname matching on '/' so the root SPA defaults to 'invoices' (Exceptions)
+  // unless a hash explicitly points to a different pill (e.g. /#dashboard).
+  const [currentView, setCurrentView] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const modulePills = MODULE_PILLS[activeModule] || [];
+      const hash = window.location.hash; // '#dashboard', '#all-invoices', etc.
+
+      // Hash match takes priority (most specific)
+      if (hash) {
+        for (const pill of modulePills) {
+          if (pill.href.includes('#')) {
+            const [, pillHash] = pill.href.split('#');
+            if (hash === `#${pillHash}`) return pill.id;
+          }
+        }
+      }
+
+      // Pathname match — skip '/' to avoid ambiguity with the root SPA
+      if (pathname && pathname !== '/') {
+        for (const pill of modulePills) {
+          if (!pill.href.includes('#') && pill.href === pathname) {
+            return pill.id;
+          }
+        }
+      }
+    }
+    // Fallback defaults
+    if (activeModule === 'invoice-processing') return 'invoices';
+    if (activeModule === 'settings') return 'automation';
+    const fallbackPills = MODULE_PILLS[activeModule];
+    return fallbackPills?.length ? fallbackPills[0].id : '';
+  });
 
   // Get pills for the active module and filter based on visibility preferences
   const currentPills = React.useMemo(() => {

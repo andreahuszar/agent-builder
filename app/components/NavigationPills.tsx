@@ -1,8 +1,7 @@
 'use client';
 
-import React, { memo, useEffect, useState } from 'react';
+import React, { memo } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { TabItem } from '@/app/constants/navigation';
 import { announceToScreenReader } from '@/app/utils/accessibility';
 
@@ -19,39 +18,12 @@ const NavigationPills: React.FC<NavigationPillsProps> = memo(({
   onViewChange,
   className = '',
 }) => {
-  const pathname = usePathname();
-  const [currentHash, setCurrentHash] = useState('');
-
-  // Track hash changes
-  useEffect(() => {
-    const updateHash = () => {
-      setCurrentHash(window.location.hash);
-    };
-    
-    updateHash(); // Set initial hash
-    window.addEventListener('hashchange', updateHash);
-    return () => window.removeEventListener('hashchange', updateHash);
-  }, []);
-
   return (
     <nav className={`flex flex-1 justify-start ${className}`} aria-label="Tabs">
       <div className="flex space-x-2">
         {items.map((tab) => {
-          // Check if this is a hash-based navigation (contains #)
-          const hasHash = tab.href.includes('#');
-          
-          let isActive = false;
-          
-          if (hasHash) {
-            // For hash navigation, check if current URL matches (pathname + hash)
-            const [basePath, hash] = tab.href.split('#');
-            const targetPath = basePath || '/';
-            isActive = pathname === targetPath && currentHash === `#${hash}`;
-          } else {
-            // For regular navigation, just check pathname
-            isActive = pathname === tab.href;
-          }
-          
+          const isActive = tab.id === activeView;
+
           return (
             <Link
               key={tab.id}
