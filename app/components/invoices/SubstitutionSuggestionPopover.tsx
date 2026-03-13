@@ -101,7 +101,7 @@ export function SubstitutionSuggestionPopover({
             {/* Header - matches AISuggestionCard */}
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="h-4 w-4 text-purple-600 animate-pulse" />
-              <span className="text-sm font-semibold text-purple-900">Substitution Agent</span>
+              <span className="text-sm font-semibold text-purple-900">Smart Match (Substitution)</span>
               <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-orange-200 text-orange-800">
                 {confidencePercent}% confidence
               </span>
@@ -202,7 +202,7 @@ export function SubstitutionSuggestionPopover({
               className="flex items-center gap-1.5 text-xs text-purple-700 hover:text-purple-900 transition-colors"
             >
               <ExternalLink className="h-3 w-3 flex-shrink-0" />
-              View Substitution Agent in Agent Builder →
+              View Smart Match (Substitution) in Agent Builder →
             </a>
           </div>
 

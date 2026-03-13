@@ -31,7 +31,7 @@ export function SmartMatchPopover({
   invoiceLine,
   poLine,
   confidence,
-  agentName = 'Semantic Match Agent',
+  agentName = 'Smart Match (Semantic)',
   onUnmatch,
   onClose,
   children,
@@ -152,7 +152,7 @@ export function SmartMatchPopover({
               className="flex items-center gap-1.5 text-xs text-purple-700 hover:text-purple-900 transition-colors"
             >
               <ExternalLink className="h-3 w-3 flex-shrink-0" />
-              View Semantic Match Agent in Agent Builder →
+              View Smart Match (Semantic) in Agent Builder →
             </a>
           </div>
 

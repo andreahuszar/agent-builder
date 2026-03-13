@@ -767,7 +767,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
         mode: 'auto-apply'
       },
       {
-        agent_name: 'Semantic Match Agent',
+        agent_name: 'Smart Match (Semantic)',
         action: 'Semantic differences detected on lines 4 & 5',
         status: 'warning',
         detail: '- Match invoice line item descriptions to PO line items using semantic similarity, not just exact text\n- Flag any invoice lines where no exact match exists but a likely semantic match is found\n- Any match below 90% confidence is flagged for manual review — only matches at or above 90% confidence are auto-assigned',
@@ -775,7 +775,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
         mode: 'auto-apply'
       },
       {
-        agent_name: 'Substitution Agent',
+        agent_name: 'Smart Match (Substitution)',
         action: 'Possible product substitution flagged on line 5',
         status: 'warning',
         detail: '- Where a part number or description differs from the PO but unit of measure, unit price and quantity are the same, flag as a potential substitution\n- Only auto-suggest the match if confidence is 90% or above — flag anything below 90% for manual review',
