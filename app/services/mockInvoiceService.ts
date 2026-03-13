@@ -572,17 +572,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     display_config: {
       template: 'green-premier'
     },
-    // Agent actions taken during processing
-    agent_actions: [
-      {
-        agent_name: 'PO Matching Agent',
-        action: 'No purchase order found — close match identified',
-        status: 'warning',
-        detail: '- Reject any invoice without a Purchase Order, unless there is a greater than 90% confidence we can find a match in the system',
-        agent_id: '12',
-        mode: 'suggest'
-      }
-    ],
+    agent_actions: [],
     suppress_validation_categories: ['process']
   } as Invoice);
 

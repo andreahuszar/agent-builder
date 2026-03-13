@@ -27,6 +27,7 @@ import {
   FileText,
   Package,
   Sparkles,
+  GitMerge,
   Bot,
   AlertCircle,
   Shield,
@@ -1848,8 +1849,8 @@ export function DetailsTab({
                         onClick={() => setIsCloseMatchPopoverOpen(true)}
                         className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
                       >
-                        <Sparkles className="h-3.5 w-3.5" />
-                        {invoiceData.invoice_number === 'POS-2025-8842' ? 'Flagged by agent' : 'Match Found'}
+                        <GitMerge className="h-3.5 w-3.5" />
+                        Close match found
                       </button>
                     </CloseMatchPopover>
                   )}

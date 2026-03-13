@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { Sparkles, X, Check, ChevronRight, ChevronDown, ExternalLink, Plus } from 'lucide-react';
+import { GitMerge, X, Check } from 'lucide-react';
 import { LineItemsComparisonDrawer } from './LineItemsComparisonDrawer';
 
 interface MatchingFactors {
@@ -55,7 +55,6 @@ export function CloseMatchPopover({
   onOpenChange,
   isPOSearchModalOpen = false,
 }: CloseMatchPopoverProps) {
-  const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
   const [showLineItemsDrawer, setShowLineItemsDrawer] = useState(false);
 
   const confidencePercent = Math.round(confidence * 100);
@@ -121,8 +120,8 @@ export function CloseMatchPopover({
           >
           {/* Header */}
           <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="h-4 w-4 text-purple-600" />
-            <span className="text-sm font-semibold text-purple-900">PO Matching Agent</span>
+            <GitMerge className="h-4 w-4 text-purple-600" />
+            <span className="text-sm font-semibold text-purple-900">Close Match Found</span>
             <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-green-200 text-green-800">
               {confidencePercent}% confidence
             </span>
@@ -136,88 +135,71 @@ export function CloseMatchPopover({
           </div>
 
           {/* Suggested PO Number */}
-          <div className="mb-3">
-            <div className="text-xs font-medium text-gray-900 mb-1">Suggested PO Number</div>
-            <div className="text-xl font-bold text-gray-950 bg-purple-100 px-3 py-2 rounded-md border border-purple-200">
-              {suggestedPO}
-            </div>
+          <div className="mb-3 flex items-center gap-2">
+            <span className="text-xs text-gray-500">Suggested PO:</span>
+            <span className="text-xs font-semibold text-gray-950">{suggestedPO}</span>
           </div>
 
-          {/* Collapsible Total Comparison (now includes match verification) */}
+          {/* Comparison */}
           <div className="mb-3">
-            <button
-              onClick={() => setIsDetailsExpanded(!isDetailsExpanded)}
-              className="flex items-center gap-1.5 text-xs font-medium text-purple-700 hover:text-purple-900 transition-colors"
-            >
-              {isDetailsExpanded ? (
-                <ChevronDown className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronRight className="h-3.5 w-3.5" />
-              )}
-              View Total Comparison
-            </button>
-
-            {isDetailsExpanded && (
-              <div className="mt-2 space-y-2 pl-5">
-                {/* Match Verification */}
-                <div className="space-y-1.5 pb-2 border-b border-purple-200">
-                  <div className="text-xs font-medium text-gray-700 mb-1">Match Verification</div>
-                  <div className="flex items-center gap-2 text-xs text-gray-950">
-                    <Check className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
-                    <span className="font-medium">Vendor:</span>
-                    <span>{poSummary.vendor_name}</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-950">
-                    <Check className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
-                    <span className="font-medium">Created:</span>
-                    <span>
-                      {matchingFactors.date_proximity_days === 0
-                        ? 'Same day as invoice'
-                        : `${matchingFactors.date_proximity_days} day${matchingFactors.date_proximity_days !== 1 ? 's' : ''} before invoice`}
-                    </span>
-                    <span className="text-gray-600">({formatDate(poSummary.created_date)})</span>
-                  </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-950">
-                    <Check className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
-                    <span className="font-medium">Matching items:</span>
-                    <span>
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          setShowLineItemsDrawer(true);
-                        }}
-                        className="text-purple-600 hover:text-purple-700 underline focus:outline-none"
-                      >
-                        {matchingFactors.line_items_overlap} of {matchingFactors.total_line_items || matchingFactors.line_items_overlap} line items
-                      </button>
-                      {matchingFactors.variance_count > 0 && (
-                        <span className="text-gray-600 ml-1">({matchingFactors.variance_count} variance{matchingFactors.variance_count !== 1 ? 's' : ''})</span>
-                      )}
-                    </span>
-                  </div>
+            <div className="text-xs font-semibold text-gray-950 mb-2">Comparison</div>
+            <div className="space-y-2">
+              <div className="space-y-1.5 pb-2 border-b border-purple-200">
+                <div className="flex items-center gap-2 text-xs text-gray-950">
+                  <Check className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                  <span className="font-medium">Vendor:</span>
+                  <span>{poSummary.vendor_name}</span>
                 </div>
-
-                {/* Totals */}
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-900">Invoice Total:</span>
-                  <span className="font-medium text-gray-950">{formatCurrency(invoiceTotal)}</span>
+                <div className="flex items-center gap-2 text-xs text-gray-950">
+                  <Check className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                  <span className="font-medium">Created:</span>
+                  <span>
+                    {matchingFactors.date_proximity_days === 0
+                      ? 'Same day as invoice'
+                      : `${matchingFactors.date_proximity_days} day${matchingFactors.date_proximity_days !== 1 ? 's' : ''} before invoice`}
+                  </span>
+                  <span className="text-gray-600">({formatDate(poSummary.created_date)})</span>
                 </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-gray-900">PO Total:</span>
-                  <span className="font-medium text-gray-950">{formatCurrency(poSummary.total)}</span>
-                </div>
-                <div className="flex items-center justify-between text-xs pt-1 border-t border-purple-200">
-                  <span className="text-gray-900 font-medium">Variance:</span>
-                  <span className={`font-semibold ${totalVariance > 0 ? 'text-orange-600' : 'text-green-600'}`}>
-                    {totalVariance > 0 ? formatCurrency(totalVariance) : 'None'}
-                    {totalVariance > 0 && (
-                      <span className="text-xs ml-1">({variancePercent.toFixed(1)}%)</span>
+                <div className="flex items-center gap-2 text-xs text-gray-950">
+                  <Check className="h-3.5 w-3.5 text-green-600 flex-shrink-0" />
+                  <span className="font-medium">Matching items:</span>
+                  <span>
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowLineItemsDrawer(true);
+                      }}
+                      className="text-purple-600 hover:text-purple-700 underline focus:outline-none"
+                    >
+                      {matchingFactors.line_items_overlap} of {matchingFactors.total_line_items || matchingFactors.line_items_overlap} line items
+                    </button>
+                    {matchingFactors.variance_count > 0 && (
+                      <span className="text-gray-600 ml-1">({matchingFactors.variance_count} variance{matchingFactors.variance_count !== 1 ? 's' : ''})</span>
                     )}
                   </span>
                 </div>
               </div>
-            )}
+
+              {/* Totals */}
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-900">Invoice Total:</span>
+                <span className="font-medium text-gray-950">{formatCurrency(invoiceTotal)}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-gray-900">PO Total:</span>
+                <span className="font-medium text-gray-950">{formatCurrency(poSummary.total)}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs pt-1 border-t border-purple-200">
+                <span className="text-gray-900 font-medium">Variance:</span>
+                <span className={`font-semibold ${totalVariance > 0 ? 'text-orange-600' : 'text-green-600'}`}>
+                  {totalVariance > 0 ? formatCurrency(totalVariance) : 'None'}
+                  {totalVariance > 0 && (
+                    <span className="text-xs ml-1">({variancePercent.toFixed(1)}%)</span>
+                  )}
+                </span>
+              </div>
+            </div>
           </div>
 
           {/* Action Buttons */}
@@ -234,19 +216,6 @@ export function CloseMatchPopover({
             >
               Assign PO
             </button>
-          </div>
-
-          {/* Agent link */}
-          <div className="mt-2.5 pt-2.5 border-t border-purple-200">
-            <a
-              href="/settings?agent=PO%20Matching%20Agent#automation-agent-builder-2"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1.5 text-xs text-purple-700 hover:text-purple-900 transition-colors"
-            >
-              <ExternalLink className="h-3 w-3 flex-shrink-0" />
-              View PO Matching Agent in Agent Builder →
-            </a>
           </div>
 
           <Popover.Arrow className="fill-purple-300" />
