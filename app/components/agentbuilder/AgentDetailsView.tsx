@@ -82,7 +82,7 @@ export function AgentDetailsView({
 }: AgentDetailsViewProps) {
   const [isEditingName, setIsEditingName] = useState(false)
   const [editedName, setEditedName] = useState(agent.name)
-  const [isEmailCardExpanded, setIsEmailCardExpanded] = useState(false)
+  const [isEmailCardExpanded, setIsEmailCardExpanded] = useState(true)
   const [promptView, setPromptView] = useState<"basic" | "advanced" | "flowchart">("basic")
   const [conflicts, setConflicts] = useState<ConflictType[]>([])
   const [isConflictCardDismissed, setIsConflictCardDismissed] = useState(true)
@@ -824,12 +824,16 @@ export function AgentDetailsView({
                 </>
               )}
 
-              {/* Email Template Card — shown if prompt contains EMAIL_TEMPLATE section */}
+              {/* Email Template Card — shown if prompt contains EMAIL_TEMPLATE section,
+                  or for the scripted "Reject Word Formatted Invoices" agent */}
               {(() => {
                 const source = agent.basicPromptOverride || agent.prompt || ''
                 const emailMatch = source.match(/EMAIL_TEMPLATE:\s*([\s\S]+)$/i)
-                if (!emailMatch) return null
-                const emailContent = emailMatch[1].trim()
+                const isRejectWordAgent = /reject word/i.test(agent.name || '')
+                if (!emailMatch && !isRejectWordAgent) return null
+                const emailContent = emailMatch
+                  ? emailMatch[1].trim()
+                  : `From: invoicing@xelix.com\nTo: {{vendor_email}}\nSubject: Invoice Submission Rejected — Unsupported File Format\n\nDear Vendor,\n\nThank you for your recent invoice submission. Unfortunately, we are unable to process your invoice as it was submitted in an unsupported file format (.docx).\n\nTo ensure your invoice can be processed promptly, please resubmit using one of the following accepted formats:\n\n  • PDF\n  • XLSX\n  • JPG\n\nIf you have any questions regarding this, please don't hesitate to get in touch.\n\nKind regards,\nAP Team`
                 return (
                   <div className="mt-4 rounded-lg border border-gray-200 overflow-hidden">
                     <button
