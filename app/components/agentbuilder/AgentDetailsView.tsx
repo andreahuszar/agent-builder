@@ -991,26 +991,6 @@ export function AgentDetailsView({
             </div>
           )}
 
-          {/* Test Agent Banner */}
-          {onOpenTest && (
-            <div className="rounded-lg p-4 mt-4 border border-gray-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
-                    <span className="text-gray-600 text-lg">🧪</span>
-                  </div>
-                  <span className="text-gray-950 text-sm font-medium">Test agent against Historical invoice data?</span>
-                </div>
-                <button
-                  onClick={onOpenTest}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors text-sm font-medium"
-                >
-                  <span>🔬</span>
-                  Test agent
-                </button>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* Performance Metrics */}
@@ -1047,6 +1027,30 @@ export function AgentDetailsView({
             </div>
           )}
         </div>
+
+        {/* Test Agent Card */}
+        {onOpenTest && (
+          <div className="bg-white rounded-lg p-6 border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                  <span className="text-gray-600 text-lg">🧪</span>
+                </div>
+                <div>
+                  <h2 className="text-sm font-semibold text-gray-950">Back-test agent</h2>
+                  <p className="text-xs text-gray-500 mt-0.5">Run against your historical invoice data</p>
+                </div>
+              </div>
+              <button
+                onClick={onOpenTest}
+                className="flex items-center gap-2 px-4 py-2 bg-purple-900 text-white rounded-md hover:bg-purple-800 transition-colors text-sm font-medium"
+              >
+                <span>🔬</span>
+                Test agent
+              </button>
+            </div>
+          </div>
+        )}
         </div>
       </div>
 
