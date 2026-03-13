@@ -32,6 +32,7 @@ type Message = {
   isSettingsRecommendation?: boolean
   settingsLink?: string
   showTestButton?: boolean
+  applied?: boolean
 }
 
 interface ChatInterfaceProps {
@@ -83,6 +84,7 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const skipNextAgentClear = useRef(false)
 
   const clearChat = () => {
     setMessages([
@@ -108,6 +110,10 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
   }))
 
   useEffect(() => {
+    if (skipNextAgentClear.current) {
+      skipNextAgentClear.current = false
+      return
+    }
     console.log("[v0] Agent changed, clearing chat. Agent ID:", agentId)
     clearChat()
   }, [agentId])
@@ -247,13 +253,11 @@ ${signature}`
     1: "I would like to automatically reject any invoice which comes in Word .docx format and send an automated email to the vendor which explains why it was rejected",
     2: "invoicing@xelix.com",
     3: "Please!",
-    4: "Xelix AP Team",
   }
 
   const SCRIPTED_DATA = {
     mailbox: "invoicing@xelix.com",
     suggestFormats: true,
-    signature: "Xelix AP Team",
   }
 
   const handleScriptedSend = (_userInput: string) => {
@@ -294,30 +298,9 @@ ${signature}`
         setMessages((prev) => [...prev, {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: "How should the reply be signed off?",
+          content: `I have a prompt ready for you to apply. ROLE:\nReject word formatted invoices - automatically rejects invoice files submitted in unsupported formats and notifies the vendor by email\n\nINSTRUCTIONS:\n- Check the file extension of each incoming invoice. If the file is in .docx format, reject it immediately.\n- Connect to invoicing@xelix.com and compose an automated reply to the original sender`,
           timestamp: new Date(),
         }])
-      }, 350)
-    } else if (scriptStep === 4) {
-      setScriptStep(5)
-      const assembled = assembleAgentPrompt(SCRIPTED_DATA)
-      setTimeout(() => {
-        setMessages((prev) => [...prev,
-          {
-            id: (Date.now() + 1).toString(),
-            role: "assistant",
-            content: "Here's the agent configuration I've built based on our conversation:",
-            timestamp: new Date(),
-          },
-          {
-            id: (Date.now() + 2).toString(),
-            role: "assistant",
-            content: "",
-            generatedPrompt: assembled.prompt,
-            suggestedSkills: assembled.skills,
-            timestamp: new Date(),
-          },
-        ])
         if (onStageDetected) onStageDetected("ingestion")
         if (onLaneDetected) onLaneDetected("File Triage")
       }, 350)
@@ -526,11 +509,18 @@ ${signature}`
     }
   }
 
-  const handleApplyPrompt = async (prompt: string, skills: string[]) => {
+  const handleApplyPrompt = async (prompt: string, skills: string[], messageId: string) => {
+    // Mark the message as applied so the button disappears
+    setMessages((prev) => prev.map((m) => m.id === messageId ? { ...m, applied: true } : m))
+
     if (onPromptGenerated) {
       const referencedDocs = sessionDocuments.filter(doc => 
         doc.extractedText && !doc.extractionError
       )
+
+      // Prevent the agentId useEffect from clearing the chat when the agent is
+      // created/updated as a result of this action (scripted or otherwise)
+      skipNextAgentClear.current = true
       
       // Store documents if agent has an ID
       if (agentId && referencedDocs.length > 0) {
@@ -655,20 +645,23 @@ ${signature}`
                       </div>
                     </div>
                   )}
-                  <Button
-                    size="sm"
-                    className="w-full gap-2"
-                    onClick={() => handleApplyPrompt(message.generatedPrompt!, message.suggestedSkills || [])}
-                  >
-                    <CheckCircle2 className="w-4 h-4" />
-                    Apply to Agent
-                  </Button>
+                  {!message.applied && (
+                    <Button
+                      size="sm"
+                      className="w-full gap-2"
+                      onClick={() => handleApplyPrompt(message.generatedPrompt!, message.suggestedSkills || [], message.id)}
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      Apply to Agent
+                    </Button>
+                  )}
                 </>
               )}
               
               {/* Fallback: Show apply button if response has structured content but extraction didn't work */}
               {message.role === "assistant" && 
                !message.generatedPrompt && 
+               !message.applied &&
                (message.content.includes("ROLE:") || 
                 message.content.includes("INPUTS:") || 
                 message.content.includes("STEPS:") || 
@@ -677,7 +670,7 @@ ${signature}`
                 <Button
                   size="sm"
                   className="w-full gap-2"
-                  onClick={() => handleApplyPrompt(message.content, message.suggestedSkills || [])}
+                  onClick={() => handleApplyPrompt(message.content, message.suggestedSkills || [], message.id)}
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Apply to Agent
