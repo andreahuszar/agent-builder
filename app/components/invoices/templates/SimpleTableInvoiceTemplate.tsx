@@ -376,7 +376,7 @@ export function SimpleTableInvoiceTemplate({
           </div>
 
           {/* Right Column: Bank Details */}
-          <div className="p-6">
+          <div className={`p-6 rounded transition-all duration-200 ${focusedFieldName === 'payment_bank_details' ? 'ring-4 ring-orange-500 ring-offset-2 bg-orange-50/30' : ''}`}>
             <h2 className="font-bold text-gray-950 mb-4">Bank Details</h2>
             <div className="text-sm text-gray-950 space-y-2">
               <div className="flex">

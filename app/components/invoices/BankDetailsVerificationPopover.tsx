@@ -107,7 +107,7 @@ export function BankDetailsVerificationPopover({
           sideOffset={5}
           align="start"
         >
-          <AnimatedPopover className="w-[520px] rounded-lg border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white shadow-lg">
+          <AnimatedPopover className="w-[390px] rounded-lg border-2 border-purple-300 bg-gradient-to-br from-purple-50 to-white shadow-lg">
             <div className="max-h-[500px] overflow-y-auto p-4 scrollbar-thin scrollbar-thumb-purple-300 scrollbar-track-purple-50">
               {/* Header */}
               <div className="flex items-center gap-2 mb-3">
@@ -122,99 +122,12 @@ export function BankDetailsVerificationPopover({
                 </button>
               </div>
 
-              {/* Side-by-Side Comparison */}
-              <div className="mb-3">
-                <div className="text-xs font-semibold text-gray-950 mb-2">Bank Details Comparison</div>
-                <div className="grid grid-cols-[auto_1fr_1fr] gap-x-3 gap-y-2.5 text-xs">
-                  {/* Headers */}
-                  <div></div>
-                  <div className="text-gray-950 font-semibold px-2">MVD on File</div>
-                  <div className="text-gray-950 font-semibold px-2">Invoice Shows</div>
-
-                  {/* Bank Name */}
-                  <div className="text-gray-950 font-medium flex items-center gap-1">
-                    {hasChanged(oldBankDetails?.bank_name, newBankDetails?.bank_name) && (
-                      <AlertTriangle className="h-3 w-3 text-amber-600" />
-                    )}
-                    <span>Bank Name:</span>
-                  </div>
-                  <div className={`px-2 py-1 rounded ${hasChanged(oldBankDetails?.bank_name, newBankDetails?.bank_name) ? 'bg-gray-100' : 'bg-gray-50'}`}>
-                    <span className="text-gray-950">{oldBankDetails?.bank_name || 'N/A'}</span>
-                  </div>
-                  <div className={`px-2 py-1 rounded ${hasChanged(oldBankDetails?.bank_name, newBankDetails?.bank_name) ? 'bg-purple-100 border border-purple-200' : 'bg-gray-50'}`}>
-                    <span className="text-purple-900 font-medium">{newBankDetails?.bank_name || 'N/A'}</span>
-                  </div>
-
-                  {/* Account Name */}
-                  <div className="text-gray-950 font-medium flex items-center gap-1">
-                    {hasChanged(oldBankDetails?.account_name, newBankDetails?.account_name) && (
-                      <AlertTriangle className="h-3 w-3 text-amber-600" />
-                    )}
-                    <span>Account Name:</span>
-                  </div>
-                  <div className={`px-2 py-1 rounded ${hasChanged(oldBankDetails?.account_name, newBankDetails?.account_name) ? 'bg-gray-100' : 'bg-gray-50'}`}>
-                    <span className="text-gray-950">{oldBankDetails?.account_name || 'N/A'}</span>
-                  </div>
-                  <div className={`px-2 py-1 rounded ${hasChanged(oldBankDetails?.account_name, newBankDetails?.account_name) ? 'bg-purple-100 border border-purple-200' : 'bg-gray-50'}`}>
-                    <span className="text-purple-900 font-medium">{newBankDetails?.account_name || 'N/A'}</span>
-                  </div>
-
-                  {/* IBAN */}
-                  <div className="text-gray-950 font-medium flex items-center gap-1">
-                    {hasChanged(oldBankDetails?.iban, newBankDetails?.iban) && (
-                      <AlertTriangle className="h-3 w-3 text-amber-600" />
-                    )}
-                    <span>IBAN:</span>
-                  </div>
-                  <div className={`px-2 py-1 rounded ${hasChanged(oldBankDetails?.iban, newBankDetails?.iban) ? 'bg-gray-100' : 'bg-gray-50'}`}>
-                    <span className="text-gray-950 font-mono text-xs">{formatIBAN(oldBankDetails?.iban || '') || 'N/A'}</span>
-                  </div>
-                  <div className={`px-2 py-1 rounded ${hasChanged(oldBankDetails?.iban, newBankDetails?.iban) ? 'bg-purple-100 border border-purple-200' : 'bg-gray-50'}`}>
-                    <span className="text-purple-900 font-medium font-mono text-xs">{formatIBAN(newBankDetails?.iban || '') || 'N/A'}</span>
-                  </div>
-
-                  {/* SWIFT/BIC */}
-                  <div className="text-gray-950 font-medium flex items-center gap-1">
-                    {hasChanged(oldBankDetails?.swift_bic, newBankDetails?.swift_bic) && (
-                      <AlertTriangle className="h-3 w-3 text-amber-600" />
-                    )}
-                    <span>SWIFT/BIC:</span>
-                  </div>
-                  <div className={`px-2 py-1 rounded ${hasChanged(oldBankDetails?.swift_bic, newBankDetails?.swift_bic) ? 'bg-gray-100' : 'bg-gray-50'}`}>
-                    <span className="text-gray-950 font-mono text-xs">{oldBankDetails?.swift_bic || 'N/A'}</span>
-                  </div>
-                  <div className={`px-2 py-1 rounded ${hasChanged(oldBankDetails?.swift_bic, newBankDetails?.swift_bic) ? 'bg-purple-100 border border-purple-200' : 'bg-gray-50'}`}>
-                    <span className="text-purple-900 font-medium font-mono text-xs">{newBankDetails?.swift_bic || 'N/A'}</span>
-                  </div>
-
-                  {/* Sort Code */}
-                  <div className="text-gray-950 font-medium flex items-center gap-1">
-                    {hasChanged(oldBankDetails?.sort_code, newBankDetails?.sort_code) && (
-                      <AlertTriangle className="h-3 w-3 text-amber-600" />
-                    )}
-                    <span>Sort Code:</span>
-                  </div>
-                  <div className={`px-2 py-1 rounded ${hasChanged(oldBankDetails?.sort_code, newBankDetails?.sort_code) ? 'bg-gray-100' : 'bg-gray-50'}`}>
-                    <span className="text-gray-950 font-mono text-xs">{oldBankDetails?.sort_code || 'N/A'}</span>
-                  </div>
-                  <div className={`px-2 py-1 rounded ${hasChanged(oldBankDetails?.sort_code, newBankDetails?.sort_code) ? 'bg-purple-100 border border-purple-200' : 'bg-gray-50'}`}>
-                    <span className="text-purple-900 font-medium font-mono text-xs">{newBankDetails?.sort_code || 'N/A'}</span>
-                  </div>
-
-                  {/* Account Number */}
-                  <div className="text-gray-950 font-medium flex items-center gap-1">
-                    {hasChanged(oldBankDetails?.account_number, newBankDetails?.account_number) && (
-                      <AlertTriangle className="h-3 w-3 text-amber-600" />
-                    )}
-                    <span>Account Number:</span>
-                  </div>
-                  <div className={`px-2 py-1 rounded ${hasChanged(oldBankDetails?.account_number, newBankDetails?.account_number) ? 'bg-gray-100' : 'bg-gray-50'}`}>
-                    <span className="text-gray-950 font-mono text-xs">{oldBankDetails?.account_number || 'N/A'}</span>
-                  </div>
-                  <div className={`px-2 py-1 rounded ${hasChanged(oldBankDetails?.account_number, newBankDetails?.account_number) ? 'bg-purple-100 border border-purple-200' : 'bg-gray-50'}`}>
-                    <span className="text-purple-900 font-medium font-mono text-xs">{newBankDetails?.account_number || 'N/A'}</span>
-                  </div>
-                </div>
+              {/* No-match message */}
+              <div className="mb-3 flex items-start gap-2 rounded-md bg-amber-50 border border-amber-200 px-3 py-3">
+                <AlertTriangle className="h-4 w-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                <p className="text-xs text-gray-950">
+                  The bank details on this invoice do not match any bank account details we have on file for <span className="font-semibold">{vendorName}</span>. Please verify before approving payment.
+                </p>
               </div>
 
               {/* Action Buttons */}

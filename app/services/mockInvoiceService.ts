@@ -407,7 +407,6 @@ export const generateBaselineInvoices = (): Invoice[] => {
         status: 'failed',
         detail: '- If the bank details on the invoice are not present in the Master Vendor data for the given supplier, raise an exception',
         agent_id: '10',
-        links_to: 'additional_details',
         mode: 'auto-apply'
       }
     ],

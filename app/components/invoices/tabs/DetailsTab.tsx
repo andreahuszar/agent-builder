@@ -2724,7 +2724,7 @@ export function DetailsTab({
                             poNumber={invoiceData.po_numbers_cached?.[0]}
                             open={isBankVerifyOpen}
                             onOpenChange={setIsBankVerifyOpen}
-                            fieldName="payment_bank_details.account_number"
+                            fieldName="payment_bank_details"
                             onFieldFocus={onFieldFocus}
                           >
                             <button

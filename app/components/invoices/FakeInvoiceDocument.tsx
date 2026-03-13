@@ -72,6 +72,12 @@ export function FakeInvoiceDocument({
 
     // Check if this field is currently focused
     const isFocused = focusedFieldName === fieldName;
+    // Suppress highlight on this field when a different field/section is focused
+    const suppressHighlight = focusedFieldName !== null && !isFocused;
+
+    if (suppressHighlight) {
+      return <span className={className}>{children}</span>;
+    }
 
     return (
       <span className={`relative inline-block ${className}`}>
