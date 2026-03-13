@@ -12,7 +12,7 @@ type Invoice = Partial<UnifiedInvoice>;
 
 // Module-level cache to persist invoices across client-side navigations
 // Cache version: increment this to bust cache when invoice generation logic changes
-const CACHE_VERSION = 6; // Bust cache to ensure bulk commodities tolerance agent shows correctly
+const CACHE_VERSION = 18; // Force cache bust - verify approver parsing with full IT agent prompt
 let cachedInvoices: Invoice[] | null = null;
 let cacheTimestamp: number = 0;
 let cacheVersion: number = 0;
@@ -105,28 +105,54 @@ export function generateAgentProcessedInvoices(serverAgents?: AgentConfig[]): In
     stage: 'verification', // Start at verification stage
   });
   
-  // Take only first 15 scenarios
-  const scenarios = allScenarios.slice(0, 15);
+  // Keep only IT-routed invoices (indices 11 and 13) to show IT routing agent effect
+  // These correspond to invoice numbers SI-010011 and 2026/00013
+  console.log('[AgentInvoiceService] Total scenarios available:', allScenarios.length);
   
-  console.log('[AgentInvoiceService] Generated scenarios:', scenarios.length);
+  const originalIndices = [11, 13];
+  let scenarios = originalIndices
+    .filter(idx => idx < allScenarios.length) // Only keep valid indices
+    .map(idx => {
+      const scenario = { ...allScenarios[idx] };
+      // Force IT-related scenarios to be Non-PO so routing agent can demonstrate its effect
+      if (scenario && scenario.stageData && scenario.stageData.matching) {
+        scenario.stageData.matching = {
+          ...scenario.stageData.matching,
+          hasPO: false,
+          poNumber: undefined,
+          matchStatus: 'no_match'
+        };
+      }
+      return scenario;
+    })
+    .filter(s => s !== undefined); // Remove any undefined scenarios
+  
+  console.log('[AgentInvoiceService] Filtered scenarios for IT routing:', scenarios.length);
+  
+  // If we don't have enough IT scenarios, fall back to showing all scenarios
+  if (scenarios.length === 0) {
+    console.warn('[AgentInvoiceService] No IT scenarios found, using all scenarios instead');
+    scenarios = allScenarios.slice(0, 15);
+  }
   
   // Process each scenario through agents
   const processedInvoices: Invoice[] = [];
   
-  scenarios.forEach((scenario, index) => {
-    console.log('[AgentInvoiceService] Processing scenario', index + 1);
-    const invoiceId = `agent-processed-${index + 1}`;
+  scenarios.forEach((scenario, loopIndex) => {
+    const originalIndex = originalIndices[loopIndex]; // Use original index (11 or 13)
+    console.log('[AgentInvoiceService] Processing scenario', originalIndex + 1);
+    const invoiceId = `agent-processed-${originalIndex + 1}`;
     
     // Process through each active agent
     const agentResults = agents.map(agent => 
       simulateAgentProcessing(scenario, agent)
     );
     
-    console.log('[AgentInvoiceService] Agent results for scenario', index + 1, ':', agentResults.length);
+    console.log('[AgentInvoiceService] Agent results for scenario', originalIndex + 1, ':', agentResults.length);
     
     // Transform scenario and agent results into invoice format
-    // Pass the actual index (0-14) for deterministic line item assignment
-    const invoice = transformScenarioToInvoice(invoiceId, scenario, agentResults, agents, index);
+    // Pass the original index (11 or 13) for correct invoice number formatting
+    const invoice = transformScenarioToInvoice(invoiceId, scenario, agentResults, agents, originalIndex);
     console.log('[AgentInvoiceService] Transformed invoice:', invoice.id, invoice.invoice_number, 'Issues:', invoice.issues);
     processedInvoices.push(invoice);
   });
@@ -302,14 +328,15 @@ function transformScenarioToInvoice(
   ];
   const invoiceNumber = invoiceFormats[invoiceIndex % invoiceFormats.length];
   
-  // Calculate amounts (only 20% have tax errors) - MUST BE BEFORE auto_corrections
-  const hasTaxError = Math.random() < 0.2;
+  // Calculate amounts - Make IT-routed invoices (index 11, 13) have tax errors to show as exceptions
+  // Index 11 = SI-010011, Index 13 = 2026/00013
+  const hasTaxError = invoiceIndex === 11 || invoiceIndex === 13;
   let calculatedSubtotal: number;
   let calculatedTaxTotal: number;
   let calculatedTotal: number;
   
   if (hasTaxError) {
-    // Incorrect tax calculation (tax is 20% too high)
+    // Incorrect tax calculation (tax is 20% too high) - creates variance exception
     calculatedSubtotal = scenario.amount / (1 + taxRate * 1.2);
     calculatedTaxTotal = calculatedSubtotal * taxRate * 1.2;
     calculatedTotal = scenario.amount;
@@ -576,10 +603,11 @@ function transformScenarioToInvoice(
     { sku: 'EVT-445', description: 'Corporate Event Catering', qty: 150, uom: 'EA' },
     // Facilities & Maintenance
     { sku: 'FAC-223', description: 'Office Cleaning Services', qty: 4, uom: 'WK' },
-    { sku: 'UTL-889', description: 'Electricity & Utilities', qty: 1, uom: 'MO' },
+    // IT Software & Services (index 11 for SI-010011)
+    { sku: 'SW-445', description: 'Adobe Creative Cloud Enterprise License', qty: 50, uom: 'EA' },
     // Food & Perishables (more items)
     { sku: 'FOD-003', description: 'Fresh Meat - Beef & Poultry', qty: 120, uom: 'KG' },
-    // Telecommunications
+    // IT Telecommunications (index 13 for 2026/00013)
     { sku: 'TEL-334', description: 'Internet & Broadband Services', qty: 1, uom: 'MO' },
     // Food & Perishables (invoice F2600014 will be index 14, needs qty ~150)
     { sku: 'FOD-004', description: 'Frozen Foods - Ready Meals', qty: 150, uom: 'KG' }
