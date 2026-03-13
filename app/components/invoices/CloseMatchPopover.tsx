@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import * as Popover from '@radix-ui/react-popover';
-import { GitMerge, X, Check } from 'lucide-react';
+import { SearchCheck, X, Check } from 'lucide-react';
 import { LineItemsComparisonDrawer } from './LineItemsComparisonDrawer';
 
 interface MatchingFactors {
@@ -120,7 +120,7 @@ export function CloseMatchPopover({
           >
           {/* Header */}
           <div className="flex items-center gap-2 mb-3">
-            <GitMerge className="h-4 w-4 text-purple-600" />
+            <SearchCheck className="h-4 w-4 text-purple-600" />
             <span className="text-sm font-semibold text-purple-900">Close Match Found</span>
             <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-green-200 text-green-800">
               {confidencePercent}% confidence

@@ -27,7 +27,7 @@ import {
   FileText,
   Package,
   Sparkles,
-  GitMerge,
+  SearchCheck,
   Bot,
   AlertCircle,
   Shield,
@@ -1801,8 +1801,8 @@ export function DetailsTab({
                 <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     PO Number
-                    {/* Hide confidence pill for Non-PO invoices */}
-                    {!invoiceData.id?.startsWith('baseline-nonpo-') && (
+                    {/* Hide confidence pill for Non-PO invoices and close-match invoices */}
+                    {!invoiceData.id?.startsWith('baseline-nonpo-') && !invoiceData.close_match_po && (
                       <FieldConfidencePill
                         confidence={invoiceData.extraction_field_confidences?.po_numbers_cached}
                         isEditMode={isEditing}
@@ -1849,7 +1849,7 @@ export function DetailsTab({
                         onClick={() => setIsCloseMatchPopoverOpen(true)}
                         className="inline-flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
                       >
-                        <GitMerge className="h-3.5 w-3.5" />
+                        <SearchCheck className="h-3.5 w-3.5" />
                         Close match found
                       </button>
                     </CloseMatchPopover>
