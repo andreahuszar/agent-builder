@@ -138,9 +138,8 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           suggested_po_match: undefined,
           status: 'matched',
           smart_match_applied: true,
-          smart_match_confidence: 0.92,
           smart_match_reason: 'Semantic match accepted: "Pleated air filters MERV 8" matched to "Air Filters MERV 9 - EQ-800111"',
-          smart_match_agent: 'Substitution Agent',
+          smart_match_agent: 'Smart Match (Substitution)',
           agent_fixed: true,
         };
       }
@@ -164,6 +163,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           uom_conversion: {
             invoice_qty: 54,
             invoice_uom: 'bags',
+            invoice_unit_price: 50.00,
             po_qty: 2700,
             po_uom: 'kg',
             conversion_factor: 50,

@@ -47,6 +47,7 @@ interface InvoiceLineItem {
   uom_conversion?: {
     invoice_qty: number;
     invoice_uom: string;
+    invoice_unit_price?: number;
     po_qty: number;
     po_uom: string;
     conversion_factor: number;
@@ -696,7 +697,14 @@ export function LineItemsPreviewPanel({
     const updatedLines = editableLines.map(line => {
       const id = line.id || `line-${line.line_no}`;
       if (id === lineId) {
-        return { ...line, po_line_id: suggestion.po_line_id };
+        return {
+          ...line,
+          po_line_id: suggestion.po_line_id,
+          smart_match_applied: true,
+          smart_match_agent: 'Smart Match (Substitution)',
+          smart_match_reason: suggestion.reason,
+          // No confidence score — match was user-confirmed, not auto-applied
+        };
       }
       return line;
     });
@@ -2278,7 +2286,7 @@ export function LineItemsPreviewPanel({
                                       <UomMatchPopover
                                         invoiceQty={line.uom_conversion!.invoice_qty}
                                         invoiceUom={line.uom_conversion!.invoice_uom}
-                                        invoiceUnitPrice={line.unit_price}
+                                        invoiceUnitPrice={line.uom_conversion!.invoice_unit_price ?? line.unit_price}
                                         poQty={line.uom_conversion!.po_qty}
                                         poUom={line.uom_conversion!.po_uom}
                                         poUnitPrice={matchedPO.unit_price}
@@ -3393,7 +3401,7 @@ export function LineItemsPreviewPanel({
                                     <UomMatchPopover
                                       invoiceQty={line.uom_conversion!.invoice_qty}
                                       invoiceUom={line.uom_conversion!.invoice_uom}
-                                      invoiceUnitPrice={line.unit_price}
+                                      invoiceUnitPrice={line.uom_conversion!.invoice_unit_price ?? line.unit_price}
                                       poQty={line.uom_conversion!.po_qty}
                                       poUom={line.uom_conversion!.po_uom}
                                       poUnitPrice={matchedPO.unit_price}
@@ -3866,7 +3874,7 @@ export function LineItemsPreviewPanel({
                                       <UomMatchPopover
                                         invoiceQty={line.uom_conversion!.invoice_qty}
                                         invoiceUom={line.uom_conversion!.invoice_uom}
-                                        invoiceUnitPrice={line.unit_price}
+                                        invoiceUnitPrice={line.uom_conversion!.invoice_unit_price ?? line.unit_price}
                                         poQty={line.uom_conversion!.po_qty}
                                         poUom={line.uom_conversion!.po_uom}
                                         poUnitPrice={matchedPO.unit_price}
@@ -4310,7 +4318,7 @@ export function LineItemsPreviewPanel({
                                         </Tooltip.Trigger>
                                       </CustomRulePopover>
                                     ) : hasUomConversion(line) ? (
-                                      <UomMatchPopover invoiceQty={line.uom_conversion!.invoice_qty} invoiceUom={line.uom_conversion!.invoice_uom} invoiceUnitPrice={line.unit_price} poQty={line.uom_conversion!.po_qty} poUom={line.uom_conversion!.po_uom} poUnitPrice={matchedPO.unit_price} conversionFactor={line.uom_conversion!.conversion_factor} conversionExplanation={line.uom_conversion!.explanation} lineTotal={line.line_total} onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
+                                      <UomMatchPopover invoiceQty={line.uom_conversion!.invoice_qty} invoiceUom={line.uom_conversion!.invoice_uom} invoiceUnitPrice={line.uom_conversion!.invoice_unit_price ?? line.unit_price} poQty={line.uom_conversion!.po_qty} poUom={line.uom_conversion!.po_uom} poUnitPrice={matchedPO.unit_price} conversionFactor={line.uom_conversion!.conversion_factor} conversionExplanation={line.uom_conversion!.explanation} lineTotal={line.line_total} onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">
                                             <Zap className="h-3.5 w-3.5 text-purple-600" fill="currentColor" />
