@@ -146,10 +146,16 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
       }
 
       // Line 6 (index 5): apply UoM conversion and mark as matched
+      // Update qty/uom/price to reflect the normalised kg values (2700 kg @ £1.00)
       const line6 = updatedLineItems[5];
       if (line6) {
         updatedLineItems[5] = {
           ...line6,
+          qty: 2700,
+          uom: 'kg',
+          unit_price: 1.00,
+          net_amount: 2700.00,
+          line_total: 2700.00,
           status: 'matched',
           smart_match_applied: true,
           smart_match_confidence: 0.96,
@@ -355,9 +361,10 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   // Load/save PDF collapsed state from localStorage
   useEffect(() => {
     const saved = localStorage.getItem(`pdf-collapsed-${invoiceId}`);
-    if (saved !== null) {
-      setIsPdfCollapsed(saved === 'true');
-    }
+    // Always set state explicitly — if no saved value, reset to default (expanded).
+    // Without the else branch, stale collapsed state from a previous invoice bleeds
+    // into any fresh invoice that has no saved entry in localStorage.
+    setIsPdfCollapsed(saved === 'true');
   }, [invoiceId]);
 
   useEffect(() => {

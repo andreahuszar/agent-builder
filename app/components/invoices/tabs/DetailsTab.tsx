@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
-import Cookies from 'js-cookie';
 import { formatVendorAddress } from '@/app/lib/addressFormatter';
 import {
   Save,
@@ -252,8 +251,10 @@ export function DetailsTab({
   const [showAIReasoning, setShowAIReasoning] = useState(false);
   const [localFocusedField, setLocalFocusedField] = useState<string | null>(null);
 
-  // Accordion collapse state
-  const [isValidationExpanded, setIsValidationExpanded] = useState(false); // Start collapsed to avoid hydration mismatch
+  // Accordion collapse state — open when there are agent actions, closed when there are none
+  const [isValidationExpanded, setIsValidationExpanded] = useState(
+    !!(invoiceData.agent_actions && invoiceData.agent_actions.length > 0)
+  );
   const [isInvoiceInfoExpanded, setIsInvoiceInfoExpanded] = useState(true); // Start expanded
   const [isAdditionalDetailsExpanded, setIsAdditionalDetailsExpanded] = useState(false);
   const [isLineItemsExpanded, setIsLineItemsExpanded] = useState(true); // Start expanded
@@ -338,18 +339,6 @@ export function DetailsTab({
     };
   }, [isLineItemsFullscreen]);
 
-  // Read Validation Results expanded state from cookie after hydration
-  useEffect(() => {
-    const saved = Cookies.get('validationResultsExpanded');
-    if (saved === 'true') {
-      setIsValidationExpanded(true);
-    }
-  }, []);
-
-  // Save Validation Results expanded state to cookie
-  useEffect(() => {
-    Cookies.set('validationResultsExpanded', String(isValidationExpanded), { expires: 365 });
-  }, [isValidationExpanded]);
 
   // Notify parent when edit mode changes
   useEffect(() => {
@@ -822,6 +811,13 @@ export function DetailsTab({
     });
   }, [invoiceData.invoice_number, isValidationExpanded, filteredValidationIssues]);
 
+  // Listen for the toolbar exceptions pill click and trigger the same scroll behaviour
+  useEffect(() => {
+    const handler = () => handleExceptionsPillClick({ stopPropagation: () => {} } as React.MouseEvent);
+    window.addEventListener('invoice-scroll-to-agents', handler);
+    return () => window.removeEventListener('invoice-scroll-to-agents', handler);
+  }, [handleExceptionsPillClick]);
+
   // Count errors in Additional Details section (payment and coding fields)
   const additionalDetailsErrorCount = useMemo(() => {
     const additionalDetailsFields = [
@@ -1288,7 +1284,7 @@ export function DetailsTab({
               {filteredAllValidationsPassed ? (
                 <>
                   <CheckCircle className="h-4 w-4 text-green-600" />
-                  <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Agents</h3>
+                  <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Agent Activity</h3>
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
                     Ready to post
                   </span>
@@ -1296,16 +1292,7 @@ export function DetailsTab({
               ) : (
                 <>
                   <AlertTriangle className={`h-4 w-4 ${validationCounts.errorCount > 0 ? 'text-red-600' : 'text-purple-600'}`} />
-                  <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Agents</h3>
-                  {totalExceptionsCount > 0 && (
-                    <button
-                      onClick={handleExceptionsPillClick}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
-                    >
-                      <AlertTriangle className="h-3 w-3" />
-                      {totalExceptionsCount} exception{totalExceptionsCount !== 1 ? 's' : ''}
-                    </button>
-                  )}
+                  <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Agent Activity</h3>
                   {/* Reprocess with AI button - DEBUG: Always show for testing */}
                 </>
               )}

@@ -2274,7 +2274,7 @@ export function LineItemsPreviewPanel({
                                           </span>
                                         </Tooltip.Trigger>
                                       </CustomRulePopover>
-                                    ) : hasUomConversion(line) && hasUomDifference(line, matchedPO) ? (
+                                    ) : hasUomConversion(line) ? (
                                       <UomMatchPopover
                                         invoiceQty={line.uom_conversion!.invoice_qty}
                                         invoiceUom={line.uom_conversion!.invoice_uom}
@@ -2321,7 +2321,7 @@ export function LineItemsPreviewPanel({
                                         sideOffset={5}
                                       >
                                         <div className="space-y-1">
-                                          <p className="font-semibold">{hasUomConversion(line) && hasUomDifference(line, matchedPO) ? 'Unit Conversion Matching Agent' : 'Smart Match Applied'}</p>
+                                          <p className="font-semibold">{hasUomConversion(line) ? 'Unit Conversion Matching Agent' : 'Smart Match Applied'}</p>
                                           <p>Click to review or unmatch</p>
                                         </div>
                                         <Tooltip.Arrow className="fill-gray-900" />
@@ -3389,7 +3389,7 @@ export function LineItemsPreviewPanel({
                                         </span>
                                       </Tooltip.Trigger>
                                     </CustomRulePopover>
-                                  ) : hasUomConversion(line) && hasUomDifference(line, matchedPO) ? (
+                                  ) : hasUomConversion(line) ? (
                                     <UomMatchPopover
                                       invoiceQty={line.uom_conversion!.invoice_qty}
                                       invoiceUom={line.uom_conversion!.invoice_uom}
@@ -3862,7 +3862,7 @@ export function LineItemsPreviewPanel({
                                           </span>
                                         </Tooltip.Trigger>
                                       </CustomRulePopover>
-                                    ) : hasUomConversion(line) && hasUomDifference(line, matchedPO) ? (
+                                    ) : hasUomConversion(line) ? (
                                       <UomMatchPopover
                                         invoiceQty={line.uom_conversion!.invoice_qty}
                                         invoiceUom={line.uom_conversion!.invoice_uom}
@@ -3905,7 +3905,7 @@ export function LineItemsPreviewPanel({
                                     <Tooltip.Portal>
                                       <Tooltip.Content style={{zIndex: 9999}} className="rounded-md bg-gray-900 px-3 py-2 text-xs text-white shadow-md max-w-[280px]" sideOffset={5}>
                                         <div className="space-y-1">
-                                          <p className="font-semibold">{hasUomConversion(line) && hasUomDifference(line, matchedPO) ? 'Unit Conversion Matching Agent' : 'Smart Match Applied'}</p>
+                                          <p className="font-semibold">{hasUomConversion(line) ? 'Unit Conversion Matching Agent' : 'Smart Match Applied'}</p>
                                           <p>Click to review or unmatch</p>
                                         </div>
                                         <Tooltip.Arrow className="fill-gray-900" />
@@ -4309,7 +4309,7 @@ export function LineItemsPreviewPanel({
                                           </span>
                                         </Tooltip.Trigger>
                                       </CustomRulePopover>
-                                    ) : hasUomConversion(line) && hasUomDifference(line, matchedPO) ? (
+                                    ) : hasUomConversion(line) ? (
                                       <UomMatchPopover invoiceQty={line.uom_conversion!.invoice_qty} invoiceUom={line.uom_conversion!.invoice_uom} invoiceUnitPrice={line.unit_price} poQty={line.uom_conversion!.po_qty} poUom={line.uom_conversion!.po_uom} poUnitPrice={matchedPO.unit_price} conversionFactor={line.uom_conversion!.conversion_factor} conversionExplanation={line.uom_conversion!.explanation} lineTotal={line.line_total} onUnmatch={() => handleUnmatch(line.id || `line-${line.line_no}`)} open={openPopoverId === `invoice-grouped-matched-${line.id || `line-${line.line_no}`}`} onOpenChange={(open) => setOpenPopoverId(open ? `invoice-grouped-matched-${line.id || `line-${line.line_no}`}` : null)}>
                                         <Tooltip.Trigger asChild>
                                           <span className="inline-flex items-center justify-center cursor-pointer flex-shrink-0">

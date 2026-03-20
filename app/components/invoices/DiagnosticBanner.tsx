@@ -271,12 +271,15 @@ export function DiagnosticBanner({
 
         {/* Consolidated Exceptions Banner */}
         {exceptionsCount > 0 && (
-          <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700">
+          <button
+            onClick={() => window.dispatchEvent(new CustomEvent('invoice-scroll-to-agents'))}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-red-50 text-red-700 hover:bg-red-100 transition-colors cursor-pointer"
+          >
             <AlertTriangle className="h-3 w-3" />
             <span>
               {exceptionsCount} exception{exceptionsCount !== 1 ? 's' : ''}
             </span>
-          </div>
+          </button>
         )}
 
         {/* Match Status for invoices without PO */}
