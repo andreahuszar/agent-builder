@@ -675,7 +675,6 @@ export function AgentBuilder2({
                         className="h-20 flex flex-col items-center justify-center"
                       >
                         <span className="font-bold text-xl">7 days</span>
-                        <span className="text-xs">~1,500 invoices</span>
                       </Button>
                       <Button
                         variant={selectedTimePeriod === "30days" ? "default" : "outline"}
@@ -683,7 +682,6 @@ export function AgentBuilder2({
                         className="h-20 flex flex-col items-center justify-center"
                       >
                         <span className="font-bold text-xl">30 days</span>
-                        <span className="text-xs">~6,200 invoices</span>
                       </Button>
                       <Button
                         variant={selectedTimePeriod === "3months" ? "default" : "outline"}
@@ -691,7 +689,6 @@ export function AgentBuilder2({
                         className="h-20 flex flex-col items-center justify-center"
                       >
                         <span className="font-bold text-xl">3 months</span>
-                        <span className="text-xs">~18,500 invoices</span>
                       </Button>
                       <Button
                         variant={selectedTimePeriod === "6months" ? "default" : "outline"}
@@ -699,7 +696,6 @@ export function AgentBuilder2({
                         className="h-20 flex flex-col items-center justify-center"
                       >
                         <span className="font-bold text-xl">6 months</span>
-                        <span className="text-xs">~37,000 invoices</span>
                       </Button>
                     </div>
                   </div>
