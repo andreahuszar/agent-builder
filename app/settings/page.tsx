@@ -4,6 +4,8 @@ import React, { useState, useEffect } from 'react';
 import AppLayout from '@/app/components/AppLayout';
 import AgentBuilderPage from '@/app/components/agentbuilder/AgentBuilderPage';
 import APAutomationGeneralSettings from '@/app/components/settings/APAutomationGeneralSettings';
+import { BackTestPanel, useBackTestActive } from '@/app/components/agentbuilder/BackTestPanel';
+import { useToast } from '@/app/components/ui/Toast';
 
 interface SettingsContentProps {
   currentView?: string;
@@ -11,6 +13,8 @@ interface SettingsContentProps {
 
 function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
   const [activeSubTab, setActiveSubTab] = useState('dashboard');
+  const backTestActive = useBackTestActive();
+  const { showToast } = useToast();
 
   // Check hash and URL params on mount and when they change
   useEffect(() => {
@@ -29,6 +33,8 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
       const hash = window.location.hash;
       if (hash.includes('general-settings')) {
         setActiveSubTab('general-settings');
+      } else if (hash.includes('back-testing')) {
+        setActiveSubTab('back-testing');
       } else if (hash.includes('dashboard')) {
         setActiveSubTab('dashboard');
       } else if (hash.includes('agent-builder-2')) {
@@ -38,17 +44,50 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
       }
     };
 
+    // Listen for back-test-tab-switch event from AgentBuilder2
+    const onBackTestTabSwitch = () => {
+      setActiveSubTab('back-testing');
+      window.history.pushState({}, '', `/settings#${currentView}-back-testing`);
+    };
+
+    // When user clicks "Run New Test" in BackTestPanel, go back to Agent Builder
+    const onRunNew = () => {
+      setActiveSubTab('agent-builder-2');
+      window.history.pushState({}, '', `/settings#${currentView}-agent-builder-2`);
+    };
+
+    // Toast notification when a back test completes
+    const onBackTestComplete = (e: Event) => {
+      const { agentName } = (e as CustomEvent).detail ?? {}
+      showToast(
+        `Back test complete${agentName ? `: ${agentName}` : ''}`,
+        'success',
+        {
+          label: 'View results →',
+          onClick: () => {
+            setActiveSubTab('back-testing');
+            window.history.pushState({}, '', `/settings#${currentView}-back-testing`);
+          },
+        },
+        8000
+      );
+    };
+
     // Run on mount
     updateSubTabFromHash();
 
-    // Listen for hash changes
     window.addEventListener('hashchange', updateSubTabFromHash);
+    window.addEventListener('back-test-tab-switch', onBackTestTabSwitch);
+    window.addEventListener('back-test-run-new', onRunNew);
+    window.addEventListener('back-test-complete', onBackTestComplete);
 
-    // Cleanup
     return () => {
       window.removeEventListener('hashchange', updateSubTabFromHash);
+      window.removeEventListener('back-test-tab-switch', onBackTestTabSwitch);
+      window.removeEventListener('back-test-run-new', onRunNew);
+      window.removeEventListener('back-test-complete', onBackTestComplete);
     };
-  }, []);
+  }, [currentView, showToast]);
 
   const handleSubTabChange = (subTab: string) => {
     setActiveSubTab(subTab);
@@ -73,17 +112,6 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
               >
                 Dashboard
               </button>
-              {/* Original Agent Builder - Hidden */}
-              {/* <button
-                onClick={() => handleSubTabChange('agent-builder')}
-                className={`${
-                  activeSubTab === 'agent-builder'
-                    ? 'border-purple-900 text-purple-900'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
-              >
-                Agent Builder
-              </button> */}
               <button
                 onClick={() => handleSubTabChange('agent-builder-2')}
                 className={`${
@@ -93,6 +121,19 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                 } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
               >
                 Agent Builder
+              </button>
+              <button
+                onClick={() => handleSubTabChange('back-testing')}
+                className={`${
+                  activeSubTab === 'back-testing'
+                    ? 'border-purple-900 text-purple-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors flex items-center gap-1.5`}
+              >
+                Back Testing
+                {backTestActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                )}
               </button>
               <button
                 onClick={() => handleSubTabChange('documents')}
@@ -118,11 +159,18 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
           </div>
 
           {/* Sub-tab Content */}
-          <div className="flex-1 overflow-auto">
-            {activeSubTab === 'general-settings' && <APAutomationGeneralSettings />}
-            {activeSubTab === 'dashboard' && <AgentBuilderPage key="dashboard" hideNavigation={true} defaultMode="executive-dashboard" />}
-            {activeSubTab === 'agent-builder-2' && <AgentBuilderPage key="builder2" hideNavigation={true} defaultMode="build2" />}
-            {activeSubTab === 'documents' && <AgentBuilderPage key="documents" hideNavigation={true} defaultMode="documents" />}
+          <div className="flex-1 overflow-hidden relative">
+            {activeSubTab === 'general-settings' && <div className="h-full overflow-auto"><APAutomationGeneralSettings /></div>}
+            {activeSubTab === 'dashboard' && <div className="h-full overflow-auto"><AgentBuilderPage key="dashboard" hideNavigation={true} defaultMode="executive-dashboard" /></div>}
+            {/* AgentBuilderPage stays mounted while back-testing is active so the test keeps running */}
+            <div className={`h-full ${activeSubTab === 'agent-builder-2' || activeSubTab === 'back-testing' ? '' : 'hidden'}`}>
+              <AgentBuilderPage key="builder2" hideNavigation={true} defaultMode="build2" />
+            </div>
+            {/* BackTestPanel is ALWAYS mounted (never unmounted) so it never misses events */}
+            <div className={`absolute inset-0 flex flex-col bg-gray-50 overflow-hidden ${activeSubTab !== 'back-testing' ? 'hidden' : ''}`}>
+              <BackTestPanel />
+            </div>
+            {activeSubTab === 'documents' && <div className="h-full overflow-auto"><AgentBuilderPage key="documents" hideNavigation={true} defaultMode="documents" /></div>}
           </div>
         </div>
       );
@@ -193,17 +241,6 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
               >
                 Dashboard
               </button>
-              {/* Original Agent Builder - Hidden */}
-              {/* <button
-                onClick={() => handleSubTabChange('agent-builder')}
-                className={`${
-                  activeSubTab === 'agent-builder'
-                    ? 'border-purple-900 text-purple-900'
-                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
-                } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
-              >
-                Agent Builder
-              </button> */}
               <button
                 onClick={() => handleSubTabChange('agent-builder-2')}
                 className={`${
@@ -213,6 +250,19 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
                 } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors`}
               >
                 Agent Builder
+              </button>
+              <button
+                onClick={() => handleSubTabChange('back-testing')}
+                className={`${
+                  activeSubTab === 'back-testing'
+                    ? 'border-purple-900 text-purple-900'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700'
+                } whitespace-nowrap border-b-2 py-2 px-1 text-sm font-medium transition-colors flex items-center gap-1.5`}
+              >
+                Back Testing
+                {backTestActive && (
+                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                )}
               </button>
               <button
                 onClick={() => handleSubTabChange('documents')}
@@ -228,11 +278,17 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
           </div>
 
           {/* Sub-tab Content */}
-          <div className="flex-1 overflow-auto">
-            {activeSubTab === 'general-settings' && <APAutomationGeneralSettings />}
-            {activeSubTab === 'dashboard' && <AgentBuilderPage hideNavigation={true} defaultMode="executive-dashboard" />}
-            {activeSubTab === 'agent-builder-2' && <AgentBuilderPage hideNavigation={true} defaultMode="build2" />}
-            {activeSubTab === 'documents' && <AgentBuilderPage hideNavigation={true} defaultMode="documents" />}
+          <div className="flex-1 overflow-hidden relative">
+            {activeSubTab === 'general-settings' && <div className="h-full overflow-auto"><APAutomationGeneralSettings /></div>}
+            {activeSubTab === 'dashboard' && <div className="h-full overflow-auto"><AgentBuilderPage hideNavigation={true} defaultMode="executive-dashboard" /></div>}
+            <div className={`h-full ${activeSubTab === 'agent-builder-2' || activeSubTab === 'back-testing' ? '' : 'hidden'}`}>
+              <AgentBuilderPage key="builder2" hideNavigation={true} defaultMode="build2" />
+            </div>
+            {/* BackTestPanel is ALWAYS mounted (never unmounted) so it never misses events */}
+            <div className={`absolute inset-0 flex flex-col bg-gray-50 overflow-hidden ${activeSubTab !== 'back-testing' ? 'hidden' : ''}`}>
+              <BackTestPanel />
+            </div>
+            {activeSubTab === 'documents' && <div className="h-full overflow-auto"><AgentBuilderPage key="documents" hideNavigation={true} defaultMode="documents" /></div>}
           </div>
         </div>
       );

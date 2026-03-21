@@ -8,10 +8,12 @@ interface Toast {
   id: string;
   message: string;
   type?: 'success' | 'error' | 'info' | 'warning';
+  action?: { label: string; onClick: () => void };
+  duration?: number;
 }
 
 interface ToastContextValue {
-  showToast: (message: string, type?: Toast['type']) => void;
+  showToast: (message: string, type?: Toast['type'], action?: Toast['action'], duration?: number) => void;
 }
 
 const ToastContext = createContext<ToastContextValue | undefined>(undefined);
@@ -27,14 +29,13 @@ export function useToast() {
 export function ToastProvider({ children }: { children: React.ReactNode }) {
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const showToast = useCallback((message: string, type: Toast['type'] = 'info') => {
+  const showToast = useCallback((message: string, type: Toast['type'] = 'info', action?: Toast['action'], duration: number = 4000) => {
     const id = Math.random().toString(36).substring(7);
-    setToasts((prev) => [...prev, { id, message, type }]);
+    setToasts((prev) => [...prev, { id, message, type, action, duration }]);
 
-    // Auto-remove after 4 seconds
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
-    }, 4000);
+    }, duration);
   }, []);
 
   const removeToast = useCallback((id: string) => {
@@ -77,12 +78,20 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
             <ToastPrimitive.Root
               key={toast.id}
               className={`${styles.className} rounded-lg shadow-lg p-4 flex items-center gap-3 min-w-[300px] max-w-[500px] data-[state=open]:animate-in data-[state=open]:slide-in-from-right data-[state=closed]:animate-out data-[state=closed]:slide-out-to-top data-[state=closed]:fade-out data-[swipe=end]:animate-out data-[swipe=end]:slide-out-to-left`}
-              duration={4000}
+              duration={toast.duration ?? 4000}
             >
               {styles.icon}
               <ToastPrimitive.Description className="flex-1 text-sm text-gray-950">
                 {toast.message}
               </ToastPrimitive.Description>
+              {toast.action && (
+                <button
+                  onClick={() => { toast.action!.onClick(); removeToast(toast.id); }}
+                  className="text-xs font-medium text-purple-700 hover:text-purple-900 whitespace-nowrap transition-colors"
+                >
+                  {toast.action.label}
+                </button>
+              )}
               <ToastPrimitive.Close
                 className="p-1 rounded hover:bg-gray-100 transition-colors"
                 onClick={() => removeToast(toast.id)}

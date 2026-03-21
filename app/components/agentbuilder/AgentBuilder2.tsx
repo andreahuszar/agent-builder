@@ -91,6 +91,7 @@ export function AgentBuilder2({
   const [currentPage, setCurrentPage] = useState(1)
   const [rowsPerPage] = useState(50)
 
+
   // Auto-show details when currentAgent is loaded (e.g., from URL parameter or new agent creation)
   useEffect(() => {
     // Show details and chat for both preview mode and new agents with prompts
@@ -135,32 +136,50 @@ export function AgentBuilder2({
 
   const runBulkTest = async () => {
     if (!testingAgent) return
-    
+
+    // Capture these synchronously before any awaits or re-renders can change them
+    const runId = `run-${Date.now()}`
+    const capturedAgentName = testingAgent.name
+    const capturedTimePeriod = selectedTimePeriod
+    const capturedStage = testingAgent.stage || 'matching'
+    const capturedLane = testingAgent.lane || ''
+    const capturedMode = testingAgent.mode || 'auto-apply'
+    const capturedPrompt = testingAgent.prompt || ''
+    const capturedSkills = testingAgent.skills || []
+
+    // Close the period-selection modal and signal the settings page to switch to Back Testing tab
+    if (onCloseTest) onCloseTest()
+    window.dispatchEvent(new CustomEvent('back-test-tab-switch'))
+
     setIsTesting(true)
     setTestProgress(0)
     setComparisonMetrics(null)
     setInvoiceComparisons([])
     setCurrentPage(1)
 
+    window.dispatchEvent(new CustomEvent('back-test-started', {
+      detail: { runId, agentName: capturedAgentName, timePeriod: capturedTimePeriod }
+    }))
+
     // Configure scenario generation
     const scenarioConfig: ScenarioConfig = {
       scenarioTypes: ["all"],
-      issueMix: 40, // Fixed 40% issue rate for realistic testing
-      stage: (testingAgent.stage || 'matching') as Stage,
-      lane: testingAgent.lane || "",
+      issueMix: 40,
+      stage: capturedStage as Stage,
+      lane: capturedLane,
     }
 
     // Generate test scenarios
-    const scenarios = generateTestScenarios(selectedTimePeriod as TimePeriod, scenarioConfig)
+    const scenarios = generateTestScenarios(capturedTimePeriod as TimePeriod, scenarioConfig)
     
     // Configure agent for simulation
     const agentConfig: SimAgentConfig = {
-      name: testingAgent.name || "Test Agent",
-      stage: testingAgent.stage || "matching",
-      lane: testingAgent.lane || "",
-      mode: testingAgent.mode || "auto-apply",
-      prompt: testingAgent.prompt || "",
-      skills: testingAgent.skills || [],
+      name: capturedAgentName || "Test Agent",
+      stage: capturedStage,
+      lane: capturedLane,
+      mode: capturedMode,
+      prompt: capturedPrompt,
+      skills: capturedSkills,
     }
 
     const batchSize = 50
@@ -192,6 +211,11 @@ export function AgentBuilder2({
       // Create invoice comparisons for display
       const batchComparisons = createInvoiceComparisons(batchScenarios, baselineResults, agentResults)
       setInvoiceComparisons(prev => [...prev, ...batchComparisons])
+
+      // Broadcast progress to BackTestPanel
+      window.dispatchEvent(new CustomEvent('back-test-progress', {
+        detail: { runId, progress, recentComparisons: batchComparisons }
+      }))
     }
 
     // Calculate final statistics
@@ -206,12 +230,23 @@ export function AgentBuilder2({
     setComparisonMetrics(metrics)
 
     setIsTesting(false)
+
+    // Broadcast completion to BackTestPanel and trigger toast
+    try {
+      window.dispatchEvent(new CustomEvent('back-test-complete', {
+        detail: { runId, metrics, agentName: capturedAgentName, timePeriod: capturedTimePeriod }
+      }))
+    } catch (e) {
+      console.error('[AgentBuilder2] Failed to dispatch back-test-complete:', e)
+    }
   }
 
   const handleCloseTestModal = () => {
+    // Just close the period-selection modal overlay; test data stays in the Back Testing tab
     if (onCloseTest) onCloseTest()
-    
-    // Reset all test state
+  }
+
+  const handleResetTestData = () => {
     setComparisonMetrics(null)
     setInvoiceComparisons([])
     setTestProgress(0)
@@ -647,549 +682,59 @@ export function AgentBuilder2({
         </div>
       )}
 
-      {/* Test Modal */}
+      {/* Test Setup Modal - period selection only; progress & results live in Back Testing tab */}
       {testingAgent && (
-        <div className="fixed inset-0 bg-background z-[10000] flex flex-col">
-          <Card className="w-full h-full overflow-hidden flex flex-col border-0 rounded-none shadow-none">
-            <div className="p-6 border-b border-border flex items-center justify-between">
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[10000] flex items-center justify-center p-6">
+          <Card className="w-full max-w-lg overflow-hidden flex flex-col shadow-xl">
+            <div className="p-6 border-b border-gray-200 flex items-center justify-between">
               <div>
-                <h3 className="text-xl font-semibold">Test Agent: {testingAgent.name || "Untitled Agent"}</h3>
-                <p className="text-base text-gray-950 mt-2">
-                  Simulate against historical invoice data to measure agent impact
+                <h3 className="text-lg font-semibold text-gray-950">Configure Back Test</h3>
+                <p className="text-sm text-gray-500 mt-1">
+                  {testingAgent.name || "Untitled Agent"} — simulate against historical invoice data
                 </p>
               </div>
               <Button variant="ghost" size="icon" onClick={handleCloseTestModal}>
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </Button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-6">
-              {!isTesting && invoiceComparisons.length === 0 ? (
-                <div className="space-y-6">
-                  <div>
-                    <Label className="text-base font-semibold mb-3 block">Select Time Period</Label>
-                    <div className="grid grid-cols-4 gap-3">
-                      <Button
-                        variant={selectedTimePeriod === "7days" ? "default" : "outline"}
-                        onClick={() => setSelectedTimePeriod("7days")}
-                        className="h-20 flex flex-col items-center justify-center"
-                      >
-                        <span className="font-bold text-xl">7 days</span>
-                      </Button>
-                      <Button
-                        variant={selectedTimePeriod === "30days" ? "default" : "outline"}
-                        onClick={() => setSelectedTimePeriod("30days")}
-                        className="h-20 flex flex-col items-center justify-center"
-                      >
-                        <span className="font-bold text-xl">30 days</span>
-                      </Button>
-                      <Button
-                        variant={selectedTimePeriod === "3months" ? "default" : "outline"}
-                        onClick={() => setSelectedTimePeriod("3months")}
-                        className="h-20 flex flex-col items-center justify-center"
-                      >
-                        <span className="font-bold text-xl">3 months</span>
-                      </Button>
-                      <Button
-                        variant={selectedTimePeriod === "6months" ? "default" : "outline"}
-                        onClick={() => setSelectedTimePeriod("6months")}
-                        className="h-20 flex flex-col items-center justify-center"
-                      >
-                        <span className="font-bold text-xl">6 months</span>
-                      </Button>
-                    </div>
-                  </div>
-
-                  <Card className="p-4 bg-muted/50">
-                    <h4 className="font-semibold mb-2">Test Configuration</h4>
-                    <div className="space-y-2 text-sm">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Agent:</span>
-                        <span className="font-medium">{testingAgent.name || "Unnamed Agent"}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Stage:</span>
-                        <span className="font-medium capitalize">{testingAgent.stage || "N/A"}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Lane:</span>
-                        <span className="font-medium">{testingAgent.lane || "N/A"}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Mode:</span>
-                        <span className="font-medium capitalize">{testingAgent.mode === "auto-apply" ? "Auto-Apply" : testingAgent.mode || "N/A"}</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Skills:</span>
-                        <span className="font-medium">{testingAgent.skills?.length || 0} selected</span>
-                      </div>
-                    </div>
-                  </Card>
-
-                  <Button onClick={runBulkTest} className="w-full h-12" size="lg">
-                    <Play className="w-5 h-5 mr-2" />
-                    Start Test Run
-                  </Button>
-                </div>
-              ) : isTesting ? (
-                <div className="space-y-6">
-                  <div className="text-center py-8">
-                    <Loader2 className="w-16 h-16 animate-spin mx-auto mb-4 text-primary" />
-                    <h4 className="text-lg font-semibold mb-2">Processing Invoices...</h4>
-                    <p className="text-muted-foreground mb-4">Testing agent against historical data</p>
-                    <div className="max-w-md mx-auto">
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
-                        <div
-                          className="h-full bg-primary transition-all duration-300"
-                          style={{ width: `${testProgress}%` }}
-                        />
-                      </div>
-                      <p className="text-sm text-muted-foreground mt-2">{testProgress.toFixed(0)}% Complete</p>
-                    </div>
-                  </div>
-
-                  {invoiceComparisons.length > 0 && (
-                    <Card className="p-4">
-                      <h4 className="font-semibold mb-3">Recent Results</h4>
-                      <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {invoiceComparisons
-                          .slice(-10)
-                          .reverse()
-                          .map((comparison, idx) => (
-                            <div
-                              key={idx}
-                              className="flex items-center justify-between text-xs p-2 bg-muted/50 rounded"
-                            >
-                              <span className="font-mono">{comparison.invoiceId}</span>
-                              <span className={comparison.improvement.outcome === "better" ? "text-green-600" : "text-gray-600"}>
-                                {comparison.improvement.outcome === "better" ? "✓ Improved" : "○ No change"}
-                              </span>
-                            </div>
-                          ))}
-                      </div>
-                    </Card>
-                  )}
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Executive Summary */}
-                  {comparisonMetrics && (
-                    <Card className="p-6 bg-gradient-to-r from-purple-50 to-blue-50 border-purple-200">
-                      <h4 className="text-lg font-semibold mb-2">Agent Value Summary</h4>
-                      <p className="text-sm text-gray-700 leading-relaxed">
-                        {generateExecutiveSummary(comparisonMetrics)}
-                      </p>
-                    </Card>
-                  )}
-
-                  {/* Comparison Metrics - Side by Side */}
-                  {comparisonMetrics && (
-                    <>
-                      <div className="grid grid-cols-3 gap-4">
-                        {/* WITHOUT Agent Column */}
-                        <Card className="p-4 bg-gray-50">
-                          <p className="text-xs font-semibold text-gray-600 uppercase tracking-wide mb-3">Without Agent</p>
-                          <div className="space-y-3">
-                            <div>
-                              <p className="text-xs text-gray-500">Avg Time</p>
-                              <p className="text-xl font-bold text-gray-900">{comparisonMetrics.avgProcessingTimeWithout.toFixed(1)} min</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Exceptions</p>
-                              <p className="text-xl font-bold text-gray-900">{comparisonMetrics.exceptionsWithout.toLocaleString()}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Manual Touches</p>
-                              <p className="text-xl font-bold text-gray-900">{comparisonMetrics.manualTouchesWithout.toLocaleString()}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-gray-500">Cost/Invoice</p>
-                              <p className="text-xl font-bold text-gray-900">${comparisonMetrics.costPerInvoiceWithout.toFixed(2)}</p>
-                            </div>
-                          </div>
-                        </Card>
-
-                        {/* WITH Agent Column */}
-                        <Card className="p-4 bg-purple-50 border-purple-200">
-                          <p className="text-xs font-semibold text-purple-900 uppercase tracking-wide mb-3">With Agent</p>
-                          <div className="space-y-3">
-                            <div>
-                              <p className="text-xs text-purple-700">Avg Time</p>
-                              <p className="text-xl font-bold text-purple-900">{comparisonMetrics.avgProcessingTimeWith.toFixed(1)} min</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-purple-700">Exceptions</p>
-                              <p className="text-xl font-bold text-purple-900">{comparisonMetrics.exceptionsWith.toLocaleString()}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-purple-700">Manual Touches</p>
-                              <p className="text-xl font-bold text-purple-900">{comparisonMetrics.manualTouchesWith.toLocaleString()}</p>
-                            </div>
-                            <div>
-                              <p className="text-xs text-purple-700">Cost/Invoice</p>
-                              <p className="text-xl font-bold text-purple-900">${comparisonMetrics.costPerInvoiceWith.toFixed(2)}</p>
-                            </div>
-                          </div>
-                        </Card>
-
-                        {/* Improvement Column */}
-                        <Card className="p-4 bg-green-50 border-green-200">
-                          <p className="text-xs font-semibold text-green-900 uppercase tracking-wide mb-3">Improvement</p>
-                          <div className="space-y-3">
-                            <div className="flex items-center gap-2">
-                              <TrendingDown className="w-4 h-4 text-green-600" />
-                              <div>
-                                <p className="text-xs text-green-700">Time Saved</p>
-                                <p className="text-xl font-bold text-green-900">{comparisonMetrics.timeReductionPercentage.toFixed(0)}%</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <TrendingDown className="w-4 h-4 text-green-600" />
-                              <div>
-                                <p className="text-xs text-green-700">Fewer Exceptions</p>
-                                <p className="text-xl font-bold text-green-900">{comparisonMetrics.exceptionReductionPercentage.toFixed(0)}%</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <TrendingDown className="w-4 h-4 text-green-600" />
-                              <div>
-                                <p className="text-xs text-green-700">Fewer Touches</p>
-                                <p className="text-xl font-bold text-green-900">{comparisonMetrics.manualTouchReductionPercentage.toFixed(0)}%</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <TrendingDown className="w-4 h-4 text-green-600" />
-                              <div>
-                                <p className="text-xs text-green-700">Cost Savings</p>
-                                <p className="text-xl font-bold text-green-900">${comparisonMetrics.costSavingsPerInvoice.toFixed(2)}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </Card>
-                      </div>
-
-                      {/* ROI Metrics */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <Card className="p-4">
-                          <p className="text-sm font-semibold mb-3">FTE Savings</p>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Hours Saved:</span>
-                              <span className="font-medium">{comparisonMetrics.fteHoursSaved.toFixed(1)} hours</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Annual FTE Savings:</span>
-                              <span className="font-medium text-green-600">{comparisonMetrics.annualFTESavings.toFixed(2)} FTE</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Annual Cost Savings:</span>
-                              <span className="font-medium text-green-600">${comparisonMetrics.annualCostSavings.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
-                            </div>
-                          </div>
-                        </Card>
-
-                        <Card className="p-4">
-                          <p className="text-sm font-semibold mb-3">Processing Efficiency</p>
-                          <div className="space-y-2">
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Speedup Factor:</span>
-                              <span className="font-medium">{comparisonMetrics.processingSpeedupFactor.toFixed(1)}x faster</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Auto-Resolved:</span>
-                              <span className="font-medium">{comparisonMetrics.autoResolvedCount.toLocaleString()} invoices</span>
-                            </div>
-                            <div className="flex justify-between text-sm">
-                              <span className="text-muted-foreground">Accuracy:</span>
-                              <span className="font-medium">{comparisonMetrics.accuracyWith.toFixed(1)}% (+{comparisonMetrics.accuracyImprovement.toFixed(1)}%)</span>
-                            </div>
-                          </div>
-                        </Card>
-                      </div>
-                    </>
-                  )}
-
-                  {/* Invoice-by-Invoice Comparison Table */}
-                  {invoiceComparisons.length > 0 && (
-                    <Card className="p-4">
-                      <div className="flex items-center justify-between mb-3">
-                        <div>
-                          <h4 className="font-semibold">Invoice-by-Invoice Comparison</h4>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Agent actions: <span className="text-purple-700">✓ No human needed</span> • <span className="text-yellow-700">→ Review needed</span> • <span className="text-gray-600">○ Flagged only</span> • <span className="text-yellow-700">↑ Manual required</span>
-                          </p>
-                        </div>
-                        <div className="flex gap-2">
-                          <Select value={withoutAgentFilter} onValueChange={(value: any) => {
-                            setWithoutAgentFilter(value)
-                            setCurrentPage(1)
-                          }}>
-                            <SelectTrigger className="w-[140px]">
-                              <SelectValue placeholder="Without Agent" />
-                            </SelectTrigger>
-                            <SelectContent className="z-[10001]">
-                              <SelectItem value="all">All Outcomes</SelectItem>
-                              <SelectItem value="pass">Passed</SelectItem>
-                              <SelectItem value="blocked">Blocked</SelectItem>
-                              <SelectItem value="delayed">Delayed</SelectItem>
-                              <SelectItem value="error">Error</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          
-                          <Select value={withAgentFilter} onValueChange={(value: any) => {
-                            setWithAgentFilter(value)
-                            setCurrentPage(1)
-                          }}>
-                            <SelectTrigger className="w-[140px]">
-                              <SelectValue placeholder="With Agent" />
-                            </SelectTrigger>
-                            <SelectContent className="z-[10001]">
-                              <SelectItem value="all">All Actions</SelectItem>
-                              <SelectItem value="auto_resolved">Auto-resolved</SelectItem>
-                              <SelectItem value="suggested_resolution">Suggested</SelectItem>
-                              <SelectItem value="observed">Observed</SelectItem>
-                              <SelectItem value="escalated_to_human">Escalated</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          
-                          <Select value={statusFilter} onValueChange={(value: any) => {
-                            setStatusFilter(value)
-                            setCurrentPage(1)
-                          }}>
-                            <SelectTrigger className="w-[120px]">
-                              <SelectValue placeholder="Improvement" />
-                            </SelectTrigger>
-                            <SelectContent className="z-[10001]">
-                              <SelectItem value="all">All</SelectItem>
-                              <SelectItem value="pass">Improved</SelectItem>
-                              <SelectItem value="fail">With Issues</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-                      <div className="border rounded-lg overflow-hidden">
-                        <table className="w-full text-xs">
-                          <thead className="bg-muted">
-                            <tr>
-                              <th className="text-left p-2">Invoice ID</th>
-                              <th className="text-left p-2">Vendor</th>
-                              <th className="text-right p-2">Amount</th>
-                              <th className="text-left p-2">Without Agent</th>
-                              <th className="text-left p-2">With Agent</th>
-                              <th className="text-left p-2">Improvement</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {(() => {
-                              const filteredResults = invoiceComparisons.filter((comparison) => {
-                                // Without Agent filter
-                                if (withoutAgentFilter !== "all" && comparison.withoutAgent.outcome !== withoutAgentFilter) {
-                                  return false
-                                }
-                                
-                                // With Agent filter
-                                if (withAgentFilter !== "all" && comparison.withAgent.agentAction !== withAgentFilter) {
-                                  return false
-                                }
-                                
-                                // Improvement filter
-                                if (statusFilter === "pass" && comparison.improvement.outcome !== "better") {
-                                  return false
-                                }
-                                if (statusFilter === "fail" && !comparison.hasIssue) {
-                                  return false
-                                }
-                                
-                                return true
-                              })
-                              
-                              // Show empty state if no results match filter
-                              if (filteredResults.length === 0) {
-                                return (
-                                  <tr>
-                                    <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                                      <p className="text-sm">No invoices match the current filter.</p>
-                                      <p className="text-xs mt-1">Try selecting a different filter option.</p>
-                                    </td>
-                                  </tr>
-                                )
-                              }
-                              
-                              const startIndex = (currentPage - 1) * rowsPerPage
-                              const endIndex = startIndex + rowsPerPage
-                              const paginatedResults = filteredResults.slice(startIndex, endIndex)
-
-                              return paginatedResults.map((comparison, idx) => (
-                                <tr
-                                  key={idx}
-                                  className="border-t hover:bg-muted/50 transition-colors"
-                                >
-                                  <td className="p-2 font-mono">
-                                    <div className="flex items-center gap-1">
-                                      {comparison.invoiceId}
-                                    </div>
-                                  </td>
-                                  <td className="p-2">{comparison.vendor}</td>
-                                  <td className="p-2 text-right font-medium">${comparison.amount.toFixed(2)}</td>
-                                  <td className="p-2">
-                                    <div className="flex flex-col gap-1">
-                                      <span className={`text-xs px-1.5 py-0.5 rounded inline-block ${
-                                        comparison.withoutAgent.outcome === "pass" ? "bg-green-100 text-green-700" : 
-                                        comparison.withoutAgent.outcome === "blocked" ? "bg-red-100 text-red-700" :
-                                        comparison.withoutAgent.outcome === "delayed" ? "bg-yellow-100 text-yellow-700" :
-                                        "bg-gray-100 text-gray-700"
-                                      }`}>
-                                        {comparison.withoutAgent.outcome === "pass" ? "passed" : comparison.withoutAgent.outcome}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">{comparison.withoutAgent.processingTimeMinutes.toFixed(0)}min • {comparison.withoutAgent.manualTouches} touch{comparison.withoutAgent.manualTouches !== 1 ? 'es' : ''}</span>
-                                    </div>
-                                  </td>
-                                  <td className="p-2">
-                                    <div className="flex flex-col gap-1">
-                                      <span className={`text-xs px-1.5 py-0.5 rounded inline-block ${
-                                        comparison.withAgent.agentAction === "auto_resolved" ? "bg-purple-100 text-purple-700" : 
-                                        comparison.withAgent.agentAction === "suggested_resolution" ? "bg-yellow-100 text-yellow-700" :
-                                        comparison.withAgent.agentAction === "observed" ? "bg-blue-100 text-blue-700" :
-                                        "bg-gray-100 text-gray-700"
-                                      }`}>
-                                        {comparison.withAgent.agentAction === "auto_resolved" ? "✓ Auto-resolved (no human)" : 
-                                         comparison.withAgent.agentAction === "suggested_resolution" ? "→ Suggested (needs review)" : 
-                                         comparison.withAgent.agentAction === "observed" ? "○ Observed (flagged only)" : 
-                                         "↑ Escalated to human"}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">{comparison.withAgent.processingTimeMinutes.toFixed(0)}min • {comparison.withAgent.manualTouches} touch{comparison.withAgent.manualTouches !== 1 ? 'es' : ''}</span>
-                                    </div>
-                                  </td>
-                                  <td className="p-2">
-                                    <div className="flex flex-wrap gap-1">
-                                      {comparison.improvement.highlights.map((highlight, hidx) => (
-                                        <span key={hidx} className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">
-                                          {highlight}
-                                        </span>
-                                      ))}
-                                      {comparison.improvement.highlights.length === 0 && (
-                                        <span className="text-xs text-muted-foreground">No change</span>
-                                      )}
-                                    </div>
-                                  </td>
-                                </tr>
-                              ))
-                            })()}
-                          </tbody>
-                        </table>
-                      </div>
-                      {(() => {
-                        const filteredResults = invoiceComparisons.filter((comparison) => {
-                          // Without Agent filter
-                          if (withoutAgentFilter !== "all" && comparison.withoutAgent.outcome !== withoutAgentFilter) {
-                            return false
-                          }
-                          
-                          // With Agent filter
-                          if (withAgentFilter !== "all" && comparison.withAgent.agentAction !== withAgentFilter) {
-                            return false
-                          }
-                          
-                          // Improvement filter
-                          if (statusFilter === "pass" && comparison.improvement.outcome !== "better") {
-                            return false
-                          }
-                          if (statusFilter === "fail" && !comparison.hasIssue) {
-                            return false
-                          }
-                          
-                          return true
-                        })
-
-                        const totalPages = Math.ceil(filteredResults.length / rowsPerPage)
-                        
-                        if (totalPages <= 1) return null
-
-                        return (
-                          <div className="flex items-center justify-between mt-3 text-xs">
-                            <div className="text-muted-foreground">
-                              Showing {((currentPage - 1) * rowsPerPage) + 1} to {Math.min(currentPage * rowsPerPage, filteredResults.length)} of {filteredResults.length} invoices
-                            </div>
-                            <div className="flex gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                disabled={currentPage === 1}
-                              >
-                                Previous
-                              </Button>
-                              <div className="flex items-center gap-1">
-                                {Array.from({ length: Math.min(totalPages, 5) }, (_, i) => {
-                                  let pageNum
-                                  if (totalPages <= 5) {
-                                    pageNum = i + 1
-                                  } else if (currentPage <= 3) {
-                                    pageNum = i + 1
-                                  } else if (currentPage >= totalPages - 2) {
-                                    pageNum = totalPages - 4 + i
-                                  } else {
-                                    pageNum = currentPage - 2 + i
-                                  }
-                                  return (
-                                    <Button
-                                      key={pageNum}
-                                      variant={currentPage === pageNum ? "default" : "outline"}
-                                      size="sm"
-                                      onClick={() => setCurrentPage(pageNum)}
-                                      className="w-8 h-8 p-0"
-                                    >
-                                      {pageNum}
-                                    </Button>
-                                  )
-                                })}
-                              </div>
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                disabled={currentPage === totalPages}
-                              >
-                                Next
-                              </Button>
-                            </div>
-                          </div>
-                        )
-                      })()}
-                    </Card>
-                  )}
-
-                  {/* Action Buttons */}
-                  <div className="flex gap-3 pt-4 border-t">
-                    <Button
-                      onClick={handleCloseTestModal}
-                      variant="outline"
-                      className="flex-1"
+            <div className="p-6 space-y-6">
+              <div>
+                <Label className="text-sm font-semibold text-gray-950 mb-3 block">Select time period</Label>
+                <div className="grid grid-cols-4 gap-3">
+                  {(["7days", "30days", "3months", "6months"] as const).map((period) => (
+                    <button
+                      key={period}
+                      onClick={() => setSelectedTimePeriod(period)}
+                      className={`h-16 rounded-lg border-2 flex flex-col items-center justify-center transition-colors ${
+                        selectedTimePeriod === period
+                          ? "border-purple-700 bg-purple-50 text-purple-900"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-gray-300"
+                      }`}
                     >
-                      Close
-                    </Button>
-                    <Button
-                      onClick={exportComparisonToCSV}
-                      disabled={!comparisonMetrics}
-                      variant="outline"
-                      className="flex-1"
-                    >
-                      Export CSV
-                    </Button>
-                    <Button
-                      onClick={() => {
-                        setComparisonMetrics(null)
-                        setInvoiceComparisons([])
-                        setTestProgress(0)
-                      }}
-                      variant="default"
-                      className="flex-1"
-                    >
-                      Run New Test
-                    </Button>
-                  </div>
+                      <span className="font-bold text-base">{period === "7days" ? "7 days" : period === "30days" ? "30 days" : period === "3months" ? "3 months" : "6 months"}</span>
+                    </button>
+                  ))}
                 </div>
-              )}
+              </div>
+
+              <Card className="p-4 bg-gray-50 border-gray-200">
+                <h4 className="text-sm font-semibold text-gray-950 mb-2">Test configuration</h4>
+                <div className="space-y-1.5 text-sm">
+                  <div className="flex justify-between"><span className="text-gray-500">Agent:</span><span className="font-medium text-gray-950">{testingAgent.name || "Unnamed Agent"}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Stage:</span><span className="font-medium text-gray-950 capitalize">{testingAgent.stage || "N/A"}</span></div>
+                  <div className="flex justify-between"><span className="text-gray-500">Mode:</span><span className="font-medium text-gray-950">{testingAgent.mode === "auto-apply" ? "Auto-Apply" : testingAgent.mode || "N/A"}</span></div>
+                </div>
+              </Card>
+
+              <Button
+                onClick={runBulkTest}
+                className="w-full h-11 bg-purple-900 hover:bg-purple-800 text-white"
+                size="lg"
+              >
+                <Play className="w-4 h-4 mr-2" />
+                Start Test Run
+              </Button>
             </div>
           </Card>
         </div>
