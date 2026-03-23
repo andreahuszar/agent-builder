@@ -150,6 +150,8 @@ class SeededRandom {
 /**
  * Generate stage-specific test scenarios
  */
+const ALL_STAGES: Stage[] = ["ingestion", "data-capture", "verification", "matching", "approval", "posting"];
+
 export function generateTestScenarios(
   timePeriod: TimePeriod,
   config: ScenarioConfig
@@ -160,10 +162,25 @@ export function generateTestScenarios(
   
   const scenarios: TestScenario[] = [];
   const issuePercentage = config.issueMix / 100;
+  const otherStages = ALL_STAGES.filter(s => s !== config.stage);
 
   for (let i = 0; i < invoiceCount; i++) {
     const hasIssue = rng.next() < issuePercentage;
-    const scenario = generateScenario(i, daysBack, hasIssue, config, rng);
+
+    // For issue invoices, distribute stages across the full pipeline:
+    // primary stage gets 40%, the other 5 stages share the remaining 60% equally (~12% each)
+    let effectiveStage = config.stage;
+    if (hasIssue) {
+      const roll = rng.next();
+      if (roll >= 0.40) {
+        // Pick one of the other stages
+        const idx = Math.floor((roll - 0.40) / 0.60 * otherStages.length)
+        effectiveStage = otherStages[Math.min(idx, otherStages.length - 1)];
+      }
+    }
+
+    const effectiveConfig: ScenarioConfig = { ...config, stage: effectiveStage };
+    const scenario = generateScenario(i, daysBack, hasIssue, effectiveConfig, rng);
     scenarios.push(scenario);
   }
 
@@ -744,22 +761,50 @@ function calculateAgentOpportunity(
 
       case "data-capture":
         requiredSkills.push("Extract text", "Process Documents");
-        if (stageData.dataCapture?.ocrConfidence && stageData.dataCapture.ocrConfidence > 0.7) {
-          canAutoResolve = true;
-          resolutionConfidence = stageData.dataCapture.ocrConfidence;
-          estimatedAutomatedTimeMinutes = 2;
-        } else if (stageData.dataCapture?.missingFields.length) {
+        if (stageData.dataCapture?.requiresManualEntry) {
+          // Full OCR failure — agent can attempt re-extraction but needs human fallback
           canAutoResolve = false;
-          resolutionConfidence = 0.5;
-          estimatedAutomatedTimeMinutes = 15; // Requires some manual input
+          resolutionConfidence = 0.55;
+          estimatedAutomatedTimeMinutes = 10;
+        } else if (stageData.dataCapture?.missingFields && stageData.dataCapture.missingFields.length > 0) {
+          // Agent can attempt to infer missing fields from context / vendor master
+          canAutoResolve = true;
+          resolutionConfidence = 0.78;
+          estimatedAutomatedTimeMinutes = 3;
+        } else if (stageData.dataCapture?.fieldErrors && stageData.dataCapture.fieldErrors.length > 0) {
+          // Field format errors are highly automatable (date/amount normalisation)
+          canAutoResolve = true;
+          resolutionConfidence = 0.88;
+          estimatedAutomatedTimeMinutes = 1;
+        } else {
+          // Low OCR confidence — agent applies enhanced extraction and validation
+          canAutoResolve = true;
+          resolutionConfidence = 0.80;
+          estimatedAutomatedTimeMinutes = 2;
         }
         break;
 
       case "verification":
         requiredSkills.push("Verify Data", "Flag Issues");
-        if (stageData.verification?.anomalies.length && !stageData.verification.policyViolations.length) {
+        if (stageData.verification?.policyViolations.length) {
+          // Policy violations need human review — agent flags but can't override policy
+          canAutoResolve = false;
+          resolutionConfidence = 0.60;
+          estimatedAutomatedTimeMinutes = 2;
+        } else if (!stageData.verification?.vendorVerified) {
+          // Unverified vendor — agent can cross-reference vendor master but needs human sign-off
+          canAutoResolve = false;
+          resolutionConfidence = 0.65;
+          estimatedAutomatedTimeMinutes = 3;
+        } else if (stageData.verification?.anomalies.length) {
+          // Anomalies without policy violations — agent resolves via historical pattern matching
           canAutoResolve = true;
-          resolutionConfidence = 0.8;
+          resolutionConfidence = 0.85;
+          estimatedAutomatedTimeMinutes = 1;
+        } else {
+          // Validation errors (date format, amount mismatch, invalid fields) — highly automatable
+          canAutoResolve = true;
+          resolutionConfidence = 0.82;
           estimatedAutomatedTimeMinutes = 1;
         }
         break;
@@ -767,12 +812,24 @@ function calculateAgentOpportunity(
       case "matching":
         requiredSkills.push("Find Purchase Orders", "Intelligent Matching");
         if (stageData.matching?.matchStatus === "within_tolerance") {
+          // Within tolerance — auto-approve with high confidence
           canAutoResolve = true;
-          resolutionConfidence = 0.9;
+          resolutionConfidence = 0.92;
           estimatedAutomatedTimeMinutes = 1;
         } else if (stageData.matching?.toleranceExceeded) {
-          canAutoResolve = issueSeverity === "low";
-          resolutionConfidence = 0.7;
+          // Over tolerance — agent flags and suggests override; low severity can auto-resolve
+          canAutoResolve = issueSeverity !== "high";
+          resolutionConfidence = issueSeverity === "low" ? 0.82 : 0.75;
+          estimatedAutomatedTimeMinutes = 3;
+        } else if (stageData.matching?.matchStatus === "no_match" && stageData.matching?.hasPO) {
+          // Has a PO reference but no exact match — agent can do fuzzy/semantic PO matching
+          canAutoResolve = true;
+          resolutionConfidence = 0.78;
+          estimatedAutomatedTimeMinutes = 2;
+        } else {
+          // No PO at all — agent can attempt confidence-based matching from historical data
+          canAutoResolve = true;
+          resolutionConfidence = 0.76;
           estimatedAutomatedTimeMinutes = 3;
         }
         break;
@@ -780,24 +837,45 @@ function calculateAgentOpportunity(
       case "approval":
         requiredSkills.push("Route for Approval", "Run Workflows");
         if (stageData.approval?.routingComplexity === "simple") {
+          // Simple routing — agent applies rules deterministically
           canAutoResolve = true;
           resolutionConfidence = 0.95;
           estimatedAutomatedTimeMinutes = 0.5;
         } else if (stageData.approval?.routingComplexity === "moderate") {
+          // Moderate complexity — agent uses decision tree with good accuracy
           canAutoResolve = true;
           resolutionConfidence = 0.85;
           estimatedAutomatedTimeMinutes = 1;
+        } else {
+          // Complex routing (unclear rules, escalation, missing approver) — agent can resolve
+          // routing_unclear, threshold_exceeded, escalation_needed: agent looks up org chart + rules
+          // missing_approver: agent finds delegate from OOO data
+          canAutoResolve = true;
+          resolutionConfidence = 0.78;
+          estimatedAutomatedTimeMinutes = 2;
         }
         break;
 
       case "posting":
         requiredSkills.push("Connect to ERP System", "Map to General Ledger");
         if (stageData.posting?.needsCoding) {
+          // Missing GL code — agent infers from vendor/category patterns
           canAutoResolve = true;
-          resolutionConfidence = 0.8;
+          resolutionConfidence = 0.82;
           estimatedAutomatedTimeMinutes = 2;
           requiredSkills.push("Map to General Ledger");
-        } else if (!stageData.posting?.erpValidationIssues.length) {
+        } else if (stageData.posting?.erpValidationIssues.length) {
+          // ERP validation errors (invalid account, closed period, duplicate) — agent corrects most
+          canAutoResolve = true;
+          resolutionConfidence = 0.80;
+          estimatedAutomatedTimeMinutes = 3;
+        } else if (stageData.posting?.reconciliationStatus !== "matched") {
+          // Reconciliation mismatch — agent re-runs matching with tolerance
+          canAutoResolve = true;
+          resolutionConfidence = 0.78;
+          estimatedAutomatedTimeMinutes = 2;
+        } else {
+          // Clean posting path
           canAutoResolve = true;
           resolutionConfidence = 0.95;
           estimatedAutomatedTimeMinutes = 1;

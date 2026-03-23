@@ -225,8 +225,12 @@ export function AgentBuilder2({
     setBaselineStats(finalBaselineStats)
     setAgentStats(finalAgentStats)
 
+    // Calculate STP counts from accumulated results
+    const stpCountWithout = allBaselineResults.filter((r: any) => r.outcome === "passed" && r.manualTouches === 0).length
+    const stpCountWith = allAgentResults.filter((r: any) => r.manualTouches === 0 && (r.agentAction === "auto_resolved" || r.outcome === "passed")).length
+
     // Calculate comparison metrics
-    const metrics = calculateComparisonMetrics(finalBaselineStats, finalAgentStats, scenarios.length)
+    const metrics = calculateComparisonMetrics(finalBaselineStats, finalAgentStats, scenarios.length, stpCountWithout, stpCountWith)
     setComparisonMetrics(metrics)
 
     setIsTesting(false)

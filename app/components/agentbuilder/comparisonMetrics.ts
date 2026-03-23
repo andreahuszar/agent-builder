@@ -62,19 +62,29 @@ export interface ComparisonMetrics {
   // ROI metrics
   processingSpeedupFactor: number; // e.g., 15x faster
   exceptionReductionFactor: number; // e.g., 92% fewer exceptions
+
+  // Straight-through processing rates (0-100)
+  stpRateWithout: number;
+  stpRateWith: number;
+  stpImprovement: number; // percentage points gained
 }
 
 export interface InvoiceComparison {
   invoiceId: string;
   vendor: string;
   amount: number;
+  date: string;
+  importSource: string;
   hasIssue: boolean;
   issueDescription?: string;
-  
+  exceptionType?: string;
+
   // Without agent
   withoutAgent: {
     outcome: string;
     pipelineStage: string;
+    failureStage?: string;        // set when not "Posted"
+    isSTP: boolean;
     processingTimeMinutes: number;
     requiresManualReview: boolean;
     manualTouches: number;
@@ -86,9 +96,12 @@ export interface InvoiceComparison {
   withAgent: {
     outcome: string;
     pipelineStage: string;
+    isSTP: boolean;
     processingTimeMinutes: number;
     agentAction: string;
     agentConfidence: number;
+    captureAccuracy?: number;     // 0-1 OCR confidence when applicable
+    matchConfidence?: number;     // 0-1 match confidence when applicable
     requiresManualReview: boolean;
     manualTouches: number;
     status: string;
@@ -115,7 +128,9 @@ const HOURS_PER_FTE_MONTH = 160; // 8 hours/day * 20 working days
 export function calculateComparisonMetrics(
   baselineStats: BaselineStats,
   agentStats: AgentStats,
-  totalInvoices: number
+  totalInvoices: number,
+  stpCountWithout = 0,
+  stpCountWith = 0,
 ): ComparisonMetrics {
   // Time savings
   const avgProcessingTimeWithout = baselineStats.avgProcessingTimeMinutes;
@@ -172,7 +187,12 @@ export function calculateComparisonMetrics(
   // ROI metrics
   const processingSpeedupFactor = avgProcessingTimeWithout / avgProcessingTimeWith;
   const exceptionReductionFactor = exceptionReductionPercentage / 100;
-  
+
+  // STP rates
+  const stpRateWithout = totalInvoices > 0 ? (stpCountWithout / totalInvoices) * 100 : 0;
+  const stpRateWith = totalInvoices > 0 ? (stpCountWith / totalInvoices) * 100 : 0;
+  const stpImprovement = stpRateWith - stpRateWithout;
+
   return {
     avgProcessingTimeWithout,
     avgProcessingTimeWith,
@@ -221,6 +241,10 @@ export function calculateComparisonMetrics(
     
     processingSpeedupFactor,
     exceptionReductionFactor,
+
+    stpRateWithout,
+    stpRateWith,
+    stpImprovement,
   };
 }
 
@@ -282,8 +306,17 @@ function deriveAgentPipelineStage(
   baselineStage: PipelineStage,
   outcome: string
 ): PipelineStage {
-  if (outcome === "pass" || agentAction === "auto_resolved") return "Posted";
-  if (agentAction === "suggested_resolution") return "Approved";
+  // Posted is always the final stage. Any "passed" outcome means the invoice completed the pipeline.
+  if (outcome === "passed" || agentAction === "auto_resolved") return "Posted";
+  // suggested_resolution where the invoice is still awaiting human sign-off → sits in Approved queue
+  // (only applies to non-PO / high-value invoices that genuinely need approval; outcome would be "escalated")
+  if (agentAction === "suggested_resolution") {
+    // Move one stage forward from where baseline stopped, up to Approved
+    const stageOrder: PipelineStage[] = ["Imported", "Data Captured", "Verified", "Matched", "Approved", "Posted"];
+    const baseIdx = stageOrder.indexOf(baselineStage);
+    const nextIdx = Math.min(baseIdx + 1, stageOrder.indexOf("Approved"));
+    return stageOrder[nextIdx] ?? "Approved";
+  }
   if (agentAction === "observed") return baselineStage === "Rejected" ? "Verified" : baselineStage;
   if (agentAction === "escalated_to_human") return baselineStage;
   return baselineStage;
@@ -348,16 +381,26 @@ export function createInvoiceComparisons(
       agent.agentAction, baselinePipelineStage, agent.outcome
     );
 
+    // BaselineResult uses "passed" (not "pass")
+    const isSTPWithout = baseline.outcome === "passed" && baseline.manualTouches === 0;
+    // STP with agent: auto-resolved OR fully passed with zero manual touches (e.g. suggest-mode on clean invoices)
+    const isSTPWith = agent.manualTouches === 0 && (agent.agentAction === "auto_resolved" || agent.outcome === "passed");
+
     return {
       invoiceId: scenario.id,
       vendor: scenario.vendor,
       amount: scenario.amount,
+      date: scenario.date,
+      importSource: scenario.stageData.ingestion?.sourceChannel ?? "unknown",
       hasIssue: scenario.hasIssue,
       issueDescription: scenario.issueDescription,
-      
+      exceptionType: scenario.issueType,
+
       withoutAgent: {
         outcome: baseline.outcome,
         pipelineStage: baselinePipelineStage,
+        failureStage: baselinePipelineStage !== "Posted" ? baselinePipelineStage : undefined,
+        isSTP: isSTPWithout,
         processingTimeMinutes: baseline.processingTimeMinutes,
         requiresManualReview: baseline.requiresManualReview,
         manualTouches: baseline.manualTouches,
@@ -368,9 +411,12 @@ export function createInvoiceComparisons(
       withAgent: {
         outcome: agent.outcome,
         pipelineStage: agentPipelineStage,
+        isSTP: isSTPWith,
         processingTimeMinutes: agent.processingTimeMinutes + agent.manualReviewTimeMinutes,
         agentAction: agent.agentAction,
         agentConfidence: agent.agentConfidence,
+        captureAccuracy: scenario.stageData.dataCapture?.ocrConfidence,
+        matchConfidence: agent.agentAction !== "observed" ? agent.agentConfidence : undefined,
         requiresManualReview: agent.requiresManualReview,
         manualTouches: agent.manualTouches,
         status: agent.status,

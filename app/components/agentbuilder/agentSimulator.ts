@@ -217,7 +217,14 @@ export function simulateAgentProcessing(
       requiresManualReview = true;
       manualTouches = 1;
       manualReviewTimeMinutes = baseline.estimatedManualTimeMinutes;
+    } else if (canAutoResolve) {
+      // auto-apply mode: fully automate clean invoices
+      agentAction = "auto_resolved";
+      agentReasoning = "Invoice automatically processed. All validations passed.";
+      processingTimeMinutes = 0.5;
+      requiresManualReview = false;
     } else if (canSuggest) {
+      // suggest mode: recommend processing, minimal friction
       agentAction = "suggested_resolution";
       agentReasoning = "Invoice validated successfully. Recommended for automatic processing.";
       processingTimeMinutes = 1;
@@ -247,7 +254,7 @@ export function simulateAgentProcessing(
       manualReviewTimeMinutes = baseline.estimatedManualTimeMinutes;
       skillsUsed.push("Flag Issues");
     } 
-    else if (canAutoResolve && hasRequiredSkills && agentConfidence > 0.8) {
+    else if (canAutoResolve && hasRequiredSkills && agentConfidence >= 0.75) {
       // Auto-apply mode with high confidence: resolve automatically
       agentAction = "auto_resolved";
       outcome = "passed";

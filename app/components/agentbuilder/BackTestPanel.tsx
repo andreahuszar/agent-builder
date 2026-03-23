@@ -1,24 +1,46 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { ChevronDown, ChevronRight, TrendingDown, Check } from "lucide-react"
+import { ChevronDown, ChevronRight, TrendingDown, TrendingUp, Check } from "lucide-react"
 import { Card } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 
 const STORAGE_KEY = "xelix-back-test-history"
-const STORAGE_VERSION = "v2" // bump when InvoiceComparison shape changes
+const STORAGE_VERSION = "v3" // bump when InvoiceComparison shape changes
 const STORAGE_VERSION_KEY = "xelix-back-test-history-version"
 const MAX_COMPARISONS_PER_RUN = 500
+
+// ─── Types (mirrors comparisonMetrics.ts InvoiceComparison) ──────────────────
 
 interface InvoiceComparison {
   invoiceId: string
   vendor: string
   amount: number
-  withoutAgent: { outcome: string; pipelineStage?: string; processingTimeMinutes: number; manualTouches: number }
-  withAgent: { agentAction: string; pipelineStage?: string; processingTimeMinutes: number; manualTouches: number }
-  improvement: { outcome: string; highlights: string[] }
+  date: string
+  importSource: string
   hasIssue: boolean
+  issueDescription?: string
+  exceptionType?: string
+  withoutAgent: {
+    outcome: string
+    pipelineStage?: string
+    failureStage?: string
+    isSTP?: boolean
+    processingTimeMinutes: number
+    manualTouches: number
+  }
+  withAgent: {
+    agentAction: string
+    pipelineStage?: string
+    isSTP?: boolean
+    processingTimeMinutes: number
+    manualTouches: number
+    captureAccuracy?: number
+    matchConfidence?: number
+  }
+  improvement: { outcome: string; highlights: string[] }
+  hasIssueField?: boolean
 }
 
 interface ComparisonMetrics {
@@ -41,6 +63,9 @@ interface ComparisonMetrics {
   autoResolvedCount: number
   accuracyWith: number
   accuracyImprovement: number
+  stpRateWithout?: number
+  stpRateWith?: number
+  stpImprovement?: number
 }
 
 interface BackTestRun {
@@ -54,6 +79,8 @@ interface BackTestRun {
   metrics: ComparisonMetrics | null
   invoiceComparisons: InvoiceComparison[]
 }
+
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function timePeriodLabel(period: string): string {
   return (
@@ -81,16 +108,54 @@ function saveRuns(runs: BackTestRun[]) {
   }
 }
 
+function fmtPct(n: number, decimals = 0) {
+  return `${n.toFixed(decimals)}%`
+}
+
+function fmtTime(mins: number) {
+  return mins < 60 ? `${mins.toFixed(0)}m` : `${(mins / 60).toFixed(1)}h`
+}
+
+function exceptionTypeLabel(t: string): string {
+  const map: Record<string, string> = {
+    duplicate: "Duplicate",
+    wrong_format: "Wrong Format",
+    missing_metadata: "Missing Metadata",
+    poor_quality: "Poor Quality",
+    low_ocr_confidence: "Low OCR",
+    missing_fields: "Missing Fields",
+    field_errors: "Field Errors",
+    manual_entry_required: "Manual Entry",
+    validation_error: "Validation Error",
+    anomaly: "Anomaly",
+    policy_violation: "Policy Violation",
+    vendor_unverified: "Unverified Vendor",
+    price_variance: "Price Variance",
+    quantity_variance: "Qty Variance",
+    no_po_match: "No PO Match",
+    no_po: "No PO",
+    tolerance_exceeded: "Tolerance Exceeded",
+    routing_unclear: "Routing Unclear",
+    threshold_exceeded: "Threshold Exceeded",
+    escalation_needed: "Escalation",
+    missing_approver: "Missing Approver",
+    missing_gl_code: "Missing GL Code",
+    erp_validation_failed: "ERP Validation",
+    reconciliation_mismatch: "Reconciliation",
+  }
+  return map[t] ?? t
+}
+
 // ─── Pipeline Stage Chip ─────────────────────────────────────────────────────
 
 const STAGE_STYLES: Record<string, string> = {
-  "Imported":     "bg-gray-100 text-gray-600 border-gray-200",
-  "Data Captured":"bg-blue-50 text-blue-700 border-blue-200",
-  "Verified":     "bg-indigo-50 text-indigo-700 border-indigo-200",
-  "Matched":      "bg-cyan-50 text-cyan-700 border-cyan-200",
-  "Approved":     "bg-amber-50 text-amber-700 border-amber-200",
-  "Posted":       "bg-green-50 text-green-700 border-green-200",
-  "Rejected":     "bg-red-50 text-red-600 border-red-200",
+  "Imported":      "bg-gray-100 text-gray-600 border-gray-200",
+  "Data Captured": "bg-blue-50 text-blue-700 border-blue-200",
+  "Verified":      "bg-indigo-50 text-indigo-700 border-indigo-200",
+  "Matched":       "bg-cyan-50 text-cyan-700 border-cyan-200",
+  "Approved":      "bg-amber-50 text-amber-700 border-amber-200",
+  "Posted":        "bg-green-50 text-green-700 border-green-200",
+  "Rejected":      "bg-red-50 text-red-600 border-red-200",
 }
 
 function PipelineStageChip({ stage }: { stage: string }) {
@@ -102,187 +167,444 @@ function PipelineStageChip({ stage }: { stage: string }) {
   )
 }
 
-// ─── Expanded Results View ────────────────────────────────────────────────────
+// ─── KPI Strip ────────────────────────────────────────────────────────────────
 
-function RunResults({ run }: { run: BackTestRun }) {
-  const [withoutFilter, setWithoutFilter] = useState("all")
-  const [withFilter, setWithFilter] = useState("all")
-  const [statusFilter, setStatusFilter] = useState("all")
+const PIPELINE_ORDER = ["Imported", "Data Captured", "Verified", "Matched", "Approved", "Posted", "Rejected"]
+
+function KpiStrip({ metrics, comparisons }: { metrics: ComparisonMetrics; comparisons: InvoiceComparison[] }) {
+  const total = comparisons.length || 1
+
+  // Compute STP from comparisons when metrics don't have it (e.g. old runs)
+  const stpWithout = metrics.stpRateWithout ?? (comparisons.filter(c => c.withoutAgent.isSTP).length / total * 100)
+  const stpWith = metrics.stpRateWith ?? (comparisons.filter(c => c.withAgent.isSTP).length / total * 100)
+  const stpDelta = stpWith - stpWithout
+
+  // Exception rate = invoices that didn't reach "Posted" in each condition
+  const exWithoutCount = comparisons.filter(c => c.withoutAgent.pipelineStage !== "Posted").length
+  const exWithCount = comparisons.filter(c => c.withAgent.pipelineStage !== "Posted").length
+  const exWithout = (exWithoutCount / total) * 100
+  const exWith = (exWithCount / total) * 100
+
+  const tiles = [
+    {
+      label: "Straight-Through Rate",
+      without: fmtPct(stpWithout, 1),
+      with: fmtPct(stpWith, 1),
+      delta: `+${stpDelta.toFixed(1)} pp`,
+      better: stpDelta > 0,
+      description: "Invoices processed with zero manual intervention",
+    },
+    {
+      label: "Didn't Reach Posted",
+      without: fmtPct(exWithout, 1),
+      with: fmtPct(exWith, 1),
+      delta: exWithout > exWith ? `−${(exWithout - exWith).toFixed(1)} pp` : `+${(exWith - exWithout).toFixed(1)} pp`,
+      better: exWith < exWithout,
+      description: "Invoices that did not fully post (blocked, rejected or stalled)",
+    },
+    {
+      label: "Avg Processing Time",
+      without: fmtTime(metrics.avgProcessingTimeWithout),
+      with: fmtTime(metrics.avgProcessingTimeWith),
+      delta: `−${metrics.timeReductionPercentage.toFixed(0)}%`,
+      better: metrics.avgProcessingTimeWith < metrics.avgProcessingTimeWithout,
+      description: "End-to-end time per invoice",
+    },
+    {
+      label: "Manual Touches",
+      without: (metrics.manualTouchesWithout / total).toFixed(1),
+      with: (metrics.manualTouchesWith / total).toFixed(1),
+      delta: `−${metrics.manualTouchReductionPercentage.toFixed(0)}%`,
+      better: metrics.manualTouchesWith < metrics.manualTouchesWithout,
+      description: "Average human interventions per invoice",
+    },
+  ]
+
+  return (
+    <div className="grid grid-cols-4 gap-3">
+      {tiles.map((t) => (
+        <div key={t.label} className="rounded-lg border border-gray-200 bg-white p-3">
+          <p className="text-xs text-gray-500 mb-2">{t.label}</p>
+          <div className="flex items-end justify-between mb-1">
+            <div>
+              <p className="text-[11px] text-gray-400 mb-0.5">Without</p>
+              <p className="text-lg font-bold text-gray-500 leading-none">{t.without}</p>
+            </div>
+            <div className="text-gray-300 text-lg font-light">→</div>
+            <div className="text-right">
+              <p className="text-[11px] text-purple-500 mb-0.5">With Agent</p>
+              <p className="text-lg font-bold text-purple-900 leading-none">{t.with}</p>
+            </div>
+          </div>
+          <div className={`flex items-center gap-1 mt-2 ${t.better ? "text-green-600" : "text-red-500"}`}>
+            {t.better ? <TrendingDown className="w-3 h-3" /> : <TrendingUp className="w-3 h-3" />}
+            <span className="text-xs font-semibold">{t.delta}</span>
+          </div>
+          <p className="text-[10px] text-gray-400 mt-1 leading-snug">{t.description}</p>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+// ─── Stage Funnel ─────────────────────────────────────────────────────────────
+
+function StageFunnel({ comparisons }: { comparisons: InvoiceComparison[] }) {
+  const total = comparisons.length || 1
+
+  // Count how many invoices reached at least each stage
+  // "reached" means pipelineStage is this stage or later in the order (excluding Rejected for now)
+  const orderedStages = ["Imported", "Data Captured", "Verified", "Matched", "Approved", "Posted"]
+  const rejectedStage = "Rejected"
+
+  function reachedStage(stage: string, pipelineStage?: string): boolean {
+    if (!pipelineStage) return false
+    if (pipelineStage === rejectedStage) return false
+    const idx = orderedStages.indexOf(stage)
+    const reached = orderedStages.indexOf(pipelineStage)
+    return reached >= idx
+  }
+
+  const rows = [
+    ...orderedStages.map(stage => {
+      const withoutCount = comparisons.filter(c => reachedStage(stage, c.withoutAgent.pipelineStage)).length
+      const withCount = comparisons.filter(c => reachedStage(stage, c.withAgent.pipelineStage)).length
+      return { stage, withoutCount, withCount, isRejected: false }
+    }),
+    {
+      stage: "Rejected",
+      withoutCount: comparisons.filter(c => c.withoutAgent.pipelineStage === "Rejected").length,
+      withCount: comparisons.filter(c => c.withAgent.pipelineStage === "Rejected").length,
+      isRejected: true,
+    },
+  ]
+
+  return (
+    <div>
+      <p className="text-sm font-semibold text-gray-950 mb-3">Stage Progression</p>
+      <div className="space-y-1.5">
+        {rows.map(({ stage, withoutCount, withCount, isRejected }) => {
+          const withoutPct = (withoutCount / total) * 100
+          const withPct = (withCount / total) * 100
+          return (
+            <div key={stage} className="grid grid-cols-[80px_1fr_64px] items-center gap-2">
+              <span className="text-xs text-gray-500 text-right shrink-0">{stage}</span>
+              <div className="flex flex-col gap-0.5">
+                {/* Without agent bar */}
+                <div className="flex items-center gap-1.5">
+                  <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${isRejected ? "bg-red-300" : "bg-gray-300"}`}
+                      style={{ width: `${withoutPct}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-gray-400 w-8 text-right shrink-0">{withoutCount.toLocaleString()}</span>
+                </div>
+                {/* With agent bar */}
+                <div className="flex items-center gap-1.5">
+                  <div className="flex-1 h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full transition-all ${isRejected ? "bg-red-400" : "bg-purple-500"}`}
+                      style={{ width: `${withPct}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-purple-600 w-8 text-right shrink-0">{withCount.toLocaleString()}</span>
+                </div>
+              </div>
+              {/* Delta */}
+              <div className="text-right">
+                {!isRejected && withCount > withoutCount ? (
+                  <span className="text-[10px] font-medium text-green-600">+{(withCount - withoutCount).toLocaleString()}</span>
+                ) : isRejected && withCount < withoutCount ? (
+                  <span className="text-[10px] font-medium text-green-600">−{(withoutCount - withCount).toLocaleString()}</span>
+                ) : (
+                  <span className="text-[10px] text-gray-300">—</span>
+                )}
+              </div>
+            </div>
+          )
+        })}
+      </div>
+      <div className="flex items-center gap-4 mt-3 text-[10px] text-gray-400">
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-1.5 rounded-full bg-gray-300" /> Without Agent</span>
+        <span className="flex items-center gap-1"><span className="inline-block w-3 h-1.5 rounded-full bg-purple-500" /> With Agent</span>
+      </div>
+    </div>
+  )
+}
+
+// ─── Exception Breakdown ──────────────────────────────────────────────────────
+
+function ExceptionBreakdown({ comparisons }: { comparisons: InvoiceComparison[] }) {
+  const withIssues = comparisons.filter(c => c.hasIssue && c.exceptionType)
+  if (withIssues.length === 0) return null
+
+  // Group by exception type
+  const grouped: Record<string, { total: number; autoResolved: number }> = {}
+  for (const c of withIssues) {
+    const t = c.exceptionType!
+    if (!grouped[t]) grouped[t] = { total: 0, autoResolved: 0 }
+    grouped[t].total++
+    if (c.withAgent.agentAction === "auto_resolved") grouped[t].autoResolved++
+  }
+
+  const rows = Object.entries(grouped)
+    .sort((a, b) => b[1].total - a[1].total)
+    .slice(0, 8)
+
+  const maxTotal = Math.max(...rows.map(r => r[1].total))
+
+  return (
+    <div>
+      <p className="text-sm font-semibold text-gray-950 mb-3">Exception Distribution</p>
+      <div className="rounded-lg border border-gray-200 overflow-hidden">
+        <table className="w-full text-xs">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="text-left p-2 text-gray-500 font-medium">Exception Type</th>
+              <th className="text-right p-2 text-gray-500 font-medium w-16">Count</th>
+              <th className="p-2 text-gray-500 font-medium w-32">Volume</th>
+              <th className="text-right p-2 text-gray-500 font-medium w-20">Auto-resolved</th>
+              <th className="text-right p-2 text-gray-500 font-medium w-16">Rate</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map(([type, { total, autoResolved }]) => (
+              <tr key={type} className="border-t border-gray-100">
+                <td className="p-2 text-gray-950">{exceptionTypeLabel(type)}</td>
+                <td className="p-2 text-right text-gray-700">{total.toLocaleString()}</td>
+                <td className="p-2">
+                  <div className="flex gap-0.5 h-3 rounded overflow-hidden">
+                    <div className="bg-purple-500 rounded-sm" style={{ width: `${(autoResolved / maxTotal) * 100}%` }} />
+                    <div className="bg-gray-200 rounded-sm" style={{ width: `${((total - autoResolved) / maxTotal) * 100}%` }} />
+                  </div>
+                </td>
+                <td className="p-2 text-right text-purple-700 font-medium">{autoResolved.toLocaleString()}</td>
+                <td className="p-2 text-right">
+                  <span className={`font-medium ${autoResolved / total > 0.7 ? "text-green-600" : autoResolved / total > 0.3 ? "text-amber-600" : "text-red-500"}`}>
+                    {fmtPct((autoResolved / total) * 100, 0)}
+                  </span>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// ─── Invoice Comparison Table ─────────────────────────────────────────────────
+
+function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComparison[]; totalInvoices: number }) {
+  const [stpFilter, setStpFilter] = useState("all")
+  const [resultFilter, setResultFilter] = useState("all")
   const [page, setPage] = useState(1)
   const rowsPerPage = 50
 
-  const { metrics, invoiceComparisons } = run
-
-  const filtered = invoiceComparisons.filter(c => {
-    if (withoutFilter !== "all" && c.withoutAgent.pipelineStage !== withoutFilter) return false
-    if (withFilter !== "all" && c.withAgent.agentAction !== withFilter) return false
-    if (statusFilter === "pass" && c.improvement.outcome !== "better") return false
-    if (statusFilter === "fail" && !c.hasIssue) return false
+  const filtered = comparisons.filter(c => {
+    if (stpFilter === "stp" && !c.withAgent.isSTP) return false
+    if (stpFilter === "non-stp" && c.withAgent.isSTP) return false
+    if (resultFilter === "improved" && c.improvement.outcome !== "better") return false
+    if (resultFilter === "same" && c.improvement.outcome !== "same") return false
+    if (resultFilter === "worse" && c.improvement.outcome !== "worse") return false
     return true
   })
 
-  return (
-    <div className="space-y-4 pt-4 border-t border-gray-100">
-      {metrics && (
-        <>
-          {/* 3-column metrics */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Without Agent</p>
-              <div className="space-y-2">
-                <div><p className="text-xs text-gray-400">Avg Time</p><p className="text-lg font-bold text-gray-900">{metrics.avgProcessingTimeWithout.toFixed(1)} min</p></div>
-                <div><p className="text-xs text-gray-400">Exceptions</p><p className="text-lg font-bold text-gray-900">{metrics.exceptionsWithout.toLocaleString()}</p></div>
-                <div><p className="text-xs text-gray-400">Manual Touches</p><p className="text-lg font-bold text-gray-900">{metrics.manualTouchesWithout.toLocaleString()}</p></div>
-                <div><p className="text-xs text-gray-400">Cost/Invoice</p><p className="text-lg font-bold text-gray-900">${metrics.costPerInvoiceWithout.toFixed(2)}</p></div>
-              </div>
-            </div>
-            <div className="rounded-lg border border-purple-200 bg-purple-50 p-3">
-              <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide mb-2">With Agent</p>
-              <div className="space-y-2">
-                <div><p className="text-xs text-purple-500">Avg Time</p><p className="text-lg font-bold text-purple-900">{metrics.avgProcessingTimeWith.toFixed(1)} min</p></div>
-                <div><p className="text-xs text-purple-500">Exceptions</p><p className="text-lg font-bold text-purple-900">{metrics.exceptionsWith.toLocaleString()}</p></div>
-                <div><p className="text-xs text-purple-500">Manual Touches</p><p className="text-lg font-bold text-purple-900">{metrics.manualTouchesWith.toLocaleString()}</p></div>
-                <div><p className="text-xs text-purple-500">Cost/Invoice</p><p className="text-lg font-bold text-purple-900">${metrics.costPerInvoiceWith.toFixed(2)}</p></div>
-              </div>
-            </div>
-            <div className="rounded-lg border border-green-200 bg-green-50 p-3">
-              <p className="text-xs font-semibold text-green-700 uppercase tracking-wide mb-2">Improvement</p>
-              <div className="space-y-2">
-                <div className="flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-green-600 shrink-0" /><div><p className="text-xs text-green-600">Time Saved</p><p className="text-lg font-bold text-green-900">{metrics.timeReductionPercentage.toFixed(0)}%</p></div></div>
-                <div className="flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-green-600 shrink-0" /><div><p className="text-xs text-green-600">Fewer Exceptions</p><p className="text-lg font-bold text-green-900">{metrics.exceptionReductionPercentage.toFixed(0)}%</p></div></div>
-                <div className="flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-green-600 shrink-0" /><div><p className="text-xs text-green-600">Fewer Touches</p><p className="text-lg font-bold text-green-900">{metrics.manualTouchReductionPercentage.toFixed(0)}%</p></div></div>
-                <div className="flex items-center gap-1.5"><TrendingDown className="w-3.5 h-3.5 text-green-600 shrink-0" /><div><p className="text-xs text-green-600">Cost Savings</p><p className="text-lg font-bold text-green-900">${metrics.costSavingsPerInvoice.toFixed(2)}</p></div></div>
-              </div>
-            </div>
-          </div>
+  const paginated = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage)
+  const totalPages = Math.ceil(filtered.length / rowsPerPage)
 
-          {/* 2-column summary */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-lg border border-gray-200 p-3">
-              <p className="text-sm font-semibold text-gray-950 mb-2">FTE Savings</p>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-gray-500">Hours Saved:</span><span className="font-medium text-gray-950">{metrics.fteHoursSaved.toFixed(1)} hrs</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Annual FTE:</span><span className="font-medium text-green-600">{metrics.annualFTESavings.toFixed(2)} FTE</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Annual Savings:</span><span className="font-medium text-green-600">${metrics.annualCostSavings.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></div>
-              </div>
-            </div>
-            <div className="rounded-lg border border-gray-200 p-3">
-              <p className="text-sm font-semibold text-gray-950 mb-2">Processing Efficiency</p>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex justify-between"><span className="text-gray-500">Speedup:</span><span className="font-medium text-gray-950">{metrics.processingSpeedupFactor.toFixed(1)}x faster</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Auto-Resolved:</span><span className="font-medium text-gray-950">{metrics.autoResolvedCount.toLocaleString()} invoices</span></div>
-                <div className="flex justify-between"><span className="text-gray-500">Accuracy:</span><span className="font-medium text-gray-950">{metrics.accuracyWith.toFixed(1)}% (+{metrics.accuracyImprovement.toFixed(1)}%)</span></div>
-              </div>
-            </div>
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-2">
+        <p className="text-sm font-semibold text-gray-950">
+          Invoice-by-Invoice Comparison
+          {totalInvoices >= MAX_COMPARISONS_PER_RUN && (
+            <span className="ml-2 text-xs font-normal text-gray-400">(first {MAX_COMPARISONS_PER_RUN} invoices shown)</span>
+          )}
+        </p>
+        <div className="flex gap-1.5 flex-wrap justify-end">
+          {/* STP filter */}
+          <Select value={stpFilter} onValueChange={v => { setStpFilter(v); setPage(1) }}>
+            <SelectTrigger className="h-7 text-xs w-[110px]"><SelectValue placeholder="STP" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All</SelectItem>
+              <SelectItem value="stp">STP only</SelectItem>
+              <SelectItem value="non-stp">Non-STP</SelectItem>
+            </SelectContent>
+          </Select>
+          {/* Result filter */}
+          <Select value={resultFilter} onValueChange={v => { setResultFilter(v); setPage(1) }}>
+            <SelectTrigger className="h-7 text-xs w-[110px]"><SelectValue placeholder="Result" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Results</SelectItem>
+              <SelectItem value="improved">Improved</SelectItem>
+              <SelectItem value="same">No change</SelectItem>
+              <SelectItem value="worse">Worse</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="border rounded-lg overflow-hidden">
+        <table className="w-full text-xs">
+          <thead className="bg-gray-50">
+            <tr>
+              <th className="text-left p-2 text-gray-500 font-medium">Invoice</th>
+              <th className="text-left p-2 text-gray-500 font-medium">Vendor</th>
+              <th className="text-right p-2 text-gray-500 font-medium">Amount</th>
+              <th className="text-left p-2 text-gray-500 font-medium">Date</th>
+              <th className="text-left p-2 text-gray-500 font-medium">Without Agent</th>
+              <th className="text-left p-2 text-gray-500 font-medium">With Agent</th>
+              <th className="text-center p-2 text-gray-500 font-medium">Touches without agent</th>
+              <th className="text-center p-2 text-gray-500 font-medium">Touches with agent</th>
+              <th className="text-center p-2 text-gray-500 font-medium">Difference</th>
+              <th className="text-left p-2 text-gray-500 font-medium">Result</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={10} className="p-6 text-center text-gray-400">No invoices match the filter.</td></tr>
+            ) : (
+              paginated.map((c, idx) => {
+                const touchesWithout = c.withoutAgent.manualTouches
+                const touchesWith = c.withAgent.manualTouches
+                const touchDelta = touchesWith - touchesWithout
+                const resultCls =
+                  c.improvement.outcome === "better" ? "bg-green-50 text-green-700 border-green-200" :
+                  c.improvement.outcome === "worse"  ? "bg-red-50 text-red-600 border-red-200" :
+                                                       "bg-gray-100 text-gray-500 border-gray-200"
+                const resultLabel =
+                  c.improvement.outcome === "better" ? "Improved" :
+                  c.improvement.outcome === "worse"  ? "Worse" : "No change"
+
+                return (
+                  <tr key={idx} className="border-t hover:bg-gray-50 transition-colors">
+                    {/* Invoice ID */}
+                    <td className="p-2 font-mono text-gray-950 whitespace-nowrap">{c.invoiceId}</td>
+                    {/* Vendor */}
+                    <td className="p-2 text-gray-700 max-w-[100px] truncate">{c.vendor}</td>
+                    {/* Amount */}
+                    <td className="p-2 text-right font-medium text-gray-950 whitespace-nowrap">£{c.amount.toFixed(0)}</td>
+                    {/* Date */}
+                    <td className="p-2 text-gray-500 whitespace-nowrap">{c.date ? c.date.slice(5) : "—"}</td>
+                    {/* Without Agent */}
+                    <td className="p-2">
+                      <div className="flex flex-col gap-0.5">
+                        {c.withoutAgent.pipelineStage === "Posted" ? (
+                          <span className="text-xs font-medium text-gray-950">Posted</span>
+                        ) : (
+                          <>
+                            <span className="text-xs font-medium text-orange-700">Held</span>
+                            {c.withoutAgent.pipelineStage && (
+                              <span className="text-[10px] text-gray-600 mt-0.5">at {c.withoutAgent.pipelineStage}</span>
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </td>
+                    {/* With Agent */}
+                    <td className="p-2">
+                      <div className="flex flex-col gap-0.5">
+                        {c.withAgent.pipelineStage === "Posted" ? (
+                          <>
+                            <span className="text-xs font-medium text-gray-950">Posted</span>
+                            {c.withAgent.isSTP && (
+                              <span className="text-[10px] text-green-600 mt-0.5">STP</span>
+                            )}
+                          </>
+                        ) : c.withAgent.pipelineStage ? (
+                          <>
+                            <span className="text-xs font-medium text-orange-700">Held</span>
+                            <span className="text-[10px] text-gray-600 mt-0.5">at {c.withAgent.pipelineStage}</span>
+                          </>
+                        ) : (
+                          <span className="text-gray-400">—</span>
+                        )}
+                      </div>
+                    </td>
+                    {/* Touches without agent */}
+                    <td className="p-2 text-center">
+                      <span className="text-xs font-semibold text-gray-950">{touchesWithout}</span>
+                    </td>
+                    {/* Touches with agent */}
+                    <td className="p-2 text-center">
+                      <span className="text-xs font-semibold text-gray-950">{touchesWith}</span>
+                    </td>
+                    {/* Difference */}
+                    <td className="p-2 text-center">
+                      {touchDelta === 0
+                        ? <span className="text-xs font-semibold text-gray-400">0</span>
+                        : <span className={`text-xs font-semibold ${touchDelta < 0 ? "text-green-600" : "text-red-500"}`}>
+                            {touchDelta < 0 ? touchDelta : `+${touchDelta}`}
+                          </span>}
+                    </td>
+                    {/* Result */}
+                    <td className="p-2">
+                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${resultCls}`}>
+                        {resultLabel}
+                      </span>
+                    </td>
+                  </tr>
+                )
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between mt-2 text-xs">
+          <span className="text-gray-500">
+            Showing {((page - 1) * rowsPerPage) + 1}–{Math.min(page * rowsPerPage, filtered.length)} of {filtered.length}
+          </span>
+          <div className="flex gap-2">
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
+            <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
           </div>
-        </>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Expanded Results View ────────────────────────────────────────────────────
+
+function RunResults({ run }: { run: BackTestRun }) {
+  const { metrics, invoiceComparisons } = run
+
+  return (
+    <div className="space-y-5 pt-4 border-t border-gray-100">
+      {/* 1 — KPI strip */}
+      {metrics && (
+        <KpiStrip metrics={metrics} comparisons={invoiceComparisons} />
       )}
 
-      {/* Invoice table */}
-      {invoiceComparisons.length > 0 && (
-        <div>
-          <div className="flex items-center justify-between mb-2">
-            <p className="text-sm font-semibold text-gray-950">
-              Invoice-by-Invoice Comparison
-              {invoiceComparisons.length >= MAX_COMPARISONS_PER_RUN && (
-                <span className="ml-2 text-xs font-normal text-gray-400">(first {MAX_COMPARISONS_PER_RUN} invoices shown)</span>
-              )}
-            </p>
-            <div className="flex gap-1.5">
-              <Select value={withoutFilter} onValueChange={v => { setWithoutFilter(v); setPage(1) }}>
-                <SelectTrigger className="h-7 text-xs w-[130px]"><SelectValue placeholder="Without Agent" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Stages</SelectItem>
-                  <SelectItem value="Imported">Imported</SelectItem>
-                  <SelectItem value="Data Captured">Data Captured</SelectItem>
-                  <SelectItem value="Verified">Verified</SelectItem>
-                  <SelectItem value="Matched">Matched</SelectItem>
-                  <SelectItem value="Approved">Approved</SelectItem>
-                  <SelectItem value="Posted">Posted</SelectItem>
-                  <SelectItem value="Rejected">Rejected</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={withFilter} onValueChange={v => { setWithFilter(v); setPage(1) }}>
-                <SelectTrigger className="h-7 text-xs w-[120px]"><SelectValue placeholder="With Agent" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Actions</SelectItem>
-                  <SelectItem value="auto_resolved">Auto-resolved</SelectItem>
-                  <SelectItem value="suggested_resolution">Suggested</SelectItem>
-                  <SelectItem value="observed">Observed</SelectItem>
-                  <SelectItem value="escalated_to_human">Escalated</SelectItem>
-                </SelectContent>
-              </Select>
-              <Select value={statusFilter} onValueChange={v => { setStatusFilter(v); setPage(1) }}>
-                <SelectTrigger className="h-7 text-xs w-[100px]"><SelectValue placeholder="Result" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
-                  <SelectItem value="pass">Improved</SelectItem>
-                  <SelectItem value="fail">With Issues</SelectItem>
-                </SelectContent>
-              </Select>
+      {/* 2 — FTE / Cost summary */}
+      {metrics && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="rounded-lg border border-gray-200 p-3">
+            <p className="text-sm font-semibold text-gray-950 mb-2">FTE Savings</p>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between"><span className="text-gray-500">Hours Saved:</span><span className="font-medium text-gray-950">{metrics.fteHoursSaved.toFixed(1)} hrs</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Annual FTE:</span><span className="font-medium text-green-600">{metrics.annualFTESavings.toFixed(2)} FTE</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Annual Savings:</span><span className="font-medium text-green-600">${metrics.annualCostSavings.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></div>
             </div>
           </div>
-          <div className="border rounded-lg overflow-hidden">
-            <table className="w-full text-xs">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="text-left p-2 text-gray-600">Invoice ID</th>
-                  <th className="text-left p-2 text-gray-600">Vendor</th>
-                  <th className="text-right p-2 text-gray-600">Amount</th>
-                  <th className="text-left p-2 text-gray-600">Without Agent</th>
-                  <th className="text-left p-2 text-gray-600">With Agent</th>
-                  <th className="text-left p-2 text-gray-600">Improvement</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filtered.length === 0 ? (
-                  <tr><td colSpan={6} className="p-6 text-center text-gray-400">No invoices match the filter.</td></tr>
-                ) : (
-                  filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((c, idx) => (
-                    <tr key={idx} className="border-t hover:bg-gray-50 transition-colors">
-                      <td className="p-2 font-mono text-gray-950">{c.invoiceId}</td>
-                      <td className="p-2 text-gray-950">{c.vendor}</td>
-                      <td className="p-2 text-right font-medium text-gray-950">${c.amount.toFixed(2)}</td>
-                        <td className="p-2">
-                          <div className="flex flex-col gap-1">
-                            {c.withoutAgent.pipelineStage
-                              ? <PipelineStageChip stage={c.withoutAgent.pipelineStage} />
-                              : <span className={`text-xs px-1.5 py-0.5 rounded inline-block w-fit ${c.withoutAgent.outcome === "pass" ? "bg-green-100 text-green-700" : c.withoutAgent.outcome === "blocked" ? "bg-red-100 text-red-700" : c.withoutAgent.outcome === "delayed" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-700"}`}>{c.withoutAgent.outcome}</span>
-                            }
-                            <span className="text-xs text-gray-400">{c.withoutAgent.processingTimeMinutes.toFixed(0)}min · {c.withoutAgent.manualTouches} touch{c.withoutAgent.manualTouches !== 1 ? "es" : ""}</span>
-                          </div>
-                        </td>
-                        <td className="p-2">
-                          <div className="flex flex-col gap-1">
-                            {c.withAgent.pipelineStage
-                              ? <PipelineStageChip stage={c.withAgent.pipelineStage} />
-                              : <span className={`text-xs px-1.5 py-0.5 rounded inline-block w-fit ${c.withAgent.agentAction === "auto_resolved" ? "bg-purple-100 text-purple-700" : c.withAgent.agentAction === "suggested_resolution" ? "bg-yellow-100 text-yellow-700" : c.withAgent.agentAction === "observed" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}>{c.withAgent.agentAction}</span>
-                            }
-                            <span className="text-xs text-gray-400">{c.withAgent.processingTimeMinutes.toFixed(0)}min · {c.withAgent.manualTouches} touch{c.withAgent.manualTouches !== 1 ? "es" : ""}</span>
-                          </div>
-                        </td>
-                      <td className="p-2">
-                        <div className="flex flex-wrap gap-1">
-                          {c.improvement.highlights.map((h, hi) => <span key={hi} className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">{h}</span>)}
-                          {c.improvement.highlights.length === 0 && <span className="text-xs text-gray-400">No change</span>}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-          {Math.ceil(filtered.length / rowsPerPage) > 1 && (
-            <div className="flex items-center justify-between mt-2 text-xs">
-              <span className="text-gray-500">Showing {((page - 1) * rowsPerPage) + 1}–{Math.min(page * rowsPerPage, filtered.length)} of {filtered.length}</span>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
-                <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(Math.ceil(filtered.length / rowsPerPage), p + 1))} disabled={page === Math.ceil(filtered.length / rowsPerPage)}>Next</Button>
-              </div>
+          <div className="rounded-lg border border-gray-200 p-3">
+            <p className="text-sm font-semibold text-gray-950 mb-2">Processing Efficiency</p>
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between"><span className="text-gray-500">Speedup:</span><span className="font-medium text-gray-950">{metrics.processingSpeedupFactor.toFixed(1)}x faster</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Auto-Resolved:</span><span className="font-medium text-gray-950">{metrics.autoResolvedCount.toLocaleString()} invoices</span></div>
+              <div className="flex justify-between"><span className="text-gray-500">Accuracy:</span><span className="font-medium text-gray-950">{metrics.accuracyWith.toFixed(1)}% (+{metrics.accuracyImprovement.toFixed(1)}%)</span></div>
             </div>
-          )}
+          </div>
         </div>
+      )}
+
+      {/* 4 — Invoice table */}
+      {invoiceComparisons.length > 0 && (
+        <InvoiceTable comparisons={invoiceComparisons} totalInvoices={invoiceComparisons.length} />
       )}
     </div>
   )
@@ -298,7 +620,6 @@ export function BackTestPanel() {
   // Load history from localStorage on mount
   useEffect(() => {
     try {
-      // Clear stale data if the storage schema version changed
       const storedVersion = localStorage.getItem(STORAGE_VERSION_KEY)
       if (storedVersion !== STORAGE_VERSION) {
         localStorage.removeItem(STORAGE_KEY)
@@ -308,7 +629,6 @@ export function BackTestPanel() {
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored) as BackTestRun[]
-        // Any run still marked "running" after a page refresh is incomplete
         const cleaned = parsed.map(r =>
           r.status === "running"
             ? { ...r, status: "completed" as const, completedAt: r.completedAt ?? new Date().toISOString() }
@@ -347,7 +667,6 @@ export function BackTestPanel() {
 
     const onProgress = (e: Event) => {
       const { runId, progress, recentComparisons } = (e as CustomEvent).detail
-      // Defensive: initialise accumulator if back-test-started was missed
       if (activeComparisons.current[runId] === undefined) {
         activeComparisons.current[runId] = []
       }
@@ -417,7 +736,7 @@ export function BackTestPanel() {
 
   return (
     <div className="flex-1 overflow-y-auto bg-gray-50">
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="max-w-5xl mx-auto p-6">
         <div className="flex items-center justify-between mb-5">
           <h2 className="text-base font-semibold text-gray-950">Back Test History</h2>
           <div className="flex items-center gap-2">
@@ -446,18 +765,14 @@ export function BackTestPanel() {
 
             return (
               <Card key={run.id} className="overflow-hidden">
-                {/* Row header */}
                 <button
                   onClick={() => setExpandedId(isExpanded ? null : run.id)}
                   className="w-full text-left p-4 hover:bg-gray-50 transition-colors"
                 >
                   <div className="flex items-center gap-3">
-                    {/* Expand chevron */}
                     <span className="text-gray-400 shrink-0">
                       {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
                     </span>
-
-                    {/* Status badge */}
                     {isRunning ? (
                       <span className="flex items-center gap-1.5 text-xs font-medium text-purple-700 bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full shrink-0">
                         <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
@@ -469,20 +784,15 @@ export function BackTestPanel() {
                         Completed
                       </span>
                     )}
-
-                    {/* Agent name & period */}
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-950 truncate">
                         {run.agentName}
                         <span className="ml-2 text-gray-400 font-normal">· {timePeriodLabel(run.timePeriod)}</span>
                       </p>
                     </div>
-
-                    {/* Timestamp */}
                     <span className="text-xs text-gray-400 shrink-0">{timeAgo(run.startedAt)}</span>
                   </div>
 
-                  {/* Progress bar (in-progress only) */}
                   {isRunning && (
                     <div className="mt-3 ml-7">
                       <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -495,9 +805,14 @@ export function BackTestPanel() {
                     </div>
                   )}
 
-                  {/* Quick summary (completed, collapsed) */}
                   {!isRunning && !isExpanded && run.metrics && (
                     <div className="mt-2 ml-7 flex items-center gap-4 text-xs text-gray-500">
+                      {run.metrics.stpRateWith != null && (
+                        <>
+                          <span className="text-green-600 font-medium">STP {run.metrics.stpRateWith.toFixed(0)}%</span>
+                          <span>·</span>
+                        </>
+                      )}
                       <span className="text-green-600 font-medium">↓ {run.metrics.timeReductionPercentage.toFixed(0)}% faster</span>
                       <span>·</span>
                       <span className="text-green-600 font-medium">↓ {run.metrics.exceptionReductionPercentage.toFixed(0)}% fewer exceptions</span>
@@ -507,7 +822,6 @@ export function BackTestPanel() {
                   )}
                 </button>
 
-                {/* Expanded content */}
                 {isExpanded && (
                   <div className="px-4 pb-4">
                     {isRunning ? (

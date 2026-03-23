@@ -79,6 +79,19 @@ export function simulateBaselineProcessing(scenario: TestScenario): BaselineResu
   let requiresManualReview = baseline.requiresManualReview;
   let manualTouches = baseline.manualTouches;
   let manualReviewTimeMinutes = requiresManualReview ? processingTimeMinutes : 0;
+
+  // For clean invoices that will post, ~60% still require 1-2 manual touches
+  // (AP clerk review, coding check, approval sign-off on normal invoices)
+  if (!hasIssue && outcome === "passed") {
+    // Deterministic pseudo-random from invoice ID so results are consistent
+    const hash = id.split("").reduce((acc, ch) => acc + ch.charCodeAt(0), 0)
+    const roll = (hash % 100) / 100
+    if (roll < 0.60) {
+      manualTouches = (hash % 3) === 0 ? 2 : 1
+      requiresManualReview = true
+      manualReviewTimeMinutes = manualTouches * 3 // ~3 min per touch for routine review
+    }
+  }
   
   // Calculate processing accuracy (manual processing has baseline error rates)
   let processingAccuracy = 0.95; // 95% base accuracy for clean invoices
