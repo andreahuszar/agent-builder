@@ -12,7 +12,18 @@ interface SettingsContentProps {
 }
 
 function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
-  const [activeSubTab, setActiveSubTab] = useState('dashboard');
+  const [activeSubTab, setActiveSubTab] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search)
+      if (params.get('newAgent') === 'true') return 'agent-builder-2'
+      const hash = window.location.hash
+      if (hash.includes('back-testing')) return 'back-testing'
+      if (hash.includes('agent-builder-2')) return 'agent-builder-2'
+      if (hash.includes('general-settings')) return 'general-settings'
+      if (hash.includes('documents')) return 'documents'
+    }
+    return 'dashboard'
+  });
   const backTestActive = useBackTestActive();
   const { showToast } = useToast();
 

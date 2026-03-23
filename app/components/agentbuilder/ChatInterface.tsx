@@ -298,7 +298,7 @@ ${signature}`
         setMessages((prev) => [...prev, {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: `I have a prompt ready for you to apply. ROLE:\nReject word formatted invoices - automatically rejects invoice files submitted in unsupported formats and notifies the vendor by email\n\nINSTRUCTIONS:\n- Check the file extension of each incoming invoice. If the file is in .docx format, reject it immediately.\n- Connect to invoicing@xelix.com and compose an automated reply to the original sender`,
+          content: `I have a prompt ready for you to apply. ROLE:\nAutomatically reject any invoices received that are in Word format\n\nINSTRUCTIONS:\n- Scan all incoming invoices for their file format\n- If the invoice is received in Microsoft Word format (.docx), automatically reject the invoice\n- Send rejection notification back to vendor with the provided email template`,
           timestamp: new Date(),
         }])
         if (onStageDetected) onStageDetected("ingestion")
