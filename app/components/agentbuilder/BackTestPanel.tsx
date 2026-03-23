@@ -408,11 +408,12 @@ interface TimelineEvent {
 
 function buildWithoutTimeline(c: InvoiceComparison): TimelineEvent[] {
   const stage = c.withoutAgent.pipelineStage ?? "Imported"
-  const totalTime = c.withoutAgent.processingTimeMinutes
   const stageIdx = ORDERED_STAGES.indexOf(stage)
   const reachedStages = stageIdx >= 0 ? ORDERED_STAGES.slice(0, stageIdx + 1) : [stage]
-  const perStageTime = totalTime / Math.max(reachedStages.length, 1)
   const touches = c.withoutAgent.manualTouches
+
+  // Use small fixed per-step times (30s–2m) regardless of total processing time
+  const STEP_TIMES = [0.5, 0.75, 1.0, 1.5, 2.0, 2.5]
 
   const events: TimelineEvent[] = reachedStages.map((s, i) => {
     const isLast = i === reachedStages.length - 1
@@ -420,7 +421,7 @@ function buildWithoutTimeline(c: InvoiceComparison): TimelineEvent[] {
     return {
       type: "stage",
       label: s,
-      timeMin: parseFloat(((i + 1) * perStageTime).toFixed(1)),
+      timeMin: STEP_TIMES[Math.min(i, STEP_TIMES.length - 1)],
       status: isPosted ? "posted" : isLast ? "stuck" : "completed",
       subLabel: isLast && !isPosted ? "Invoice held here" : undefined,
     }
@@ -434,7 +435,7 @@ function buildWithoutTimeline(c: InvoiceComparison): TimelineEvent[] {
         type: "touch",
         label: `Manual review ${touches > 1 ? `(${t + 1}/${touches})` : ""}`.trim(),
         subLabel: "AP team intervention",
-        timeMin: parseFloat(((last.timeMin ?? totalTime) + (t + 1) * 2).toFixed(1)),
+        timeMin: parseFloat(((last.timeMin ?? 2) + (t + 1) * 0.5).toFixed(2)),
         status: "stuck",
       })
     }
@@ -519,7 +520,7 @@ function TimelineNode({ event, isLast }: { event: TimelineEvent; isLast: boolean
         {event.subLabel && <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{event.subLabel}</p>}
         {event.timeMin !== undefined && (
           <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-0.5">
-            <Clock className="w-2.5 h-2.5" />{event.timeMin < 1 ? `${(event.timeMin * 60).toFixed(0)}s` : `${event.timeMin}m`}
+            <Clock className="w-2.5 h-2.5" />{event.timeMin < 1 ? `${(event.timeMin * 60).toFixed(0)}s` : Number.isInteger(event.timeMin) ? `${event.timeMin}m` : `${Math.floor(event.timeMin)}m ${Math.round((event.timeMin % 1) * 60)}s`}
           </p>
         )}
       </div>
@@ -530,6 +531,9 @@ function TimelineNode({ event, isLast }: { event: TimelineEvent; isLast: boolean
 function ActivityModal({ invoice, onClose }: { invoice: InvoiceComparison; onClose: () => void }) {
   const withoutEvents = buildWithoutTimeline(invoice)
   const withEvents = buildWithTimeline(invoice)
+
+  const withoutTotalTime = withoutEvents.reduce((sum, e) => sum + (e.timeMin ?? 0), 0)
+  const withTotalTime = withEvents.reduce((sum, e) => sum + (e.timeMin ?? 0), 0)
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
@@ -571,7 +575,7 @@ function ActivityModal({ invoice, onClose }: { invoice: InvoiceComparison; onClo
             <div className="mt-2 pt-3 border-t border-gray-100 flex gap-4">
               <div className="text-center">
                 <p className="text-[11px] text-gray-400">Time</p>
-                <p className="text-sm font-semibold text-gray-950">{fmtTime(invoice.withoutAgent.processingTimeMinutes)}</p>
+                <p className="text-sm font-semibold text-gray-950">{fmtTime(withoutTotalTime)}</p>
               </div>
               <div className="text-center">
                 <p className="text-[11px] text-gray-400">Touches</p>
@@ -601,7 +605,7 @@ function ActivityModal({ invoice, onClose }: { invoice: InvoiceComparison; onClo
             <div className="mt-2 pt-3 border-t border-purple-100 flex gap-4">
               <div className="text-center">
                 <p className="text-[11px] text-gray-400">Time</p>
-                <p className="text-sm font-semibold text-purple-900">{fmtTime(invoice.withAgent.processingTimeMinutes)}</p>
+                <p className="text-sm font-semibold text-purple-900">{fmtTime(withTotalTime)}</p>
               </div>
               <div className="text-center">
                 <p className="text-[11px] text-gray-400">Touches</p>
@@ -630,7 +634,7 @@ function ActivityModal({ invoice, onClose }: { invoice: InvoiceComparison; onClo
 // ─── Invoice Comparison Table ─────────────────────────────────────────────────
 
 function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComparison[]; totalInvoices: number }) {
-  const [stpFilter, setStpFilter] = useState("all")
+  const [stpFilter, setStpFilter] = useState("non-stp")
   const [resultFilter, setResultFilter] = useState("all")
   const [page, setPage] = useState(1)
   const [selectedInvoice, setSelectedInvoice] = useState<InvoiceComparison | null>(null)
@@ -689,33 +693,25 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
         <table className="w-full text-xs">
           <thead className="bg-gray-50">
             <tr>
-              <th className="text-left p-2 text-gray-500 font-medium">Invoice</th>
+              <th className="text-left p-2 text-gray-500 font-medium w-[130px]">Invoice</th>
               <th className="text-left p-2 text-gray-500 font-medium">Vendor</th>
-              <th className="text-right p-2 text-gray-500 font-medium">Amount</th>
-              <th className="text-left p-2 text-gray-500 font-medium">Date</th>
-              <th className="text-left p-2 text-gray-500 font-medium">Without Agent</th>
-              <th className="text-left p-2 text-gray-500 font-medium">With Agent</th>
-              <th className="text-center p-2 text-gray-500 font-medium">Touches without agent</th>
-              <th className="text-center p-2 text-gray-500 font-medium">Touches with agent</th>
-              <th className="text-center p-2 text-gray-500 font-medium">Difference</th>
-              <th className="text-left p-2 text-gray-500 font-medium">Result</th>
+              <th className="text-right p-2 text-gray-500 font-medium w-[80px]">Amount</th>
+              <th className="text-left p-2 text-gray-500 font-medium w-[55px]">Date</th>
+              <th className="text-left p-2 text-gray-500 font-medium w-[110px]">Without Agent</th>
+              <th className="text-left p-2 text-gray-500 font-medium w-[120px]">With Agent</th>
+              <th className="text-center p-2 text-gray-500 font-medium w-[90px]">Touches without</th>
+              <th className="text-center p-2 text-gray-500 font-medium w-[80px]">Touches with</th>
+              <th className="text-center p-2 text-gray-500 font-medium w-[70px]">Difference</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 ? (
-              <tr><td colSpan={10} className="p-6 text-center text-gray-400">No invoices match the filter.</td></tr>
+              <tr><td colSpan={9} className="p-6 text-center text-gray-400">No invoices match the filter.</td></tr>
             ) : (
               paginated.map((c, idx) => {
                 const touchesWithout = c.withoutAgent.manualTouches
                 const touchesWith = c.withAgent.manualTouches
                 const touchDelta = touchesWith - touchesWithout
-                const resultCls =
-                  c.improvement.outcome === "better" ? "bg-green-50 text-green-700 border-green-200" :
-                  c.improvement.outcome === "worse"  ? "bg-red-50 text-red-600 border-red-200" :
-                                                       "bg-gray-100 text-gray-500 border-gray-200"
-                const resultLabel =
-                  c.improvement.outcome === "better" ? "Improved" :
-                  c.improvement.outcome === "worse"  ? "Worse" : "No change"
 
                 const isClickable = clickableIds.has(c.invoiceId)
                 return (
@@ -725,11 +721,11 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
                     onClick={isClickable ? () => setSelectedInvoice(c) : undefined}
                   >
                     {/* Invoice ID */}
-                    <td className="p-2 font-mono text-gray-950 whitespace-nowrap">
-                      <span className={isClickable ? "text-purple-700 underline underline-offset-2 decoration-dotted" : ""}>{c.invoiceId}</span>
+                    <td className="p-2 font-mono whitespace-nowrap">
+                      <span className={`text-purple-700 underline underline-offset-2 decoration-dotted ${isClickable ? "cursor-pointer" : "cursor-default"}`}>{c.invoiceId}</span>
                     </td>
                     {/* Vendor */}
-                    <td className="p-2 text-gray-700 max-w-[100px] truncate">{c.vendor}</td>
+                    <td className="p-2 text-gray-700">{c.vendor}</td>
                     {/* Amount */}
                     <td className="p-2 text-right font-medium text-gray-950 whitespace-nowrap">£{c.amount.toFixed(0)}</td>
                     {/* Date */}
@@ -789,12 +785,6 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
                         : <span className={`text-xs font-semibold ${touchDelta < 0 ? "text-green-600" : "text-red-500"}`}>
                             {touchDelta < 0 ? touchDelta : `+${touchDelta}`}
                           </span>}
-                    </td>
-                    {/* Result */}
-                    <td className="p-2">
-                      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium border ${resultCls}`}>
-                        {resultLabel}
-                      </span>
                     </td>
                   </tr>
                 )
