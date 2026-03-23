@@ -7,14 +7,16 @@ import { Button } from "@/app/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 
 const STORAGE_KEY = "xelix-back-test-history"
+const STORAGE_VERSION = "v2" // bump when InvoiceComparison shape changes
+const STORAGE_VERSION_KEY = "xelix-back-test-history-version"
 const MAX_COMPARISONS_PER_RUN = 500
 
 interface InvoiceComparison {
   invoiceId: string
   vendor: string
   amount: number
-  withoutAgent: { outcome: string; processingTimeMinutes: number; manualTouches: number }
-  withAgent: { agentAction: string; processingTimeMinutes: number; manualTouches: number }
+  withoutAgent: { outcome: string; pipelineStage?: string; processingTimeMinutes: number; manualTouches: number }
+  withAgent: { agentAction: string; pipelineStage?: string; processingTimeMinutes: number; manualTouches: number }
   improvement: { outcome: string; highlights: string[] }
   hasIssue: boolean
 }
@@ -73,9 +75,31 @@ function timeAgo(isoString: string): string {
 function saveRuns(runs: BackTestRun[]) {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(runs))
+    localStorage.setItem(STORAGE_VERSION_KEY, STORAGE_VERSION)
   } catch (e) {
     console.warn("[BackTestPanel] Failed to save to localStorage:", e)
   }
+}
+
+// ─── Pipeline Stage Chip ─────────────────────────────────────────────────────
+
+const STAGE_STYLES: Record<string, string> = {
+  "Imported":     "bg-gray-100 text-gray-600 border-gray-200",
+  "Data Captured":"bg-blue-50 text-blue-700 border-blue-200",
+  "Verified":     "bg-indigo-50 text-indigo-700 border-indigo-200",
+  "Matched":      "bg-cyan-50 text-cyan-700 border-cyan-200",
+  "Approved":     "bg-amber-50 text-amber-700 border-amber-200",
+  "Posted":       "bg-green-50 text-green-700 border-green-200",
+  "Rejected":     "bg-red-50 text-red-600 border-red-200",
+}
+
+function PipelineStageChip({ stage }: { stage: string }) {
+  const styles = STAGE_STYLES[stage] ?? "bg-gray-100 text-gray-600 border-gray-200"
+  return (
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium border ${styles}`}>
+      {stage}
+    </span>
+  )
 }
 
 // ─── Expanded Results View ────────────────────────────────────────────────────
@@ -90,7 +114,7 @@ function RunResults({ run }: { run: BackTestRun }) {
   const { metrics, invoiceComparisons } = run
 
   const filtered = invoiceComparisons.filter(c => {
-    if (withoutFilter !== "all" && c.withoutAgent.outcome !== withoutFilter) return false
+    if (withoutFilter !== "all" && c.withoutAgent.pipelineStage !== withoutFilter) return false
     if (withFilter !== "all" && c.withAgent.agentAction !== withFilter) return false
     if (statusFilter === "pass" && c.improvement.outcome !== "better") return false
     if (statusFilter === "fail" && !c.hasIssue) return false
@@ -166,13 +190,16 @@ function RunResults({ run }: { run: BackTestRun }) {
             </p>
             <div className="flex gap-1.5">
               <Select value={withoutFilter} onValueChange={v => { setWithoutFilter(v); setPage(1) }}>
-                <SelectTrigger className="h-7 text-xs w-[120px]"><SelectValue placeholder="Without Agent" /></SelectTrigger>
+                <SelectTrigger className="h-7 text-xs w-[130px]"><SelectValue placeholder="Without Agent" /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All Outcomes</SelectItem>
-                  <SelectItem value="pass">Passed</SelectItem>
-                  <SelectItem value="blocked">Blocked</SelectItem>
-                  <SelectItem value="delayed">Delayed</SelectItem>
-                  <SelectItem value="error">Error</SelectItem>
+                  <SelectItem value="all">All Stages</SelectItem>
+                  <SelectItem value="Imported">Imported</SelectItem>
+                  <SelectItem value="Data Captured">Data Captured</SelectItem>
+                  <SelectItem value="Verified">Verified</SelectItem>
+                  <SelectItem value="Matched">Matched</SelectItem>
+                  <SelectItem value="Approved">Approved</SelectItem>
+                  <SelectItem value="Posted">Posted</SelectItem>
+                  <SelectItem value="Rejected">Rejected</SelectItem>
                 </SelectContent>
               </Select>
               <Select value={withFilter} onValueChange={v => { setWithFilter(v); setPage(1) }}>
@@ -216,22 +243,24 @@ function RunResults({ run }: { run: BackTestRun }) {
                       <td className="p-2 font-mono text-gray-950">{c.invoiceId}</td>
                       <td className="p-2 text-gray-950">{c.vendor}</td>
                       <td className="p-2 text-right font-medium text-gray-950">${c.amount.toFixed(2)}</td>
-                      <td className="p-2">
-                        <div className="flex flex-col gap-0.5">
-                          <span className={`text-xs px-1.5 py-0.5 rounded inline-block w-fit ${c.withoutAgent.outcome === "pass" ? "bg-green-100 text-green-700" : c.withoutAgent.outcome === "blocked" ? "bg-red-100 text-red-700" : c.withoutAgent.outcome === "delayed" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-700"}`}>
-                            {c.withoutAgent.outcome === "pass" ? "passed" : c.withoutAgent.outcome}
-                          </span>
-                          <span className="text-xs text-gray-400">{c.withoutAgent.processingTimeMinutes.toFixed(0)}min · {c.withoutAgent.manualTouches} touch{c.withoutAgent.manualTouches !== 1 ? "es" : ""}</span>
-                        </div>
-                      </td>
-                      <td className="p-2">
-                        <div className="flex flex-col gap-0.5">
-                          <span className={`text-xs px-1.5 py-0.5 rounded inline-block w-fit ${c.withAgent.agentAction === "auto_resolved" ? "bg-purple-100 text-purple-700" : c.withAgent.agentAction === "suggested_resolution" ? "bg-yellow-100 text-yellow-700" : c.withAgent.agentAction === "observed" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}>
-                            {c.withAgent.agentAction === "auto_resolved" ? "✓ Auto-resolved" : c.withAgent.agentAction === "suggested_resolution" ? "→ Suggested" : c.withAgent.agentAction === "observed" ? "○ Observed" : "↑ Escalated"}
-                          </span>
-                          <span className="text-xs text-gray-400">{c.withAgent.processingTimeMinutes.toFixed(0)}min · {c.withAgent.manualTouches} touch{c.withAgent.manualTouches !== 1 ? "es" : ""}</span>
-                        </div>
-                      </td>
+                        <td className="p-2">
+                          <div className="flex flex-col gap-1">
+                            {c.withoutAgent.pipelineStage
+                              ? <PipelineStageChip stage={c.withoutAgent.pipelineStage} />
+                              : <span className={`text-xs px-1.5 py-0.5 rounded inline-block w-fit ${c.withoutAgent.outcome === "pass" ? "bg-green-100 text-green-700" : c.withoutAgent.outcome === "blocked" ? "bg-red-100 text-red-700" : c.withoutAgent.outcome === "delayed" ? "bg-yellow-100 text-yellow-700" : "bg-gray-100 text-gray-700"}`}>{c.withoutAgent.outcome}</span>
+                            }
+                            <span className="text-xs text-gray-400">{c.withoutAgent.processingTimeMinutes.toFixed(0)}min · {c.withoutAgent.manualTouches} touch{c.withoutAgent.manualTouches !== 1 ? "es" : ""}</span>
+                          </div>
+                        </td>
+                        <td className="p-2">
+                          <div className="flex flex-col gap-1">
+                            {c.withAgent.pipelineStage
+                              ? <PipelineStageChip stage={c.withAgent.pipelineStage} />
+                              : <span className={`text-xs px-1.5 py-0.5 rounded inline-block w-fit ${c.withAgent.agentAction === "auto_resolved" ? "bg-purple-100 text-purple-700" : c.withAgent.agentAction === "suggested_resolution" ? "bg-yellow-100 text-yellow-700" : c.withAgent.agentAction === "observed" ? "bg-blue-100 text-blue-700" : "bg-gray-100 text-gray-700"}`}>{c.withAgent.agentAction}</span>
+                            }
+                            <span className="text-xs text-gray-400">{c.withAgent.processingTimeMinutes.toFixed(0)}min · {c.withAgent.manualTouches} touch{c.withAgent.manualTouches !== 1 ? "es" : ""}</span>
+                          </div>
+                        </td>
                       <td className="p-2">
                         <div className="flex flex-wrap gap-1">
                           {c.improvement.highlights.map((h, hi) => <span key={hi} className="text-xs px-1.5 py-0.5 bg-green-100 text-green-700 rounded">{h}</span>)}
@@ -269,6 +298,13 @@ export function BackTestPanel() {
   // Load history from localStorage on mount
   useEffect(() => {
     try {
+      // Clear stale data if the storage schema version changed
+      const storedVersion = localStorage.getItem(STORAGE_VERSION_KEY)
+      if (storedVersion !== STORAGE_VERSION) {
+        localStorage.removeItem(STORAGE_KEY)
+        localStorage.setItem(STORAGE_VERSION_KEY, STORAGE_VERSION)
+        return
+      }
       const stored = localStorage.getItem(STORAGE_KEY)
       if (stored) {
         const parsed = JSON.parse(stored) as BackTestRun[]

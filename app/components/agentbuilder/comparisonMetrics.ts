@@ -74,6 +74,7 @@ export interface InvoiceComparison {
   // Without agent
   withoutAgent: {
     outcome: string;
+    pipelineStage: string;
     processingTimeMinutes: number;
     requiresManualReview: boolean;
     manualTouches: number;
@@ -84,6 +85,7 @@ export interface InvoiceComparison {
   // With agent
   withAgent: {
     outcome: string;
+    pipelineStage: string;
     processingTimeMinutes: number;
     agentAction: string;
     agentConfidence: number;
@@ -222,6 +224,71 @@ export function calculateComparisonMetrics(
   };
 }
 
+type PipelineStage = "Imported" | "Data Captured" | "Verified" | "Matched" | "Approved" | "Posted" | "Rejected";
+
+/**
+ * Derive the highest pipeline stage reached for an invoice (without agent)
+ * "passed" invoices completed the full pipeline; blocked/error invoices show where they were stopped.
+ */
+function deriveBaselinePipelineStage(
+  outcome: string,
+  issueType: string | undefined,
+  hasIssue: boolean
+): PipelineStage {
+  if (outcome === "passed") return "Posted";
+
+  if (outcome === "error") {
+    // Errors at ingestion/data-capture → rejected early
+    if (issueType && ["format_error", "duplicate", "corrupted", "file_format"].includes(issueType)) {
+      return "Rejected";
+    }
+    return "Data Captured";
+  }
+
+  if (outcome === "blocked" || outcome === "delayed") {
+    if (!issueType) return "Rejected";
+
+    if (["format_error", "duplicate", "corrupted", "file_format", "word_format"].includes(issueType)) {
+      return "Rejected";
+    }
+    if (["missing_fields", "ocr_error", "field_extraction", "customer_id_missing", "bank_details"].includes(issueType)) {
+      return "Data Captured";
+    }
+    if (["policy_violation", "vendor_unverified", "high_value", "missing_po_reference"].includes(issueType)) {
+      return "Verified";
+    }
+    if (["price_variance", "quantity_variance", "no_match", "tolerance_exceeded", "unit_mismatch"].includes(issueType)) {
+      return "Matched";
+    }
+    if (["budget_exceeded", "missing_approval", "approval_timeout"].includes(issueType)) {
+      return "Approved";
+    }
+    if (["gl_code_error", "erp_error", "posting_failed"].includes(issueType)) {
+      return "Verified";
+    }
+
+    // Default for blocked with unknown issue type
+    return "Verified";
+  }
+
+  return "Posted";
+}
+
+/**
+ * Derive the pipeline stage reached with the agent's help
+ */
+function deriveAgentPipelineStage(
+  agentAction: string,
+  baselineStage: PipelineStage,
+  outcome: string
+): PipelineStage {
+  if (outcome === "pass" || agentAction === "auto_resolved") return "Posted";
+  if (agentAction === "suggested_resolution") return "Approved";
+  if (agentAction === "observed") return baselineStage === "Rejected" ? "Verified" : baselineStage;
+  if (agentAction === "escalated_to_human") return baselineStage;
+  return baselineStage;
+}
+
 /**
  * Create invoice-by-invoice comparison
  */
@@ -274,6 +341,13 @@ export function createInvoiceComparisons(
       highlights.push("High confidence");
     }
     
+    const baselinePipelineStage = deriveBaselinePipelineStage(
+      baseline.outcome, scenario.issueType, scenario.hasIssue
+    );
+    const agentPipelineStage = deriveAgentPipelineStage(
+      agent.agentAction, baselinePipelineStage, agent.outcome
+    );
+
     return {
       invoiceId: scenario.id,
       vendor: scenario.vendor,
@@ -283,6 +357,7 @@ export function createInvoiceComparisons(
       
       withoutAgent: {
         outcome: baseline.outcome,
+        pipelineStage: baselinePipelineStage,
         processingTimeMinutes: baseline.processingTimeMinutes,
         requiresManualReview: baseline.requiresManualReview,
         manualTouches: baseline.manualTouches,
@@ -292,6 +367,7 @@ export function createInvoiceComparisons(
       
       withAgent: {
         outcome: agent.outcome,
+        pipelineStage: agentPipelineStage,
         processingTimeMinutes: agent.processingTimeMinutes + agent.manualReviewTimeMinutes,
         agentAction: agent.agentAction,
         agentConfidence: agent.agentConfidence,
