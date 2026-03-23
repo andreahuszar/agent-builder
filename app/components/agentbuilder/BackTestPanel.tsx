@@ -528,12 +528,18 @@ function TimelineNode({ event, isLast }: { event: TimelineEvent; isLast: boolean
   )
 }
 
-function ActivityModal({ invoice, onClose }: { invoice: InvoiceComparison; onClose: () => void }) {
+function ActivityModal({ invoices, initialIndex, onClose }: { invoices: InvoiceComparison[]; initialIndex: number; onClose: () => void }) {
+  const [idx, setIdx] = useState(initialIndex)
+  const invoice = invoices[idx]
+
   const withoutEvents = buildWithoutTimeline(invoice)
   const withEvents = buildWithTimeline(invoice)
 
   const withoutTotalTime = withoutEvents.reduce((sum, e) => sum + (e.timeMin ?? 0), 0)
   const withTotalTime = withEvents.reduce((sum, e) => sum + (e.timeMin ?? 0), 0)
+
+  const hasPrev = idx > 0
+  const hasNext = idx < invoices.length - 1
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
@@ -545,7 +551,9 @@ function ActivityModal({ invoice, onClose }: { invoice: InvoiceComparison; onClo
         {/* Header */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-gray-100">
           <div>
-            <p className="text-sm font-semibold text-gray-950">{invoice.invoiceId}</p>
+            <p className="text-sm font-semibold text-gray-950">{invoice.invoiceId}
+              <span className="ml-2 text-xs font-normal text-gray-400">{idx + 1} of {invoices.length}</span>
+            </p>
             <p className="text-xs text-gray-500 mt-0.5">{invoice.vendor} · £{invoice.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })} · {invoice.date}</p>
             {invoice.issueDescription && (
               <p className="text-[11px] text-orange-600 mt-1 flex items-center gap-1">
@@ -553,9 +561,27 @@ function ActivityModal({ invoice, onClose }: { invoice: InvoiceComparison; onClo
               </p>
             )}
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors ml-4 mt-0.5">
-            <X className="w-4 h-4" />
-          </button>
+          <div className="flex items-center gap-2 ml-4 mt-0.5 shrink-0">
+            <button
+              onClick={() => setIdx(i => i - 1)}
+              disabled={!hasPrev}
+              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Previous invoice"
+            >
+              <ChevronRight className="w-4 h-4 text-gray-500 rotate-180" />
+            </button>
+            <button
+              onClick={() => setIdx(i => i + 1)}
+              disabled={!hasNext}
+              className="p-1 rounded hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+              title="Next invoice"
+            >
+              <ChevronRight className="w-4 h-4 text-gray-500" />
+            </button>
+            <button onClick={onClose} className="p-1 rounded hover:bg-gray-100 text-gray-400 hover:text-gray-600 transition-colors">
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
 
         {/* Body — two-column timeline */}
@@ -637,13 +663,12 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
   const [stpFilter, setStpFilter] = useState("non-stp")
   const [resultFilter, setResultFilter] = useState("all")
   const [page, setPage] = useState(1)
-  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceComparison | null>(null)
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
   const rowsPerPage = 25
 
-  // First 4 non-STP invoice IDs — these rows open the activity modal on click
-  const clickableIds = new Set(
-    comparisons.filter(c => !c.withAgent.isSTP).slice(0, 4).map(c => c.invoiceId)
-  )
+  // First 4 non-STP invoices — these rows open the activity modal on click
+  const clickableInvoices = comparisons.filter(c => !c.withAgent.isSTP).slice(0, 4)
+  const clickableIds = new Set(clickableInvoices.map(c => c.invoiceId))
 
   const filtered = comparisons.filter(c => {
     if (stpFilter === "stp" && !c.withAgent.isSTP) return false
@@ -718,7 +743,7 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
                   <tr
                     key={idx}
                     className={`border-t transition-colors ${isClickable ? "cursor-pointer hover:bg-purple-50/60" : "hover:bg-gray-50"}`}
-                    onClick={isClickable ? () => setSelectedInvoice(c) : undefined}
+                    onClick={isClickable ? () => setSelectedIdx(clickableInvoices.findIndex(ci => ci.invoiceId === c.invoiceId)) : undefined}
                   >
                     {/* Invoice ID */}
                     <td className="p-2 font-mono whitespace-nowrap">
@@ -806,8 +831,8 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
         </div>
       )}
 
-      {selectedInvoice && (
-        <ActivityModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
+      {selectedIdx !== null && (
+        <ActivityModal invoices={clickableInvoices} initialIndex={selectedIdx} onClose={() => setSelectedIdx(null)} />
       )}
     </div>
   )
