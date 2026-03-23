@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useRef } from "react"
-import { ChevronDown, ChevronRight, TrendingDown, TrendingUp, Check } from "lucide-react"
+import { ChevronDown, ChevronRight, TrendingDown, TrendingUp, Check, X, Clock, User, Zap, AlertTriangle, CheckCircle, XCircle } from "lucide-react"
 import { Card } from "@/app/components/ui/card"
 import { Button } from "@/app/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
@@ -394,13 +394,252 @@ function ExceptionBreakdown({ comparisons }: { comparisons: InvoiceComparison[] 
   )
 }
 
+// ─── Activity Modal ───────────────────────────────────────────────────────────
+
+const ORDERED_STAGES = ["Imported", "Data Captured", "Verified", "Matched", "Approved", "Posted"]
+
+interface TimelineEvent {
+  type: "stage" | "touch" | "agent" | "outcome"
+  label: string
+  subLabel?: string
+  timeMin?: number
+  status: "completed" | "stuck" | "agent" | "rejected" | "posted"
+}
+
+function buildWithoutTimeline(c: InvoiceComparison): TimelineEvent[] {
+  const stage = c.withoutAgent.pipelineStage ?? "Imported"
+  const totalTime = c.withoutAgent.processingTimeMinutes
+  const stageIdx = ORDERED_STAGES.indexOf(stage)
+  const reachedStages = stageIdx >= 0 ? ORDERED_STAGES.slice(0, stageIdx + 1) : [stage]
+  const perStageTime = totalTime / Math.max(reachedStages.length, 1)
+  const touches = c.withoutAgent.manualTouches
+
+  const events: TimelineEvent[] = reachedStages.map((s, i) => {
+    const isLast = i === reachedStages.length - 1
+    const isPosted = s === "Posted"
+    return {
+      type: "stage",
+      label: s,
+      timeMin: parseFloat(((i + 1) * perStageTime).toFixed(1)),
+      status: isPosted ? "posted" : isLast ? "stuck" : "completed",
+      subLabel: isLast && !isPosted ? "Invoice held here" : undefined,
+    }
+  })
+
+  // Sprinkle manual touch events at stuck stage
+  if (touches > 0 && events.length > 0) {
+    const last = events[events.length - 1]
+    for (let t = 0; t < Math.min(touches, 3); t++) {
+      events.push({
+        type: "touch",
+        label: `Manual review ${touches > 1 ? `(${t + 1}/${touches})` : ""}`.trim(),
+        subLabel: "AP team intervention",
+        timeMin: parseFloat(((last.timeMin ?? totalTime) + (t + 1) * 2).toFixed(1)),
+        status: "stuck",
+      })
+    }
+  }
+
+  return events
+}
+
+function buildWithTimeline(c: InvoiceComparison): TimelineEvent[] {
+  const stage = c.withAgent.pipelineStage ?? "Posted"
+  const totalTime = c.withAgent.processingTimeMinutes
+  const isRejected = stage === "Rejected"
+  const isPosted = stage === "Posted"
+
+  if (isRejected) {
+    return [
+      { type: "stage", label: "Imported", timeMin: 0.2, status: "completed" },
+      { type: "agent", label: "Agent triggered", subLabel: "Reject Word Formatted Invoices", timeMin: 0.5, status: "agent" },
+      { type: "outcome", label: "Rejected", subLabel: "Vendor notified — unsupported format (.docx)", timeMin: 1, status: "rejected" },
+    ]
+  }
+
+  if (isPosted) {
+    const stageIdx = ORDERED_STAGES.indexOf(stage)
+    const reachedStages = ORDERED_STAGES.slice(0, stageIdx + 1)
+    const perStageTime = totalTime / Math.max(reachedStages.length, 1)
+    return [
+      ...reachedStages.slice(0, -1).map((s, i) => ({
+        type: "stage" as const,
+        label: s,
+        timeMin: parseFloat(((i + 1) * perStageTime * 0.5).toFixed(1)),
+        status: "completed" as const,
+      })),
+      { type: "agent", label: "Agent auto-resolved", subLabel: "Issue detected and resolved automatically", timeMin: parseFloat((totalTime * 0.7).toFixed(1)), status: "agent" as const },
+      { type: "outcome", label: "Posted", subLabel: c.withAgent.isSTP ? "Straight-through — zero manual touches" : "Successfully posted", timeMin: parseFloat(totalTime.toFixed(1)), status: "posted" as const },
+    ]
+  }
+
+  // Generic held
+  const stageIdx = ORDERED_STAGES.indexOf(stage)
+  const reachedStages = stageIdx >= 0 ? ORDERED_STAGES.slice(0, stageIdx + 1) : [stage]
+  const perStageTime = totalTime / Math.max(reachedStages.length, 1)
+  return reachedStages.map((s, i) => {
+    const isLast = i === reachedStages.length - 1
+    return {
+      type: "stage" as const,
+      label: s,
+      timeMin: parseFloat(((i + 1) * perStageTime).toFixed(1)),
+      status: isLast ? "stuck" as const : "completed" as const,
+      subLabel: isLast ? "Still held" : undefined,
+    }
+  })
+}
+
+function TimelineNode({ event, isLast }: { event: TimelineEvent; isLast: boolean }) {
+  const iconMap: Record<TimelineEvent["status"], React.ReactNode> = {
+    completed:  <div className="w-2.5 h-2.5 rounded-full bg-gray-300 border-2 border-white ring-1 ring-gray-300" />,
+    stuck:      <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />,
+    agent:      <Zap className="w-3.5 h-3.5 text-purple-600" />,
+    rejected:   <XCircle className="w-3.5 h-3.5 text-red-500" />,
+    posted:     <CheckCircle className="w-3.5 h-3.5 text-green-500" />,
+  }
+
+  const labelColor: Record<TimelineEvent["status"], string> = {
+    completed: "text-gray-600",
+    stuck:     "text-orange-700 font-semibold",
+    agent:     "text-purple-700 font-semibold",
+    rejected:  "text-red-600 font-semibold",
+    posted:    "text-green-700 font-semibold",
+  }
+
+  return (
+    <div className="flex gap-3">
+      <div className="flex flex-col items-center">
+        <div className="flex items-center justify-center w-5 h-5 shrink-0">
+          {iconMap[event.status]}
+        </div>
+        {!isLast && <div className="w-px flex-1 bg-gray-200 my-0.5" style={{ minHeight: "16px" }} />}
+      </div>
+      <div className="pb-3 min-w-0">
+        <p className={`text-xs ${labelColor[event.status]}`}>{event.label}</p>
+        {event.subLabel && <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{event.subLabel}</p>}
+        {event.timeMin !== undefined && (
+          <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-0.5">
+            <Clock className="w-2.5 h-2.5" />{event.timeMin < 1 ? `${(event.timeMin * 60).toFixed(0)}s` : `${event.timeMin}m`}
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function ActivityModal({ invoice, onClose }: { invoice: InvoiceComparison; onClose: () => void }) {
+  const withoutEvents = buildWithoutTimeline(invoice)
+  const withEvents = buildWithTimeline(invoice)
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div
+        className="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden"
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between px-5 py-4 border-b border-gray-100">
+          <div>
+            <p className="text-sm font-semibold text-gray-950">{invoice.invoiceId}</p>
+            <p className="text-xs text-gray-500 mt-0.5">{invoice.vendor} · £{invoice.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })} · {invoice.date}</p>
+            {invoice.issueDescription && (
+              <p className="text-[11px] text-orange-600 mt-1 flex items-center gap-1">
+                <AlertTriangle className="w-3 h-3" />{invoice.issueDescription}
+              </p>
+            )}
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors ml-4 mt-0.5">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {/* Body — two-column timeline */}
+        <div className="grid grid-cols-2 divide-x divide-gray-100">
+          {/* Without Agent */}
+          <div className="px-5 py-4">
+            <div className="flex items-center gap-2 mb-4">
+              <User className="w-3.5 h-3.5 text-gray-400" />
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Without Agent</p>
+            </div>
+            <div>
+              {withoutEvents.map((e, i) => (
+                <TimelineNode key={i} event={e} isLast={i === withoutEvents.length - 1} />
+              ))}
+            </div>
+            {/* Summary */}
+            <div className="mt-2 pt-3 border-t border-gray-100 flex gap-4">
+              <div className="text-center">
+                <p className="text-[11px] text-gray-400">Time</p>
+                <p className="text-sm font-semibold text-gray-950">{fmtTime(invoice.withoutAgent.processingTimeMinutes)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[11px] text-gray-400">Touches</p>
+                <p className="text-sm font-semibold text-gray-950">{invoice.withoutAgent.manualTouches}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[11px] text-gray-400">Outcome</p>
+                <p className={`text-sm font-semibold ${invoice.withoutAgent.pipelineStage === "Posted" ? "text-green-600" : "text-orange-600"}`}>
+                  {invoice.withoutAgent.pipelineStage === "Posted" ? "Posted" : `Held at ${invoice.withoutAgent.pipelineStage}`}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* With Agent */}
+          <div className="px-5 py-4 bg-purple-50/30">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="w-3.5 h-3.5 text-purple-600" />
+              <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide">With Agent</p>
+            </div>
+            <div>
+              {withEvents.map((e, i) => (
+                <TimelineNode key={i} event={e} isLast={i === withEvents.length - 1} />
+              ))}
+            </div>
+            {/* Summary */}
+            <div className="mt-2 pt-3 border-t border-purple-100 flex gap-4">
+              <div className="text-center">
+                <p className="text-[11px] text-gray-400">Time</p>
+                <p className="text-sm font-semibold text-purple-900">{fmtTime(invoice.withAgent.processingTimeMinutes)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[11px] text-gray-400">Touches</p>
+                <p className="text-sm font-semibold text-purple-900">{invoice.withAgent.manualTouches}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[11px] text-gray-400">Outcome</p>
+                <p className={`text-sm font-semibold ${
+                  invoice.withAgent.pipelineStage === "Posted" ? "text-green-600" :
+                  invoice.withAgent.pipelineStage === "Rejected" ? "text-red-600" : "text-orange-600"
+                }`}>
+                  {invoice.withAgent.pipelineStage === "Rejected" ? "Rejected" :
+                   invoice.withAgent.pipelineStage === "Posted"
+                     ? (invoice.withAgent.isSTP ? "Posted (STP)" : "Posted")
+                     : `Held at ${invoice.withAgent.pipelineStage}`}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 // ─── Invoice Comparison Table ─────────────────────────────────────────────────
 
 function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComparison[]; totalInvoices: number }) {
   const [stpFilter, setStpFilter] = useState("all")
   const [resultFilter, setResultFilter] = useState("all")
   const [page, setPage] = useState(1)
+  const [selectedInvoice, setSelectedInvoice] = useState<InvoiceComparison | null>(null)
   const rowsPerPage = 25
+
+  // First 4 non-STP invoice IDs — these rows open the activity modal on click
+  const clickableIds = new Set(
+    comparisons.filter(c => !c.withAgent.isSTP).slice(0, 4).map(c => c.invoiceId)
+  )
 
   const filtered = comparisons.filter(c => {
     if (stpFilter === "stp" && !c.withAgent.isSTP) return false
@@ -478,10 +717,17 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
                   c.improvement.outcome === "better" ? "Improved" :
                   c.improvement.outcome === "worse"  ? "Worse" : "No change"
 
+                const isClickable = clickableIds.has(c.invoiceId)
                 return (
-                  <tr key={idx} className="border-t hover:bg-gray-50 transition-colors">
+                  <tr
+                    key={idx}
+                    className={`border-t transition-colors ${isClickable ? "cursor-pointer hover:bg-purple-50/60" : "hover:bg-gray-50"}`}
+                    onClick={isClickable ? () => setSelectedInvoice(c) : undefined}
+                  >
                     {/* Invoice ID */}
-                    <td className="p-2 font-mono text-gray-950 whitespace-nowrap">{c.invoiceId}</td>
+                    <td className="p-2 font-mono text-gray-950 whitespace-nowrap">
+                      <span className={isClickable ? "text-purple-700 underline underline-offset-2 decoration-dotted" : ""}>{c.invoiceId}</span>
+                    </td>
                     {/* Vendor */}
                     <td className="p-2 text-gray-700 max-w-[100px] truncate">{c.vendor}</td>
                     {/* Amount */}
@@ -568,6 +814,10 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
             <Button variant="outline" size="sm" onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}>Next</Button>
           </div>
         </div>
+      )}
+
+      {selectedInvoice && (
+        <ActivityModal invoice={selectedInvoice} onClose={() => setSelectedInvoice(null)} />
       )}
     </div>
   )
