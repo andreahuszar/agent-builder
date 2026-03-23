@@ -1,0 +1,290 @@
+/**
+ * Demo fixtures for specific agents used in live demos.
+ * When isDemoAgent() returns true, runBulkTest() bypasses the simulation
+ * and dispatches pre-built results so the numbers are always predictable.
+ */
+
+import type { ComparisonMetrics, InvoiceComparison } from './comparisonMetrics'
+
+// ─── Agent name matching ──────────────────────────────────────────────────────
+
+const DEMO_AGENT_NAMES = [
+  "Reject Word Formatted Invoices",
+  "Reject Word Formatted Invoices Agent",
+  "Reject word formatted invoices",
+  "Reject word formatted invoices Agent",
+]
+
+export function isDemoAgent(name: string): boolean {
+  return DEMO_AGENT_NAMES.some(n => n.toLowerCase() === name.toLowerCase().trim())
+}
+
+// ─── Seeded RNG (deterministic, no external deps) ────────────────────────────
+
+class SeededRng {
+  private s: number
+  constructor(seed: number) { this.s = seed }
+  next(): number {
+    this.s = (this.s * 9301 + 49297) % 233280
+    return this.s / 233280
+  }
+  int(min: number, max: number) { return Math.floor(this.next() * (max - min + 1)) + min }
+  float(min: number, max: number) { return this.next() * (max - min) + min }
+  pick<T>(arr: T[]): T { return arr[this.int(0, arr.length - 1)] }
+}
+
+// ─── Static data pools ───────────────────────────────────────────────────────
+
+const VENDORS = [
+  "Acme Corporation", "TechSupply Inc", "Global Services Ltd", "Office Depot",
+  "CloudHost Services", "SecurePay Systems", "DataFlow Solutions", "Prime Vendor Co",
+  "Mega Supplies LLC", "Quick Logistics", "Elite Services", "ProTech Industries",
+  "Alpha Manufacturing", "Beta Distributors", "Gamma Solutions",
+]
+
+const IMPORT_SOURCES = ["email", "portal", "api", "scan"]
+
+const HELD_STAGES_WITHOUT = [
+  "Matched", "Matched", "Matched",        // most common — processing gets through matching before failure
+  "Verified", "Verified",
+  "Data Captured",
+  "Approved",
+  "Rejected",
+] as const
+
+const HELD_STAGES_GROUP_C = [
+  "Verified", "Verified",
+  "Matched", "Matched",
+  "Data Captured",
+  "Rejected",
+] as const
+
+// ─── Invoice count per time period ───────────────────────────────────────────
+
+function invoiceCount(timePeriod: string): number {
+  return ({ "7days": 1500, "30days": 6200, "3months": 18500, "6months": 37000 } as Record<string, number>)[timePeriod] ?? 1500
+}
+
+function formatDate(daysAgo: number): string {
+  const d = new Date()
+  d.setDate(d.getDate() - daysAgo)
+  return d.toISOString().split("T")[0]
+}
+
+// ─── Build demo results ───────────────────────────────────────────────────────
+
+export function buildDemoResults(timePeriod: string): {
+  comparisons: InvoiceComparison[]
+  metrics: ComparisonMetrics
+} {
+  const total = Math.min(invoiceCount(timePeriod), 500) // cap at 500 for the table
+  const rng = new SeededRng(42) // fixed seed = same results every run
+
+  // Group sizes
+  const groupA = Math.round(total * 0.40) // 40% — Posted without, Posted STP with
+  const groupB = Math.round(total * 0.33) // 33% — Held without (Word), Rejected with
+  const groupC = total - groupA - groupB  // 27% — Held without (other), Posted with
+
+  const groupARows: InvoiceComparison[] = []
+  const groupBRows: InvoiceComparison[] = []
+  const groupCRows: InvoiceComparison[] = []
+
+  // ── Group A: Posted without agent (1–2 touches) → Posted STP with agent ──
+  for (let i = 0; i < groupA; i++) {
+    const touches = rng.next() < 0.6 ? rng.int(1, 2) : 0
+    const timeWithout = rng.float(8, 22)
+    groupARows.push({
+      invoiceId: `INV-2024-${String(10000 + i).padStart(5, "0")}`,
+      vendor: rng.pick(VENDORS),
+      amount: parseFloat(rng.float(120, 48000).toFixed(2)),
+      date: formatDate(rng.int(0, 89)),
+      importSource: rng.pick(IMPORT_SOURCES),
+      hasIssue: false,
+      withoutAgent: {
+        outcome: "passed",
+        pipelineStage: "Posted",
+        isSTP: touches === 0,
+        processingTimeMinutes: timeWithout,
+        manualTouches: touches,
+      },
+      withAgent: {
+        agentAction: "auto_resolved",
+        pipelineStage: "Posted",
+        isSTP: true,
+        processingTimeMinutes: 0.5,
+        manualTouches: 0,
+      },
+      improvement: {
+        outcome: touches > 0 ? "better" : "same",
+        highlights: touches > 0 ? ["Fully automated", `${touches} fewer touch${touches > 1 ? "es" : ""}`] : [],
+      },
+    })
+  }
+
+  // ── Group B: Held without (Word format) → Rejected with agent ──
+  for (let i = 0; i < groupB; i++) {
+    const heldStage = rng.pick(HELD_STAGES_WITHOUT)
+    const timeWithout = rng.float(18, 45)
+    const touchesWithout = rng.int(1, 3)
+    groupBRows.push({
+      invoiceId: `INV-2024-${String(10000 + groupA + i).padStart(5, "0")}`,
+      vendor: rng.pick(VENDORS),
+      amount: parseFloat(rng.float(200, 25000).toFixed(2)),
+      date: formatDate(rng.int(0, 89)),
+      importSource: rng.pick(["email", "email", "portal", "scan"]),
+      hasIssue: true,
+      issueDescription: "Invoice submitted in unsupported .docx format",
+      exceptionType: "file_format",
+      withoutAgent: {
+        outcome: "blocked",
+        pipelineStage: heldStage,
+        isSTP: false,
+        processingTimeMinutes: timeWithout,
+        manualTouches: touchesWithout,
+      },
+      withAgent: {
+        agentAction: "auto_resolved",
+        pipelineStage: "Rejected",
+        isSTP: false,
+        processingTimeMinutes: 1,
+        manualTouches: 0,
+      },
+      improvement: {
+        outcome: "better",
+        highlights: ["Caught at ingestion", `${touchesWithout} fewer touch${touchesWithout > 1 ? "es" : ""}`, "Vendor notified"],
+      },
+    })
+  }
+
+  // ── Group C: Held without (non-Word issues) → Posted with agent ──
+  for (let i = 0; i < groupC; i++) {
+    const heldStage = rng.pick(HELD_STAGES_GROUP_C)
+    const timeWithout = rng.float(20, 60)
+    const touchesWithout = rng.int(1, 4)
+    const timeWith = rng.float(2, 6)
+    groupCRows.push({
+      invoiceId: `INV-2024-${String(10000 + groupA + groupB + i).padStart(5, "0")}`,
+      vendor: rng.pick(VENDORS),
+      amount: parseFloat(rng.float(500, 35000).toFixed(2)),
+      date: formatDate(rng.int(0, 89)),
+      importSource: rng.pick(IMPORT_SOURCES),
+      hasIssue: true,
+      withoutAgent: {
+        outcome: "blocked",
+        pipelineStage: heldStage,
+        isSTP: false,
+        processingTimeMinutes: timeWithout,
+        manualTouches: touchesWithout,
+      },
+      withAgent: {
+        agentAction: "auto_resolved",
+        pipelineStage: "Posted",
+        isSTP: true,
+        processingTimeMinutes: timeWith,
+        manualTouches: 0,
+      },
+      improvement: {
+        outcome: "better",
+        highlights: ["Auto-resolved", `${touchesWithout} fewer touch${touchesWithout > 1 ? "es" : ""}`],
+      },
+    })
+  }
+
+  // Interleave all three groups so each page of the table shows a realistic mix
+  const comparisons: InvoiceComparison[] = []
+  const maxLen = Math.max(groupARows.length, groupBRows.length, groupCRows.length)
+  for (let i = 0; i < maxLen; i++) {
+    if (i < groupARows.length) comparisons.push(groupARows[i])
+    if (i < groupBRows.length) comparisons.push(groupBRows[i])
+    if (i < groupCRows.length) comparisons.push(groupCRows[i])
+  }
+
+  // ─── Compute metrics from the fixture data ───────────────────────────────
+
+  const avgTimeWithout = comparisons.reduce((s, c) => s + c.withoutAgent.processingTimeMinutes, 0) / total
+  const avgTimeWith = comparisons.reduce((s, c) => s + c.withAgent.processingTimeMinutes, 0) / total
+  const timeReductionMinutes = avgTimeWithout - avgTimeWith
+  const timeReductionPercentage = (timeReductionMinutes / avgTimeWithout) * 100
+
+  const exceptionsWithout = comparisons.filter(c => c.withoutAgent.pipelineStage !== "Posted").length
+  const exceptionsWith = comparisons.filter(c => c.withAgent.pipelineStage !== "Posted" && c.withAgent.pipelineStage !== "Rejected").length
+  const exceptionReduction = exceptionsWithout - exceptionsWith
+  const exceptionReductionPercentage = exceptionsWithout > 0 ? (exceptionReduction / exceptionsWithout) * 100 : 0
+  const autoResolvedCount = comparisons.filter(c => c.withAgent.agentAction === "auto_resolved").length
+
+  const manualTouchesWithout = comparisons.reduce((s, c) => s + c.withoutAgent.manualTouches, 0)
+  const manualTouchesWith = comparisons.reduce((s, c) => s + c.withAgent.manualTouches, 0)
+  const manualTouchReduction = manualTouchesWithout - manualTouchesWith
+  const manualTouchReductionPercentage = manualTouchesWithout > 0 ? (manualTouchReduction / manualTouchesWithout) * 100 : 0
+
+  const HOURLY_RATE = 35
+  const HOURS_PER_FTE_MONTH = 160
+  const fteHoursWithout = (comparisons.reduce((s, c) => s + c.withoutAgent.processingTimeMinutes, 0)) / 60
+  const fteHoursWith = (comparisons.reduce((s, c) => s + c.withAgent.processingTimeMinutes, 0)) / 60
+  const fteHoursSaved = fteHoursWithout - fteHoursWith
+  const fteHoursSavedPercentage = fteHoursWithout > 0 ? (fteHoursSaved / fteHoursWithout) * 100 : 0
+
+  const monthlyFTEWithout = fteHoursWithout / HOURS_PER_FTE_MONTH
+  const monthlyFTEWith = fteHoursWith / HOURS_PER_FTE_MONTH
+  const annualFTEWithout = monthlyFTEWithout * 12
+  const annualFTEWith = monthlyFTEWith * 12
+  const annualFTESavings = annualFTEWithout - annualFTEWith
+
+  const costPerInvoiceWithout = (fteHoursWithout * HOURLY_RATE) / total
+  const costPerInvoiceWith = (fteHoursWith * HOURLY_RATE) / total
+  const costSavingsPerInvoice = costPerInvoiceWithout - costPerInvoiceWith
+  const totalCostWithout = fteHoursWithout * HOURLY_RATE
+  const totalCostWith = fteHoursWith * HOURLY_RATE
+  const totalCostSavings = totalCostWithout - totalCostWith
+  const annualCostWithout = annualFTEWithout * HOURS_PER_FTE_MONTH * HOURLY_RATE
+  const annualCostWith = annualFTEWith * HOURS_PER_FTE_MONTH * HOURLY_RATE
+  const annualCostSavings = annualCostWithout - annualCostWith
+
+  const stpRateWithout = (comparisons.filter(c => c.withoutAgent.isSTP).length / total) * 100
+  const stpRateWith = (comparisons.filter(c => c.withAgent.isSTP).length / total) * 100
+
+  const metrics: ComparisonMetrics = {
+    avgProcessingTimeWithout: avgTimeWithout,
+    avgProcessingTimeWith: avgTimeWith,
+    timeReductionMinutes,
+    timeReductionPercentage,
+    exceptionsWithout,
+    exceptionsWith,
+    exceptionReduction,
+    exceptionReductionPercentage,
+    autoResolvedCount,
+    accuracyWithout: 82,
+    accuracyWith: 97,
+    accuracyImprovement: 15,
+    manualTouchesWithout,
+    manualTouchesWith,
+    manualTouchReduction,
+    manualTouchReductionPercentage,
+    fteHoursWithout,
+    fteHoursWith,
+    fteHoursSaved,
+    fteHoursSavedPercentage,
+    monthlyFTEWithout,
+    monthlyFTEWith,
+    monthlyFTESavings: monthlyFTEWithout - monthlyFTEWith,
+    annualFTEWithout,
+    annualFTEWith,
+    annualFTESavings,
+    costPerInvoiceWithout,
+    costPerInvoiceWith,
+    costSavingsPerInvoice,
+    totalCostWithout,
+    totalCostWith,
+    totalCostSavings,
+    annualCostWithout,
+    annualCostWith,
+    annualCostSavings,
+    processingSpeedupFactor: avgTimeWithout / Math.max(avgTimeWith, 0.1),
+    exceptionReductionFactor: exceptionReductionPercentage / 100,
+    stpRateWithout,
+    stpRateWith,
+    stpImprovement: stpRateWith - stpRateWithout,
+  }
+
+  return { comparisons, metrics }
+}

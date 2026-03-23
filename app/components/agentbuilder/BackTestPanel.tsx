@@ -400,7 +400,7 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
   const [stpFilter, setStpFilter] = useState("all")
   const [resultFilter, setResultFilter] = useState("all")
   const [page, setPage] = useState(1)
-  const rowsPerPage = 50
+  const rowsPerPage = 25
 
   const filtered = comparisons.filter(c => {
     if (stpFilter === "stp" && !c.withAgent.isSTP) return false
@@ -513,6 +513,11 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
                               <span className="text-[10px] text-green-600 mt-0.5">STP</span>
                             )}
                           </>
+                        ) : c.withAgent.pipelineStage === "Rejected" ? (
+                          <>
+                            <span className="text-xs font-medium text-red-600">Rejected</span>
+                            <span className="text-[10px] text-gray-600 mt-0.5">at Invoice import</span>
+                          </>
                         ) : c.withAgent.pipelineStage ? (
                           <>
                             <span className="text-xs font-medium text-orange-700">Held</span>
@@ -580,7 +585,12 @@ function RunResults({ run }: { run: BackTestRun }) {
         <KpiStrip metrics={metrics} comparisons={invoiceComparisons} />
       )}
 
-      {/* 2 — FTE / Cost summary */}
+      {/* 2 — Invoice table */}
+      {invoiceComparisons.length > 0 && (
+        <InvoiceTable comparisons={invoiceComparisons} totalInvoices={invoiceComparisons.length} />
+      )}
+
+      {/* 3 — FTE / Cost summary */}
       {metrics && (
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-lg border border-gray-200 p-3">
@@ -600,11 +610,6 @@ function RunResults({ run }: { run: BackTestRun }) {
             </div>
           </div>
         </div>
-      )}
-
-      {/* 4 — Invoice table */}
-      {invoiceComparisons.length > 0 && (
-        <InvoiceTable comparisons={invoiceComparisons} totalInvoices={invoiceComparisons.length} />
       )}
     </div>
   )

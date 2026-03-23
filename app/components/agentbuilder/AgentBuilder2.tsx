@@ -15,6 +15,7 @@ import { generateTestScenarios, type ScenarioConfig, type TimePeriod, type Stage
 import { simulateBaselineProcessingBatch, type BaselineStats } from './baselineSimulator'
 import { simulateAgentProcessingBatch, type AgentStats, type AgentConfig as SimAgentConfig } from './agentSimulator'
 import { calculateComparisonMetrics, createInvoiceComparisons, formatMetricsForDisplay, generateExecutiveSummary, type ComparisonMetrics, type InvoiceComparison } from './comparisonMetrics'
+import { isDemoAgent, buildDemoResults } from './demoFixtures'
 
 interface AgentMetrics {
   evaluated: number
@@ -150,6 +151,46 @@ export function AgentBuilder2({
     // Close the period-selection modal and signal the settings page to switch to Back Testing tab
     if (onCloseTest) onCloseTest()
     window.dispatchEvent(new CustomEvent('back-test-tab-switch'))
+
+    // ── Demo mode: bypass simulation for specific demo agents ──────────────
+    if (isDemoAgent(capturedAgentName)) {
+      setIsTesting(true)
+      setTestProgress(0)
+      setComparisonMetrics(null)
+      setInvoiceComparisons([])
+      setCurrentPage(1)
+
+      window.dispatchEvent(new CustomEvent('back-test-started', {
+        detail: { runId, agentName: capturedAgentName, timePeriod: capturedTimePeriod }
+      }))
+
+      const { comparisons: demoComparisons, metrics: demoMetrics } = buildDemoResults(capturedTimePeriod)
+      const batchSize = 50
+
+      for (let offset = 0; offset < demoComparisons.length; offset += batchSize) {
+        await new Promise(resolve => setTimeout(resolve, 200))
+        const batch = demoComparisons.slice(offset, offset + batchSize)
+        const progress = Math.min(((offset + batchSize) / demoComparisons.length) * 100, 100)
+        setTestProgress(progress)
+        setInvoiceComparisons(prev => [...prev, ...batch])
+        window.dispatchEvent(new CustomEvent('back-test-progress', {
+          detail: { runId, progress, recentComparisons: batch }
+        }))
+      }
+
+      setComparisonMetrics(demoMetrics)
+      setIsTesting(false)
+
+      try {
+        window.dispatchEvent(new CustomEvent('back-test-complete', {
+          detail: { runId, metrics: demoMetrics, agentName: capturedAgentName, timePeriod: capturedTimePeriod }
+        }))
+      } catch (e) {
+        console.error('[AgentBuilder2] Failed to dispatch back-test-complete (demo):', e)
+      }
+      return
+    }
+    // ── End demo mode ───────────────────────────────────────────────────────
 
     setIsTesting(true)
     setTestProgress(0)
