@@ -55,11 +55,12 @@ export type AgentMetrics = {
 interface AgentBuilderPageProps {
   hideNavigation?: boolean;
   defaultMode?: Mode;
+  lockMode?: boolean; // when true, always use defaultMode and ignore sessionStorage
 }
 
-export default function AgentBuilderPage({ hideNavigation = false, defaultMode = "observe" }: AgentBuilderPageProps = {}) {
+export default function AgentBuilderPage({ hideNavigation = false, defaultMode = "observe", lockMode = false }: AgentBuilderPageProps = {}) {
   const [mode, setMode] = useState<Mode>(() => {
-    if (typeof window !== 'undefined') {
+    if (!lockMode && typeof window !== 'undefined') {
       const stored = sessionStorage.getItem('agentbuilder-mode')
       if (stored && ['observe', 'build', 'build2', 'executive-dashboard', 'documents'].includes(stored)) {
         return stored as Mode
@@ -697,13 +698,23 @@ Any match below 90% confidence is flagged for manual review - only matches at or
       lane: "Tolerance Application",
       skills: ["Match Documents", "Verify Data", "Flag Issues"],
     },
+    {
+      id: "18",
+      name: "Unit Conversion Matching Agent",
+      stage: "matching",
+      active: true,
+      mode: "auto-apply",
+      prompt: `ROLE:\nUnit Conversion Matching Agent — adjusts the unit of measure of Landscaping Sand from JanServ Plc (WO-2025-445) from "each" to KG.\n\nINSTRUCTIONS:\n- Identify any line items for Landscaping Sand from JanServ Plc (WO-2025-445), that have a unit of measure of "each"\n- Update the line item on the invoice to reflect that "each" actually refers to 1 bag of 50kg\n- E.g. it means 10 x each will be converted to 500kg`,
+      lane: "Unit Conversion",
+      skills: ["Match Documents", "Verify Data", "Flag Issues"],
+    },
     ]
     
     // Client-side only - check localStorage and merge with defaults
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v20'
+        const AGENTS_VERSION = 'v21'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')
@@ -804,6 +815,12 @@ Any match below 90% confidence is flagged for manual review - only matches at or
       editingAgentName: editingAgent?.name
     })
     
+    // On a normal load (no newAgent param), clear any stale transient sessionStorage
+    if (!isNewAgent) {
+      sessionStorage.removeItem('agentbuilder-editing-agent')
+      sessionStorage.removeItem('agentbuilder-mode')
+    }
+
     // If creating a new agent from floating chat (priority check - do this first)
     if (isNewAgent) {
       // Guard: only process once per unique URL to prevent duplicate agents on re-renders
@@ -882,6 +899,10 @@ Any match below 90% confidence is flagged for manual review - only matches at or
       cleanUrl.searchParams.delete('lane')
       cleanUrl.searchParams.delete('name')
       window.history.replaceState({}, '', cleanUrl.toString())
+
+      // Clear the transient sessionStorage keys now that state is in React
+      sessionStorage.removeItem('agentbuilder-editing-agent')
+      sessionStorage.removeItem('agentbuilder-mode')
       
       return // Don't process agent name parameter if we're creating new
     }

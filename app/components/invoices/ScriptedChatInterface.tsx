@@ -9,40 +9,13 @@ const AGENT_LANE = 'Unit Conversion';
 const AGENT_MODE = 'auto-apply';
 const AGENT_SKILLS = ['Match Documents', 'Verify Data', 'Flag Issues'];
 
-const GENERATED_PROMPT = `ROLE: Unit Conversion Matching Agent — validates invoice line items against PO lines for JanServ by converting units of measurement and confirming total amounts match
+const GENERATED_PROMPT = `ROLE:
+Unit Conversion Matching Agent — adjusts the unit of measure of Landscaping Sand from JanServ Plc (WO-2025-445) from "each" to KG.
 
-VENDOR SCOPE: JanServ only
-
-INPUTS:
-- Invoice line items with quantities, units of measure, and totals
-- Corresponding PO line items with quantities, units, and agreed totals
-
-STEPS:
-1. For each invoice line item, identify the unit of measure (e.g. kg, tonnes, litres, boxes)
-2. Retrieve the corresponding PO line item and its unit of measure
-3. Apply standard unit conversion factors to normalise both to a common base unit
-4. Compare the converted totals — if they match within a 1% tolerance, mark the line as matched
-5. If totals do not match after conversion, flag the line as a variance for manual review
-6. Output a match summary per line with original units, converted values, and match status
-
-UNIT CONVERSION EXAMPLES:
-- 1 tonne = 1,000 kg
-- 1 box (12 units) = 12 each
-- 1 case = variable — use vendor-specific conversion table
-
-VALIDATIONS:
-- Conversion factor must exist for both units before marking as matched
-- Total amounts must match within 1% tolerance after conversion
-- Unknown or non-standard units must be flagged for manual review
-
-OUTPUT:
-- Match status per line: "matched", "variance", or "review"
-- Original and converted units for audit trail
-- Variance amount where applicable
-
-ERROR HANDLING:
-- If unit conversion factor not found → Flag for manual review, do not auto-match
-- If multiple conversion factors exist → Use most conservative (lowest) value and flag for confirmation`;
+INSTRUCTIONS:
+- Identify any line items for Landscaping Sand from JanServ Plc (WO-2025-445), that have a unit of measure of "each"
+- Update the line item on the invoice to reflect that "each" actually refers to 1 bag of 50kg
+- E.g. it means 10 x each will be converted to 500kg`;
 
 interface Message {
   id: string;
@@ -183,7 +156,7 @@ export function ScriptedChatInterface({ onPromptGenerated }: ScriptedChatInterfa
                   <p className="text-xs text-gray-500 mt-0.5">Stage: Matching &nbsp;·&nbsp; Lane: Unit Conversion &nbsp;·&nbsp; Mode: Auto-apply &nbsp;·&nbsp; Vendor: JanServ</p>
                 </div>
                 <div className="bg-gray-50 border border-gray-200 rounded-md px-3 py-2 max-h-40 overflow-y-auto">
-                  <pre className="text-xs text-gray-700 whitespace-pre-wrap font-mono leading-relaxed">{GENERATED_PROMPT}</pre>
+                  <p className="text-xs text-gray-700 whitespace-pre-wrap leading-relaxed">{GENERATED_PROMPT}</p>
                 </div>
                 <p className="text-xs text-purple-600 mt-2">Click <strong>Apply Prompt</strong> below to open this in Agent Builder.</p>
               </div>

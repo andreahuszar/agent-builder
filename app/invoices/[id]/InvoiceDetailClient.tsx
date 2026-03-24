@@ -188,7 +188,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
           agent_name: 'Unit Conversion Matching Agent',
           action: 'Unit conversion applied on line 6',
           status: 'success',
-          detail: '- For each invoice line item, identify the unit of measure (e.g. kg, tonnes, litres, boxes)\n- Retrieve the corresponding PO line item and its unit of measure\n- Apply standard unit conversion factors to normalise both to a common base unit\n- Compare the converted totals — if they match within a 1% tolerance, mark the line as matched\n- If totals do not match after conversion, flag the line as a variance for manual review',
+          detail: '- Identify any line items for Landscaping Sand from JanServ Plc (WO-2025-445), that have a unit of measure of "each"\n- Update the line item on the invoice to reflect that "each" actually refers to 1 bag of 50kg\n- E.g. it means 10 x each will be converted to 500kg',
           agent_id: 'uom-match',
           mode: 'auto-apply',
         },

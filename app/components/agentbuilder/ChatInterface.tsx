@@ -43,10 +43,12 @@ interface ChatInterfaceProps {
   agentId?: string
   currentAgent?: Agent | null
   onOpenTest?: () => void
+  initialScriptedFlow?: 'unitConversion'
 }
 
 export interface ChatInterfaceRef {
   clearChat: () => void
+  enterUnitConversionScripted: () => void
 }
 
 const AVAILABLE_SKILLS = [
@@ -64,7 +66,7 @@ const AVAILABLE_SKILLS = [
   "Find Vendor Information",
 ]
 
-export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({ onPromptGenerated, onStageDetected, onLaneDetected, currentPrompt, agentId, currentAgent, onOpenTest }, ref) => {
+export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({ onPromptGenerated, onStageDetected, onLaneDetected, currentPrompt, agentId, currentAgent, onOpenTest, initialScriptedFlow }, ref) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -81,6 +83,7 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
   const [scriptedMode, setScriptedMode] = useState(false)
   const [scriptStep, setScriptStep] = useState(0)
   const [scriptData, setScriptData] = useState<{ mailbox?: string; suggestFormats?: boolean; signature?: string }>({})
+  const [scriptedFlow, setScriptedFlow] = useState<'rejectWord' | 'unitConversion'>('rejectWord')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -102,11 +105,29 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
     setScriptedMode(false)
     setScriptStep(0)
     setScriptData({})
+    setScriptedFlow('rejectWord')
   }
 
-  // Expose clearChat to parent component
+  // Expose methods to parent
   useImperativeHandle(ref, () => ({
-    clearChat
+    clearChat,
+    enterUnitConversionScripted: () => {
+      clearChat()
+      setScriptedFlow('unitConversion')
+      setScriptedMode(true)
+      setScriptStep(1)
+      setTimeout(() => {
+        setMessages([
+          {
+            id: "1",
+            role: "assistant",
+            content: "Hi! I'm your invoice processing specialist. Tell me what your agent needs to do, and I'll ask a few clarifying questions to build the perfect configuration for you.",
+            timestamp: new Date(),
+          },
+        ])
+        setTimeout(() => inputRef.current?.focus(), 100)
+      }, 0)
+    },
   }))
 
   useEffect(() => {
@@ -117,6 +138,16 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
     console.log("[v0] Agent changed, clearing chat. Agent ID:", agentId)
     clearChat()
   }, [agentId])
+
+  // Auto-start scripted flow on mount when requested by parent
+  useEffect(() => {
+    if (initialScriptedFlow === 'unitConversion') {
+      setScriptedFlow('unitConversion')
+      setScriptedMode(true)
+      setScriptStep(1)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -249,6 +280,7 @@ ${signature}`
     setTimeout(() => inputRef.current?.focus(), 100)
   }
 
+  // ── Reject Word scripted flow ────────────────────────────────────────────────
   const SCRIPTED_USER_MESSAGES: Record<number, string> = {
     1: "I would like to automatically reject any invoice which comes in Word .docx format and send an automated email to the vendor which explains why it was rejected",
     2: "invoicing@xelix.com",
@@ -260,7 +292,7 @@ ${signature}`
     suggestFormats: true,
   }
 
-  const handleScriptedSend = (_userInput: string) => {
+  const handleRejectWordScriptedSend = (_userInput: string) => {
     const scriptedContent = SCRIPTED_USER_MESSAGES[scriptStep] ?? _userInput
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -299,11 +331,65 @@ ${signature}`
           id: (Date.now() + 1).toString(),
           role: "assistant",
           content: `I have a prompt ready for you to apply. ROLE:\nAutomatically reject any invoices received that are in Word format\n\nINSTRUCTIONS:\n- Scan all incoming invoices for their file format\n- If the invoice is received in Microsoft Word format (.docx), automatically reject the invoice\n- Send rejection notification back to vendor with the provided email template`,
+          generatedPrompt: `ROLE: Reject Word Formatted Invoices Agent\n\nINSTRUCTIONS:\n- Scan all incoming invoices for their file format\n- If the invoice is received in Microsoft Word format (.docx), automatically reject the invoice\n- Send rejection notification back to vendor with the provided email template`,
           timestamp: new Date(),
         }])
         if (onStageDetected) onStageDetected("ingestion")
         if (onLaneDetected) onLaneDetected("File Triage")
       }, 350)
+    }
+  }
+
+  // ── Unit Conversion scripted flow ────────────────────────────────────────────
+  const UC_SCRIPTED_USER_MESSAGES: Record<number, string> = {
+    1: "I need an agent that validates invoice line items against purchase orders by converting units of measurement and confirming totals match",
+    2: "Just JanServ for now",
+  }
+
+  const handleUnitConversionScriptedSend = (_userInput: string) => {
+    const scriptedContent = UC_SCRIPTED_USER_MESSAGES[scriptStep] ?? _userInput
+    const userMessage: Message = {
+      id: Date.now().toString(),
+      role: "user",
+      content: scriptedContent,
+      timestamp: new Date(),
+    }
+    setMessages((prev) => [...prev, userMessage])
+    setInput("")
+    setTimeout(() => inputRef.current?.focus(), 100)
+
+    if (scriptStep === 1) {
+      setScriptStep(2)
+      setTimeout(() => {
+        setMessages((prev) => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: "OK, this looks like it belongs in **Stage: Matching, Lane: Unit Conversion**. I will convert units of measurement and check that the total amounts are the same between invoice and PO line items. Should this apply to all vendors, or just a specific vendor?",
+          timestamp: new Date(),
+        }])
+      }, 350)
+    } else if (scriptStep === 2) {
+      setScriptStep(3)
+      setTimeout(() => {
+        const ucPrompt = `ROLE:\nUnit Conversion Matching Agent — adjusts the unit of measure of Landscaping Sand from JanServ Plc (WO-2025-445) from "each" to KG.\n\nINSTRUCTIONS:\n- Identify any line items for Landscaping Sand from JanServ Plc (WO-2025-445), that have a unit of measure of "each"\n- Update the line item on the invoice to reflect that "each" actually refers to 1 bag of 50kg\n- E.g. it means 10 x each will be converted to 500kg`
+        setMessages((prev) => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: `I have a prompt ready for you to apply. ${ucPrompt}`,
+          generatedPrompt: ucPrompt,
+          timestamp: new Date(),
+        }])
+        if (onStageDetected) onStageDetected("matching")
+        if (onLaneDetected) onLaneDetected("Unit Conversion")
+      }, 350)
+    }
+  }
+
+  const handleScriptedSend = (_userInput: string) => {
+    if (scriptedFlow === 'unitConversion') {
+      handleUnitConversionScriptedSend(_userInput)
+    } else {
+      handleRejectWordScriptedSend(_userInput)
     }
   }
 
@@ -631,7 +717,7 @@ ${signature}`
               {message.role === "assistant" && message.generatedPrompt && message.generatedPrompt.length > 0 && (
                 <>
                   <div className="px-3 py-2 rounded-lg bg-muted">
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap font-mono">{message.generatedPrompt}</p>
+                    <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.generatedPrompt}</p>
                   </div>
                   {message.suggestedSkills && message.suggestedSkills.length > 0 && (
                     <div className="px-3 py-2 rounded-lg bg-muted/50">

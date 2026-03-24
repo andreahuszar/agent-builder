@@ -172,7 +172,7 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
           {/* Sub-tab Content */}
           <div className="flex-1 overflow-hidden relative">
             {activeSubTab === 'general-settings' && <div className="h-full overflow-auto"><APAutomationGeneralSettings /></div>}
-            {activeSubTab === 'dashboard' && <div className="h-full overflow-auto"><AgentBuilderPage key="dashboard" hideNavigation={true} defaultMode="executive-dashboard" /></div>}
+            {activeSubTab === 'dashboard' && <div className="h-full overflow-auto"><AgentBuilderPage key="dashboard" hideNavigation={true} defaultMode="executive-dashboard" lockMode={true} /></div>}
             {/* AgentBuilderPage stays mounted while back-testing is active so the test keeps running */}
             <div className={`h-full ${activeSubTab === 'agent-builder-2' || activeSubTab === 'back-testing' ? '' : 'hidden'}`}>
               <AgentBuilderPage key="builder2" hideNavigation={true} defaultMode="build2" />
@@ -291,7 +291,7 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
           {/* Sub-tab Content */}
           <div className="flex-1 overflow-hidden relative">
             {activeSubTab === 'general-settings' && <div className="h-full overflow-auto"><APAutomationGeneralSettings /></div>}
-            {activeSubTab === 'dashboard' && <div className="h-full overflow-auto"><AgentBuilderPage hideNavigation={true} defaultMode="executive-dashboard" /></div>}
+            {activeSubTab === 'dashboard' && <div className="h-full overflow-auto"><AgentBuilderPage hideNavigation={true} defaultMode="executive-dashboard" lockMode={true} /></div>}
             <div className={`h-full ${activeSubTab === 'agent-builder-2' || activeSubTab === 'back-testing' ? '' : 'hidden'}`}>
               <AgentBuilderPage key="builder2" hideNavigation={true} defaultMode="build2" />
             </div>

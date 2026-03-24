@@ -75,6 +75,8 @@ export function AgentBuilder2({
   const [isDraggingLeft, setIsDraggingLeft] = useState(false)
   const [isDraggingRight, setIsDraggingRight] = useState(false)
   const chatRef = useRef<ChatInterfaceRef>(null)
+  const [initialScriptedFlow, setInitialScriptedFlow] = useState<'unitConversion' | undefined>(undefined)
+  const [chatKey, setChatKey] = useState(0)
   const [detectedStage, setDetectedStage] = useState<string>("")
   const [detectedLane, setDetectedLane] = useState<string>("")
 
@@ -640,8 +642,14 @@ export function AgentBuilder2({
               <div className="mb-6">
                 <img 
                   src="/agent-builder-robot.png" 
-                  alt="Agent Builder Robot" 
-                  className="w-48 h-48 mx-auto object-contain"
+                  alt="Start guided agent setup"
+                  title="Click to start guided setup"
+                  className="w-48 h-48 mx-auto object-contain cursor-pointer hover:scale-105 transition-transform duration-200"
+                  onClick={() => {
+                    setInitialScriptedFlow('unitConversion')
+                    setChatKey(k => k + 1)
+                    handleCreateNewAgent()
+                  }}
                 />
               </div>
               <h3 className="text-2xl font-semibold text-gray-950 mb-4">
@@ -657,10 +665,16 @@ export function AgentBuilder2({
           <div className="flex-1 flex items-center justify-center bg-gray-50">
             <div className="text-center px-8">
               <div className="mb-6">
-                <img 
-                  src="/agent-builder-robot.png" 
-                  alt="Agent Builder Robot" 
-                  className="w-48 h-48 mx-auto object-contain"
+                <img
+                  src="/agent-builder-robot.png"
+                  alt="Start guided agent setup"
+                  title="Click to start guided setup"
+                  className="w-48 h-48 mx-auto object-contain cursor-pointer hover:scale-105 transition-transform duration-200"
+                  onClick={() => {
+                    setInitialScriptedFlow('unitConversion')
+                    setChatKey(k => k + 1) // force ChatInterface to remount with the new prop
+                    handleCreateNewAgent()
+                  }}
                 />
               </div>
               <h3 className="text-xl font-semibold text-gray-950 mb-4">
@@ -698,7 +712,7 @@ export function AgentBuilder2({
           <div className="flex items-center justify-between p-4 border-b border-gray-200">
             <h2 className="text-lg font-semibold text-gray-950">Chat</h2>
             <button
-              onClick={() => chatRef.current?.clearChat()}
+              onClick={() => { chatRef.current?.clearChat(); setInitialScriptedFlow(undefined) }}
               className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900"
             >
               Clear chat
@@ -708,7 +722,9 @@ export function AgentBuilder2({
 
           <div className="flex-1 overflow-hidden">
             <ChatInterface
+              key={chatKey}
               ref={chatRef}
+              initialScriptedFlow={initialScriptedFlow}
               currentAgent={currentAgent}
               onPromptGenerated={handlePromptGenerated}
               onStageDetected={(stage) => {
