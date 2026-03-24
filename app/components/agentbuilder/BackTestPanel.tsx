@@ -78,6 +78,7 @@ interface BackTestRun {
   progress: number
   metrics: ComparisonMetrics | null
   invoiceComparisons: InvoiceComparison[]
+  displayInvoiceCount?: number
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -190,7 +191,7 @@ function KpiStrip({ metrics, comparisons }: { metrics: ComparisonMetrics; compar
       label: "Straight-Through Rate",
       without: fmtPct(stpWithout, 1),
       with: fmtPct(stpWith, 1),
-      delta: `+${stpDelta.toFixed(1)} pp`,
+      delta: stpDelta >= 0 ? `+${stpDelta.toFixed(1)} pp` : `${stpDelta.toFixed(1)} pp`,
       better: stpDelta > 0,
       description: "Invoices processed with zero manual intervention",
     },
@@ -427,15 +428,15 @@ function buildWithoutTimeline(c: InvoiceComparison): TimelineEvent[] {
     }
   })
 
-  // Sprinkle manual touch events at stuck stage
-  if (touches > 0 && events.length > 0) {
-    const last = events[events.length - 1]
+  // Sprinkle manual touch events at stuck stage — skip if invoice reached Posted
+  const finalStage = events[events.length - 1]
+  if (touches > 0 && events.length > 0 && finalStage?.status !== "posted") {
     for (let t = 0; t < Math.min(touches, 3); t++) {
       events.push({
         type: "touch",
         label: `Manual review ${touches > 1 ? `(${t + 1}/${touches})` : ""}`.trim(),
         subLabel: "AP team intervention",
-        timeMin: parseFloat(((last.timeMin ?? 2) + (t + 1) * 0.5).toFixed(2)),
+        timeMin: parseFloat(((finalStage.timeMin ?? 2) + (t + 1) * 0.5).toFixed(2)),
         status: "stuck",
       })
     }
@@ -660,7 +661,7 @@ function ActivityModal({ invoices, initialIndex, onClose }: { invoices: InvoiceC
 // ─── Invoice Comparison Table ─────────────────────────────────────────────────
 
 function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComparison[]; totalInvoices: number }) {
-  const [stpFilter, setStpFilter] = useState("non-stp")
+  const [stpFilter, setStpFilter] = useState("all")
   const [resultFilter, setResultFilter] = useState("all")
   const [page, setPage] = useState(1)
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null)
@@ -679,8 +680,14 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
     return true
   })
 
-  const paginated = filtered.slice((page - 1) * rowsPerPage, page * rowsPerPage)
-  const totalPages = Math.ceil(filtered.length / rowsPerPage)
+  // Always pin the 4 clickable invoices to the top of the list
+  const sorted = [
+    ...filtered.filter(c => clickableIds.has(c.invoiceId)),
+    ...filtered.filter(c => !clickableIds.has(c.invoiceId)),
+  ]
+
+  const paginated = sorted.slice((page - 1) * rowsPerPage, page * rowsPerPage)
+  const totalPages = Math.ceil(sorted.length / rowsPerPage)
 
   return (
     <div>
@@ -730,7 +737,7 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
             </tr>
           </thead>
           <tbody>
-            {filtered.length === 0 ? (
+            {sorted.length === 0 ? (
               <tr><td colSpan={9} className="p-6 text-center text-gray-400">No invoices match the filter.</td></tr>
             ) : (
               paginated.map((c, idx) => {
@@ -822,7 +829,7 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
       {totalPages > 1 && (
         <div className="flex items-center justify-between mt-2 text-xs">
           <span className="text-gray-500">
-            Showing {((page - 1) * rowsPerPage) + 1}–{Math.min(page * rowsPerPage, filtered.length)} of {filtered.length}
+            Showing {((page - 1) * rowsPerPage) + 1}–{Math.min(page * rowsPerPage, sorted.length)} of {sorted.length}
           </span>
           <div className="flex gap-2">
             <Button variant="outline" size="sm" onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}>Previous</Button>
@@ -880,20 +887,210 @@ function RunResults({ run }: { run: BackTestRun }) {
   )
 }
 
+// ─── Preset Runs (pre-built agent baselines, always visible) ─────────────────
+
+const PRESET_RUNS: BackTestRun[] = [
+  {
+    id: "preset-plant-id",
+    agentName: "Plant ID Prefix Agent",
+    timePeriod: "30days",
+    startedAt: "2026-03-22T09:14:00.000Z",
+    completedAt: "2026-03-22T09:16:22.000Z",
+    status: "completed",
+    progress: 100,
+    displayInvoiceCount: 1247,
+    invoiceComparisons: [],
+    metrics: {
+      avgProcessingTimeWithout: 48, avgProcessingTimeWith: 18,
+      exceptionsWithout: 474, exceptionsWith: 212,
+      manualTouchesWithout: 2993, manualTouchesWith: 997,
+      costPerInvoiceWithout: 28.0, costPerInvoiceWith: 10.5,
+      timeReductionPercentage: 62, exceptionReductionPercentage: 55,
+      manualTouchReductionPercentage: 67, costSavingsPerInvoice: 17.5,
+      fteHoursSaved: 374, annualFTESavings: 2.16, annualCostSavings: 156480,
+      processingSpeedupFactor: 2.67, autoResolvedCount: 262,
+      accuracyWith: 97.4, accuracyImprovement: 9.8,
+      stpRateWithout: 51, stpRateWith: 87, stpImprovement: 36,
+    },
+  },
+  {
+    id: "preset-po-matching-7d",
+    agentName: "PO Matching Agent",
+    timePeriod: "7days",
+    startedAt: "2026-03-16T11:05:00.000Z",
+    completedAt: "2026-03-16T11:06:41.000Z",
+    status: "completed",
+    progress: 100,
+    displayInvoiceCount: 1189,
+    invoiceComparisons: [],
+    metrics: {
+      avgProcessingTimeWithout: 53, avgProcessingTimeWith: 21,
+      exceptionsWithout: 428, exceptionsWith: 142,
+      manualTouchesWithout: 3091, manualTouchesWith: 594,
+      costPerInvoiceWithout: 30.92, costPerInvoiceWith: 12.25,
+      timeReductionPercentage: 60, exceptionReductionPercentage: 67,
+      manualTouchReductionPercentage: 81, costSavingsPerInvoice: 18.67,
+      fteHoursSaved: 634, annualFTESavings: 4.88, annualCostSavings: 347000,
+      processingSpeedupFactor: 2.52, autoResolvedCount: 286,
+      accuracyWith: 97.3, accuracyImprovement: 12.0,
+      stpRateWithout: 45, stpRateWith: 84, stpImprovement: 39,
+    },
+  },
+  {
+    id: "preset-bank-details-3m",
+    agentName: "Bank details checker",
+    timePeriod: "3months",
+    startedAt: "2026-03-12T09:11:00.000Z",
+    completedAt: "2026-03-12T09:14:22.000Z",
+    status: "completed",
+    progress: 100,
+    displayInvoiceCount: 5471,
+    invoiceComparisons: [],
+    metrics: {
+      avgProcessingTimeWithout: 46, avgProcessingTimeWith: 20,
+      exceptionsWithout: 1914, exceptionsWith: 931,
+      manualTouchesWithout: 12030, manualTouchesWith: 4372,
+      costPerInvoiceWithout: 26.83, costPerInvoiceWith: 11.67,
+      timeReductionPercentage: 57, exceptionReductionPercentage: 51,
+      manualTouchReductionPercentage: 64, costSavingsPerInvoice: 15.17,
+      fteHoursSaved: 2381, annualFTESavings: 4.58, annualCostSavings: 317400,
+      processingSpeedupFactor: 2.3, autoResolvedCount: 983,
+      accuracyWith: 98.5, accuracyImprovement: 11.2,
+      stpRateWithout: 50, stpRateWith: 77, stpImprovement: 27,
+    },
+  },
+  {
+    id: "preset-po-matching",
+    agentName: "PO Matching Agent",
+    timePeriod: "3months",
+    startedAt: "2026-03-12T08:22:00.000Z",
+    completedAt: "2026-03-12T08:27:33.000Z",
+    status: "completed",
+    progress: 100,
+    displayInvoiceCount: 5104,
+    invoiceComparisons: [],
+    metrics: {
+      avgProcessingTimeWithout: 55, avgProcessingTimeWith: 23,
+      exceptionsWithout: 2093, exceptionsWith: 765,
+      manualTouchesWithout: 14291, manualTouchesWith: 3062,
+      costPerInvoiceWithout: 32.08, costPerInvoiceWith: 13.42,
+      timeReductionPercentage: 58, exceptionReductionPercentage: 63,
+      manualTouchReductionPercentage: 79, costSavingsPerInvoice: 18.67,
+      fteHoursSaved: 2722, annualFTESavings: 5.25, annualCostSavings: 363000,
+      processingSpeedupFactor: 2.39, autoResolvedCount: 1328,
+      accuracyWith: 96.9, accuracyImprovement: 11.4,
+      stpRateWithout: 47, stpRateWith: 82, stpImprovement: 35,
+    },
+  },
+  {
+    id: "preset-bank-details",
+    agentName: "Bank details checker",
+    timePeriod: "30days",
+    startedAt: "2026-03-08T15:44:00.000Z",
+    completedAt: "2026-03-08T15:46:51.000Z",
+    status: "completed",
+    progress: 100,
+    displayInvoiceCount: 1831,
+    invoiceComparisons: [],
+    metrics: {
+      avgProcessingTimeWithout: 44, avgProcessingTimeWith: 22,
+      exceptionsWithout: 641, exceptionsWith: 329,
+      manualTouchesWithout: 4029, manualTouchesWith: 1647,
+      costPerInvoiceWithout: 25.67, costPerInvoiceWith: 12.83,
+      timeReductionPercentage: 50, exceptionReductionPercentage: 49,
+      manualTouchReductionPercentage: 59, costSavingsPerInvoice: 12.83,
+      fteHoursSaved: 671, annualFTESavings: 3.87, annualCostSavings: 281880,
+      processingSpeedupFactor: 2.0, autoResolvedCount: 312,
+      accuracyWith: 98.2, accuracyImprovement: 10.6,
+      stpRateWithout: 53, stpRateWith: 79, stpImprovement: 26,
+    },
+  },
+  {
+    id: "preset-semantic-match",
+    agentName: "Semantic Match Agent",
+    timePeriod: "3months",
+    startedAt: "2026-03-03T10:18:00.000Z",
+    completedAt: "2026-03-03T10:23:14.000Z",
+    status: "completed",
+    progress: 100,
+    displayInvoiceCount: 4217,
+    invoiceComparisons: [],
+    metrics: {
+      avgProcessingTimeWithout: 51, avgProcessingTimeWith: 17,
+      exceptionsWithout: 1645, exceptionsWith: 675,
+      manualTouchesWithout: 10963, manualTouchesWith: 2952,
+      costPerInvoiceWithout: 29.75, costPerInvoiceWith: 9.92,
+      timeReductionPercentage: 67, exceptionReductionPercentage: 59,
+      manualTouchReductionPercentage: 73, costSavingsPerInvoice: 19.83,
+      fteHoursSaved: 2388, annualFTESavings: 4.60, annualCostSavings: 317940,
+      processingSpeedupFactor: 3.0, autoResolvedCount: 970,
+      accuracyWith: 97.1, accuracyImprovement: 12.1,
+      stpRateWithout: 49, stpRateWith: 85, stpImprovement: 36,
+    },
+  },
+  {
+    id: "preset-gl-posting",
+    agentName: "GL Posting Agent",
+    timePeriod: "7days",
+    startedAt: "2026-02-24T16:55:00.000Z",
+    completedAt: "2026-02-24T16:57:03.000Z",
+    status: "completed",
+    progress: 100,
+    displayInvoiceCount: 438,
+    invoiceComparisons: [],
+    metrics: {
+      avgProcessingTimeWithout: 37, avgProcessingTimeWith: 11,
+      exceptionsWithout: 118, exceptionsWith: 26,
+      manualTouchesWithout: 745, manualTouchesWith: 88,
+      costPerInvoiceWithout: 21.58, costPerInvoiceWith: 6.42,
+      timeReductionPercentage: 70, exceptionReductionPercentage: 78,
+      manualTouchReductionPercentage: 88, costSavingsPerInvoice: 15.17,
+      fteHoursSaved: 190, annualFTESavings: 2.19, annualCostSavings: 159600,
+      processingSpeedupFactor: 3.36, autoResolvedCount: 92,
+      accuracyWith: 98.7, accuracyImprovement: 13.5,
+      stpRateWithout: 61, stpRateWith: 94, stpImprovement: 33,
+    },
+  },
+  {
+    id: "preset-high-value",
+    agentName: "High value invoices",
+    timePeriod: "3months",
+    startedAt: "2026-02-17T13:29:00.000Z",
+    completedAt: "2026-02-17T13:34:41.000Z",
+    status: "completed",
+    progress: 100,
+    displayInvoiceCount: 2659,
+    invoiceComparisons: [],
+    metrics: {
+      avgProcessingTimeWithout: 58, avgProcessingTimeWith: 35,
+      exceptionsWithout: 877, exceptionsWith: 479,
+      manualTouchesWithout: 6115, manualTouchesWith: 3485,
+      costPerInvoiceWithout: 33.83, costPerInvoiceWith: 20.42,
+      timeReductionPercentage: 40, exceptionReductionPercentage: 45,
+      manualTouchReductionPercentage: 43, costSavingsPerInvoice: 13.42,
+      fteHoursSaved: 1020, annualFTESavings: 2.94, annualCostSavings: 213000,
+      processingSpeedupFactor: 1.66, autoResolvedCount: 398,
+      accuracyWith: 95.3, accuracyImprovement: 6.8,
+      stpRateWithout: 55, stpRateWith: 68, stpImprovement: 13,
+    },
+  },
+]
+
 // ─── Main Panel ───────────────────────────────────────────────────────────────
 
 export function BackTestPanel() {
-  const [runs, setRuns] = useState<BackTestRun[]>([])
+  const [runs, setRuns] = useState<BackTestRun[]>(PRESET_RUNS)
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const activeComparisons = useRef<Record<string, InvoiceComparison[]>>({})
 
-  // Load history from localStorage on mount
+  // Load history from localStorage on mount, merging with presets
   useEffect(() => {
     try {
       const storedVersion = localStorage.getItem(STORAGE_VERSION_KEY)
       if (storedVersion !== STORAGE_VERSION) {
         localStorage.removeItem(STORAGE_KEY)
         localStorage.setItem(STORAGE_VERSION_KEY, STORAGE_VERSION)
+        setRuns(PRESET_RUNS)
         return
       }
       const stored = localStorage.getItem(STORAGE_KEY)
@@ -904,11 +1101,18 @@ export function BackTestPanel() {
             ? { ...r, status: "completed" as const, completedAt: r.completedAt ?? new Date().toISOString() }
             : r
         )
-        setRuns(cleaned)
-        saveRuns(cleaned)
+        // Always include presets that aren't already in stored history
+        const storedIds = new Set(cleaned.map(r => r.id))
+        const missingPresets = PRESET_RUNS.filter(p => !storedIds.has(p.id))
+        const merged = [...cleaned, ...missingPresets]
+        setRuns(merged)
+        saveRuns(merged)
+      } else {
+        setRuns(PRESET_RUNS)
       }
     } catch (e) {
       console.error("[BackTestPanel] Failed to load history:", e)
+      setRuns(PRESET_RUNS)
     }
   }, [])
 
@@ -1087,7 +1291,7 @@ export function BackTestPanel() {
                       <span>·</span>
                       <span className="text-green-600 font-medium">↓ {run.metrics.exceptionReductionPercentage.toFixed(0)}% fewer exceptions</span>
                       <span>·</span>
-                      <span>{run.invoiceComparisons.length.toLocaleString()} invoices tested</span>
+                      <span>{(run.displayInvoiceCount ?? run.invoiceComparisons.length).toLocaleString()} invoices tested</span>
                     </div>
                   )}
                 </button>

@@ -199,6 +199,29 @@ export function buildDemoResults(timePeriod: string): {
     if (i < groupCRows.length) comparisons.push(groupCRows[i])
   }
 
+  // ─── Per-invoice overrides ────────────────────────────────────────────────
+  // Force specific invoices to a known state for demo clarity
+
+  const inv10201 = comparisons.findIndex(c => c.invoiceId === "INV-2024-10201")
+  if (inv10201 !== -1) {
+    comparisons[inv10201] = {
+      ...comparisons[inv10201],
+      hasIssue: false,
+      issueDescription: undefined,
+      exceptionType: undefined,
+      withoutAgent: {
+        ...comparisons[inv10201].withoutAgent,
+        outcome: "passed",
+        pipelineStage: "Posted",
+        isSTP: false,
+      },
+      improvement: {
+        outcome: comparisons[inv10201].withAgent.isSTP ? "better" : "same",
+        highlights: [],
+      },
+    }
+  }
+
   // ─── Compute metrics from the fixture data ───────────────────────────────
 
   const avgTimeWithout = comparisons.reduce((s, c) => s + c.withoutAgent.processingTimeMinutes, 0) / total
@@ -243,11 +266,22 @@ export function buildDemoResults(timePeriod: string): {
   const stpRateWithout = (comparisons.filter(c => c.withoutAgent.isSTP).length / total) * 100
   const stpRateWith = (comparisons.filter(c => c.withAgent.isSTP).length / total) * 100
 
+  // Override avg processing time without agent to a realistic 14m for this rejection agent
+  // (previously computed from simulation groups which skewed too high)
+  const overrideTimeWithout = 14
+  const overrideTimeReductionMinutes = overrideTimeWithout - avgTimeWith
+  const overrideTimeReductionPercentage = (overrideTimeReductionMinutes / overrideTimeWithout) * 100
+
+  // STP should decrease for a rejection agent — invoices that previously trickled through
+  // are now caught and rejected, reducing the straight-through rate
+  const overrideStpWithout = 51
+  const overrideStpWith = 43
+
   const metrics: ComparisonMetrics = {
-    avgProcessingTimeWithout: avgTimeWithout,
+    avgProcessingTimeWithout: overrideTimeWithout,
     avgProcessingTimeWith: avgTimeWith,
-    timeReductionMinutes,
-    timeReductionPercentage,
+    timeReductionMinutes: overrideTimeReductionMinutes,
+    timeReductionPercentage: overrideTimeReductionPercentage,
     exceptionsWithout,
     exceptionsWith,
     exceptionReduction,
@@ -279,11 +313,11 @@ export function buildDemoResults(timePeriod: string): {
     annualCostWithout,
     annualCostWith,
     annualCostSavings,
-    processingSpeedupFactor: avgTimeWithout / Math.max(avgTimeWith, 0.1),
+    processingSpeedupFactor: overrideTimeWithout / Math.max(avgTimeWith, 0.1),
     exceptionReductionFactor: exceptionReductionPercentage / 100,
-    stpRateWithout,
-    stpRateWith,
-    stpImprovement: stpRateWith - stpRateWithout,
+    stpRateWithout: overrideStpWithout,
+    stpRateWith: overrideStpWith,
+    stpImprovement: overrideStpWith - overrideStpWithout,
   }
 
   return { comparisons, metrics }
