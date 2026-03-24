@@ -127,5 +127,45 @@
       "Verify Data",
       "Flag Issues"
     ]
+  },
+  {
+    "name": "Reject Word Formatted Invoices Agent",
+    "stage": "ingestion",
+    "lane": "File Triage",
+    "mode": "auto-apply",
+    "prompt": "ROLE: Reject Word Formatted Invoices Agent\n\nINSTRUCTIONS:\n- Scan all incoming invoices for their file format\n- If the invoice is received in Microsoft Word format (.docx), automatically reject the invoice\n- Send rejection notification back to vendor with the provided email template",
+    "skills": []
+  },
+  {
+    "name": "Reject Word Formatted Invoices Agent",
+    "stage": "ingestion",
+    "lane": "File Triage",
+    "mode": "auto-apply",
+    "prompt": "ROLE: Reject Word Formatted Invoices Agent\n\nINSTRUCTIONS:\n- Scan all incoming invoices for their file format\n- If the invoice is received in Microsoft Word format (.docx), automatically reject the invoice\n- Send rejection notification back to vendor with the provided email template",
+    "skills": []
+  },
+  {
+    "name": "Reject Word Formatted Invoices Agent",
+    "stage": "ingestion",
+    "lane": "File Triage",
+    "mode": "auto-apply",
+    "prompt": "ROLE: Reject Word Formatted Invoices Agent\n\nINSTRUCTIONS:\n- Scan all incoming invoices for their file format\n- If the invoice is received in Microsoft Word format (.docx), automatically reject the invoice\n- Send rejection notification back to vendor with the provided email template",
+    "skills": []
+  },
+  {
+    "name": "Reject Word Formatted Invoices Agent",
+    "stage": "ingestion",
+    "lane": "File Triage",
+    "mode": "auto-apply",
+    "prompt": "ROLE: Reject Word Formatted Invoices Agent\n\nINSTRUCTIONS:\n- Scan all incoming invoices for their file format\n- If the invoice is received in Microsoft Word format (.docx), automatically reject the invoice\n- Send rejection notification back to vendor with the provided email template",
+    "skills": []
+  },
+  {
+    "name": "Reject Word Formatted Invoices Agent",
+    "stage": "ingestion",
+    "lane": "File Triage",
+    "mode": "auto-apply",
+    "prompt": "ROLE: Reject Word Formatted Invoices Agent\n\nINSTRUCTIONS:\n- Scan all incoming invoices for their file format\n- If the invoice is received in Microsoft Word format (.docx), automatically reject the invoice\n- Send rejection notification back to vendor with the provided email template",
+    "skills": []
   }
 ]

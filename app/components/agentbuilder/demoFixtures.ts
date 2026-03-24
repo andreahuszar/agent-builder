@@ -71,6 +71,25 @@ function formatDate(daysAgo: number): string {
   return d.toISOString().split("T")[0]
 }
 
+const VENDOR_PREFIXES = ["HES","NCL","CES","VFM","ADM","RCC","PPM","CTA","IBF","AMS","SLG","TOI","KSS","HL","BCS"]
+
+function generateInvoiceNumber(rng: SeededRng): string {
+  const fmt = rng.int(0, 10)
+  switch (fmt) {
+    case 0:  return `INV-2025-${rng.int(10000, 99999)}`
+    case 1:  return `SINV/${rng.int(1000, 9999)}`
+    case 2:  return `PI-25-${String(rng.int(100, 9999)).padStart(4, "0")}`
+    case 3:  return `AP${rng.int(100000, 999999)}`
+    case 4:  return `${rng.int(1000000, 9999999)}`
+    case 5:  return `INV${rng.int(1000000, 9999999)}`
+    case 6:  return `${rng.pick(VENDOR_PREFIXES)}-${rng.int(2024, 2025)}-${rng.int(1000, 9999)}`
+    case 7:  return `${rng.int(2024, 2025)}/${String(rng.int(1000, 9999))}`
+    case 8:  return `REF-${rng.int(10000, 99999)}-A`
+    case 9:  return `${rng.pick(VENDOR_PREFIXES)}/INV/${rng.int(10, 99)}-${rng.int(1000, 9999)}`
+    default: return `INV-2025-${String(rng.int(100, 9999)).padStart(5, "0")}`
+  }
+}
+
 // ─── Build demo results ───────────────────────────────────────────────────────
 
 export function buildDemoResults(timePeriod: string): {
@@ -95,6 +114,7 @@ export function buildDemoResults(timePeriod: string): {
     const timeWithout = rng.float(8, 22)
     groupARows.push({
       invoiceId: `INV-2024-${String(10000 + i).padStart(5, "0")}`,
+      invoiceNumber: generateInvoiceNumber(rng),
       vendor: rng.pick(VENDORS),
       amount: parseFloat(rng.float(120, 48000).toFixed(2)),
       date: formatDate(rng.int(0, 89)),
@@ -128,6 +148,7 @@ export function buildDemoResults(timePeriod: string): {
     const touchesWithout = rng.int(1, 3)
     groupBRows.push({
       invoiceId: `INV-2024-${String(10000 + groupA + i).padStart(5, "0")}`,
+      invoiceNumber: generateInvoiceNumber(rng),
       vendor: rng.pick(VENDORS),
       amount: parseFloat(rng.float(200, 25000).toFixed(2)),
       date: formatDate(rng.int(0, 89)),
@@ -164,6 +185,7 @@ export function buildDemoResults(timePeriod: string): {
     const timeWith = rng.float(2, 6)
     groupCRows.push({
       invoiceId: `INV-2024-${String(10000 + groupA + groupB + i).padStart(5, "0")}`,
+      invoiceNumber: generateInvoiceNumber(rng),
       vendor: rng.pick(VENDORS),
       amount: parseFloat(rng.float(500, 35000).toFixed(2)),
       date: formatDate(rng.int(0, 89)),
@@ -201,6 +223,22 @@ export function buildDemoResults(timePeriod: string): {
 
   // ─── Per-invoice overrides ────────────────────────────────────────────────
   // Force specific invoices to a known state for demo clarity
+
+  // Without the agent, Word-format invoices wouldn't be explicitly rejected —
+  // they'd get stuck in the pipeline. Replace any "Rejected" without-agent stage
+  // with "Matched" so the story makes sense.
+  for (let idx = 0; idx < comparisons.length; idx++) {
+    if (comparisons[idx].withoutAgent.pipelineStage === "Rejected") {
+      comparisons[idx] = {
+        ...comparisons[idx],
+        withoutAgent: {
+          ...comparisons[idx].withoutAgent,
+          pipelineStage: "Matched",
+          outcome: "blocked",
+        },
+      }
+    }
+  }
 
   const inv10201 = comparisons.findIndex(c => c.invoiceId === "INV-2024-10201")
   if (inv10201 !== -1) {

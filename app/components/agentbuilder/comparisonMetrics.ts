@@ -71,6 +71,7 @@ export interface ComparisonMetrics {
 
 export interface InvoiceComparison {
   invoiceId: string;
+  invoiceNumber?: string;   // display-friendly invoice number (varied formats)
   vendor: string;
   amount: number;
   date: string;

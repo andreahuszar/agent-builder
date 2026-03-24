@@ -411,8 +411,6 @@ function buildWithoutTimeline(c: InvoiceComparison): TimelineEvent[] {
   const stage = c.withoutAgent.pipelineStage ?? "Imported"
   const stageIdx = ORDERED_STAGES.indexOf(stage)
   const reachedStages = stageIdx >= 0 ? ORDERED_STAGES.slice(0, stageIdx + 1) : [stage]
-  const touches = c.withoutAgent.manualTouches
-
   // Use small fixed per-step times (30s–2m) regardless of total processing time
   const STEP_TIMES = [0.5, 0.75, 1.0, 1.5, 2.0, 2.5]
 
@@ -427,20 +425,6 @@ function buildWithoutTimeline(c: InvoiceComparison): TimelineEvent[] {
       subLabel: isLast && !isPosted ? "Invoice held here" : undefined,
     }
   })
-
-  // Sprinkle manual touch events at stuck stage — skip if invoice reached Posted
-  const finalStage = events[events.length - 1]
-  if (touches > 0 && events.length > 0 && finalStage?.status !== "posted") {
-    for (let t = 0; t < Math.min(touches, 3); t++) {
-      events.push({
-        type: "touch",
-        label: `Manual review ${touches > 1 ? `(${t + 1}/${touches})` : ""}`.trim(),
-        subLabel: "AP team intervention",
-        timeMin: parseFloat(((finalStage.timeMin ?? 2) + (t + 1) * 0.5).toFixed(2)),
-        status: "stuck",
-      })
-    }
-  }
 
   return events
 }
@@ -552,7 +536,7 @@ function ActivityModal({ invoices, initialIndex, onClose }: { invoices: InvoiceC
         {/* Header */}
         <div className="flex items-start justify-between px-5 py-4 border-b border-gray-100">
           <div>
-            <p className="text-sm font-semibold text-gray-950">{invoice.invoiceId}
+            <p className="text-sm font-semibold text-gray-950">{invoice.invoiceNumber ?? invoice.invoiceId}
               <span className="ml-2 text-xs font-normal text-gray-400">{idx + 1} of {invoices.length}</span>
             </p>
             <p className="text-xs text-gray-500 mt-0.5">{invoice.vendor} · £{invoice.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })} · {invoice.date}</p>
@@ -754,7 +738,7 @@ function InvoiceTable({ comparisons, totalInvoices }: { comparisons: InvoiceComp
                   >
                     {/* Invoice ID */}
                     <td className="p-2 font-mono whitespace-nowrap">
-                      <span className={`text-purple-700 underline underline-offset-2 decoration-dotted ${isClickable ? "cursor-pointer" : "cursor-default"}`}>{c.invoiceId}</span>
+                      <span className={`text-purple-700 underline underline-offset-2 decoration-dotted ${isClickable ? "cursor-pointer" : "cursor-default"}`}>{c.invoiceNumber ?? c.invoiceId}</span>
                     </td>
                     {/* Vendor */}
                     <td className="p-2 text-gray-700">{c.vendor}</td>
