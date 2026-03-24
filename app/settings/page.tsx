@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 import AppLayout from '@/app/components/AppLayout';
 import AgentBuilderPage from '@/app/components/agentbuilder/AgentBuilderPage';
 import APAutomationGeneralSettings from '@/app/components/settings/APAutomationGeneralSettings';
@@ -143,7 +144,7 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
               >
                 Back Testing
                 {backTestActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                    <Loader2 className="w-3 h-3 text-purple-500 animate-spin" />
                 )}
               </button>
               <button
@@ -272,7 +273,7 @@ function SettingsContent({ currentView = 'automation' }: SettingsContentProps) {
               >
                 Back Testing
                 {backTestActive && (
-                  <span className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                    <Loader2 className="w-3 h-3 text-purple-500 animate-spin" />
                 )}
               </button>
               <button
