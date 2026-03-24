@@ -638,7 +638,7 @@ ${signature}`
           setMessages((prev) => [...prev, {
             id: Date.now().toString(),
             role: "assistant",
-            content: "I've added this agent as inactive for now. Would you like to back-test it against your historic invoice data?",
+            content: "Agent successfully created. Would you like to back-test it against your historic invoice data?",
             showTestButton: true,
             timestamp: new Date(),
           }])

@@ -170,7 +170,7 @@ export function AgentBuilder2({
       const batchSize = 50
 
       for (let offset = 0; offset < demoComparisons.length; offset += batchSize) {
-        await new Promise(resolve => setTimeout(resolve, 200))
+        await new Promise(resolve => setTimeout(resolve, 3000))
         const batch = demoComparisons.slice(offset, offset + batchSize)
         const progress = Math.min(((offset + batchSize) / demoComparisons.length) * 100, 100)
         setTestProgress(progress)
@@ -238,7 +238,7 @@ export function AgentBuilder2({
       const batchScenarios = scenarios.slice(batchStart, batchEnd)
 
       // Simulate processing delay for realism
-      await new Promise((resolve) => setTimeout(resolve, 200))
+      await new Promise((resolve) => setTimeout(resolve, 3000))
 
       // Run both baseline and agent simulations
       const { results: baselineResults } = simulateBaselineProcessingBatch(batchScenarios)
@@ -397,7 +397,7 @@ export function AgentBuilder2({
         name: agentName,
         stage: detectedStage || stage,
         lane: detectedLane,
-        active: false,
+        active: true,
         mode: 'auto-apply',
         prompt,
         skills,
@@ -426,7 +426,7 @@ export function AgentBuilder2({
       id: newAgentId,
       name: "",
       stage: stageId || "",
-      active: false,
+      active: true,
       mode: "auto-apply",
       prompt: "",
       skills: [],

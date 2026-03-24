@@ -855,7 +855,7 @@ Any match below 90% confidence is flagged for manual review - only matches at or
         mode: agentMode as 'auto-apply' | 'suggest' | 'observe',
         prompt: prompt,
         skills: skills,
-        active: false,
+        active: true,
         lane: lane
       }
       
@@ -1227,7 +1227,7 @@ Any match below 90% confidence is flagged for manual review - only matches at or
       const newAgent = {
         ...updatedAgent,
         id: updatedAgent.id || `agent-${Date.now()}`,
-        active: false,
+        active: true,
       }
       console.log("[AgentBuilderPage] Creating new agent:", newAgent.name, "Stage:", newAgent.stage, "ID:", newAgent.id, "Active:", newAgent.active)
       setAgents((prev) => {
@@ -1255,7 +1255,7 @@ Any match below 90% confidence is flagged for manual review - only matches at or
   const handleCreateNewAgent = () => {
     // Generate ID upfront so documents can be stored immediately
     const newAgentId = `agent-${Date.now()}`
-    setEditingAgent({ id: newAgentId, name: "", stage: "", active: false, mode: "observe", prompt: "", model: "", skills: [] }) // Added mode field
+    setEditingAgent({ id: newAgentId, name: "", stage: "", active: true, mode: "observe", prompt: "", model: "", skills: [] }) // Added mode field
     setIsPreviewMode(false)
     setMode("build")
   }
@@ -1267,7 +1267,7 @@ Any match below 90% confidence is flagged for manual review - only matches at or
       id: newAgentId,
       name: "",
       stage: stageId,
-      active: false,
+      active: true,
       mode: "observe",
       prompt: "",
       model: "",
