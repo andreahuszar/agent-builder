@@ -1295,7 +1295,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
     invoice_lines: baselinePOLegal1Lines,
     // Bill-to customer information
     bill_to_snapshot: {
-      legal_name: 'GSPV Ltd',
+      legal_name: 'GSPV GmbH',
       tax_id: '927 8131 1',
       address: 'Senna Building, Gorsuch Pl, London, E2 8JF',
       email: null,
@@ -1322,7 +1322,18 @@ export const generateBaselineInvoices = (): Invoice[] => {
           height: 75
         }
       }
-    }
+    },
+    agent_actions: [
+      {
+        agent_name: 'Smart Match (Substitution) Agent',
+        action: 'Bill-to entity matched: GSPV GmbH (ap@gspv.de) → GSPV Ltd',
+        status: 'success',
+        detail: '- Identify the bill-to entity named on the invoice document\n- Match against known system entities using substitution matching\n- Received by ap@gspv.de but details point to GSPV (UK)\n- Automatically set the company code to the matched entity',
+        agent_id: 'smart-match-substitution',
+        mode: 'auto-apply',
+      }
+    ],
+    suppress_validation_fields: ['total'],
   } as Invoice);
 
   // ========================================================================

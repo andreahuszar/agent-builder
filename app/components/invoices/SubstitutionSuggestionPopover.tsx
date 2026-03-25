@@ -7,12 +7,14 @@ import { Sparkles, X, ChevronRight, ChevronDown, Check, AlertTriangle, ExternalL
 interface SubstitutionSuggestionPopoverProps {
   invoiceDescription: string;
   poDescription: string;
-  invoiceLine: {
+  fromLabel?: string;
+  toLabel?: string;
+  invoiceLine?: {
     qty: number;
     unit_price: number;
     line_total: number;
   };
-  poLine: {
+  poLine?: {
     qty_ordered: number;
     unit_price: number;
   };
@@ -23,6 +25,9 @@ interface SubstitutionSuggestionPopoverProps {
     invoice_value: string;
     po_value: string;
   }>;
+  agentLink?: string;
+  agentLinkLabel?: string;
+  matchNote?: string;
   onAccept: () => void;
   onReject: () => void;
   onClose?: () => void;
@@ -35,11 +40,16 @@ interface SubstitutionSuggestionPopoverProps {
 export function SubstitutionSuggestionPopover({
   invoiceDescription,
   poDescription,
+  fromLabel = 'Invoice Description',
+  toLabel = 'Purchase Order Description',
   invoiceLine,
   poLine,
   confidence,
   reason,
   differences,
+  agentLink = '/settings?agent=Substitution%20Agent#automation-agent-builder-2',
+  agentLinkLabel = 'View Smart Match (Substitution) in Agent Builder →',
+  matchNote,
   onAccept,
   onReject,
   onClose,
@@ -49,22 +59,31 @@ export function SubstitutionSuggestionPopover({
   collisionBoundary,
 }: SubstitutionSuggestionPopoverProps) {
   const [isDetailsExpanded, setIsDetailsExpanded] = useState(false);
+  const [internalOpen, setInternalOpen] = useState(false);
+
+  const isControlled = open !== undefined;
+  const effectiveOpen = isControlled ? open : internalOpen;
+
+  const handleOpenChange = (val: boolean) => {
+    if (!isControlled) setInternalOpen(val);
+    onOpenChange?.(val);
+  };
 
   const confidencePercent = Math.round(confidence * 100);
 
   const handleAccept = () => {
     onAccept();
-    onOpenChange?.(false);
+    handleOpenChange(false);
   };
 
   const handleReject = () => {
     onReject();
-    onOpenChange?.(false);
+    handleOpenChange(false);
   };
 
   const handleClose = () => {
     onClose?.();
-    onOpenChange?.(false);
+    handleOpenChange(false);
   };
 
   // Helper to bold highlight differences in description text
@@ -84,7 +103,7 @@ export function SubstitutionSuggestionPopover({
   };
 
   return (
-    <Popover.Root open={open} onOpenChange={onOpenChange}>
+    <Popover.Root open={effectiveOpen} onOpenChange={handleOpenChange}>
       <Popover.Trigger asChild>
         {children}
       </Popover.Trigger>
@@ -102,7 +121,7 @@ export function SubstitutionSuggestionPopover({
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="h-4 w-4 text-purple-600 animate-pulse" />
               <span className="text-sm font-semibold text-purple-900">Smart Match (Substitution)</span>
-              <span className="ml-auto text-xs font-medium px-2 py-0.5 rounded-full bg-orange-200 text-orange-800">
+              <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${confidencePercent >= 90 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                 {confidencePercent}% confidence
               </span>
               <button
@@ -117,7 +136,7 @@ export function SubstitutionSuggestionPopover({
             {/* Two-Column Comparison */}
             <div className="space-y-2 mb-3">
               <div>
-                <div className="text-xs font-medium text-gray-800 mb-0.5">Invoice Description</div>
+                <div className="text-xs font-medium text-gray-800 mb-0.5">{fromLabel}</div>
                 <div className="text-xs text-gray-950 bg-white px-2 py-1.5 rounded border border-gray-200">
                   {differences.length > 0
                     ? highlightDifferences(invoiceDescription, differences[0].invoice_value)
@@ -126,7 +145,7 @@ export function SubstitutionSuggestionPopover({
                 </div>
               </div>
               <div>
-                <div className="text-xs font-medium text-gray-800 mb-0.5">Purchase Order Description</div>
+                <div className="text-xs font-medium text-gray-800 mb-0.5">{toLabel}</div>
                 <div className="text-xs text-gray-950 bg-white px-2 py-1.5 rounded border border-gray-200">
                   {differences.length > 0
                     ? highlightDifferences(poDescription, differences[0].po_value)
@@ -152,24 +171,34 @@ export function SubstitutionSuggestionPopover({
 
               {isDetailsExpanded && (
                 <div className="mt-2 space-y-1 pl-5">
-                  <div className="flex items-center gap-1.5 text-xs text-gray-800">
-                    <Check className="h-3 w-3 text-green-600" />
-                    <span>Quantity matches: {invoiceLine.qty} = {poLine.qty_ordered}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-800">
-                    <Check className="h-3 w-3 text-green-600" />
-                    <span>Unit price matches: ${invoiceLine.unit_price.toFixed(2)} = ${poLine.unit_price.toFixed(2)}</span>
-                  </div>
-                  <div className="flex items-center gap-1.5 text-xs text-gray-800">
-                    <Check className="h-3 w-3 text-green-600" />
-                    <span>Total matches: ${invoiceLine.line_total.toFixed(2)}</span>
-                  </div>
+                  {invoiceLine && poLine && (
+                    <>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-800">
+                        <Check className="h-3 w-3 text-green-600" />
+                        <span>Quantity matches: {invoiceLine.qty} = {poLine.qty_ordered}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-800">
+                        <Check className="h-3 w-3 text-green-600" />
+                        <span>Unit price matches: ${invoiceLine.unit_price.toFixed(2)} = ${poLine.unit_price.toFixed(2)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 text-xs text-gray-800">
+                        <Check className="h-3 w-3 text-green-600" />
+                        <span>Total matches: ${invoiceLine.line_total.toFixed(2)}</span>
+                      </div>
+                    </>
+                  )}
                   {differences.map((diff, index) => (
                     <div key={index} className="flex items-center gap-1.5 text-xs text-gray-800">
                       <AlertTriangle className="h-3 w-3 text-orange-600" />
                       <span>{diff.field} differs: {diff.invoice_value} vs {diff.po_value}</span>
                     </div>
                   ))}
+                  {matchNote && (
+                    <div className="flex items-center gap-1.5 text-xs text-gray-800">
+                      <AlertTriangle className="h-3 w-3 text-orange-600 shrink-0" />
+                      <span>{matchNote}</span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -196,13 +225,13 @@ export function SubstitutionSuggestionPopover({
           {/* Agent link */}
           <div className="px-4 pb-3 pt-0 border-t-0">
             <a
-              href="/settings?agent=Substitution%20Agent#automation-agent-builder-2"
+              href={agentLink}
               target="_blank"
               rel="noopener noreferrer"
               className="flex items-center gap-1.5 text-xs text-purple-700 hover:text-purple-900 transition-colors"
             >
               <ExternalLink className="h-3 w-3 flex-shrink-0" />
-              View Smart Match (Substitution) in Agent Builder →
+              {agentLinkLabel}
             </a>
           </div>
 

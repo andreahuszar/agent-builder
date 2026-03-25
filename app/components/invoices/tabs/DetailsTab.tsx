@@ -57,6 +57,7 @@ import { CustomFieldIndicator } from '../CustomFieldIndicator';
 import { CloseMatchPopover } from '../CloseMatchPopover';
 import { BankDetailsVerificationPopover } from '../BankDetailsVerificationPopover';
 import { FieldNormalizationPopover } from '../FieldNormalizationPopover';
+import { SubstitutionSuggestionPopover } from '../SubstitutionSuggestionPopover';
 import { VendorSwapPopover } from '../VendorSwapPopover';
 import { AccountingAutoCodingPopover } from '../AccountingAutoCodingPopover';
 import { FraudRiskBanner } from '../FraudRiskBanner';
@@ -2259,18 +2260,24 @@ export function DetailsTab({
                   </label>
                   <p className="text-sm font-medium text-gray-950 flex items-center gap-2">
                     {invoiceData.company_code || '-'}
-                    <FieldNormalizationPopover
-                      fieldName="Company code"
-                      originalValue="GSPV GmbH (ap@gspv.de)"
-                      normalizedValue="GSPV Ltd"
-                      agentName="Bill-to Entity Agent"
-                      confidence={97}
-                      explanation="The invoice was received at the GSPV GmbH mailbox (ap@gspv.de), however the bill-to address on the invoice document is GSPV Ltd. The company code has been set to reflect the entity named on the invoice."
+                    <SubstitutionSuggestionPopover
+                      fromLabel="Invoice entity"
+                      toLabel="Matched system entity"
+                      invoiceDescription="GSPV GmbH (ap@gspv.de)"
+                      poDescription="GSPV Ltd"
+                      confidence={0.97}
+                      reason="Invoice received at GSPV GmbH mailbox, bill-to address on the document names GSPV Ltd."
+                      differences={[{ field: 'Entity name', invoice_value: 'GSPV GmbH', po_value: 'GSPV Ltd' }]}
+                      agentLink="/settings?agent=Smart%20Match%20(Substitution)%20Agent#automation-agent-builder-2"
+                      agentLinkLabel="View Smart Match (Substitution) Agent in Agent Builder"
+                      matchNote="Received by ap@gspv.de but details point to GSPV (UK)"
+                      onAccept={() => {}}
+                      onReject={() => {}}
                     >
                       <button className="p-0.5 rounded hover:bg-purple-100 transition-colors">
                         <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" fill="currentColor" />
                       </button>
-                    </FieldNormalizationPopover>
+                    </SubstitutionSuggestionPopover>
                   </p>
                 </div>
               )}
