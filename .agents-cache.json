@@ -129,43 +129,14 @@
     ]
   },
   {
-    "name": "Reject Word Formatted Invoices Agent",
-    "stage": "ingestion",
-    "lane": "File Triage",
+    "name": "Company Code (Global) Agent",
+    "stage": "verification",
+    "lane": "Supplier Master Validation",
     "mode": "auto-apply",
-    "prompt": "ROLE: Reject Word Formatted Invoices Agent\n\nINSTRUCTIONS:\n- Scan all incoming invoices for their file format\n- If the invoice is received in Microsoft Word format (.docx), automatically reject the invoice\n- Send rejection notification back to vendor with the provided email template",
-    "skills": []
-  },
-  {
-    "name": "Reject Word Formatted Invoices Agent",
-    "stage": "ingestion",
-    "lane": "File Triage",
-    "mode": "auto-apply",
-    "prompt": "ROLE: Reject Word Formatted Invoices Agent\n\nINSTRUCTIONS:\n- Scan all incoming invoices for their file format\n- If the invoice is received in Microsoft Word format (.docx), automatically reject the invoice\n- Send rejection notification back to vendor with the provided email template",
-    "skills": []
-  },
-  {
-    "name": "Reject Word Formatted Invoices Agent",
-    "stage": "ingestion",
-    "lane": "File Triage",
-    "mode": "auto-apply",
-    "prompt": "ROLE: Reject Word Formatted Invoices Agent\n\nINSTRUCTIONS:\n- Scan all incoming invoices for their file format\n- If the invoice is received in Microsoft Word format (.docx), automatically reject the invoice\n- Send rejection notification back to vendor with the provided email template",
-    "skills": []
-  },
-  {
-    "name": "Reject Word Formatted Invoices Agent",
-    "stage": "ingestion",
-    "lane": "File Triage",
-    "mode": "auto-apply",
-    "prompt": "ROLE: Reject Word Formatted Invoices Agent\n\nINSTRUCTIONS:\n- Scan all incoming invoices for their file format\n- If the invoice is received in Microsoft Word format (.docx), automatically reject the invoice\n- Send rejection notification back to vendor with the provided email template",
-    "skills": []
-  },
-  {
-    "name": "Reject Word Formatted Invoices Agent",
-    "stage": "ingestion",
-    "lane": "File Triage",
-    "mode": "auto-apply",
-    "prompt": "ROLE: Reject Word Formatted Invoices Agent\n\nINSTRUCTIONS:\n- Scan all incoming invoices for their file format\n- If the invoice is received in Microsoft Word format (.docx), automatically reject the invoice\n- Send rejection notification back to vendor with the provided email template",
-    "skills": []
+    "prompt": "ROLE: Company Code (Global) Agent — assigns the correct company code to invoices based on the receiving AP mailbox and bill-to entity\n\nINPUTS:\n- Incoming invoice email metadata (receiving mailbox address)\n- Bill-to field extracted from invoice document\n- Company code master list\n\nSTEPS:\n1. Identify the AP mailbox that received the invoice email\n2. Apply mailbox-to-company-code mapping rules\n3. Check if the bill-to value on the invoice document differs from the mailbox-derived company code\n4. If bill-to differs, override the mailbox rule and use the bill-to value instead\n5. Assign the resolved company code to the invoice\n\nMAILBOX MAPPING RULES:\n- us_accountspayable@xelix → GSPV Inc\n- uk_accountspayable@xelix.com → GSPV Ltd\n\nOVERRIDE RULE:\n- If the \"bill to\" value on the invoice document differs from the mailbox-derived entity, override the mailbox rule and assign the bill-to value to the Company code field\n\nOUTPUT:\n- Assigned company code\n- Source of assignment: \"mailbox\" or \"bill-to override\"\n- Confidence score\n\nERROR HANDLING:\n- If mailbox not in mapping → Flag for manual review\n- If bill-to value is ambiguous or unrecognised → Flag for manual review",
+    "skills": [
+      "Verify Data",
+      "Find Vendor Information"
+    ]
   }
 ]

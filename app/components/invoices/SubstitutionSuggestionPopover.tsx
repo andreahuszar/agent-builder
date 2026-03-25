@@ -25,6 +25,7 @@ interface SubstitutionSuggestionPopoverProps {
     invoice_value: string;
     po_value: string;
   }>;
+  title?: string;
   agentLink?: string;
   agentLinkLabel?: string;
   matchNote?: string;
@@ -47,6 +48,7 @@ export function SubstitutionSuggestionPopover({
   confidence,
   reason,
   differences,
+  title = 'Smart Match (Substitution)',
   agentLink = '/settings?agent=Substitution%20Agent#automation-agent-builder-2',
   agentLinkLabel = 'View Smart Match (Substitution) in Agent Builder →',
   matchNote,
@@ -120,7 +122,7 @@ export function SubstitutionSuggestionPopover({
             {/* Header - matches AISuggestionCard */}
             <div className="flex items-center gap-2 mb-3">
               <Sparkles className="h-4 w-4 text-purple-600 animate-pulse" />
-              <span className="text-sm font-semibold text-purple-900">Smart Match (Substitution)</span>
+              <span className="text-sm font-semibold text-purple-900">{title}</span>
               <span className={`ml-auto text-xs font-medium px-2 py-0.5 rounded-full ${confidencePercent >= 90 ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700'}`}>
                 {confidencePercent}% confidence
               </span>

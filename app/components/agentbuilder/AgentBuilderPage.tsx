@@ -699,6 +699,51 @@ Any match below 90% confidence is flagged for manual review - only matches at or
       skills: ["Match Documents", "Verify Data", "Flag Issues"],
     },
     {
+      id: "14",
+      name: "Company Code (Global) Agent",
+      stage: "verification",
+      active: true,
+      mode: "auto-apply",
+      prompt: `ROLE: Company Code (Global) Agent — assigns the correct company code to invoices based on the receiving AP mailbox and bill-to entity
+
+INPUTS:
+- Incoming invoice email metadata (receiving mailbox address)
+- Bill-to field extracted from invoice document
+- Company code master list
+
+STEPS:
+1. Identify the AP mailbox that received the invoice email
+2. Apply mailbox-to-company-code mapping rules
+3. Check if the bill-to value on the invoice document differs from the mailbox-derived company code
+4. If bill-to differs, override the mailbox rule and use the bill-to value instead
+5. Assign the resolved company code to the invoice
+
+MAILBOX MAPPING RULES:
+- us_accountspayable@xelix → GSPV Inc
+- uk_accountspayable@xelix.com → GSPV Ltd
+
+OVERRIDE RULE:
+- If the "bill to" value on the invoice document differs from the mailbox-derived entity, override the mailbox rule and assign the bill-to value to the Company code field
+
+OUTPUT:
+- Assigned company code
+- Source of assignment: "mailbox" or "bill-to override"
+- Confidence score
+
+ERROR HANDLING:
+- If mailbox not in mapping → Flag for manual review
+- If bill-to value is ambiguous or unrecognised → Flag for manual review`,
+      basicPromptOverride: `ROLE: Company Code (Global) Agent
+
+INSTRUCTIONS:
+— Check all emails coming into AP mailboxes
+— If email is sent to us_accountspayable@xelix then assign company code GSPV Inc
+— If email is sent to uk_accountspayable@xelix.com then assign company code GSPV Ltd
+— If the "bill to" value differs, then override the mailbox settings and assign the "bill to" value to the Company code field`,
+      lane: "Supplier Master Validation",
+      skills: ["Verify Data", "Find Vendor Information"],
+    },
+    {
       id: "18",
       name: "Unit Conversion Matching Agent",
       stage: "matching",
@@ -714,7 +759,7 @@ Any match below 90% confidence is flagged for manual review - only matches at or
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v21'
+        const AGENTS_VERSION = 'v22'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')
@@ -761,6 +806,15 @@ Any match below 90% confidence is flagged for manual review - only matches at or
               if (fieldNormalisationAgent) {
                 console.log('[AgentBuilderPage] Adding Field Normalisation agent to stored agents')
                 missingAgents.push(fieldNormalisationAgent)
+              }
+            }
+
+            const hasCompanyCodeAgent = parsed.some(a => a.id === "14")
+            if (!hasCompanyCodeAgent) {
+              const companyCodeAgent = defaultAgents.find(a => a.id === "14")
+              if (companyCodeAgent) {
+                console.log('[AgentBuilderPage] Adding Company Code (Global) agent to stored agents')
+                missingAgents.push(companyCodeAgent)
               }
             }
             

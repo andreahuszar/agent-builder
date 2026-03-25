@@ -102,9 +102,10 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: baselinePOTax,
     tax_rate_percent: 20,
     total: baselinePOTotal,
-    status: 'verification', // Verification stage (AI suggestions need review)
-    match_status: 'matched', // Line items match PO perfectly, no financial variances
-    type: 'PO',
+      status: 'verification', // Verification stage (AI suggestions need review)
+      match_status: 'matched', // Line items match PO perfectly, no financial variances
+      company_code: 'GSPV Ltd',
+      type: 'PO',
     vendor_requires_po: true,
     vendor_is_verified: true,
     approval_status: 'pending',
@@ -263,9 +264,10 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: baselinePOBankTax,
     tax_rate_percent: 15,
     total: baselinePOBankTotal,
-    status: 'verification', // Verification stage (bank details need verification)
-    match_status: 'exception', // Exception due to bank details only
-    type: 'PO',
+      status: 'verification', // Verification stage (bank details need verification)
+      match_status: 'exception', // Exception due to bank details only
+      company_code: 'GSPV Ltd',
+      type: 'PO',
     vendor_requires_po: true,
     vendor_is_verified: true,
     approval_status: 'pending',
@@ -511,9 +513,10 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: missingPOTax,
     tax_rate_percent: 20,
     total: missingPOTotal,
-    status: 'verification', // Verification stage (close match PO needs user confirmation)
-    match_status: 'exception', // Missing PO - no PO assigned yet
-    type: 'PO',
+      status: 'verification', // Verification stage (close match PO needs user confirmation)
+      match_status: 'exception', // Missing PO - no PO assigned yet
+      company_code: 'GSPV Ltd',
+      type: 'PO',
     vendor_requires_po: true, // This vendor requires PO
     vendor_is_verified: true,
     approval_status: 'pending',
@@ -531,10 +534,10 @@ export const generateBaselineInvoices = (): Invoice[] => {
     lines: missingPOLines,
     invoice_lines: missingPOLines,
     bill_to_snapshot: {
-      legal_name: 'GPSV Ltd',
+      legal_name: 'GSPV Ltd',
       address: 'Senna Building, Gorsuch Pl, London, Greater London, United Kingdom (UK) - E2 8JF',
       tax_id: '927 8131 1',
-      email: 'accountspayables@xelix.com'
+      email: 'us_accountspayable@xelix.com'
     },
     payment_method: 'bank_transfer',
     payment_bank_details: {
@@ -572,7 +575,16 @@ export const generateBaselineInvoices = (): Invoice[] => {
     display_config: {
       template: 'green-premier'
     },
-    agent_actions: [],
+    agent_actions: [
+      {
+        agent_name: 'Company Code (Global) Agent',
+        action: 'Bill-to entity matched: GSPV GmbH (ap@gspv.de) → GSPV Ltd',
+        status: 'success',
+        detail: '- Check all emails coming into AP mailboxes\n- If email is sent to us_accountspayable@xelix then assign company code GSPV Inc\n- If email is sent to uk_accountspayable@xelix.com then assign company code GSPV Ltd\n- If the "bill to" value differs, then override the mailbox settings and assign the "bill to" value to the Company code field',
+        agent_id: 'company-code-global-agent',
+        mode: 'auto-apply',
+      }
+    ],
     suppress_validation_categories: ['process']
   } as Invoice);
 
@@ -720,9 +732,10 @@ export const generateBaselineInvoices = (): Invoice[] => {
     tax_total: baselinePO2Tax,
     tax_rate_percent: 20,
     total: baselinePO2Total,
-    status: 'verification', // Verification stage (line item variances being checked)
-    match_status: 'variance', // Has variance on line 3
-    type: 'PO',
+      status: 'verification', // Verification stage (line item variances being checked)
+      match_status: 'variance', // Has variance on line 3
+      company_code: 'GSPV Ltd',
+      type: 'PO',
     vendor_requires_po: true,
     vendor_is_verified: true,
     approval_status: 'pending',
@@ -1212,9 +1225,9 @@ export const generateBaselineInvoices = (): Invoice[] => {
       line_no: 2,
       sku: '-',
       description: 'Advisory - M&A, Financial Services',
-      qty: 840.00,
-      uom: 'MIN',
-      unit_price: 30.00,
+      qty: 14.00,
+      uom: 'HOUR',
+      unit_price: 1800.00,
       net_amount: 25200.00,
       tax_rate: 20,
       tax_amount: 5040.00,
@@ -1222,15 +1235,6 @@ export const generateBaselineInvoices = (): Invoice[] => {
       po_line_id: 'po-line-9012-2',
       gr_line_id: null,
       ses_line_id: null,
-      // UOM conversion metadata for smart match
-      uom_conversion: {
-        invoice_qty: 840,
-        invoice_uom: 'MIN',
-        po_qty: 14,
-        po_uom: 'HOUR',
-        conversion_factor: 60,
-        explanation: '60 minutes per hour'
-      }
     },
     {
       id: 'line-baseline-po-legal-1-3',
@@ -1600,6 +1604,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
       assigned_to_name: 'James Wilson',
       assigned_to_user_id: 'user-4',
       cost_center: exc.cc,
+      company_code: 'GSPV Ltd',
       department: exc.dept,
       po_numbers_cached: [exc.po],
       gr_numbers: [],

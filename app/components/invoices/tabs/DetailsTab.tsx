@@ -722,7 +722,7 @@ export function DetailsTab({
         // Skip specific fields suppressed by invoice data
         if (issue.field && suppressedFields.includes(issue.field)) return false;
         // Remove "Invoice has line item variances" when all lines are matched or for INV-2025-0124
-        if (issue.field === 'match_status' && (lineItemsValidationState.allLinesMatched || invoiceData.invoice_number === 'INV-2025-0124')) {
+        if (issue.field === 'match_status' && (lineItemsValidationState.allLinesMatched || invoiceData.invoice_number === 'INV-2025-0124' || invoiceData.invoice_number === 'INV1881222')) {
           return false;
         }
 
@@ -2258,27 +2258,67 @@ export function DetailsTab({
                   <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                     Company code
                   </label>
-                  <p className="text-sm font-medium text-gray-950 flex items-center gap-2">
-                    {invoiceData.company_code || '-'}
-                    <SubstitutionSuggestionPopover
-                      fromLabel="Invoice entity"
-                      toLabel="Matched system entity"
-                      invoiceDescription="GSPV GmbH"
-                      poDescription="GSPV Ltd"
-                      confidence={0.97}
-                      reason="Invoice received at GSPV GmbH mailbox, bill-to address on the document names GSPV Ltd."
-                      differences={[{ field: 'Entity name', invoice_value: 'GSPV GmbH', po_value: 'GSPV Ltd' }]}
-                      agentLink="/settings?agent=Smart%20Match%20(Substitution)%20Agent#automation-agent-builder-2"
-                      agentLinkLabel="View Smart Match (Substitution) Agent in Agent Builder"
-                      matchNote="Received by ap@gspv.de but details point to GSPV (UK)"
-                      onAccept={() => {}}
-                      onReject={() => {}}
-                    >
-                      <button className="p-0.5 rounded hover:bg-purple-100 transition-colors">
-                        <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" fill="currentColor" />
-                      </button>
-                    </SubstitutionSuggestionPopover>
-                  </p>
+                  {(() => {
+                    const companyCodePopoverProps: Record<string, {
+                      fromLabel: string; toLabel: string;
+                      invoiceDescription: string; poDescription: string;
+                      confidence: number; reason: string;
+                      differences: { field: string; invoice_value: string; po_value: string }[];
+                      matchNote: string;
+                      title?: string;
+                      agentLinkLabel?: string;
+                    }> = {
+                      'INV1881222': {
+                        fromLabel: 'Invoice entity',
+                        toLabel: 'Matched system entity',
+                        invoiceDescription: 'GSPV GmbH',
+                        poDescription: 'GSPV Ltd',
+                        confidence: 0.97,
+                        reason: 'Invoice received at GSPV GmbH mailbox, bill-to address on the document names GSPV Ltd.',
+                        differences: [{ field: 'Entity name', invoice_value: 'GSPV GmbH', po_value: 'GSPV Ltd' }],
+                        matchNote: 'Received by ap@gspv.de but details point to GSPV (UK)',
+                      },
+                      'POS-2025-8842': {
+                        fromLabel: 'Invoice entity',
+                        toLabel: 'Matched system entity',
+                        invoiceDescription: 'us_accountspayable@xelix.com',
+                        title: 'Company Code (Global) Agent',
+                        poDescription: 'GSPV Ltd',
+                        confidence: 0.97,
+                        reason: 'Invoice received at UK AP mailbox — company code assigned to GSPV Ltd.',
+                        differences: [{ field: 'Mailbox', invoice_value: 'us_accountspayable@xelix.com', po_value: 'GSPV Ltd' }],
+                        matchNote: 'Received by us_accountspayable@xelix.com — company code set to GSPV Ltd',
+                        agentLinkLabel: 'View Company Code (Global) Agent in Agent Builder',
+                      },
+                    };
+                    const popoverProps = companyCodePopoverProps[invoiceData.invoice_number];
+                    return (
+                      <p className="text-sm font-medium text-gray-950 flex items-center gap-2">
+                        {invoiceData.company_code || '-'}
+                        {popoverProps && (
+                          <SubstitutionSuggestionPopover
+                            title={popoverProps.title}
+                            fromLabel={popoverProps.fromLabel}
+                            toLabel={popoverProps.toLabel}
+                            invoiceDescription={popoverProps.invoiceDescription}
+                            poDescription={popoverProps.poDescription}
+                            confidence={popoverProps.confidence}
+                            reason={popoverProps.reason}
+                            differences={popoverProps.differences}
+                            agentLink="/settings?agent=Smart%20Match%20(Substitution)%20Agent#automation-agent-builder-2"
+                            agentLinkLabel={popoverProps.agentLinkLabel ?? 'View Smart Match (Substitution) Agent in Agent Builder'}
+                            matchNote={popoverProps.matchNote}
+                            onAccept={() => {}}
+                            onReject={() => {}}
+                          >
+                            <button className="p-0.5 rounded hover:bg-purple-100 transition-colors">
+                              <Zap className="h-3.5 w-3.5 text-purple-600 flex-shrink-0" fill="currentColor" />
+                            </button>
+                          </SubstitutionSuggestionPopover>
+                        )}
+                      </p>
+                    );
+                  })()}
                 </div>
               )}
 
