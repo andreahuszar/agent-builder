@@ -1328,7 +1328,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
         agent_name: 'Smart Match (Substitution) Agent',
         action: 'Bill-to entity matched: GSPV GmbH (ap@gspv.de) → GSPV Ltd',
         status: 'success',
-        detail: '- Identify the bill-to entity named on the invoice document\n- Match against known system entities using substitution matching\n- Received by ap@gspv.de but details point to GSPV (UK)\n- Automatically set the company code to the matched entity',
+        detail: '- Only auto-apply the substitution if confidence is 90% or above — flag anything below 90% for manual review',
         agent_id: 'smart-match-substitution',
         mode: 'auto-apply',
       }

@@ -2263,7 +2263,7 @@ export function DetailsTab({
                     <SubstitutionSuggestionPopover
                       fromLabel="Invoice entity"
                       toLabel="Matched system entity"
-                      invoiceDescription="GSPV GmbH (ap@gspv.de)"
+                      invoiceDescription="GSPV GmbH"
                       poDescription="GSPV Ltd"
                       confidence={0.97}
                       reason="Invoice received at GSPV GmbH mailbox, bill-to address on the document names GSPV Ltd."
