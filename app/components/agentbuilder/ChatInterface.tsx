@@ -342,7 +342,7 @@ ${signature}`
 
   // ── Unit Conversion scripted flow ────────────────────────────────────────────
   const UC_SCRIPTED_USER_MESSAGES: Record<number, string> = {
-    1: "I need an agent that validates invoice line items against purchase orders by converting units of measurement and confirming totals match",
+    1: "Each time JanServ Plc sends us landscaping sand, they put \"each\" on the invoice but we know each bag is actually 50kg. Each time they invoice us, can you add an agent that automatically adjusts the line item to reflect 1 bag is 50kg?",
     2: "Just JanServ for now",
   }
 
