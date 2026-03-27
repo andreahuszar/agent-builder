@@ -180,9 +180,9 @@ function KpiStrip({ metrics, comparisons }: { metrics: ComparisonMetrics; compar
   const stpWith = metrics.stpRateWith ?? (comparisons.filter(c => c.withAgent.isSTP).length / total * 100)
   const stpDelta = stpWith - stpWithout
 
-  // Exception rate = invoices that didn't reach "Posted" in each condition
+  // Exception rate = invoices that didn't reach "Posted" or "Rejected" (Rejected is an intentional outcome, not an exception)
   const exWithoutCount = comparisons.filter(c => c.withoutAgent.pipelineStage !== "Posted").length
-  const exWithCount = comparisons.filter(c => c.withAgent.pipelineStage !== "Posted").length
+  const exWithCount = comparisons.filter(c => c.withAgent.pipelineStage !== "Posted" && c.withAgent.pipelineStage !== "Rejected").length
   const exWithout = (exWithoutCount / total) * 100
   const exWith = (exWithCount / total) * 100
 

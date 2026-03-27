@@ -108,7 +108,7 @@ export function buildDemoResults(timePeriod: string): {
   const groupBRows: InvoiceComparison[] = []
   const groupCRows: InvoiceComparison[] = []
 
-  // ── Group A: Posted without agent (1–2 touches) → Posted STP with agent ──
+  // ── Group A: Posted without agent (1–2 touches) → Rejected at Invoice Import with agent ──
   for (let i = 0; i < groupA; i++) {
     const touches = rng.next() < 0.6 ? rng.int(1, 2) : 0
     const timeWithout = rng.float(8, 22)
@@ -129,14 +129,14 @@ export function buildDemoResults(timePeriod: string): {
       },
       withAgent: {
         agentAction: "auto_resolved",
-        pipelineStage: "Posted",
-        isSTP: true,
+        pipelineStage: "Rejected",
+        isSTP: false,
         processingTimeMinutes: 0.5,
         manualTouches: 0,
       },
       improvement: {
-        outcome: touches > 0 ? "better" : "same",
-        highlights: touches > 0 ? ["Fully automated", `${touches} fewer touch${touches > 1 ? "es" : ""}`] : [],
+        outcome: "better",
+        highlights: ["Caught at ingestion", "Vendor notified", "Rejected at Invoice Import"],
       },
     })
   }
@@ -177,7 +177,7 @@ export function buildDemoResults(timePeriod: string): {
     })
   }
 
-  // ── Group C: Held without (non-Word issues) → Posted with agent ──
+  // ── Group C: Held without (non-Word issues) → Rejected at Invoice Import with agent ──
   for (let i = 0; i < groupC; i++) {
     const heldStage = rng.pick(HELD_STAGES_GROUP_C)
     const timeWithout = rng.float(20, 60)
@@ -200,14 +200,14 @@ export function buildDemoResults(timePeriod: string): {
       },
       withAgent: {
         agentAction: "auto_resolved",
-        pipelineStage: "Posted",
-        isSTP: true,
+        pipelineStage: "Rejected",
+        isSTP: false,
         processingTimeMinutes: timeWith,
         manualTouches: 0,
       },
       improvement: {
         outcome: "better",
-        highlights: ["Auto-resolved", `${touchesWithout} fewer touch${touchesWithout > 1 ? "es" : ""}`],
+        highlights: ["Caught at ingestion", `${touchesWithout} fewer touch${touchesWithout > 1 ? "es" : ""}`, "Vendor notified"],
       },
     })
   }
