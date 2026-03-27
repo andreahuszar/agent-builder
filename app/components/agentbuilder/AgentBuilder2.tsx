@@ -426,7 +426,7 @@ export function AgentBuilder2({
       id: newAgentId,
       name: "",
       stage: stageId || "",
-      active: true,
+      active: false,
       mode: "auto-apply",
       prompt: "",
       skills: [],
