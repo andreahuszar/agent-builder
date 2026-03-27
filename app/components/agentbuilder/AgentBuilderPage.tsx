@@ -909,7 +909,7 @@ INSTRUCTIONS:
         mode: agentMode as 'auto-apply' | 'suggest' | 'observe',
         prompt: prompt,
         skills: skills,
-        active: true,
+        active: false,
         lane: lane
       }
       
