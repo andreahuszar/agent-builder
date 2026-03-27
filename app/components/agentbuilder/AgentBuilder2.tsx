@@ -397,7 +397,7 @@ export function AgentBuilder2({
         name: agentName,
         stage: detectedStage || stage,
         lane: detectedLane,
-        active: true,
+        active: false,
         mode: 'auto-apply',
         prompt,
         skills,

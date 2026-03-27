@@ -1281,7 +1281,7 @@ INSTRUCTIONS:
       const newAgent = {
         ...updatedAgent,
         id: updatedAgent.id || `agent-${Date.now()}`,
-        active: true,
+        active: updatedAgent.active ?? false,
       }
       console.log("[AgentBuilderPage] Creating new agent:", newAgent.name, "Stage:", newAgent.stage, "ID:", newAgent.id, "Active:", newAgent.active)
       setAgents((prev) => {
