@@ -403,6 +403,7 @@ interface TimelineEvent {
   type: "stage" | "touch" | "agent" | "outcome"
   label: string
   subLabel?: string
+  agentLabel?: string
   timeMin?: number
   status: "completed" | "stuck" | "agent" | "rejected" | "posted" | "not-reached"
 }
@@ -445,11 +446,9 @@ function buildWithTimeline(c: InvoiceComparison): TimelineEvent[] {
   const isPosted = stage === "Posted"
 
   if (isRejected) {
-    // Show Imported (passed), agent trigger, rejected outcome, then all remaining stages greyed out
     const remaining = ORDERED_STAGES.slice(1) // Data Captured → Posted
     return [
-      { type: "stage", label: "Imported", timeMin: 0.2, status: "completed" },
-      { type: "agent", label: "Agent triggered", subLabel: "Reject Word Formatted Invoices", timeMin: 0.5, status: "agent" },
+      { type: "stage", label: "Imported", timeMin: 0.2, status: "completed", agentLabel: "Agent triggered" },
       { type: "outcome", label: "Rejected", subLabel: "Vendor notified — unsupported format (.docx)", timeMin: 1, status: "rejected" },
       ...remaining.map(s => ({ type: "stage" as const, label: s, status: "not-reached" as const })),
     ]
@@ -459,16 +458,19 @@ function buildWithTimeline(c: InvoiceComparison): TimelineEvent[] {
     const stageIdx = ORDERED_STAGES.indexOf(stage)
     const reachedStages = ORDERED_STAGES.slice(0, stageIdx + 1)
     const perStageTime = totalTime / Math.max(reachedStages.length, 1)
-    return [
-      ...reachedStages.slice(0, -1).map((s, i) => ({
+    // Attach "Agent auto-resolved" label to the last stage before Posted
+    return reachedStages.map((s, i) => {
+      const isLast = i === reachedStages.length - 1
+      const isSecondToLast = i === reachedStages.length - 2
+      return {
         type: "stage" as const,
         label: s,
-        timeMin: parseFloat(((i + 1) * perStageTime * 0.5).toFixed(1)),
-        status: "completed" as const,
-      })),
-      { type: "agent", label: "Agent auto-resolved", subLabel: "Issue detected and resolved automatically", timeMin: parseFloat((totalTime * 0.7).toFixed(1)), status: "agent" as const },
-      { type: "outcome", label: "Posted", subLabel: c.withAgent.isSTP ? "Straight-through — zero manual touches" : "Successfully posted", timeMin: parseFloat(totalTime.toFixed(1)), status: "posted" as const },
-    ]
+        timeMin: parseFloat(((i + 1) * perStageTime * (isLast ? 1 : 0.5)).toFixed(1)),
+        status: isLast ? "posted" as const : "completed" as const,
+        subLabel: isLast ? (c.withAgent.isSTP ? "Straight-through — zero manual touches" : "Successfully posted") : undefined,
+        agentLabel: isSecondToLast ? "Agent auto-resolved" : undefined,
+      }
+    })
   }
 
   // Generic held — show all stages, grey out everything after the stuck point
@@ -515,7 +517,14 @@ function TimelineNode({ event, isLast }: { event: TimelineEvent; isLast: boolean
         {!isLast && <div className={`w-px flex-1 ${lineColor} my-0.5`} style={{ minHeight: "16px" }} />}
       </div>
       <div className="pb-3 min-w-0">
-        <p className={`text-xs ${labelColor[event.status]}`}>{event.label}</p>
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <p className={`text-xs ${labelColor[event.status]}`}>{event.label}</p>
+          {event.agentLabel && (
+            <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-purple-700 bg-purple-50 border border-purple-200 rounded-full px-1.5 py-0.5 leading-none">
+              <Zap className="w-2.5 h-2.5" />{event.agentLabel}
+            </span>
+          )}
+        </div>
         {event.subLabel && <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{event.subLabel}</p>}
         {event.timeMin !== undefined && event.status !== "not-reached" && (
           <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-0.5">
