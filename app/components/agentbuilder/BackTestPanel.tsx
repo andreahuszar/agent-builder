@@ -404,29 +404,38 @@ interface TimelineEvent {
   label: string
   subLabel?: string
   timeMin?: number
-  status: "completed" | "stuck" | "agent" | "rejected" | "posted"
+  status: "completed" | "stuck" | "agent" | "rejected" | "posted" | "not-reached"
 }
 
 function buildWithoutTimeline(c: InvoiceComparison): TimelineEvent[] {
   const stage = c.withoutAgent.pipelineStage ?? "Imported"
   const stageIdx = ORDERED_STAGES.indexOf(stage)
-  const reachedStages = stageIdx >= 0 ? ORDERED_STAGES.slice(0, stageIdx + 1) : [stage]
-  // Use small fixed per-step times (30s–2m) regardless of total processing time
   const STEP_TIMES = [0.5, 0.75, 1.0, 1.5, 2.0, 2.5]
 
-  const events: TimelineEvent[] = reachedStages.map((s, i) => {
-    const isLast = i === reachedStages.length - 1
+  return ORDERED_STAGES.map((s, i) => {
     const isPosted = s === "Posted"
+    const isStuck = i === stageIdx && stage !== "Posted"
+    const notReached = stageIdx >= 0 && i > stageIdx
+
+    if (notReached) {
+      return { type: "stage" as const, label: s, status: "not-reached" as const }
+    }
+    if (isStuck) {
+      return {
+        type: "stage" as const,
+        label: s,
+        timeMin: STEP_TIMES[Math.min(i, STEP_TIMES.length - 1)],
+        status: "stuck" as const,
+        subLabel: "Invoice held here",
+      }
+    }
     return {
-      type: "stage",
+      type: "stage" as const,
       label: s,
       timeMin: STEP_TIMES[Math.min(i, STEP_TIMES.length - 1)],
-      status: isPosted ? "posted" : isLast ? "stuck" : "completed",
-      subLabel: isLast && !isPosted ? "Invoice held here" : undefined,
+      status: isPosted ? "posted" : "completed" as const,
     }
   })
-
-  return events
 }
 
 function buildWithTimeline(c: InvoiceComparison): TimelineEvent[] {
@@ -436,10 +445,13 @@ function buildWithTimeline(c: InvoiceComparison): TimelineEvent[] {
   const isPosted = stage === "Posted"
 
   if (isRejected) {
+    // Show Imported (passed), agent trigger, rejected outcome, then all remaining stages greyed out
+    const remaining = ORDERED_STAGES.slice(1) // Data Captured → Posted
     return [
       { type: "stage", label: "Imported", timeMin: 0.2, status: "completed" },
       { type: "agent", label: "Agent triggered", subLabel: "Reject Word Formatted Invoices", timeMin: 0.5, status: "agent" },
       { type: "outcome", label: "Rejected", subLabel: "Vendor notified — unsupported format (.docx)", timeMin: 1, status: "rejected" },
+      ...remaining.map(s => ({ type: "stage" as const, label: s, status: "not-reached" as const })),
     ]
   }
 
@@ -459,38 +471,40 @@ function buildWithTimeline(c: InvoiceComparison): TimelineEvent[] {
     ]
   }
 
-  // Generic held
+  // Generic held — show all stages, grey out everything after the stuck point
   const stageIdx = ORDERED_STAGES.indexOf(stage)
-  const reachedStages = stageIdx >= 0 ? ORDERED_STAGES.slice(0, stageIdx + 1) : [stage]
-  const perStageTime = totalTime / Math.max(reachedStages.length, 1)
-  return reachedStages.map((s, i) => {
-    const isLast = i === reachedStages.length - 1
-    return {
-      type: "stage" as const,
-      label: s,
-      timeMin: parseFloat(((i + 1) * perStageTime).toFixed(1)),
-      status: isLast ? "stuck" as const : "completed" as const,
-      subLabel: isLast ? "Still held" : undefined,
-    }
+  const perStageTime = totalTime / Math.max(stageIdx + 1, 1)
+  return ORDERED_STAGES.map((s, i) => {
+    const isStuck = i === stageIdx
+    const notReached = stageIdx >= 0 && i > stageIdx
+    if (notReached) return { type: "stage" as const, label: s, status: "not-reached" as const }
+    if (isStuck) return { type: "stage" as const, label: s, timeMin: parseFloat(((i + 1) * perStageTime).toFixed(1)), status: "stuck" as const, subLabel: "Still held" }
+    return { type: "stage" as const, label: s, timeMin: parseFloat(((i + 1) * perStageTime * 0.5).toFixed(1)), status: "completed" as const }
   })
 }
 
 function TimelineNode({ event, isLast }: { event: TimelineEvent; isLast: boolean }) {
   const iconMap: Record<TimelineEvent["status"], React.ReactNode> = {
-    completed:  <div className="w-2.5 h-2.5 rounded-full bg-gray-300 border-2 border-white ring-1 ring-gray-300" />,
-    stuck:      <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />,
-    agent:      <Zap className="w-3.5 h-3.5 text-purple-600" />,
-    rejected:   <XCircle className="w-3.5 h-3.5 text-red-500" />,
-    posted:     <CheckCircle className="w-3.5 h-3.5 text-green-500" />,
+    completed:    <CheckCircle className="w-3.5 h-3.5 text-green-500" />,
+    stuck:        <AlertTriangle className="w-3.5 h-3.5 text-orange-500" />,
+    agent:        <Zap className="w-3.5 h-3.5 text-purple-600" />,
+    rejected:     <XCircle className="w-3.5 h-3.5 text-red-500" />,
+    posted:       <CheckCircle className="w-3.5 h-3.5 text-green-500" />,
+    "not-reached": <div className="w-2.5 h-2.5 rounded-full bg-gray-200 ring-1 ring-gray-200" />,
   }
 
   const labelColor: Record<TimelineEvent["status"], string> = {
-    completed: "text-gray-600",
-    stuck:     "text-orange-700 font-semibold",
-    agent:     "text-purple-700 font-semibold",
-    rejected:  "text-red-600 font-semibold",
-    posted:    "text-green-700 font-semibold",
+    completed:    "text-gray-950 font-medium",
+    stuck:        "text-orange-700 font-semibold",
+    agent:        "text-purple-700 font-semibold",
+    rejected:     "text-red-600 font-semibold",
+    posted:       "text-green-700 font-semibold",
+    "not-reached": "text-gray-300",
   }
+
+  const lineColor = event.status === "not-reached" || event.status === "stuck" || event.status === "rejected"
+    ? "bg-gray-100"
+    : "bg-gray-200"
 
   return (
     <div className="flex gap-3">
@@ -498,12 +512,12 @@ function TimelineNode({ event, isLast }: { event: TimelineEvent; isLast: boolean
         <div className="flex items-center justify-center w-5 h-5 shrink-0">
           {iconMap[event.status]}
         </div>
-        {!isLast && <div className="w-px flex-1 bg-gray-200 my-0.5" style={{ minHeight: "16px" }} />}
+        {!isLast && <div className={`w-px flex-1 ${lineColor} my-0.5`} style={{ minHeight: "16px" }} />}
       </div>
       <div className="pb-3 min-w-0">
         <p className={`text-xs ${labelColor[event.status]}`}>{event.label}</p>
         {event.subLabel && <p className="text-[10px] text-gray-400 mt-0.5 leading-tight">{event.subLabel}</p>}
-        {event.timeMin !== undefined && (
+        {event.timeMin !== undefined && event.status !== "not-reached" && (
           <p className="text-[10px] text-gray-400 mt-0.5 flex items-center gap-0.5">
             <Clock className="w-2.5 h-2.5" />{event.timeMin < 1 ? `${(event.timeMin * 60).toFixed(0)}s` : Number.isInteger(event.timeMin) ? `${event.timeMin}m` : `${Math.floor(event.timeMin)}m ${Math.round((event.timeMin % 1) * 60)}s`}
           </p>
