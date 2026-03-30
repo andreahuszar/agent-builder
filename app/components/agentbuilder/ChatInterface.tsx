@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, forwardRef, useImperativeHandle } from "react"
 import { Button } from "@/app/components/ui/button"
-import { Input } from "@/app/components/ui/input"
 import { Send, Bot, User, CheckCircle2, Paperclip, X, FileText, Loader2, AlertCircle } from "lucide-react"
 import { Card } from "@/app/components/ui/card"
 import { Textarea } from "@/app/components/ui/textarea"
@@ -86,7 +85,7 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
   const [scriptedFlow, setScriptedFlow] = useState<'rejectWord' | 'unitConversion'>('rejectWord')
   const fileInputRef = useRef<HTMLInputElement>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
-  const inputRef = useRef<HTMLInputElement>(null)
+  const inputRef = useRef<HTMLTextAreaElement>(null)
   const skipNextAgentClear = useRef(false)
 
   const clearChat = () => {
@@ -148,6 +147,17 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Auto-resize textarea up to 5 lines
+  useEffect(() => {
+    const el = inputRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    const lineHeight = parseInt(getComputedStyle(el).lineHeight) || 20
+    const maxHeight = lineHeight * 5 + 16 // 5 lines + padding
+    el.style.height = Math.min(el.scrollHeight, maxHeight) + 'px'
+    el.style.overflowY = el.scrollHeight > maxHeight ? 'auto' : 'hidden'
+  }, [input])
 
   // Auto-scroll to bottom when messages change
   useEffect(() => {
@@ -843,7 +853,7 @@ ${signature}`
       {/* Input */}
       <div className="border-t border-border p-4">
         <div className="max-w-3xl mx-auto">
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-end">
             <input
               ref={fileInputRef}
               type="file"
@@ -863,13 +873,20 @@ ${signature}`
             >
               <Paperclip className="w-4 h-4" />
             </Button>
-            <Input
+            <textarea
               ref={inputRef}
               value={input}
+              rows={1}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleSend()}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault()
+                  handleSend()
+                }
+              }}
               placeholder={scriptedMode ? "Type your reply..." : "Describe what your agent should do..."}
-              className="flex-1 text-sm"
+              className="flex-1 text-sm resize-none rounded-md border border-input bg-background px-3 py-2 leading-5 placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:opacity-50"
+              style={{ minHeight: '36px', overflowY: 'hidden' }}
               disabled={isProcessing}
             />
             <Button
