@@ -172,7 +172,6 @@ export function buildDemoResults(timePeriod: string): {
       date: formatDate(rng.int(0, 89)),
       importSource: rng.pick(["email", "email", "portal", "scan"]),
       hasIssue: true,
-      issueDescription: "Invoice submitted in unsupported .docx format",
       exceptionType: "file_format",
       withoutAgent: {
         outcome: "blocked",

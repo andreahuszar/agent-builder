@@ -7,7 +7,7 @@ import { Button } from "@/app/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/app/components/ui/select"
 
 const STORAGE_KEY = "xelix-back-test-history"
-const STORAGE_VERSION = "v3" // bump when InvoiceComparison shape changes
+const STORAGE_VERSION = "v4" // bump when InvoiceComparison shape changes
 const STORAGE_VERSION_KEY = "xelix-back-test-history-version"
 const MAX_COMPARISONS_PER_RUN = 500
 
@@ -566,7 +566,7 @@ function ActivityModal({ invoices, initialIndex, onClose }: { invoices: InvoiceC
             <p className="text-xs text-gray-500 mt-0.5">{invoice.vendor} · £{invoice.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })} · {invoice.date}</p>
             {invoice.filename && (
               <a
-                href="/sample-invoice.docx"
+                href={`https://view.officeapps.live.com/op/view.aspx?src=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin + '/sample-invoice.docx' : '/sample-invoice.docx')}`}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1 text-[11px] text-blue-600 hover:text-blue-800 hover:underline mt-1 transition-colors"
