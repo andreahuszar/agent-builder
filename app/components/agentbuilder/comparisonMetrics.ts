@@ -72,6 +72,7 @@ export interface ComparisonMetrics {
 export interface InvoiceComparison {
   invoiceId: string;
   invoiceNumber?: string;   // display-friendly invoice number (varied formats)
+  filename?: string;        // original file name (e.g. for .docx invoices)
   vendor: string;
   amount: number;
   date: string;

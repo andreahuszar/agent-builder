@@ -44,6 +44,20 @@ const VENDORS = [
 
 const IMPORT_SOURCES = ["email", "portal", "api", "scan"]
 
+const DOCX_FILENAME_PREFIXES = [
+  "Invoice", "INV", "Bill", "Statement", "PurchaseInvoice", "Remittance",
+]
+const DOCX_MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"]
+
+function generateDocxFilename(vendor: string, rng: SeededRng): string {
+  const prefix = rng.pick(DOCX_FILENAME_PREFIXES)
+  const vendorSlug = vendor.replace(/[^a-zA-Z0-9]/g, "_").replace(/_+/g, "_").slice(0, 20)
+  const month = rng.pick(DOCX_MONTHS)
+  const year = 2024
+  const seq = String(rng.int(1, 999)).padStart(3, "0")
+  return `${prefix}_${vendorSlug}_${month}${year}_${seq}.docx`
+}
+
 const HELD_STAGES_WITHOUT = [
   "Matched", "Matched", "Matched",        // most common — processing gets through matching before failure
   "Verified", "Verified",
@@ -112,10 +126,12 @@ export function buildDemoResults(timePeriod: string): {
   for (let i = 0; i < groupA; i++) {
     const touches = rng.next() < 0.6 ? rng.int(1, 2) : 0
     const timeWithout = rng.float(8, 22)
+    const vendor = rng.pick(VENDORS)
     groupARows.push({
       invoiceId: `INV-2024-${String(10000 + i).padStart(5, "0")}`,
       invoiceNumber: generateInvoiceNumber(rng),
-      vendor: rng.pick(VENDORS),
+      vendor,
+      filename: generateDocxFilename(vendor, rng),
       amount: parseFloat(rng.float(120, 48000).toFixed(2)),
       date: formatDate(rng.int(0, 89)),
       importSource: rng.pick(IMPORT_SOURCES),
@@ -146,10 +162,12 @@ export function buildDemoResults(timePeriod: string): {
     const heldStage = rng.pick(HELD_STAGES_WITHOUT)
     const timeWithout = rng.float(18, 45)
     const touchesWithout = rng.int(1, 3)
+    const vendorB = rng.pick(VENDORS)
     groupBRows.push({
       invoiceId: `INV-2024-${String(10000 + groupA + i).padStart(5, "0")}`,
       invoiceNumber: generateInvoiceNumber(rng),
-      vendor: rng.pick(VENDORS),
+      vendor: vendorB,
+      filename: generateDocxFilename(vendorB, rng),
       amount: parseFloat(rng.float(200, 25000).toFixed(2)),
       date: formatDate(rng.int(0, 89)),
       importSource: rng.pick(["email", "email", "portal", "scan"]),
@@ -183,10 +201,12 @@ export function buildDemoResults(timePeriod: string): {
     const timeWithout = rng.float(20, 60)
     const touchesWithout = rng.int(1, 4)
     const timeWith = rng.float(2, 6)
+    const vendorC = rng.pick(VENDORS)
     groupCRows.push({
       invoiceId: `INV-2024-${String(10000 + groupA + groupB + i).padStart(5, "0")}`,
       invoiceNumber: generateInvoiceNumber(rng),
-      vendor: rng.pick(VENDORS),
+      vendor: vendorC,
+      filename: generateDocxFilename(vendorC, rng),
       amount: parseFloat(rng.float(500, 35000).toFixed(2)),
       date: formatDate(rng.int(0, 89)),
       importSource: rng.pick(IMPORT_SOURCES),
