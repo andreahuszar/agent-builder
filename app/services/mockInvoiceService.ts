@@ -271,7 +271,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
       tax_rate: 15,
       tax_amount: 126.00,
       line_total: 966.00,
-      po_line_id: 'po-line-9010-1',
+      po_line_id: 'po-line-9010-bundle',
       gr_line_id: null,
       ses_line_id: null,
       notes: 'Class 2 Vehicle rental. Pick-up and drop-off from same location. Fleet Booking (rentalcars.com). Full-to-full return policy.'
@@ -288,7 +288,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
       tax_rate: 15,
       tax_amount: 31.50,
       line_total: 241.50,
-      po_line_id: 'po-line-9010-2',
+      po_line_id: 'po-line-9010-bundle',
       gr_line_id: null,
       ses_line_id: null,
       notes: 'Full protection incl. 3rd-Party Liability'
@@ -2717,9 +2717,29 @@ export const getMockPoComparisonData = (invoiceId: string, invoiceData?: any): a
       }));
   }
 
-  // Calculate PO total
-  const poTotal = poLines.reduce((sum: number, line: any) =>
-    sum + (line.qty_ordered * line.unit_price), 0);
+  const poGoodsSubtotal = poLines
+    .filter((line: any) => !line.is_tax_line)
+    .reduce((sum: number, line: any) => sum + line.qty_ordered * line.unit_price, 0);
+  const poTaxFromLines = poLines
+    .filter((line: any) => line.is_tax_line)
+    .reduce((sum: number, line: any) => sum + line.qty_ordered * line.unit_price, 0);
+
+  // Default: goods subtotal + explicit tax lines, else legacy 20% on goods only.
+  let poSubtotal = poGoodsSubtotal;
+  let poTaxTotal = poTaxFromLines > 0 ? poTaxFromLines : poGoodsSubtotal * 0.2;
+  let poGrandTotal =
+    poTaxFromLines > 0 ? poGoodsSubtotal + poTaxFromLines : poGoodsSubtotal * 1.2;
+
+  // Use mock PO header totals when present so tax rate matches the scenario (e.g. 15% not 20%).
+  if (mockPO && mockPO.lines) {
+    if (typeof mockPO.subtotal === 'number') {
+      poSubtotal = mockPO.subtotal;
+    }
+    if (typeof mockPO.total === 'number') {
+      poGrandTotal = mockPO.total;
+    }
+    poTaxTotal = Math.max(0, poGrandTotal - poSubtotal);
+  }
 
   const poData = {
     po_id: `po-${invoiceId}`,
@@ -2728,9 +2748,9 @@ export const getMockPoComparisonData = (invoiceId: string, invoiceData?: any): a
     currency: invoice.currency || 'USD',
     po_status: 'approved',
     expected_match_rule: '3-way',
-    subtotal: poTotal,
-    tax_total: poTotal * 0.2,
-    total: poTotal * 1.2,
+    subtotal: poSubtotal,
+    tax_total: poTaxTotal,
+    total: poGrandTotal,
     po_lines: poLines
   };
 
@@ -2780,6 +2800,35 @@ export const getMockPoComparisonData = (invoiceId: string, invoiceData?: any): a
     };
   });
 
+  // Merged PO bundle: several invoice lines → one PO line; reconcile on sum of invoice nets.
+  const bundlePoLineIds = new Set(
+    poLines.filter((pl: any) => pl.is_merged_bundle).map((pl: any) => pl.id)
+  );
+  bundlePoLineIds.forEach((bundlePoId) => {
+    const indices = invoiceLines
+      .map((l: any, i: number) => ({ l, i }))
+      .filter(({ l }) => l.po_line_id === bundlePoId)
+      .map(({ i }) => i);
+    const poLine = poLines.find((pl: any) => pl.id === bundlePoId);
+    if (!poLine || indices.length < 2) return;
+    const sumInvoiceNet = indices.reduce(
+      (s, i) =>
+        s +
+        (invoiceLines[i].net_amount ||
+          (invoiceLines[i].qty || 0) * (invoiceLines[i].unit_price || 0)),
+      0
+    );
+    const poNet = (poLine.qty_ordered || 0) * (poLine.unit_price || 0);
+    if (Math.abs(sumInvoiceNet - poNet) > 0.02) return;
+    indices.forEach((i) => {
+      matchResults[i].within_tolerance = true;
+      matchResults[i].explanation_code = 'BUNDLE_MATCH';
+      matchResults[i].qty_variance = 0;
+      matchResults[i].price_variance = 0;
+      matchResults[i].amount_variance = 0;
+    });
+  });
+
   // Convert poData to PODataWithLines format for poDataList
   const poDataWithLines = {
     id: poData.po_id,
@@ -2816,13 +2865,26 @@ export const getMockPoComparisonData = (invoiceId: string, invoiceData?: any): a
         poLine = poLines.find(pl => pl.line_no === invLine.line_no);
       }
 
+      const siblingsWithSamePo = invoiceLines.filter(
+        (l: any) => l.po_line_id && l.po_line_id === invLine.po_line_id
+      );
+      const bundleGroup =
+        poLine?.is_merged_bundle && siblingsWithSamePo.length > 1
+          ? {
+              poLineId: poLine.id,
+              size: siblingsWithSamePo.length,
+              index: siblingsWithSamePo.findIndex((l: any) => l.id === invLine.id)
+            }
+          : null;
+
       return {
         invoice: invLine,
         po: poLine || null,
         gr: null,
         matchResult: matchResult,
         hasVariance: matchResult && !matchResult.within_tolerance,
-        status: poLine ? (matchResult.within_tolerance ? 'matched' : 'variance') : 'no_po_line'
+        status: poLine ? (matchResult.within_tolerance ? 'matched' : 'variance') : 'no_po_line',
+        bundleGroup
       };
     }),
     unmatchedPoLines: []
@@ -2882,8 +2944,26 @@ export const getMockPoComparisonDataMulti = (invoiceId: string, invoiceData?: an
         }));
     }
 
-    const poTotal = poLines.reduce((sum: number, line: any) =>
-      sum + (line.qty_ordered * line.unit_price), 0);
+    const poGoodsSubtotalMulti = poLines
+      .filter((line: any) => !line.is_tax_line)
+      .reduce((sum: number, line: any) => sum + line.qty_ordered * line.unit_price, 0);
+    const poTaxFromLinesMulti = poLines
+      .filter((line: any) => line.is_tax_line)
+      .reduce((sum: number, line: any) => sum + line.qty_ordered * line.unit_price, 0);
+
+    let poSubtotal = poGoodsSubtotalMulti;
+    let poGrandTotal =
+      poTaxFromLinesMulti > 0
+        ? poGoodsSubtotalMulti + poTaxFromLinesMulti
+        : poGoodsSubtotalMulti * 1.2;
+    if (mockPO && mockPO.lines) {
+      if (typeof mockPO.subtotal === 'number') {
+        poSubtotal = mockPO.subtotal;
+      }
+      if (typeof mockPO.total === 'number') {
+        poGrandTotal = mockPO.total;
+      }
+    }
 
     poDataList.push({
       id: `po-${poNumber}`,
@@ -2891,8 +2971,8 @@ export const getMockPoComparisonDataMulti = (invoiceId: string, invoiceData?: an
       vendor_id: invoice.vendor_id,
       currency: invoice.currency || 'USD',
       po_status: 'approved',
-      subtotal: poTotal,
-      total: poTotal * 1.2,
+      subtotal: poSubtotal,
+      total: poGrandTotal,
       lines: poLines
     });
   });
@@ -2989,34 +3069,38 @@ export const getMockPoComparisonDataMulti = (invoiceId: string, invoiceData?: an
     });
   });
 
-  // Calculate utilization for each PO
+  // Calculate utilization for each PO (exclude header-level tax lines from line counts)
   poDataList.forEach((poData) => {
     const poNumber = poData.po_number;
     const poLines = poData.lines;
+    const utilizationLines = poLines.filter((line: any) => !line.is_tax_line);
 
     // Count matched lines for this PO
     const matchedLineIds = allMatchResults
       .filter(mr => mr.matched_po_number === poNumber)
       .map(mr => mr.matched_po_line_id);
 
-    const usedLines = new Set(matchedLineIds).size;
-    const totalLines = poLines.length;
+    const matchedGoodsIds = matchedLineIds.filter((id: string | null) =>
+      id && utilizationLines.some((l: any) => l.id === id)
+    );
+    const usedLines = new Set(matchedGoodsIds).size;
+    const totalLines = utilizationLines.length;
 
-    // Calculate amounts
-    const totalAmount = poLines.reduce((sum: number, line: any) =>
+    // Calculate amounts (goods lines only; tax is header-level on PO)
+    const totalAmount = utilizationLines.reduce((sum: number, line: any) =>
       sum + (line.qty_ordered * line.unit_price), 0);
 
-    const usedAmount = poLines
+    const usedAmount = utilizationLines
       .filter((line: any) => matchedLineIds.includes(line.id))
       .reduce((sum: number, line: any) =>
         sum + (line.qty_ordered * line.unit_price), 0);
 
     // Identify unused and fully used lines
-    const unusedLines = poLines.filter((line: any) =>
+    const unusedLines = utilizationLines.filter((line: any) =>
       !matchedLineIds.includes(line.id)
     );
 
-    const fullyUsedLines = poLines.filter((line: any) =>
+    const fullyUsedLines = utilizationLines.filter((line: any) =>
       matchedLineIds.includes(line.id)
     );
 

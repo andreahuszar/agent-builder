@@ -133,6 +133,10 @@ export interface POLine {
   qty_invoiced_to_date: number;
   qty_remaining_to_receive: number;
   qty_remaining_to_invoice: number;
+  /** When true, multiple invoice lines may reference this single PO line (bundle / split billing). */
+  is_merged_bundle?: boolean;
+  /** When true, line represents tax/fees (excluded from PO goods subtotal; included in PO total). */
+  is_tax_line?: boolean;
 }
 
 export interface POWithLines extends POHeader {

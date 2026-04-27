@@ -1,7 +1,7 @@
 'use client';
 // Updated: Removed TeachRuleDrawer and "+" hover buttons
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Maximize2, Minimize2, X, AlertCircle, ChevronDown, CheckCircle, Check, Edit2, Plus, Trash2, Copy, GitBranch, MoreVertical, Link2, Package, GripVertical, Zap, Sparkles, List, ArrowDownWideNarrow } from 'lucide-react';
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors, DragEndEvent, DragStartEvent, useDroppable, DragOverlay, useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -65,6 +65,8 @@ interface POLineItem {
   uom: string;
   unit_price: number;
   usage?: POLineUsage;  // PO line usage tracking
+  is_merged_bundle?: boolean;
+  is_tax_line?: boolean;
 }
 
 interface MatchResult {
@@ -433,22 +435,20 @@ export function LineItemsPreviewPanel({
   const findAssignedPoLine = (invoiceLine: InvoiceLineItem): POLineItem | null => {
     const invoiceLineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
 
+    const linesOf = (poData: PODataWithLines) =>
+      (poData.lines || (poData as { po_lines?: POLineItem[] }).po_lines || []) as POLineItem[];
+
     // Check all PO lines across all POs
     for (const poData of poDataList || []) {
-      for (const poLine of poData.lines) {
+      for (const poLine of linesOf(poData)) {
         const effectiveUsage = getEffectiveUsage(poLine as POLineItem, invoiceId);
 
         // Match if this PO line is used by THIS invoice line
         if (effectiveUsage.state === 'usedByThisInvoice' &&
             effectiveUsage.invoiceLineId === invoiceLineId) {
           return {
-            id: poLine.id,
-            line_no: poLine.line_no,
+            ...(poLine as POLineItem),
             description: poLine.description || poLine.item_description || '',
-            item_description: poLine.item_description,
-            qty_ordered: poLine.qty_ordered,
-            uom: poLine.uom,
-            unit_price: poLine.unit_price,
             usage: effectiveUsage
           } as POLineItem;
         }
@@ -459,16 +459,11 @@ export function LineItemsPreviewPanel({
     // This handles cases where PO lines don't have usage metadata (e.g., mock data)
     if (invoiceLine.po_line_id) {
       for (const poData of poDataList || []) {
-        const matchedLine = poData.lines.find(pl => pl.id === invoiceLine.po_line_id);
+        const matchedLine = linesOf(poData).find((pl) => pl.id === invoiceLine.po_line_id);
         if (matchedLine) {
           return {
-            id: matchedLine.id,
-            line_no: matchedLine.line_no,
+            ...matchedLine,
             description: matchedLine.description || matchedLine.item_description || '',
-            item_description: matchedLine.item_description,
-            qty_ordered: matchedLine.qty_ordered,
-            uom: matchedLine.uom,
-            unit_price: matchedLine.unit_price,
             usage: { state: 'usedByThisInvoice', invoiceLineId }
           } as POLineItem;
         }
@@ -479,19 +474,26 @@ export function LineItemsPreviewPanel({
     // Show the suggested PO line on the PO side so user can see the proposed match
     if (invoiceLine.suggested_po_match?.po_line_id) {
       for (const poData of poDataList || []) {
-        const matchedLine = poData.lines.find(pl => pl.id === invoiceLine.suggested_po_match!.po_line_id);
+        const matchedLine = linesOf(poData).find((pl) => pl.id === invoiceLine.suggested_po_match!.po_line_id);
         if (matchedLine) {
           return {
-            id: matchedLine.id,
-            line_no: matchedLine.line_no,
+            ...matchedLine,
             description: matchedLine.description || matchedLine.item_description || '',
-            item_description: matchedLine.item_description,
-            qty_ordered: matchedLine.qty_ordered,
-            uom: matchedLine.uom,
-            unit_price: matchedLine.unit_price,
             usage: { state: 'suggested', invoiceLineId }
           } as POLineItem;
         }
+      }
+    }
+
+    // Last resort: flat poLines from parent (e.g. before poDataList hydrates) — keep all fields e.g. is_merged_bundle
+    if (invoiceLine.po_line_id && poLines.length > 0) {
+      const matchedLine = poLines.find((pl) => pl.id === invoiceLine.po_line_id);
+      if (matchedLine) {
+        return {
+          ...matchedLine,
+          description: matchedLine.description || matchedLine.item_description || '',
+          usage: { state: 'usedByThisInvoice', invoiceLineId }
+        } as POLineItem;
       }
     }
 
@@ -1402,6 +1404,24 @@ export function LineItemsPreviewPanel({
     return errorCount;
   };
 
+  /** Several invoice lines → one merged PO line; nets reconcile across lines. */
+  const isMergedBundleReconciledForPoLine = (poLine: POLineItem, lines: InvoiceLineItem[]): boolean => {
+    if (!poLine.is_merged_bundle) return false;
+    const bundleLines = lines.filter((l) => l.po_line_id === poLine.id);
+    if (bundleLines.length < 2) return false;
+    const sumNet = bundleLines.reduce(
+      (s, l) => s + (l.net_amount ?? l.qty * l.unit_price),
+      0
+    );
+    const poNet = poLine.qty_ordered * poLine.unit_price;
+    return Math.abs(sumNet - poNet) <= 0.02;
+  };
+
+  const isMergedBundleReconciled = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null): boolean => {
+    if (!poLine || !invoiceLine.po_line_id || invoiceLine.po_line_id !== poLine.id) return false;
+    return isMergedBundleReconciledForPoLine(poLine, editableLines);
+  };
+
   // Check if there's a mismatch (kept for PO comparison mode)
   const hasMismatch = (invoiceLine: InvoiceLineItem, poLine: POLineItem | null) => {
     if (!poLine) return false;
@@ -1409,6 +1429,8 @@ export function LineItemsPreviewPanel({
     // If line is manually marked as matched, no mismatch
     const lineId = invoiceLine.id || `line-${invoiceLine.line_no}`;
     if (manuallyMatchedLines.has(lineId)) return false;
+
+    if (isMergedBundleReconciled(invoiceLine, poLine)) return false;
 
     // Check quantity mismatch
     if (Math.abs(invoiceLine.qty - poLine.qty_ordered) > 0.01) return true;
@@ -1434,6 +1456,8 @@ export function LineItemsPreviewPanel({
     if (manuallyMatchedLines.has(lineId) || hasCustomRuleMatch(invoiceLine, poLine) || hasMatchedUomDifference(invoiceLine, poLine)) {
       return false;
     }
+
+    if (isMergedBundleReconciled(invoiceLine, poLine)) return false;
     
     // Check for description variance
     if ((unmatchedLines.has(lineId) && hasDescriptionDifference(invoiceLine, poLine)) || hasSuggestion(invoiceLine)) {
@@ -1772,6 +1796,21 @@ export function LineItemsPreviewPanel({
   };
 
   const displaySlots = getDisplaySlots();
+
+  const mergedBundleFirstSlotIndex = useMemo(() => {
+    const list = Array.isArray(displaySlots) ? displaySlots : slots;
+    const m = new Map<string, number>();
+    list.forEach((s, idx) => {
+      const inv = s.invoiceLine;
+      const po = s.poLine;
+      if (!inv || !po || !po.is_merged_bundle || !inv.po_line_id || inv.po_line_id !== po.id) return;
+      if (!isMergedBundleReconciledForPoLine(po, editableLines)) return;
+      if (!m.has(po.id)) m.set(po.id, idx);
+    });
+    return m;
+  }, [displaySlots, slots, editableLines]);
+
+  const slotListForMergedBundle = Array.isArray(displaySlots) ? displaySlots : slots;
 
   // Handle line editing
   const handleLineChange = (index: number, field: keyof InvoiceLineItem, value: any) => {
@@ -2165,7 +2204,7 @@ export function LineItemsPreviewPanel({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                      {(Array.isArray(displaySlots) ? displaySlots : slots).map((slot) => {
+                      {slotListForMergedBundle.map((slot, slotIdx) => {
                         const line = slot.invoiceLine;
 
                         // Check if this position has a dragged item
@@ -2365,12 +2404,31 @@ export function LineItemsPreviewPanel({
                                 className="w-full px-1 py-0.5 text-xs border border-gray-300 rounded focus:border-purple-500 focus:outline-none"
                               />
                             ) : (
-                              <div className={`${
-                                (matchedPO && unmatchedLines.has(line.id || `line-${line.line_no}`) && hasDescriptionDifference(line, matchedPO)) || hasSuggestion(line)
-                                  ? 'font-bold text-red-600'
-                                  : ''
-                              } truncate`} title={line.description}>
-                                {line.description}
+                              <div>
+                                {matchedPO &&
+                                  isMergedBundleReconciled(line, matchedPO) &&
+                                  mergedBundleFirstSlotIndex.get(matchedPO.id) === slotIdx && (
+                                    <div className="text-[10px] font-semibold text-purple-900 bg-purple-50 border border-purple-200 rounded px-2 py-1 mb-1 flex items-center gap-1">
+                                      <Link2 className="h-3 w-3 shrink-0" aria-hidden />
+                                      <span>
+                                        1 PO line ·{' '}
+                                        {editableLines.filter((l) => l.po_line_id === matchedPO.id).length} invoice lines
+                                      </span>
+                                    </div>
+                                  )}
+                                <div
+                                  className={`${
+                                    (matchedPO &&
+                                      unmatchedLines.has(line.id || `line-${line.line_no}`) &&
+                                      hasDescriptionDifference(line, matchedPO)) ||
+                                    hasSuggestion(line)
+                                      ? 'font-bold text-red-600'
+                                      : ''
+                                  } truncate`}
+                                  title={line.description}
+                                >
+                                  {line.description}
+                                </div>
                               </div>
                             )}
                           </td>
@@ -2384,7 +2442,11 @@ export function LineItemsPreviewPanel({
                                 value={line.qty}
                                 onChange={(e) => handleLineChange(lineIndex, 'qty', parseFloat(e.target.value) || 0)}
                                 className={`w-12 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
-                                  matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO)
+                                  matchedPO &&
+                                  !isMergedBundleReconciled(line, matchedPO) &&
+                                  Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 &&
+                                  !hasCustomRuleMatch(line, matchedPO) &&
+                                  !hasMatchedUomDifference(line, matchedPO)
                                     ? ''
                                     : 'border border-gray-300'
                                 }`}
@@ -2423,7 +2485,13 @@ export function LineItemsPreviewPanel({
                                   </div>
                                 );
                               }
-                              const hasVariance = matchedPO && Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO);
+                              const hasVariance =
+                                matchedPO &&
+                                !isMergedBundleReconciled(line, matchedPO) &&
+                                Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 &&
+                                !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) &&
+                                !hasCustomRuleMatch(line, matchedPO) &&
+                                !hasMatchedUomDifference(line, matchedPO);
                               return <span className={hasVariance ? 'font-bold text-red-600' : ''}>{line.qty}</span>;
                             })()}
                           </td>
@@ -2446,17 +2514,30 @@ export function LineItemsPreviewPanel({
                                 value={line.unit_price}
                                 onChange={(e) => handleLineChange(lineIndex, 'unit_price', parseFloat(e.target.value) || 0)}
                                 className={`w-14 px-1 py-0.5 text-xs text-right rounded focus:outline-none focus:border-purple-500 ${
-                                  matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO) && !line.suppress_price_variance
+                                  matchedPO &&
+                                  !isMergedBundleReconciled(line, matchedPO) &&
+                                  Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 &&
+                                  !hasCustomRuleMatch(line, matchedPO) &&
+                                  !hasMatchedUomDifference(line, matchedPO) &&
+                                  !line.suppress_price_variance
                                     ? ''
                                     : 'border border-gray-300'
                                 }`}
                               />
                             ) : (
-                              <span className={
-                                matchedPO && Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 && !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) && !hasCustomRuleMatch(line, matchedPO) && !hasMatchedUomDifference(line, matchedPO) && !line.suppress_price_variance && !line.suppress_price_variance
-                                  ? 'font-bold text-red-600'
-                                  : ''
-                              }>
+                              <span
+                                className={
+                                  matchedPO &&
+                                  !isMergedBundleReconciled(line, matchedPO) &&
+                                  Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 &&
+                                  !manuallyMatchedLines.has(line.id || `line-${line.line_no}`) &&
+                                  !hasCustomRuleMatch(line, matchedPO) &&
+                                  !hasMatchedUomDifference(line, matchedPO) &&
+                                  !line.suppress_price_variance
+                                    ? 'font-bold text-red-600'
+                                    : ''
+                                }
+                              >
                                 {formatCurrency(line.unit_price)}
                               </span>
                             )}
@@ -2891,7 +2972,7 @@ export function LineItemsPreviewPanel({
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
-                    {getFilteredSlotsForPOTable(Array.isArray(displaySlots) ? displaySlots : slots).map((slot) => {
+                    {getFilteredSlotsForPOTable(slotListForMergedBundle).map((slot, slotIdx) => {
                       const matchedPO = slot.poLine;
                       const invLine = slot.invoiceLine;
 
@@ -2911,62 +2992,159 @@ export function LineItemsPreviewPanel({
                         );
                       }
 
+                      const bundleReconciled =
+                        invLine && isMergedBundleReconciled(invLine, matchedPO);
+                      const firstIdx = mergedBundleFirstSlotIndex.get(matchedPO.id);
+                      const isBundleContinuation =
+                        invLine &&
+                        bundleReconciled &&
+                        firstIdx !== undefined &&
+                        slotIdx !== firstIdx;
+
+                      if (isBundleContinuation) {
+                        return null;
+                      }
+
+                      const isBundleHeader = bundleReconciled && firstIdx !== undefined && slotIdx === firstIdx;
+                      const bundleSiblingCount =
+                        matchedPO && bundleReconciled
+                          ? editableLines.filter((l) => l.po_line_id === matchedPO.id).length
+                          : 1;
+                      const bundleTaxLine = poLines.find((l) => l.is_tax_line);
+                      const isBundleHoverActive = Boolean(
+                        isBundleHeader &&
+                        firstIdx !== undefined &&
+                        hoveredPosition !== null &&
+                        hoveredPosition >= firstIdx &&
+                        hoveredPosition < firstIdx + bundleSiblingCount
+                      );
+
                       return (
                         <tr
-                          key={matchedPO.id}
+                          key={`po-row-${slot.position}-${matchedPO.id}`}
                           className={`h-[48px] ${getPORowHighlightClass(matchedPO)} ${
-                            hoveredPosition === slot.position 
-                              ? 'bg-purple-50' 
+                            hoveredPosition === slot.position || isBundleHoverActive
+                              ? 'bg-purple-50'
                               : invLine && hasAnyVariance(invLine, matchedPO)
                                 ? 'bg-red-50/30 hover:bg-red-50/40'
-                                : getPORowHighlightClass(matchedPO) 
-                                  ? '' 
+                                : getPORowHighlightClass(matchedPO)
+                                  ? ''
                                   : 'bg-white hover:bg-purple-50'
                           }`}
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
                         >
-                          <td className={`pl-3 pr-1 py-2 text-xs text-right text-gray-950 w-6 ${getPORowBorderClass(matchedPO)}`}>{matchedPO.line_no}</td>
-                          <td className="px-1 py-2 text-xs text-gray-950 overflow-hidden">
-                            <div className={`${
-                              invLine && ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) && hasDescriptionDifference(invLine, matchedPO)) || hasSuggestion(invLine))
-                                ? 'font-bold text-red-600'
-                                : ''
-                            } truncate`} title={matchedPO.description}>
-                              {matchedPO.item_description || matchedPO.description}
-                            </div>
-                          </td>
-                          <td className="px-1 py-2 text-xs text-gray-950 w-16">{matchedPO.sku || '-'}</td>
-                          <td className="px-1 py-2 text-xs text-right text-gray-950 w-8">
-                            <span className={
-                              invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01 && !hasCustomRuleMatch(invLine, matchedPO) && !hasMatchedUomDifference(invLine, matchedPO)
-                                ? 'font-bold text-red-600'
-                                : ''
-                            }>
-                              {matchedPO.qty_ordered}
-                            </span>
-                          </td>
-                          <td className="px-1 py-2 text-xs text-center text-gray-950 w-16">
-                            <span className={
-                              invLine && Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01 && !hasCustomRuleMatch(invLine, matchedPO) && !hasMatchedUomDifference(invLine, matchedPO) && invLine.uom.toLowerCase() !== matchedPO.uom.toLowerCase()
-                                ? 'font-bold text-red-600'
-                                : ''
-                            }>
-                              {matchedPO.uom}
-                            </span>
-                          </td>
-                          <td className="px-1 py-2 text-xs text-right text-gray-950 w-16">
-                            <span className={
-                              invLine && Math.abs(matchedPO.unit_price - invLine.unit_price) > 0.01 && !hasCustomRuleMatch(invLine, matchedPO) && !hasMatchedUomDifference(invLine, matchedPO) && !invLine.suppress_price_variance
-                                ? 'font-bold text-red-600'
-                                : ''
-                            }>
-                              {formatCurrency(matchedPO.unit_price)}
-                            </span>
-                          </td>
-                          <td className="pl-1 pr-2 py-2 text-xs text-right font-medium text-gray-950 w-20">
-                            {formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)}
-                          </td>
+                          {isBundleHeader ? (
+                            <td
+                              colSpan={7}
+                              {...(bundleSiblingCount > 1 ? { rowSpan: bundleSiblingCount } : {})}
+                              className="px-3 py-2 align-top"
+                              style={
+                                bundleSiblingCount > 1
+                                  ? { minHeight: `${bundleSiblingCount * 48}px` }
+                                  : undefined
+                              }
+                            >
+                              <div className="rounded-md border border-purple-200 bg-purple-50/60 px-3 py-2 text-xs text-gray-950">
+                                <div className="mb-1.5 flex items-center justify-between gap-2">
+                                  <span className="text-[10px] font-bold uppercase tracking-wide text-purple-900">
+                                    PO (one block)
+                                  </span>
+                                  <Check className="h-4 w-4 shrink-0 text-green-600" aria-hidden />
+                                </div>
+                                <div className="flex justify-between gap-3 border-b border-purple-100 py-1">
+                                  <span className="min-w-0 leading-snug">
+                                    {matchedPO.item_description || matchedPO.description}
+                                  </span>
+                                  <span className="shrink-0 font-medium tabular-nums">
+                                    {formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)}
+                                  </span>
+                                </div>
+                                {bundleTaxLine && (
+                                  <div className="flex justify-between gap-3 border-b border-purple-100 py-1">
+                                    <span className="min-w-0 leading-snug">
+                                      {bundleTaxLine.item_description || bundleTaxLine.description}
+                                    </span>
+                                    <span className="shrink-0 font-medium tabular-nums">
+                                      {formatCurrency(bundleTaxLine.qty_ordered * bundleTaxLine.unit_price)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          ) : (
+                            <>
+                              <td className={`pl-3 pr-1 py-2 text-xs text-right text-gray-950 w-6 ${getPORowBorderClass(matchedPO)}`}>
+                                {matchedPO.line_no}
+                              </td>
+                              <td className="px-1 py-2 text-xs text-gray-950 overflow-hidden">
+                                <div
+                                  className={`${
+                                    invLine &&
+                                    ((unmatchedLines.has(invLine.id || `line-${invLine.line_no}`) &&
+                                      hasDescriptionDifference(invLine, matchedPO)) ||
+                                      hasSuggestion(invLine))
+                                      ? 'font-bold text-red-600'
+                                      : ''
+                                  } truncate`}
+                                  title={matchedPO.description}
+                                >
+                                  {matchedPO.item_description || matchedPO.description}
+                                </div>
+                              </td>
+                              <td className="px-1 py-2 text-xs text-gray-950 w-16">{matchedPO.sku || '-'}</td>
+                              <td className="px-1 py-2 text-xs text-right text-gray-950 w-8">
+                                <span
+                                  className={
+                                    invLine &&
+                                    !isMergedBundleReconciled(invLine, matchedPO) &&
+                                    Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01 &&
+                                    !hasCustomRuleMatch(invLine, matchedPO) &&
+                                    !hasMatchedUomDifference(invLine, matchedPO)
+                                      ? 'font-bold text-red-600'
+                                      : ''
+                                  }
+                                >
+                                  {matchedPO.qty_ordered}
+                                </span>
+                              </td>
+                              <td className="px-1 py-2 text-xs text-center text-gray-950 w-16">
+                                <span
+                                  className={
+                                    invLine &&
+                                    !isMergedBundleReconciled(invLine, matchedPO) &&
+                                    Math.abs(matchedPO.qty_ordered - invLine.qty) > 0.01 &&
+                                    !hasCustomRuleMatch(invLine, matchedPO) &&
+                                    !hasMatchedUomDifference(invLine, matchedPO) &&
+                                    invLine.uom.toLowerCase() !== matchedPO.uom.toLowerCase()
+                                      ? 'font-bold text-red-600'
+                                      : ''
+                                  }
+                                >
+                                  {matchedPO.uom}
+                                </span>
+                              </td>
+                              <td className="px-1 py-2 text-xs text-right text-gray-950 w-16">
+                                <span
+                                  className={
+                                    invLine &&
+                                    !isMergedBundleReconciled(invLine, matchedPO) &&
+                                    Math.abs(matchedPO.unit_price - invLine.unit_price) > 0.01 &&
+                                    !hasCustomRuleMatch(invLine, matchedPO) &&
+                                    !hasMatchedUomDifference(invLine, matchedPO) &&
+                                    !invLine.suppress_price_variance
+                                      ? 'font-bold text-red-600'
+                                      : ''
+                                  }
+                                >
+                                  {formatCurrency(matchedPO.unit_price)}
+                                </span>
+                              </td>
+                              <td className="pl-1 pr-2 py-2 text-xs text-right font-medium text-gray-950 w-20">
+                                {formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)}
+                              </td>
+                            </>
+                          )}
                         </tr>
                       );
                     })}
@@ -3120,7 +3298,7 @@ export function LineItemsPreviewPanel({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {(Array.isArray(displaySlots) ? displaySlots : slots).map((slot) => {
+                      {slotListForMergedBundle.map((slot) => {
                         const line = slot.invoiceLine;
                         const matchedPO = slot.poLine;
 
@@ -3149,7 +3327,9 @@ export function LineItemsPreviewPanel({
                         return (
                           <tr
                             key={line.id || line.line_no}
-                            className={`h-[48px] ${hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'}`}
+                            className={`h-[48px] ${
+                              hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'
+                            }`}
                             onMouseEnter={() => handleRowHover(slot.position)}
                             onMouseLeave={handleRowLeave}
                           >
@@ -3157,7 +3337,9 @@ export function LineItemsPreviewPanel({
                             <td className={`px-1.5 py-2 text-xs text-right w-16 ${hasAnyVariance(line, matchedPO) ? 'bg-red-50/30' : ''}`}>
                               {matchedPO ? (
                                 // Show 0 variance if custom rule matches OR UOM conversion reconciles the difference
-                                (hasCustomRuleMatch(line, matchedPO) || hasMatchedUomDifference(line, matchedPO)) ? (
+                                hasCustomRuleMatch(line, matchedPO) ||
+                                hasMatchedUomDifference(line, matchedPO) ||
+                                isMergedBundleReconciled(line, matchedPO) ? (
                                   <span className="text-green-600 font-bold">0</span>
                                 ) : Math.abs(line.qty - matchedPO.qty_ordered) > 0.01 ? (
                                   <span className="text-red-600 font-semibold">
@@ -3175,7 +3357,10 @@ export function LineItemsPreviewPanel({
                             <td className={`px-1.5 py-2 text-xs text-right w-20 ${hasAnyVariance(line, matchedPO) ? 'bg-red-50/30' : ''}`}>
                               {matchedPO ? (
                                 // Show 0 variance if custom rule matches OR UOM conversion reconciles the difference OR price variance suppressed
-                                (hasCustomRuleMatch(line, matchedPO) || hasMatchedUomDifference(line, matchedPO) || line.suppress_price_variance) ? (
+                                hasCustomRuleMatch(line, matchedPO) ||
+                                hasMatchedUomDifference(line, matchedPO) ||
+                                line.suppress_price_variance ||
+                                isMergedBundleReconciled(line, matchedPO) ? (
                                   <span className="text-green-600 font-bold">{formatCurrency(0)}</span>
                                 ) : Math.abs(line.unit_price - matchedPO.unit_price) > 0.01 ? (
                                   <span className="text-red-600 font-semibold">

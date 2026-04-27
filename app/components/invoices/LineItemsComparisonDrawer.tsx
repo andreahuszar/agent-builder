@@ -123,14 +123,17 @@ export function LineItemsComparisonDrawer({
 
       const poLines = po.lines || [];
 
-      // Match invoice lines with PO lines
+      // Match invoice lines with PO lines (prefer po_line_id for merged bundles)
       const comparisonData: LineComparison[] = invoiceLines.map((invLine: any, index: number) => {
         const lineNo = invLine.line_no || index + 1;
 
-        // Try to find matching PO line (simple matching by line number for now)
-        const matchedPOLine = poLines.find((poLine: any) =>
-          (poLine.line_no || poLines.indexOf(poLine) + 1) === lineNo
-        ) || poLines[index]; // Fallback to index-based matching
+        const matchedPOLine =
+          (invLine.po_line_id &&
+            poLines.find((poLine: any) => poLine.id === invLine.po_line_id)) ||
+          poLines.find(
+            (poLine: any) => (poLine.line_no || poLines.indexOf(poLine) + 1) === lineNo
+          ) ||
+          poLines[index];
 
         const invQty = invLine.qty || 0;
         const invPrice = invLine.unit_price || 0;
@@ -140,12 +143,23 @@ export function LineItemsComparisonDrawer({
         const poPrice = matchedPOLine?.unit_price || 0;
         const poTotal = matchedPOLine ? (matchedPOLine.qty_ordered || 0) * (matchedPOLine.unit_price || 0) : 0;
 
+        const siblings = invoiceLines.filter((l: any) => l.po_line_id && l.po_line_id === invLine.po_line_id);
+        const isMergedBundle =
+          matchedPOLine?.is_merged_bundle && siblings.length > 1;
+
         // Determine status
         let status: 'matched' | 'variance' | 'unmatched' = 'matched';
         let varianceAmount = 0;
 
         if (!matchedPOLine) {
           status = 'unmatched';
+        } else if (isMergedBundle) {
+          const sumNet = siblings.reduce(
+            (s: number, l: any) => s + (l.net_amount || (l.qty || 0) * (l.unit_price || 0)),
+            0
+          );
+          status = Math.abs(sumNet - poTotal) < 0.02 ? 'matched' : 'variance';
+          varianceAmount = Math.abs(sumNet - poTotal);
         } else if (invQty !== poQty || invPrice !== poPrice) {
           status = 'variance';
           varianceAmount = Math.abs(invTotal - poTotal);
@@ -168,7 +182,7 @@ export function LineItemsComparisonDrawer({
             lineTotal: poTotal,
           },
           status,
-          varianceAmount: varianceAmount > 0 ? varianceAmount : undefined,
+          varianceAmount: varianceAmount > 0.01 ? varianceAmount : undefined,
         };
       });
 

@@ -332,32 +332,34 @@ export const generateMockPOs = (): Record<string, POHeader> => {
       status: 'open',
       lines: [
         {
-          id: 'po-line-9010-1',
+          id: 'po-line-9010-bundle',
           line_no: 1,
-          description: 'Toyota Prius 2022 (7 days) for PO-2025-9010',
-          item_description: 'Toyota Prius 2022 (7 days) for PO-2025-9010',
+          description: 'Toyota Prius 2022 (7 days) inc insurance',
+          item_description: 'Toyota Prius 2022 (7 days) inc insurance',
           qty_ordered: 7,
           uom: 'DAYS',
-          unit_price: 120.00,
+          unit_price: 150.0,
           qty_received_to_date: 7,
           qty_invoiced_to_date: 7,
           qty_remaining_to_receive: 0,
           qty_remaining_to_invoice: 0,
-          status: 'closed'
+          status: 'closed',
+          is_merged_bundle: true
         },
         {
-          id: 'po-line-9010-2',
+          id: 'po-line-9010-tax',
           line_no: 2,
-          description: 'Motor Insurance - Comprehensive (Class 2 Vehicle) for PO-2025-9010',
-          item_description: 'Motor Insurance - Comprehensive (Class 2 Vehicle) for PO-2025-9010',
-          qty_ordered: 7,
-          uom: 'DAYS',
-          unit_price: 30.00,
-          qty_received_to_date: 7,
-          qty_invoiced_to_date: 7,
+          description: 'Sales tax (15%)',
+          item_description: 'Sales tax (15%)',
+          qty_ordered: 1,
+          uom: 'EA',
+          unit_price: 157.5,
+          qty_received_to_date: 1,
+          qty_invoiced_to_date: 1,
           qty_remaining_to_receive: 0,
           qty_remaining_to_invoice: 0,
-          status: 'closed'
+          status: 'closed',
+          is_tax_line: true
         }
       ],
       subtotal: 1050.00,
@@ -947,10 +949,33 @@ export const generateMockPOs = (): Record<string, POHeader> => {
     }
   };
 
-  // Calculate totals for each PO
+  // Subtotal = goods lines only; total includes explicit tax lines when present.
   Object.values(mockPOs).forEach(po => {
-    po.subtotal = po.lines.reduce((sum, line) => sum + (line.qty_ordered * line.unit_price), 0);
-    po.total = po.subtotal;
+    const goodsLines = po.lines.filter((l: { is_tax_line?: boolean }) => !l.is_tax_line);
+    const taxLines = po.lines.filter((l: { is_tax_line?: boolean }) => l.is_tax_line);
+
+    if (taxLines.length > 0) {
+      const goodsSubtotal = goodsLines.reduce(
+        (sum, line) => sum + line.qty_ordered * line.unit_price,
+        0
+      );
+      const taxAmount = taxLines.reduce(
+        (sum, line) => sum + line.qty_ordered * line.unit_price,
+        0
+      );
+      po.subtotal = goodsSubtotal;
+      po.total = goodsSubtotal + taxAmount;
+      return;
+    }
+
+    const lineSubtotal = po.lines.reduce((sum, line) => sum + line.qty_ordered * line.unit_price, 0);
+    po.subtotal = lineSubtotal;
+    const previousTotal = po.total;
+    const hadTaxInclusiveTotal =
+      typeof previousTotal === 'number' && previousTotal > lineSubtotal + 0.001;
+    if (!hadTaxInclusiveTotal) {
+      po.total = lineSubtotal;
+    }
   });
 
   return mockPOs;

@@ -164,14 +164,21 @@ export function EnhancedLineItemsTabV2({
     }
 
     if (comparison.status === 'matched') {
+      const bundle = comparison.bundleGroup as { size: number; index: number } | null | undefined;
+      const bundleLabel =
+        bundle && bundle.size > 1
+          ? `Invoice ${bundle.index + 1}/${bundle.size} → 1 PO`
+          : comparison.po
+            ? `PO Line #${comparison.po.line_no}`
+            : null;
       return (
         <div className="flex flex-col gap-0.5">
           <span className="px-2 py-1 text-xs font-medium bg-green-100 text-green-700 rounded inline-flex items-center gap-1 w-fit">
             <Check className="h-3 w-3" />
             Matched
           </span>
-          {comparison.po && (
-            <span className="text-[10px] text-gray-700">PO Line #{comparison.po.line_no}</span>
+          {bundleLabel && (
+            <span className="text-[10px] text-gray-700 max-w-[9rem] leading-tight">{bundleLabel}</span>
           )}
         </div>
       );
@@ -354,11 +361,26 @@ export function EnhancedLineItemsTabV2({
         {lines.map((line) => {
           const comparison = getComparisonForLine(line.id || '');
           const po = comparison?.po;
+          const bundle = comparison?.bundleGroup as
+            | { size: number; index: number; poLineId: string }
+            | undefined;
+          const bundleContinuation = Boolean(bundle && bundle.size > 1 && bundle.index > 0);
+          const bundleHeader = Boolean(bundle && bundle.size > 1 && bundle.index === 0);
+          const poLinesAll = poComparisonData?.poData?.po_lines as any[] | undefined;
+          const bundleGoodsPoLine =
+            bundle && bundle.size > 1 && poLinesAll
+              ? poLinesAll.find((l) => l.id === bundle.poLineId) || po
+              : null;
+          const bundleTaxPoLine =
+            bundle && bundle.size > 1 && poLinesAll
+              ? poLinesAll.find((l) => l.is_tax_line)
+              : null;
+          const poDocumentTotal = poComparisonData?.poData?.total as number | undefined;
 
           return (
             <div
               key={line.id || line.line_no}
-              className="px-4 py-3 border-b border-gray-100 hover:bg-gray-50"
+              className={`px-4 py-3 border-b border-gray-100 hover:bg-gray-50 ${bundleContinuation ? 'bg-purple-50/40' : ''}`}
             >
               <div className="grid grid-cols-24 gap-1 items-center text-sm">
                 {/* Status */}
@@ -368,12 +390,23 @@ export function EnhancedLineItemsTabV2({
 
                 {/* Description */}
                 <div className="col-span-4">
+                  {bundleHeader && (
+                    <div className="text-[10px] font-semibold text-purple-900 bg-purple-50 border border-purple-200 rounded px-2 py-1 mb-1 flex items-center gap-1">
+                      <Link2 className="h-3 w-3 shrink-0" aria-hidden />
+                      <span>1 PO line · {bundle!.size} invoice lines</span>
+                    </div>
+                  )}
                   <div className="text-sm font-medium text-gray-950 truncate" title={line.description}>
                     {line.description}
                   </div>
-                  {po && po.description !== line.description && (
+                  {po && po.description !== line.description && !bundleContinuation && !(bundle && bundle.size > 1) && (
                     <div className="text-xs text-gray-500 mt-0.5 truncate" title={po.description}>
                       PO: {po.description}
+                    </div>
+                  )}
+                  {bundleContinuation && (
+                    <div className="text-[10px] text-purple-800 mt-0.5">
+                      Component of bundle match (PO on first row)
                     </div>
                   )}
                 </div>
@@ -388,88 +421,160 @@ export function EnhancedLineItemsTabV2({
                   </div>
                 </div>
 
-                {/* PO Quantity */}
-                <div className="col-span-3 text-center">
-                  {po ? (
-                    <div className="flex flex-col items-center">
-                      <div className="flex items-center gap-1">
-                        <span className={`text-sm font-medium ${Math.abs(line.qty - po.qty_ordered) > 0.01 ? 'text-red-600' : 'text-gray-950'}`}>
-                          {po.qty_ordered}
-                        </span>
-                        {Math.abs(line.qty - po.qty_ordered) > 0.01 ? (
-                          <X className="h-3 w-3 text-red-600" />
-                        ) : (
-                          <Check className="h-3 w-3 text-green-600" />
-                        )}
+                {bundle && bundle.size > 1 ? (
+                  <>
+                    {bundleContinuation ? (
+                      <div className="col-span-9 rounded-md border border-dashed border-purple-200 bg-purple-50/40 px-3 py-2 text-xs text-gray-950">
+                        <p className="font-semibold text-purple-900">Same PO as row above</p>
+                        <p className="mt-1 text-[10px] leading-snug text-gray-600">
+                          PO stays one hire + insurance line; invoice splits into components. PO amounts are not repeated here.
+                        </p>
+                        <p className="mt-2 text-[11px] text-gray-950">
+                          This invoice line (net):{' '}
+                          <span className="font-semibold">{formatCurrency(line.net_amount)}</span>
+                        </p>
                       </div>
-                      <span className="text-xs text-gray-500">{po.uom}</span>
-                      {Math.abs(line.qty - po.qty_ordered) > 0.01 && (
-                        <span className="text-xs text-red-600 font-medium mt-0.5">
-                          Δ {line.qty > po.qty_ordered ? '+' : ''}{(line.qty - po.qty_ordered).toFixed(2)}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-gray-400">--</span>
-                  )}
-                </div>
-
-                {/* Invoice Unit Price */}
-                <div className="col-span-3 text-right">
-                  <span className="text-sm font-medium text-gray-950">
-                    {formatCurrency(line.unit_price)}
-                  </span>
-                </div>
-
-                {/* PO Unit Price */}
-                <div className="col-span-3 text-right">
-                  {po ? (
-                    <div className="flex flex-col items-end">
-                      <div className="flex items-center gap-1">
-                        <span className={`text-sm font-medium ${Math.abs(line.unit_price - po.unit_price) > 0.01 ? 'text-red-600' : 'text-gray-950'}`}>
-                          {formatCurrency(po.unit_price)}
-                        </span>
-                        {Math.abs(line.unit_price - po.unit_price) > 0.01 ? (
-                          <X className="h-3 w-3 text-red-600" />
-                        ) : (
-                          <Check className="h-3 w-3 text-green-600" />
+                    ) : (
+                      <div className="col-span-9 rounded-md border border-purple-200 bg-purple-50/60 px-3 py-2 text-xs text-gray-950">
+                        <div className="mb-1.5 flex items-center justify-between gap-2">
+                          <span className="text-[10px] font-bold uppercase tracking-wide text-purple-900">
+                            PO (one block)
+                          </span>
+                          <Check className="h-4 w-4 shrink-0 text-green-600" aria-hidden />
+                        </div>
+                        {bundleGoodsPoLine && (
+                          <div className="flex justify-between gap-3 border-b border-purple-100 py-1">
+                            <span className="min-w-0 leading-snug">{bundleGoodsPoLine.description}</span>
+                            <span className="shrink-0 font-medium tabular-nums">
+                              {formatCurrency(
+                                bundleGoodsPoLine.qty_ordered * bundleGoodsPoLine.unit_price
+                              )}
+                            </span>
+                          </div>
                         )}
+                        {bundleTaxPoLine && (
+                          <div className="flex justify-between gap-3 border-b border-purple-100 py-1">
+                            <span className="min-w-0 leading-snug">{bundleTaxPoLine.description}</span>
+                            <span className="shrink-0 font-medium tabular-nums">
+                              {formatCurrency(
+                                bundleTaxPoLine.qty_ordered * bundleTaxPoLine.unit_price
+                              )}
+                            </span>
+                          </div>
+                        )}
+                        <div className="mt-1.5 flex justify-between gap-2 font-semibold text-gray-950">
+                          <span>PO total (incl. tax)</span>
+                          <span className="tabular-nums">
+                            {typeof poDocumentTotal === 'number'
+                              ? formatCurrency(poDocumentTotal)
+                              : '—'}
+                          </span>
+                        </div>
+                        <p className="mt-1.5 text-[10px] leading-snug text-gray-600">
+                          Blended rate {bundleGoodsPoLine ? formatCurrency(bundleGoodsPoLine.unit_price) : ''}{' '}
+                          / {bundleGoodsPoLine?.uom || ''} on PO goods line.
+                        </p>
                       </div>
-                      {Math.abs(line.unit_price - po.unit_price) > 0.01 && (
-                        <span className="text-xs text-red-600 font-medium mt-0.5">
-                          Δ {formatCurrency(line.unit_price - po.unit_price)}
-                        </span>
-                      )}
-                    </div>
-                  ) : (
-                    <span className="text-xs text-gray-400">--</span>
-                  )}
-                </div>
-
-                {/* Invoice Total */}
-                <div className="col-span-3 text-right">
-                  <span className="text-sm font-semibold text-gray-950">
-                    {formatCurrency(line.line_total)}
-                  </span>
-                </div>
-
-                {/* PO Total */}
-                <div className="col-span-3 text-right">
-                  {po ? (
-                    <div className="flex flex-col items-end">
-                      <span className={`text-sm font-semibold ${Math.abs(line.line_total - (po.qty_ordered * po.unit_price)) > 0.01 ? 'text-red-600' : 'text-gray-950'}`}>
-                        {formatCurrency(po.qty_ordered * po.unit_price)}
+                    )}
+                    {/* Invoice Unit Price */}
+                    <div className="col-span-3 text-right">
+                      <span className="text-sm font-medium text-gray-950">
+                        {formatCurrency(line.unit_price)}
                       </span>
-                      {Math.abs(line.line_total - (po.qty_ordered * po.unit_price)) > 0.01 && (
-                        <span className="text-xs text-red-600 font-medium mt-0.5">
-                          Δ {formatCurrency(line.line_total - (po.qty_ordered * po.unit_price))}
-                        </span>
+                    </div>
+                    {/* Invoice Total (incl. tax on line) */}
+                    <div className="col-span-3 text-right">
+                      <span className="text-sm font-semibold text-gray-950">
+                        {formatCurrency(line.line_total)}
+                      </span>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* PO Quantity */}
+                    <div className="col-span-3 text-center">
+                      {po ? (
+                        <div className="flex flex-col items-center">
+                          <div className="flex items-center gap-1">
+                            <span className={`text-sm font-medium ${Math.abs(line.qty - po.qty_ordered) > 0.01 ? 'text-red-600' : 'text-gray-950'}`}>
+                              {po.qty_ordered}
+                            </span>
+                            {Math.abs(line.qty - po.qty_ordered) > 0.01 ? (
+                              <X className="h-3 w-3 text-red-600" />
+                            ) : (
+                              <Check className="h-3 w-3 text-green-600" />
+                            )}
+                          </div>
+                          <span className="text-xs text-gray-500">{po.uom}</span>
+                          {Math.abs(line.qty - po.qty_ordered) > 0.01 && (
+                            <span className="text-xs text-red-600 font-medium mt-0.5">
+                              Δ {line.qty > po.qty_ordered ? '+' : ''}{(line.qty - po.qty_ordered).toFixed(2)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">--</span>
                       )}
                     </div>
-                  ) : (
-                    <span className="text-xs text-gray-400">--</span>
-                  )}
-                </div>
+
+                    {/* Invoice Unit Price */}
+                    <div className="col-span-3 text-right">
+                      <span className="text-sm font-medium text-gray-950">
+                        {formatCurrency(line.unit_price)}
+                      </span>
+                    </div>
+
+                    {/* PO Unit Price */}
+                    <div className="col-span-3 text-right">
+                      {po ? (
+                        <div className="flex flex-col items-end">
+                          <div className="flex items-center gap-1">
+                            <span className={`text-sm font-medium ${Math.abs(line.unit_price - po.unit_price) > 0.01 ? 'text-red-600' : 'text-gray-950'}`}>
+                              {formatCurrency(po.unit_price)}
+                            </span>
+                            {Math.abs(line.unit_price - po.unit_price) > 0.01 ? (
+                              <X className="h-3 w-3 text-red-600" />
+                            ) : (
+                              <Check className="h-3 w-3 text-green-600" />
+                            )}
+                          </div>
+                          {Math.abs(line.unit_price - po.unit_price) > 0.01 && (
+                            <span className="text-xs text-red-600 font-medium mt-0.5">
+                              Δ {formatCurrency(line.unit_price - po.unit_price)}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">--</span>
+                      )}
+                    </div>
+
+                    {/* Invoice Total */}
+                    <div className="col-span-3 text-right">
+                      <span className="text-sm font-semibold text-gray-950">
+                        {formatCurrency(line.line_total)}
+                      </span>
+                    </div>
+
+                    {/* PO Total */}
+                    <div className="col-span-3 text-right">
+                      {po ? (
+                        <div className="flex flex-col items-end">
+                          <span className={`text-sm font-semibold ${Math.abs(line.line_total - (po.qty_ordered * po.unit_price)) > 0.01 ? 'text-red-600' : 'text-gray-950'}`}>
+                            {formatCurrency(po.qty_ordered * po.unit_price)}
+                          </span>
+                          {Math.abs(line.line_total - (po.qty_ordered * po.unit_price)) > 0.01 && (
+                            <span className="text-xs text-red-600 font-medium mt-0.5">
+                              Δ {formatCurrency(line.line_total - (po.qty_ordered * po.unit_price))}
+                            </span>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-xs text-gray-400">--</span>
+                      )}
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           );

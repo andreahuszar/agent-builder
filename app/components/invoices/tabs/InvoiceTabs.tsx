@@ -5,7 +5,6 @@ import { FileText, Package, GitCompare, Paperclip, Clock, Check, AlertTriangle, 
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { DetailsTab } from './DetailsTab';
 import { LineItemsTab } from './LineItemsTab';
-import { EnhancedLineItemsTabV2 } from './EnhancedLineItemsTabV2';
 import { LineItemsPreviewPanel } from '../preview/LineItemsPreviewPanel';
 import { MatchingTab } from './MatchingTab';
 import { AttachmentsTab } from './AttachmentsTab';
