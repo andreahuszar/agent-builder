@@ -16,6 +16,62 @@ import { generateAgentProcessedInvoices, getAgentProcessedInvoiceById } from './
 // Type alias for backward compatibility
 type Invoice = Partial<UnifiedInvoice>;
 
+const OVERDUE_SUBSET_PERCENT = 15;
+
+const getStartOfTodayUtc = (): Date => {
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  return today;
+};
+
+const addUtcDays = (date: Date, days: number): Date => {
+  const shifted = new Date(date);
+  shifted.setUTCDate(shifted.getUTCDate() + days);
+  return shifted;
+};
+
+const toDateOnly = (date: Date): string => date.toISOString().split('T')[0];
+
+const stableHash = (value: string): number => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i += 1) {
+    hash = (hash * 31 + value.charCodeAt(i)) >>> 0;
+  }
+  return hash;
+};
+
+const normalizeMockInvoiceDates = (invoices: Invoice[]): Invoice[] => {
+  const today = getStartOfTodayUtc();
+
+  return invoices.map((invoice, index) => {
+    const invoiceId = typeof invoice.id === 'string' && invoice.id.length > 0 ? invoice.id : `mock-${index}`;
+    const hash = stableHash(invoiceId);
+
+    // Deterministic "random" invoice date within last 7 days.
+    const daysAgo = hash % 7;
+    const invoiceDate = addUtcDays(today, -daysAgo);
+    const minDueDate = addUtcDays(invoiceDate, 3);
+    const standardDueDate = addUtcDays(invoiceDate, 30);
+
+    // Keep a small, stable overdue subset so red aging still signals meaningfully.
+    const isOverdueSubset = hash % 100 < OVERDUE_SUBSET_PERCENT;
+    const overdueDays = (hash % 7) + 1; // 1-7 days overdue
+    const overdueDueDate = addUtcDays(today, -overdueDays);
+    const tentativeDueDate = isOverdueSubset ? overdueDueDate : standardDueDate;
+    const dueDate = tentativeDueDate < minDueDate ? minDueDate : tentativeDueDate;
+
+    const operationalDate = dueDate < today ? dueDate : today;
+
+    return {
+      ...invoice,
+      invoice_date: toDateOnly(invoiceDate),
+      due_date: toDateOnly(dueDate),
+      email_received_date: toDateOnly(operationalDate),
+      data_ingestion_date: toDateOnly(operationalDate)
+    };
+  });
+};
+
 // ============================================================================
 // BASELINE INVOICE GENERATORS
 // ============================================================================
@@ -2539,7 +2595,7 @@ export const getAllMockInvoices = (): Invoice[] => {
   // Transform each invoice to ensure all fields are properly enriched
   const enrichedMocks = allMocks.map(invoice => transformToFullInvoice(invoice));
 
-  return enrichedMocks;
+  return normalizeMockInvoiceDates(enrichedMocks);
 };
 
 /**
