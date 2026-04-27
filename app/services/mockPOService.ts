@@ -334,8 +334,8 @@ export const generateMockPOs = (): Record<string, POHeader> => {
         {
           id: 'po-line-9010-1',
           line_no: 1,
-          description: 'Toyota Prius 2022 (7 days)',
-          item_description: 'Toyota Prius 2022 (7 days)',
+          description: 'Toyota Prius 2022 (7 days) for PO-2025-9010',
+          item_description: 'Toyota Prius 2022 (7 days) for PO-2025-9010',
           qty_ordered: 7,
           uom: 'DAYS',
           unit_price: 120.00,
@@ -348,8 +348,8 @@ export const generateMockPOs = (): Record<string, POHeader> => {
         {
           id: 'po-line-9010-2',
           line_no: 2,
-          description: 'Motor Insurnace - Comprehensive (Class 2 Vehicle)',
-          item_description: 'Motor Insurnace - Comprehensive (Class 2 Vehicle)',
+          description: 'Motor Insurance - Comprehensive (Class 2 Vehicle) for PO-2025-9010',
+          item_description: 'Motor Insurance - Comprehensive (Class 2 Vehicle) for PO-2025-9010',
           qty_ordered: 7,
           uom: 'DAYS',
           unit_price: 30.00,

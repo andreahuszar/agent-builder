@@ -53,6 +53,12 @@ export function FakeInvoiceDocument({
   // Helper function to get the value that should be displayed in the document preview
   // For auto-corrected fields, show the original (incorrect) value from the scanned document
   const getDocumentDisplayValue = (fieldName: string, currentValue: any) => {
+    // For IV472-884, always render the invoice number as the corrected invoice ID,
+    // not the swapped PO value from auto-corrections.
+    if (invoice.invoice_number === 'IV472-884' && fieldName === 'invoice_number') {
+      return currentValue;
+    }
+
     const autoCorrection = invoice.auto_corrections?.find((ac: any) => ac.field === fieldName);
     return autoCorrection ? autoCorrection.original_value : currentValue;
   };

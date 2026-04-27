@@ -39,6 +39,7 @@ export function SimpleTableInvoiceTemplate({
 }: ExtendedTemplateProps) {
   // Get labels from config or use defaults
   const labels = templateConfig.labels || {};
+  const showPoInHeader = invoice.invoice_number !== 'IV472-884';
 
   return (
     <div className="bg-gray-100 pt-8">
@@ -101,7 +102,7 @@ export function SimpleTableInvoiceTemplate({
                 </FieldWithOCR>
               </div>
             )}
-            {invoice.po_numbers_cached?.[0] && (
+            {showPoInHeader && invoice.po_numbers_cached?.[0] && (
               <div className="flex">
                 <span className="font-semibold w-32">PO No.</span>
                 <FieldWithOCR fieldName="po_numbers_cached">
