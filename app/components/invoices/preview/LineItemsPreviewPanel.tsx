@@ -2125,7 +2125,7 @@ export function LineItemsPreviewPanel({
             <>
             <div ref={flexContainerRef} className="flex min-h-full w-full">
               {/* Invoice Lines */}
-              <div className="flex-1 overflow-x-auto border-r border-gray-200">
+              <div className="flex-1 overflow-x-auto h-full border-r border-gray-200">
                 {/* SVG gradient definition (hidden, used by icons) */}
                 <svg width="0" height="0" style={{ position: 'absolute' }}>
                   <defs>
@@ -2136,7 +2136,7 @@ export function LineItemsPreviewPanel({
                     </linearGradient>
                   </defs>
                 </svg>
-                <table className="w-full min-w-max">
+                <table className="w-full min-w-max h-full">
                   <thead className="bg-gray-50 sticky top-0 z-10">
                     <tr>
                       <th colSpan={useDetailedVarianceColumns ? (isEditMode ? 13 : 11) : (11 + (isEditMode ? 2 : 0))} className="px-4 bg-white border-b h-[36px]">
@@ -2405,17 +2405,6 @@ export function LineItemsPreviewPanel({
                               />
                             ) : (
                               <div>
-                                {matchedPO &&
-                                  isMergedBundleReconciled(line, matchedPO) &&
-                                  mergedBundleFirstSlotIndex.get(matchedPO.id) === slotIdx && (
-                                    <div className="text-[10px] font-semibold text-purple-900 bg-purple-50 border border-purple-200 rounded px-2 py-1 mb-1 flex items-center gap-1">
-                                      <Link2 className="h-3 w-3 shrink-0" aria-hidden />
-                                      <span>
-                                        1 PO line ·{' '}
-                                        {editableLines.filter((l) => l.po_line_id === matchedPO.id).length} invoice lines
-                                      </span>
-                                    </div>
-                                  )}
                                 <div
                                   className={`${
                                     (matchedPO &&
@@ -2543,7 +2532,7 @@ export function LineItemsPreviewPanel({
                             )}
                           </td>
                           <td className="pl-1 pr-2 py-2 text-xs text-right font-medium text-gray-950 w-20">
-                            {formatCurrency(line.line_total)}
+                            {formatCurrency(line.net_amount ?? line.line_total)}
                           </td>
                           {!useDetailedVarianceColumns && showPO && (
                             <td className="px-1 py-2 text-xs w-16">
@@ -2847,6 +2836,10 @@ export function LineItemsPreviewPanel({
                         </td>
                       </tr>
                     )}
+                    {/* Filler row to keep footer alignment consistent with PO table */}
+                    <tr style={{ height: '100%' }}>
+                      <td colSpan={isEditMode ? 13 : 12} className="bg-white"></td>
+                    </tr>
                   </tbody>
                   <tfoot className="bg-gray-50 sticky bottom-0">
                     <tr className="h-[42px] bg-gray-50">
@@ -2854,7 +2847,7 @@ export function LineItemsPreviewPanel({
                         Invoice Total:
                       </td>
                       <td className="pl-1 pr-2 py-2 text-right text-sm font-bold text-gray-950 bg-gray-50">
-                        {formatCurrency(invoiceLines.reduce((sum, line) => sum + line.line_total, 0))}
+                        {formatCurrency(invoiceLines.reduce((sum, line) => sum + (line.net_amount ?? line.line_total), 0))}
                       </td>
                       {/* Empty cell for Variance column when not using detailed variance */}
                       {!useDetailedVarianceColumns && showPO && <td className="bg-gray-50"></td>}
@@ -3010,7 +3003,6 @@ export function LineItemsPreviewPanel({
                         matchedPO && bundleReconciled
                           ? editableLines.filter((l) => l.po_line_id === matchedPO.id).length
                           : 1;
-                      const bundleTaxLine = poLines.find((l) => l.is_tax_line);
                       const isBundleHoverActive = Boolean(
                         isBundleHeader &&
                         firstIdx !== undefined &&
@@ -3039,13 +3031,11 @@ export function LineItemsPreviewPanel({
                               colSpan={7}
                               {...(bundleSiblingCount > 1 ? { rowSpan: bundleSiblingCount } : {})}
                               className="px-3 py-2 align-top"
-                              style={
-                                bundleSiblingCount > 1
-                                  ? { minHeight: `${bundleSiblingCount * 48}px` }
-                                  : undefined
-                              }
                             >
-                              <div className="rounded-md border border-purple-200 bg-purple-50/60 px-3 py-2 text-xs text-gray-950">
+                              <div
+                                className="h-full rounded-md border border-purple-200 bg-purple-50/60 px-3 py-2 text-xs text-gray-950"
+                                style={{ minHeight: `${Math.max(bundleSiblingCount * 48 - 16, 0)}px` }}
+                              >
                                 <div className="mb-1.5 flex items-center justify-between gap-2">
                                   <span className="text-[10px] font-bold uppercase tracking-wide text-purple-900">
                                     PO (one block)
@@ -3060,16 +3050,6 @@ export function LineItemsPreviewPanel({
                                     {formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)}
                                   </span>
                                 </div>
-                                {bundleTaxLine && (
-                                  <div className="flex justify-between gap-3 border-b border-purple-100 py-1">
-                                    <span className="min-w-0 leading-snug">
-                                      {bundleTaxLine.item_description || bundleTaxLine.description}
-                                    </span>
-                                    <span className="shrink-0 font-medium tabular-nums">
-                                      {formatCurrency(bundleTaxLine.qty_ordered * bundleTaxLine.unit_price)}
-                                    </span>
-                                  </div>
-                                )}
                               </div>
                             </td>
                           ) : (
@@ -3165,7 +3145,11 @@ export function LineItemsPreviewPanel({
                         PO Total:
                       </td>
                       <td className="pl-1 pr-2 py-2 text-right text-sm font-bold text-gray-950 bg-gray-50">
-                        {formatCurrency(poLines.reduce((sum, line) => sum + (line.qty_ordered * line.unit_price), 0))}
+                        {formatCurrency(
+                          poLines
+                            .filter((line) => !line.is_tax_line)
+                            .reduce((sum, line) => sum + (line.qty_ordered * line.unit_price), 0)
+                        )}
                       </td>
                       {/* Empty cells for visual continuity with Invoice table columns */}
                       {!useDetailedVarianceColumns && (
@@ -3749,7 +3733,7 @@ export function LineItemsPreviewPanel({
                           )}
                         </td>
                         <td className="pl-1.5 pr-4 py-2 text-xs text-right font-medium text-gray-950">
-                          {formatCurrency(line.line_total)}
+                          {formatCurrency(line.net_amount ?? line.line_total)}
                         </td>
                         {poLines.length > 0 && showPO && (
                           <td className="px-1.5 py-2 text-xs">
@@ -3870,7 +3854,7 @@ export function LineItemsPreviewPanel({
                       Invoice Total:
                     </td>
                     <td className="pl-1.5 pr-4 py-2 text-right text-sm font-bold text-gray-950 bg-gray-50">
-                      {formatCurrency(editableLines.reduce((sum, line) => sum + line.line_total, 0))}
+                      {formatCurrency(editableLines.reduce((sum, line) => sum + (line.net_amount ?? line.line_total), 0))}
                     </td>
                     {/* Empty cell for Variance column when shown */}
                     {poLines.length > 0 && showPO && <td className="bg-gray-50"></td>}
@@ -3909,7 +3893,7 @@ export function LineItemsPreviewPanel({
                               {formatCurrency(draggedLine.unit_price)}
                             </td>
                             <td className="px-1.5 py-2 text-xs text-right font-medium text-gray-950">
-                              {formatCurrency(draggedLine.line_total)}
+                              {formatCurrency(draggedLine.net_amount ?? draggedLine.line_total)}
                             </td>
                           </>
                         );
@@ -4204,7 +4188,7 @@ export function LineItemsPreviewPanel({
                               )}
                             </td>
                             <td className="px-1.5 py-2 text-xs text-right font-medium text-gray-950">
-                              {formatCurrency(line.line_total)}
+                              {formatCurrency(line.net_amount ?? line.line_total)}
                             </td>
                             {!useDetailedVarianceColumns && showPO && (
                               <td className="px-1.5 py-2 text-xs text-center">
@@ -4579,7 +4563,7 @@ export function LineItemsPreviewPanel({
                               )}
                             </td>
                             <td className="px-1.5 py-2 text-xs text-right font-medium text-gray-950">
-                              {formatCurrency(line.line_total)}
+                              {formatCurrency(line.net_amount ?? line.line_total)}
                             </td>
                             {!useDetailedVarianceColumns && showPO && (
                               <td className="px-1.5 py-2 text-xs text-center">

@@ -13,8 +13,7 @@ import {
   Copy,
   GitBranch,
   Trash2,
-  MoreVertical,
-  Link2
+  MoreVertical
 } from 'lucide-react';
 import * as Tooltip from '@radix-ui/react-tooltip';
 
@@ -371,10 +370,12 @@ export function EnhancedLineItemsTabV2({
             bundle && bundle.size > 1 && poLinesAll
               ? poLinesAll.find((l) => l.id === bundle.poLineId) || po
               : null;
-          const bundleTaxPoLine =
-            bundle && bundle.size > 1 && poLinesAll
-              ? poLinesAll.find((l) => l.is_tax_line)
-              : null;
+          const poNetTotal =
+            Array.isArray(poLinesAll)
+              ? poLinesAll
+                  .filter((l) => !l.is_tax_line)
+                  .reduce((sum, l) => sum + (l.qty_ordered * l.unit_price), 0)
+              : undefined;
           const poDocumentTotal = poComparisonData?.poData?.total as number | undefined;
 
           return (
@@ -390,12 +391,6 @@ export function EnhancedLineItemsTabV2({
 
                 {/* Description */}
                 <div className="col-span-4">
-                  {bundleHeader && (
-                    <div className="text-[10px] font-semibold text-purple-900 bg-purple-50 border border-purple-200 rounded px-2 py-1 mb-1 flex items-center gap-1">
-                      <Link2 className="h-3 w-3 shrink-0" aria-hidden />
-                      <span>1 PO line · {bundle!.size} invoice lines</span>
-                    </div>
-                  )}
                   <div className="text-sm font-medium text-gray-950 truncate" title={line.description}>
                     {line.description}
                   </div>
@@ -452,21 +447,13 @@ export function EnhancedLineItemsTabV2({
                             </span>
                           </div>
                         )}
-                        {bundleTaxPoLine && (
-                          <div className="flex justify-between gap-3 border-b border-purple-100 py-1">
-                            <span className="min-w-0 leading-snug">{bundleTaxPoLine.description}</span>
-                            <span className="shrink-0 font-medium tabular-nums">
-                              {formatCurrency(
-                                bundleTaxPoLine.qty_ordered * bundleTaxPoLine.unit_price
-                              )}
-                            </span>
-                          </div>
-                        )}
                         <div className="mt-1.5 flex justify-between gap-2 font-semibold text-gray-950">
-                          <span>PO total (incl. tax)</span>
+                          <span>PO total (net)</span>
                           <span className="tabular-nums">
-                            {typeof poDocumentTotal === 'number'
-                              ? formatCurrency(poDocumentTotal)
+                            {typeof poNetTotal === 'number'
+                              ? formatCurrency(poNetTotal)
+                              : typeof poDocumentTotal === 'number'
+                                ? formatCurrency(poDocumentTotal)
                               : '—'}
                           </span>
                         </div>
