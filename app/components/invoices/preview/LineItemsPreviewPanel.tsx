@@ -3003,6 +3003,9 @@ export function LineItemsPreviewPanel({
                         matchedPO && bundleReconciled
                           ? editableLines.filter((l) => l.po_line_id === matchedPO.id).length
                           : 1;
+                      const bundleRowSpanProps = bundleSiblingCount > 1
+                        ? { rowSpan: bundleSiblingCount }
+                        : {};
                       const isBundleHoverActive = Boolean(
                         isBundleHeader &&
                         firstIdx !== undefined &&
@@ -3027,31 +3030,36 @@ export function LineItemsPreviewPanel({
                           onMouseLeave={handleRowLeave}
                         >
                           {isBundleHeader ? (
-                            <td
-                              colSpan={7}
-                              {...(bundleSiblingCount > 1 ? { rowSpan: bundleSiblingCount } : {})}
-                              className="px-3 py-2 align-top"
-                            >
-                              <div
-                                className="h-full rounded-md border border-purple-200 bg-purple-50/60 px-3 py-2 text-xs text-gray-950"
-                                style={{ minHeight: `${Math.max(bundleSiblingCount * 48 - 16, 0)}px` }}
-                              >
-                                <div className="mb-1.5 flex items-center justify-between gap-2">
-                                  <span className="text-[10px] font-bold uppercase tracking-wide text-purple-900">
-                                    PO (one block)
-                                  </span>
-                                  <Check className="h-4 w-4 shrink-0 text-green-600" aria-hidden />
-                                </div>
-                                <div className="flex justify-between gap-3 border-b border-purple-100 py-1">
-                                  <span className="min-w-0 leading-snug">
+                            <>
+                              <td {...bundleRowSpanProps} className={`pl-3 pr-1 py-2 text-xs text-right text-gray-950 w-6 ${getPORowBorderClass(matchedPO)}`}>
+                                {matchedPO.line_no}
+                              </td>
+                              <td {...bundleRowSpanProps} className="px-1 py-2 text-xs text-gray-950 overflow-hidden align-top">
+                                <div style={{ minHeight: `${Math.max(bundleSiblingCount * 48 - 16, 0)}px` }}>
+                                  <div className="mb-1 inline-flex items-center rounded border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-900">
+                                    1 PO line to {bundleSiblingCount} invoice lines
+                                  </div>
+                                  <div className="truncate" title={matchedPO.description}>
                                     {matchedPO.item_description || matchedPO.description}
-                                  </span>
-                                  <span className="shrink-0 font-medium tabular-nums">
-                                    {formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)}
-                                  </span>
+                                  </div>
                                 </div>
-                              </div>
-                            </td>
+                              </td>
+                              <td {...bundleRowSpanProps} className="px-1 py-2 text-xs text-gray-950 w-16 align-top">
+                                {matchedPO.sku || '-'}
+                              </td>
+                              <td {...bundleRowSpanProps} className="px-1 py-2 text-xs text-right text-gray-950 w-8 align-top">
+                                {matchedPO.qty_ordered}
+                              </td>
+                              <td {...bundleRowSpanProps} className="px-1 py-2 text-xs text-center text-gray-950 w-16 align-top">
+                                {matchedPO.uom}
+                              </td>
+                              <td {...bundleRowSpanProps} className="px-1 py-2 text-xs text-right text-gray-950 w-16 align-top">
+                                {formatCurrency(matchedPO.unit_price)}
+                              </td>
+                              <td {...bundleRowSpanProps} className="pl-1 pr-2 py-2 text-xs text-right font-medium text-gray-950 w-20 align-top">
+                                {formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)}
+                              </td>
+                            </>
                           ) : (
                             <>
                               <td className={`pl-3 pr-1 py-2 text-xs text-right text-gray-950 w-6 ${getPORowBorderClass(matchedPO)}`}>
