@@ -9,7 +9,7 @@ import { COST_CENTER_OPTIONS } from '@/lib/constants/accountingCodes';
 import { cn } from '@/lib/utils';
 
 /** Green 99% pill that opens a popover explaining historical coding rationale */
-function HistoricalCodingConfidencePill({
+export function HistoricalCodingConfidencePill({
   explanation,
   className,
 }: {
