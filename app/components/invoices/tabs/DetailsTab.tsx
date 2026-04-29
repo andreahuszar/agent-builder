@@ -71,7 +71,12 @@ import {
   ValidationCategory
 } from '../ValidationCard';
 import { calculateInvoiceExceptions } from '@/app/utils/exceptionCounter';
-import { CodingFieldsGrid, HistoricalCodingConfidencePill } from './CodingFieldsGrid';
+import {
+  CodingFieldsGrid,
+  HistoricalCodingConfidencePill,
+  HISTORICAL_INVOICE_SAMPLE_SIZE,
+  type HistoricalCodingHistoryRow,
+} from './CodingFieldsGrid';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -1271,9 +1276,16 @@ export function DetailsTab({
     showToast('PO reverted to the original value from the document.', 'info');
   }, [invoiceData, onUpdate, showToast]);
 
-  const approverVendorLabel =
-    (invoiceData.vendor_name_snapshot as string | undefined)?.trim() || 'This vendor';
-  const approverHistoricalPopoverText = `For ${approverVendorLabel}, 100% of the last 300 invoices went to this approver—so we applied the same routing here.`;
+  const approverTableLabel = (() => {
+    const name =
+      (agentPendingFields['assigned_to_name'] as string | undefined)?.trim() ||
+      (editedData.assigned_to_name as string | undefined)?.trim() ||
+      (invoiceData.assigned_to_name as string | undefined)?.trim();
+    return name || '—';
+  })();
+  const approverHistoryRows: HistoricalCodingHistoryRow[] = [
+    { label: approverTableLabel, invoices: HISTORICAL_INVOICE_SAMPLE_SIZE, pctOfInv: 100 },
+  ];
 
   const approverCodingSection =
     invoiceData.type === 'Non-PO' ? (
@@ -1286,7 +1298,11 @@ export function DetailsTab({
         <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
           <span className="flex items-center">
             Approver
-            <HistoricalCodingConfidencePill explanation={approverHistoricalPopoverText} />
+            <HistoricalCodingConfidencePill
+              title="Historical approver match"
+              firstColumnHeader="Approver"
+              rows={approverHistoryRows}
+            />
           </span>
           {invoiceData.suggested_approver && !invoiceData.assigned_to_name && !agentPendingFields['assigned_to_name'] && (
             <button
