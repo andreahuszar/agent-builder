@@ -12,6 +12,7 @@ import {
   Calendar,
   Building2,
   User,
+  UserCheck,
   Hash,
   Link2,
   AlertTriangle,
@@ -71,6 +72,7 @@ import {
   ValidationCategory
 } from '../ValidationCard';
 import { calculateInvoiceExceptions } from '@/app/utils/exceptionCounter';
+import { cn } from '@/lib/utils';
 import {
   CodingFieldsGrid,
   HistoricalCodingConfidencePill,
@@ -101,6 +103,42 @@ interface DetailsTabProps {
   approvalLimit?: number; // Approval limit for validation
   poComparisonData?: any; // PO comparison data for validation
   onStatusUpdate?: (status: string) => void; // Update workflow status when all validations pass
+}
+
+function getApprovalStatusPresentation(status: unknown): { label: string; className: string } {
+  const raw = String(status ?? 'pending')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, '_');
+  switch (raw) {
+    case 'approved':
+      return {
+        label: 'Approved',
+        className: 'bg-green-100 text-green-900 border border-green-200',
+      };
+    case 'pending':
+      return {
+        label: 'Pending',
+        className: 'bg-amber-50 text-amber-900 border border-amber-200',
+      };
+    case 'auto_rejected':
+      return {
+        label: 'Auto-rejected',
+        className: 'bg-red-100 text-red-900 border border-red-200',
+      };
+    case 'rejected':
+      return {
+        label: 'Rejected',
+        className: 'bg-red-100 text-red-900 border border-red-200',
+      };
+    default:
+      return {
+        label: raw
+          ? raw.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+          : 'Pending',
+        className: 'bg-gray-100 text-gray-950 border border-gray-200',
+      };
+  }
 }
 
 export function DetailsTab({
@@ -263,7 +301,9 @@ export function DetailsTab({
   const [isInvoiceInfoExpanded, setIsInvoiceInfoExpanded] = useState(true); // Start expanded
   const [isAdditionalDetailsExpanded, setIsAdditionalDetailsExpanded] = useState(false);
   /** Non-PO: Coding is a separate accordion below Additional Invoice Details */
-  const [isCodingAccordionExpanded, setIsCodingAccordionExpanded] = useState(true);
+  const [isCodingAccordionExpanded, setIsCodingAccordionExpanded] = useState(false);
+  /** Non-PO: Approval (approver) sits in its own accordion below Coding */
+  const [isApprovalAccordionExpanded, setIsApprovalAccordionExpanded] = useState(false);
   const [isLineItemsExpanded, setIsLineItemsExpanded] = useState(true); // Start expanded
   const [isLineItemsFullscreen, setIsLineItemsFullscreen] = useState(false);
   const [hasActiveAgents, setHasActiveAgents] = useState(false);
@@ -277,8 +317,12 @@ export function DetailsTab({
   const [lineItemsValidationState, setLineItemsValidationState] = useState<LineItemsValidationState | null>(null); // Track reactive validation state for filtering warnings
   const lineItemsContainerRef = useRef<HTMLDivElement>(null);
 
-  // Detect non-PO invoices - no PO data available
-  const isNonPO = !invoiceData.po_lines || invoiceData.po_lines.length === 0;
+  // Non-PO workflow (CODING/APPROVAL accordions, etc.) follows document type — not whether a PO is linked yet.
+  // PO invoices missing `po_lines` (e.g. PO number not assigned) still use the PO details layout.
+  const isNonPO =
+    invoiceData.type === 'Non-PO' ||
+    (invoiceData.type !== 'PO' &&
+      (!invoiceData.po_lines || invoiceData.po_lines.length === 0));
 
   // Toggle fullscreen for line items
   const toggleLineItemsFullscreen = () => {
@@ -843,7 +887,11 @@ export function DetailsTab({
     []
   );
   const codingSectionErrorFields = useMemo(
-    () => ['cost_center', 'gl_code', 'accounting_notes', 'assigned_to_name', 'assigned_to_email'] as const,
+    () => ['cost_center', 'gl_code', 'accounting_notes'] as const,
+    []
+  );
+  const approvalSectionErrorFields = useMemo(
+    () => ['assigned_to_name', 'assigned_to_email'] as const,
     []
   );
 
@@ -868,10 +916,15 @@ export function DetailsTab({
     [countFieldIssuesFor, codingSectionErrorFields]
   );
 
+  const approvalSectionErrorCount = useMemo(
+    () => countFieldIssuesFor(approvalSectionErrorFields),
+    [countFieldIssuesFor, approvalSectionErrorFields]
+  );
+
   /** PO: combined badge on Additional Details. Non-PO: payment-only on that accordion */
   const additionalDetailsHeaderErrorCount = isNonPO
     ? paymentDetailsErrorCount
-    : paymentDetailsErrorCount + codingSectionErrorCount;
+    : paymentDetailsErrorCount + codingSectionErrorCount + approvalSectionErrorCount;
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -1286,23 +1339,32 @@ export function DetailsTab({
   const approverHistoryRows: HistoricalCodingHistoryRow[] = [
     { label: approverTableLabel, invoices: HISTORICAL_INVOICE_SAMPLE_SIZE, pctOfInv: 100 },
   ];
+  const approvalStatusPresentation = getApprovalStatusPresentation(invoiceData.approval_status);
 
-  const approverCodingSection =
+  const approverApprovalSection =
     invoiceData.type === 'Non-PO' ? (
       <div
         ref={(el) => {
           fieldRefs.current['assigned_to_name'] = el;
         }}
-        className="relative mt-6 pt-4 border-t border-gray-200"
+        className="relative"
       >
         <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
-          <span className="flex items-center">
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1">
             Approver
             <HistoricalCodingConfidencePill
               title="Historical approver match"
               firstColumnHeader="Approver"
               rows={approverHistoryRows}
             />
+            <span
+              className={cn(
+                'inline-flex items-center rounded-full px-2 py-px text-[10px] font-semibold tabular-nums',
+                approvalStatusPresentation.className
+              )}
+            >
+              {approvalStatusPresentation.label}
+            </span>
           </span>
           {invoiceData.suggested_approver && !invoiceData.assigned_to_name && !agentPendingFields['assigned_to_name'] && (
             <button
@@ -2949,9 +3011,7 @@ export function DetailsTab({
                   onFieldChange={handleFieldChange}
                   onFieldFocus={handleFieldFocus}
                   onFieldBlur={handleFieldBlur}
-                >
-                  {approverCodingSection}
-                </CodingFieldsGrid>
+                />
               </div>
             )}
           </div>
@@ -3002,10 +3062,46 @@ export function DetailsTab({
                     onFieldChange={handleFieldChange}
                     onFieldFocus={handleFieldFocus}
                     onFieldBlur={handleFieldBlur}
-                  >
-                    {approverCodingSection}
-                  </CodingFieldsGrid>
+                  />
                 </div>
+              )}
+              {invoiceData.type === 'Non-PO' && (
+                <>
+                  <div
+                    className="relative px-4 py-3 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                    onClick={() => setIsApprovalAccordionExpanded(!isApprovalAccordionExpanded)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {isApprovalAccordionExpanded ? (
+                        <ChevronUp className="h-4 w-4 text-gray-500" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-gray-500" />
+                      )}
+                      <UserCheck className="h-4 w-4 text-purple-600" />
+                      <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">APPROVAL</h3>
+                      {approvalSectionErrorCount > 0 && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                          {approvalSectionErrorCount} error field{approvalSectionErrorCount !== 1 ? 's' : ''}
+                        </span>
+                      )}
+                    </div>
+                    {!forceReadOnly && !isEditing && (
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setIsEditing(true);
+                        }}
+                        className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                      >
+                        Edit
+                      </button>
+                    )}
+                  </div>
+                  {isApprovalAccordionExpanded && (
+                    <div className="px-10 py-4 bg-white border-b border-gray-200">{approverApprovalSection}</div>
+                  )}
+                </>
               )}
             </>
           )}
