@@ -3014,10 +3014,13 @@ export function LineItemsPreviewPanel({
                         hoveredPosition < firstIdx + bundleSiblingCount
                       );
 
+                      const isMultilineBundleRow = isBundleHeader && bundleSiblingCount > 1;
+                      const bundlePoBlockHeightPx = bundleSiblingCount * 48;
+
                       return (
                         <tr
                           key={`po-row-${slot.position}-${matchedPO.id}`}
-                          className={`h-[48px] ${getPORowHighlightClass(matchedPO)} ${
+                          className={`${isMultilineBundleRow ? '' : 'h-[48px]'} ${getPORowHighlightClass(matchedPO)} ${
                             hoveredPosition === slot.position || isBundleHoverActive
                               ? 'bg-purple-50'
                               : invLine && hasAnyVariance(invLine, matchedPO)
@@ -3026,37 +3029,88 @@ export function LineItemsPreviewPanel({
                                   ? ''
                                   : 'bg-white hover:bg-purple-50'
                           }`}
+                          style={isMultilineBundleRow ? { height: bundlePoBlockHeightPx } : undefined}
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
                         >
                           {isBundleHeader ? (
                             <>
-                              <td {...bundleRowSpanProps} className={`pl-3 pr-1 py-2 text-xs text-right text-gray-950 w-6 ${getPORowBorderClass(matchedPO)}`}>
+                              <td
+                                {...bundleRowSpanProps}
+                                className={`pl-3 pr-1 text-xs text-right text-gray-950 w-6 ${isMultilineBundleRow ? 'py-0 align-middle' : 'py-2 align-top'} ${getPORowBorderClass(matchedPO)}`}
+                              >
                                 {matchedPO.line_no}
                               </td>
-                              <td {...bundleRowSpanProps} className="px-1 py-2 text-xs text-gray-950 overflow-hidden align-top">
-                                <div style={{ minHeight: `${Math.max(bundleSiblingCount * 48 - 16, 0)}px` }}>
-                                  <div className="mb-1 inline-flex items-center rounded border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-900">
-                                    1 PO line to {bundleSiblingCount} invoice lines
+                              <td
+                                {...bundleRowSpanProps}
+                                className={`px-0 text-xs text-gray-950 overflow-hidden align-stretch ${isMultilineBundleRow ? 'py-0' : 'py-2'}`}
+                              >
+                                {bundleSiblingCount > 1 ? (
+                                  <div
+                                    className="grid w-full box-border"
+                                    style={{
+                                      height: bundlePoBlockHeightPx,
+                                      gridTemplateRows: `repeat(${bundleSiblingCount}, 48px)`,
+                                    }}
+                                  >
+                                    <div className="flex min-h-0 flex-col justify-center gap-0.5 overflow-hidden border-b border-gray-100 px-1">
+                                      <div className="shrink-0 inline-flex w-fit items-center rounded border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-900">
+                                        1 PO line to {bundleSiblingCount} invoice lines
+                                      </div>
+                                      <div className="truncate text-gray-950" title={matchedPO.description}>
+                                        {matchedPO.item_description || matchedPO.description}
+                                      </div>
+                                    </div>
+                                    <div className="flex min-h-0 items-center overflow-hidden border-b border-gray-100 px-1 truncate text-gray-950">
+                                      Multiple line match
+                                    </div>
+                                    {Array.from({ length: Math.max(0, bundleSiblingCount - 2) }).map((_, padIdx) => (
+                                      <div
+                                        key={`po-bundle-row-pad-${padIdx}`}
+                                        className="border-b border-gray-100 last:border-b-0"
+                                        aria-hidden
+                                      />
+                                    ))}
                                   </div>
-                                  <div className="truncate" title={matchedPO.description}>
-                                    {matchedPO.item_description || matchedPO.description}
+                                ) : (
+                                  <div style={{ minHeight: `${Math.max(bundleSiblingCount * 48 - 16, 0)}px` }}>
+                                    <div className="mb-1 inline-flex items-center rounded border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-900">
+                                      1 PO line to {bundleSiblingCount} invoice lines
+                                    </div>
+                                    <div className="truncate text-gray-950" title={matchedPO.description}>
+                                      {matchedPO.item_description || matchedPO.description}
+                                    </div>
                                   </div>
-                                </div>
+                                )}
                               </td>
-                              <td {...bundleRowSpanProps} className="px-1 py-2 text-xs text-gray-950 w-16 align-top">
+                              <td
+                                {...bundleRowSpanProps}
+                                className={`px-1 text-xs text-gray-950 w-16 ${isMultilineBundleRow ? 'py-0 align-middle' : 'py-2 align-top'}`}
+                              >
                                 {matchedPO.sku || '-'}
                               </td>
-                              <td {...bundleRowSpanProps} className="px-1 py-2 text-xs text-right text-gray-950 w-8 align-top">
+                              <td
+                                {...bundleRowSpanProps}
+                                className={`px-1 text-xs text-right text-gray-950 w-8 ${isMultilineBundleRow ? 'py-0 align-middle' : 'py-2 align-top'}`}
+                              >
                                 {matchedPO.qty_ordered}
                               </td>
-                              <td {...bundleRowSpanProps} className="px-1 py-2 text-xs text-center text-gray-950 w-16 align-top">
+                              <td
+                                {...bundleRowSpanProps}
+                                className={`px-1 text-xs text-center text-gray-950 w-16 ${isMultilineBundleRow ? 'py-0 align-middle' : 'py-2 align-top'}`}
+                              >
                                 {matchedPO.uom}
                               </td>
-                              <td {...bundleRowSpanProps} className="px-1 py-2 text-xs text-right text-gray-950 w-16 align-top">
+                              <td
+                                {...bundleRowSpanProps}
+                                className={`px-1 text-xs text-right text-gray-950 w-16 ${isMultilineBundleRow ? 'py-0 align-middle' : 'py-2 align-top'}`}
+                              >
                                 {formatCurrency(matchedPO.unit_price)}
                               </td>
-                              <td {...bundleRowSpanProps} className="pl-1 pr-2 py-2 text-xs text-right font-medium text-gray-950 w-20 align-top">
+                              <td
+                                {...bundleRowSpanProps}
+                                className={`pl-1 pr-2 text-xs text-right font-medium text-gray-950 w-20 ${isMultilineBundleRow ? 'py-0 align-middle' : 'py-2 align-top'}`}
+                              >
                                 {formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)}
                               </td>
                             </>
