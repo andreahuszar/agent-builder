@@ -256,7 +256,9 @@ export function BlueHeaderTemplate({
             <div className="font-bold">
               <FieldWithOCR fieldName="po_numbers_cached">
                 <SelectableText label="Purchase Order">
-                  {invoice.po_numbers_cached?.[0] || 'N/A'}
+                  {invoice.po_numbers_cached?.[0]
+                    ? invoice.po_numbers_cached[0].toLowerCase()
+                    : 'N/A'}
                 </SelectableText>
               </FieldWithOCR>
             </div>

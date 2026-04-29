@@ -246,6 +246,7 @@ export function DetailsTab({
   const [isEditing, setIsEditing] = useState(getInitialEditState());
   const [editedData, setEditedData] = useState(invoiceData);
   const [plantIdReverted, setPlantIdReverted] = useState(false);
+  const [poNormalizationReverted, setPoNormalizationReverted] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showFab, setShowFab] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
@@ -1227,6 +1228,28 @@ export function DetailsTab({
   const displayPONumber = editedData.po_numbers_cached?.[0] || invoiceData.po_numbers_cached?.[0] || '';
   const hasPONumber = displayPONumber.length > 0;
 
+  useEffect(() => {
+    setPoNormalizationReverted(false);
+  }, [invoiceData.id]);
+
+  const handleRevertPONormalization = useCallback(() => {
+    const norm = invoiceData.po_agent_normalization as { original: string; normalized: string } | undefined;
+    if (!norm?.original) return;
+    const next = {
+      ...invoiceData,
+      po_numbers_cached: [norm.original],
+      po_agent_normalization: undefined,
+    };
+    setEditedData((prev: any) => ({
+      ...prev,
+      po_numbers_cached: [norm.original],
+      po_agent_normalization: undefined,
+    }));
+    onUpdate?.(next);
+    setPoNormalizationReverted(true);
+    showToast('PO reverted to the original value from the document.', 'info');
+  }, [invoiceData, onUpdate, showToast]);
+
   return (
     <Tooltip.Provider>
       <div className="h-full flex flex-col relative">
@@ -1883,7 +1906,7 @@ export function DetailsTab({
                         </div>
                       </div>
                     ) : hasPONumber ? (
-                      <div className="flex items-center">
+                      <div className="flex items-center gap-1.5">
                         {(() => {
                           const allPONumbers = editedData.po_numbers_cached || invoiceData.po_numbers_cached || [];
                           const hasMultiplePOs = allPONumbers.length > 1;
@@ -1928,6 +1951,24 @@ export function DetailsTab({
 
                           return poDisplay;
                         })()}
+                        {invoiceData.po_agent_normalization && !poNormalizationReverted && (
+                          <FieldNormalizationPopover
+                            fieldName="po_numbers_cached"
+                            originalValue={invoiceData.po_agent_normalization.original}
+                            normalizedValue={invoiceData.po_agent_normalization.normalized}
+                            agentName="Upper case PO"
+                            explanation="Some suppliers use a lowercase po prefix; this agent normalises it to PO for matching."
+                            onUndo={handleRevertPONormalization}
+                          >
+                            <button
+                              type="button"
+                              className="inline-flex shrink-0 items-center justify-center rounded p-0.5 text-purple-600 hover:bg-purple-100 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-1"
+                              aria-label="Open Upper case PO normalization details"
+                            >
+                              <Zap className="h-3.5 w-3.5" fill="currentColor" />
+                            </button>
+                          </FieldNormalizationPopover>
+                        )}
                         {isReprocessingField === 'po_numbers_cached' && (
                           <Loader2 className="h-3 w-3 ml-1.5 animate-spin text-purple-600" />
                         )}

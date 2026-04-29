@@ -798,6 +798,11 @@ export const generateBaselineInvoices = (): Invoice[] => {
     assigned_to_name: 'James Wilson',
     assigned_to_user_id: 'user-4',
     po_numbers_cached: ['PO-2025-9011'],
+    /** Upper case PO agent: extracted vs stored normalized value (Details tab zap popover). */
+    po_agent_normalization: {
+      original: 'po-2025-9011',
+      normalized: 'PO-2025-9011',
+    },
     gr_numbers: [],
     docType: 'Invoice',
     issues: ['Line Item Variance'],
@@ -827,6 +832,15 @@ export const generateBaselineInvoices = (): Invoice[] => {
     },
     // Agent actions taken during processing
     agent_actions: [
+      {
+        agent_name: 'Upper case PO',
+        action: 'Normalise PO prefix to uppercase when suppliers use lowercase "po"',
+        status: 'success',
+        detail:
+          'Some suppliers put a lowercase "po" prefix for our PO number\nPlease always change any lowercase "po" to an uppercase "PO" if you ever see this. e.g. "po-2026-9221" -> "PO-2026-9221"',
+        agent_id: 'uppercase-po-1',
+        mode: 'auto-apply',
+      },
       {
         agent_name: 'Plant ID Prefix Agent',
         action: 'Plant ID normalised to include country prefix',
