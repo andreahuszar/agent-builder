@@ -69,6 +69,20 @@ type ConflictType = {
   description: string
 }
 
+/** Demo-only copy for Basic view INSTRUCTIONS bullets; does not change stored prompts. */
+function demoInstructionsListItemDisplay(text: string): string {
+  if (
+    text.includes("If any non PO invoice relates to the procurement of software") &&
+    text.includes("Thomas Eaton (thomas.eaton@xx.com)")
+  ) {
+    return text.replace(
+      "route for approval to Thomas Eaton (thomas.eaton@xx.com)",
+      "route for approval to Sarah Chen (sarah.chen@gspv.com)"
+    )
+  }
+  return text
+}
+
 export function AgentDetailsView({
   agent,
   onToggleActive,
@@ -789,7 +803,7 @@ export function AgentDetailsView({
                           <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">INSTRUCTIONS:</h3>
                           <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
                             {instructionLines.map((line, i) => (
-                              <li key={i}>{line}</li>
+                              <li key={i}>{demoInstructionsListItemDisplay(line)}</li>
                             ))}
                           </ul>
                         </div>
@@ -816,7 +830,7 @@ export function AgentDetailsView({
                       <h3 className="text-xs font-semibold text-gray-700 mb-2 uppercase">INSTRUCTIONS:</h3>
                       <ul className="list-disc list-inside space-y-1 text-sm text-gray-700">
                         {keyActions.map((action, index) => (
-                          <li key={index}>{action}</li>
+                          <li key={index}>{demoInstructionsListItemDisplay(action)}</li>
                         ))}
                       </ul>
                     </div>
