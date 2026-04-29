@@ -63,6 +63,8 @@ import { Checkbox } from '@/app/components/ui/checkbox';
 import {
   getAllMockInvoices,
   isMockInvoice,
+  matchesNonPoInvoicesExceptionNavTab,
+  matchesPoInvoicesExceptionNavTab,
 } from '@/app/services/mockInvoiceService';
 import { enrichInvoiceWithDemoData } from '@/app/services/invoiceDataService';
 import { UnifiedInvoice } from '@/types/invoice';
@@ -106,11 +108,11 @@ interface EnhancedInvoicesClientProps {
 // Tab options - contextual based on invoice type and exception navigation mode
 const getContextualTabs = (invoiceType: string, useExceptionNavigation?: boolean) => {
   if (useExceptionNavigation) {
-    // Exception navigation mode: Separate PO/Non-PO tabs, no archived
+    // Exception navigation mode: All (mixed), then PO / Non-PO; no archived
     return [
+      { id: 'all', label: 'All' },
       { id: 'po-invoices', label: 'PO Invoices' },
-      { id: 'non-po-invoices', label: 'Non-PO Invoices' },
-      { id: 'unclassified', label: 'Unclassified' }
+      { id: 'non-po-invoices', label: 'Non-PO Invoices' }
     ];
   }
 
@@ -625,8 +627,8 @@ export default function EnhancedInvoicesClient({
   // Tab state - Map old tab IDs to appropriate tabs based on mode
   const [activeTab, setActiveTab] = useState(() => {
     if (exceptionNavigationMode) {
-      // Default to po-invoices in exception navigation mode
-      return 'po-invoices';
+      // Default to mixed list in exception navigation mode
+      return 'all';
     }
     if (initialTab === 'needs-info' || initialTab === 'blocked') {
       return 'exceptions';
@@ -638,9 +640,9 @@ export default function EnhancedInvoicesClient({
   useEffect(() => {
     console.log('[ActiveTab] Mode changed to:', exceptionNavigationMode);
     if (exceptionNavigationMode) {
-      // Switching TO exception navigation mode - default to po-invoices
-      console.log('[ActiveTab] Switching to po-invoices tab');
-      setActiveTab('po-invoices');
+      // Switching TO exception navigation mode - default to All (mixed PO + Non-PO)
+      console.log('[ActiveTab] Switching to all tab');
+      setActiveTab('all');
     } else {
       // Switching FROM exception navigation mode - default to exceptions
       console.log('[ActiveTab] Switching to exceptions tab');
@@ -689,76 +691,13 @@ export default function EnhancedInvoicesClient({
 
       switch(tab) {
         case 'po-invoices':
-          // PO invoices with exceptions only (exclude pending approval and rejected)
-          // Use vendor_requires_po as fallback if type is not set
-          return allInvoices.filter(inv =>
-            (inv.type === 'PO' || inv.vendor_requires_po === true) &&
-            !inv.approver && // Exclude pending approval
-            inv.status !== 'rejected' && // Exclude rejected (closed/done)
-            (inv.status === 'verification' ||
-             inv.status === 'approval' ||
-             inv.status === 'on_hold' ||
-             inv.status === 'disputed' ||
-             inv.match_status === 'exception' ||
-             inv.match_status === 'not_matched' ||
-             inv.match_status === 'unmatched' ||
-             inv.match_status === 'mismatch' ||
-             inv.match_status === 'over_tolerance' ||
-             inv.match_status === 'quantity_mismatch' ||
-             inv.match_status === 'amount_mismatch' ||
-             inv.match_status === 'line_mismatch' ||
-             inv.match_status === 'variance')
-          );
+          return allInvoices.filter(inv => matchesPoInvoicesExceptionNavTab(inv));
 
         case 'non-po-invoices':
-          // Non-PO invoices with exceptions only (exclude pending approval and rejected)
-          // Use vendor_requires_po as fallback if type is not set
-          return allInvoices.filter(inv =>
-            (inv.type === 'Non-PO' || inv.vendor_requires_po === false) &&
-            !inv.approver && // Exclude pending approval
-            inv.status !== 'rejected' && // Exclude rejected (closed/done)
-            (inv.status === 'verification' ||
-             inv.status === 'approval' ||
-             inv.status === 'on_hold' ||
-             inv.status === 'disputed' ||
-             inv.match_status === 'exception' ||
-             inv.match_status === 'not_matched' ||
-             inv.match_status === 'unmatched' ||
-             inv.match_status === 'mismatch' ||
-             inv.match_status === 'variance')
-          );
-
-        case 'unclassified':
-          // Invoices without clear type with exceptions only (exclude pending approval and rejected)
-          // This captures invoices where both type and vendor_requires_po are undefined/null
-          return allInvoices.filter(inv =>
-            !inv.type && inv.vendor_requires_po === undefined &&
-            !inv.approver && // Exclude pending approval
-            inv.status !== 'rejected' && // Exclude rejected (closed/done)
-            (inv.status === 'verification' ||
-             inv.status === 'approval' ||
-             inv.status === 'on_hold' ||
-             inv.status === 'disputed' ||
-             inv.match_status === 'exception' ||
-             inv.match_status === 'not_matched' ||
-             inv.match_status === 'unmatched' ||
-             inv.match_status === 'mismatch' ||
-             inv.match_status === 'variance')
-          );
+          return allInvoices.filter(inv => matchesNonPoInvoicesExceptionNavTab(inv));
 
         case 'all':
-          // Show ALL invoices including pending approval
-          console.log('[DEBUG] ALL tab - Total invoices:', allInvoices.length);
-          console.log('[DEBUG] ALL tab - By type:', {
-            PO: allInvoices.filter(inv => inv.type === 'PO').length,
-            NonPO: allInvoices.filter(inv => inv.type === 'Non-PO').length,
-            undefined: allInvoices.filter(inv => !inv.type).length,
-          });
-          console.log('[DEBUG] ALL tab - By vendor_requires_po:', {
-            true: allInvoices.filter(inv => inv.vendor_requires_po === true).length,
-            false: allInvoices.filter(inv => inv.vendor_requires_po === false).length,
-            undefined: allInvoices.filter(inv => inv.vendor_requires_po === undefined).length,
-          });
+          // Mixed PO + Non-PO (full list for current data set)
           return allInvoices;
 
         default:
@@ -1794,11 +1733,11 @@ export default function EnhancedInvoicesClient({
 
     // Determine which metrics to show based on tab and navigation mode
     const shouldShowMissingFields = exceptionNavigationMode ?
-      ['po-invoices', 'non-po-invoices', 'unclassified', 'all'].includes(activeTab) :
+      ['po-invoices', 'non-po-invoices'].includes(activeTab) :
       activeTab === 'exceptions';
 
     const shouldShowMismatched = exceptionNavigationMode ?
-      ['po-invoices', 'all', 'unclassified'].includes(activeTab) :
+      activeTab === 'po-invoices' :
       activeTab === 'exceptions';
 
     const shouldShowMissingPO = exceptionNavigationMode ?
@@ -1929,8 +1868,8 @@ export default function EnhancedInvoicesClient({
   const renderTabContent = () => {
     return (
       <>
-        {/* Metrics strip bar positioned at the top */}
-        <MetricsBanner />
+        {/* Metrics strip hidden on All tab (exception mode mixed list) */}
+        {!(exceptionNavigationMode && activeTab === 'all') && <MetricsBanner />}
 
         {/* Search bar and filter pills */}
         <div className="mb-4">

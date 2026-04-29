@@ -78,7 +78,7 @@ const normalizeMockInvoiceDates = (invoices: Invoice[]): Invoice[] => {
 
 /**
  * Generate 3 baseline mock invoices for testing and basic demonstration:
- * 1. baseline-po-1: Clean PO invoice with matching PO
+ * 1. baseline-po-1: Non-PO classification (INV3745-02); line history may reference PO for demo
  * 2. baseline-nonpo-1: Simple non-PO workflow
  * 3. baseline-matched-1: Successfully processed invoice (appears in "All" tab)
  */
@@ -87,7 +87,7 @@ export const generateBaselineInvoices = (): Invoice[] => {
   const mockInvoices: Invoice[] = [];
 
   // ========================================================================
-  // BASELINE PO INVOICE
+  // BASELINE INVOICE (Non-PO badge — INV3745-02)
   // ========================================================================
   const baselinePODate = new Date(now);
   baselinePODate.setDate(baselinePODate.getDate() - 5); // Created 5 days ago
@@ -161,13 +161,13 @@ export const generateBaselineInvoices = (): Invoice[] => {
       status: 'verification', // Verification stage (AI suggestions need review)
       match_status: 'matched', // Line items match PO perfectly, no financial variances
       company_code: 'GSPV Ltd',
-      type: 'PO',
-    vendor_requires_po: true,
+      type: 'Non-PO',
+    vendor_requires_po: false,
     vendor_is_verified: true,
     approval_status: 'pending',
     assigned_to_name: 'James Wilson',
     assigned_to_user_id: 'user-4',
-    po_numbers_cached: ['PO-2025-9001'],
+    po_numbers_cached: [],
     gr_numbers: [],
     docType: 'Invoice',
     issues: ['Missing Field'],
@@ -247,7 +247,11 @@ export const generateBaselineInvoices = (): Invoice[] => {
       }
     ],
     // Suppress specific validation categories (agent action cards replace these)
-    suppress_validation_categories: ['data_quality']
+    suppress_validation_categories: ['data_quality'],
+    // Invoice-specific: non-PO flow — hide InvoiceValidator process issue for missing PO (DetailsTab filtered cards)
+    suppress_validation_fields: ['po_numbers_cached'],
+    // Invoice-specific: non-PO flow work — skip auto-generated "PO required" risk (see generateValidationWarnings)
+    validation_warnings: [],
   } as Invoice);
 
   // ========================================================================
@@ -2490,6 +2494,26 @@ export const generateBaselineInvoices = (): Invoice[] => {
 };
 
 // ============================================================================
+// EXCEPTION NAV — PO / NON-PO TABS (shared with EnhancedInvoicesClient)
+// ============================================================================
+
+/** PO work queue: PO-classified (includes auto-rejected POs so tab counts partition the full list) */
+export function matchesPoInvoicesExceptionNavTab(inv: Invoice): boolean {
+  if (!(inv.type === 'PO' || inv.vendor_requires_po === true)) return false;
+  if (inv.status === 'rejected') return false;
+  return true;
+}
+
+/**
+ * Non-PO work queue: mutually exclusive with matchesPoInvoicesExceptionNavTab (PO classification wins).
+ */
+export function matchesNonPoInvoicesExceptionNavTab(inv: Invoice): boolean {
+  if (inv.status === 'rejected') return false;
+  if (inv.type === 'PO' || inv.vendor_requires_po === true) return false;
+  return inv.type === 'Non-PO' || inv.vendor_requires_po === false;
+}
+
+// ============================================================================
 // SERVICE FUNCTIONS
 // ============================================================================
 
@@ -2562,7 +2586,15 @@ export const isMockInvoice = (id: string): boolean => {
   }
 
   // Updated prefixes for baseline approach and other mock scenarios
-  const mockPrefixes = ['baseline-', 'missing-po-', 'fraud-risk-', 'auto-reject-', 'sla-', 'agent-processed-', 'po-exc-'];
+  const mockPrefixes = [
+    'baseline-',
+    'missing-po-',
+    'fraud-risk-',
+    'auto-reject-',
+    'sla-',
+    'agent-processed-',
+    'po-exc-',
+  ];
   const isMock = mockPrefixes.some(prefix => id.startsWith(prefix));
 
   if (DEBUG_MOCK) {
@@ -3261,7 +3293,14 @@ const transformToFullInvoice = (invoice: Invoice): Invoice => {
       due_date: invoice.due_date ? 0.96 : 0,
       vendor_name_snapshot: invoice.vendor_name_snapshot ? 0.92 : 0,
       vendor_tax_id_snapshot: invoice.vendor_tax_id_snapshot && invoice.vendor_tax_id_snapshot.trim() !== '' ? 0.94 : 0,
-      po_numbers_cached: invoice.po_numbers_cached?.length > 0 ? 0.92 : 0,
+      po_numbers_cached:
+        invoice.po_numbers_cached?.length > 0
+          ? 0.92
+          : (invoice as { suppress_validation_fields?: string[] }).suppress_validation_fields?.includes(
+                'po_numbers_cached'
+              )
+            ? undefined
+            : 0,
       job_number: 0, // Custom field - not found initially
       vehicle_registration_no: invoice.id === 'baseline-po-bank-1' ? 0.92 : 0, // Custom field specific to Industrial Equipment Corp
 

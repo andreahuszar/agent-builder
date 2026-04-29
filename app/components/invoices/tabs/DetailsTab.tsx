@@ -512,10 +512,16 @@ export function DetailsTab({
           { field: 'total', label: 'Total', type: 'currency' },
         ];
 
+        const suppressedValidationFields: string[] = (invoiceData as any).suppress_validation_fields || [];
+
         fieldsToCheck.forEach(({ field, label, type }) => {
           // Skip PO Number and Customer ID validation for Non-PO invoices
           if (invoiceData.type === 'Non-PO' && (field === 'po_numbers_cached' || field === 'job_number')) {
             console.log('[DetailsTab] Skipping field (Non-PO):', field);
+            return;
+          }
+
+          if (field === 'po_numbers_cached' && suppressedValidationFields.includes('po_numbers_cached')) {
             return;
           }
 
@@ -696,14 +702,33 @@ export function DetailsTab({
     categoryIssues => categoryIssues.length === 0
   );
 
-  // Filter validation issues based on reactive state from LineItemsPreviewPanel
-  // This removes warnings for issues that have been fixed client-side
+  // Filter validation issues: invoice-level suppress_* always; then LineItemsPreviewPanel reactive fixes
   const filteredValidationIssues = useMemo(() => {
-    // If no reactive state yet, return original issues
-    if (!lineItemsValidationState) return validationIssues;
-
     const suppressedCategories: string[] = (invoiceData as any).suppress_validation_categories || [];
     const suppressedFields: string[] = (invoiceData as any).suppress_validation_fields || [];
+
+    const applyInvoiceSuppressions = (source: typeof validationIssues) => {
+      const out: typeof validationIssues = {
+        financial: [],
+        process: [],
+        compliance: [],
+        risk: [],
+        data_quality: [],
+        delivery: [],
+      };
+      (Object.keys(source) as Array<keyof typeof source>).forEach((category) => {
+        if (suppressedCategories.includes(category)) return;
+        out[category] = source[category].filter((issue) => {
+          if (issue.field && suppressedFields.includes(issue.field)) return false;
+          return true;
+        });
+      });
+      return out;
+    };
+
+    const afterInvoiceSuppress = applyInvoiceSuppressions(validationIssues);
+
+    if (!lineItemsValidationState) return afterInvoiceSuppress;
 
     const filtered: typeof validationIssues = {
       financial: [],
@@ -714,21 +739,11 @@ export function DetailsTab({
       delivery: [],
     };
 
-    // Filter each category
-    (Object.keys(validationIssues) as Array<keyof typeof validationIssues>).forEach(category => {
-      // Skip entire category if suppressed by invoice data
-      if (suppressedCategories.includes(category)) return;
-
-      filtered[category] = validationIssues[category].filter(issue => {
-        // Skip specific fields suppressed by invoice data
-        if (issue.field && suppressedFields.includes(issue.field)) return false;
-        // Remove "Invoice has line item variances" when all lines are matched or for INV-2025-0124
+    (Object.keys(afterInvoiceSuppress) as Array<keyof typeof afterInvoiceSuppress>).forEach((category) => {
+      filtered[category] = afterInvoiceSuppress[category].filter((issue) => {
         if (issue.field === 'match_status' && (lineItemsValidationState.allLinesMatched || invoiceData.invoice_number === 'INV-2025-0124' || invoiceData.invoice_number === 'INV1881222')) {
           return false;
         }
-
-        // Remove line-specific warnings when that line is resolved
-        // Validation fields use format: line_<line_number>
         const lineMatch = issue.field?.match(/^line_(\d+)$/);
         if (lineMatch) {
           const fieldLineId = `line-${lineMatch[1]}`;
@@ -736,13 +751,12 @@ export function DetailsTab({
             return false;
           }
         }
-
         return true;
       });
     });
 
     return filtered;
-  }, [validationIssues, lineItemsValidationState]);
+  }, [validationIssues, lineItemsValidationState, invoiceData]);
 
   // Check if all FILTERED validations passed (reactive)
   // Also check if invoice has any issues (from agent processing)
@@ -930,6 +944,7 @@ export function DetailsTab({
   // Render a field - either as editable or read-only with click-to-edit
   const renderField = (fieldName: string, fieldValue: any, fieldType: 'text' | 'date' | 'currency' | 'select', label: string, options?: any[]) => {
     const shouldAllowEdit = showFieldErrors && hasFieldError(fieldName) && !forceReadOnly;
+    const emptyPlaceholder = fieldName === 'po_numbers_cached' ? '-' : '--';
 
     if (shouldAllowEdit) {
       return (
@@ -941,14 +956,14 @@ export function DetailsTab({
           }}
           title="Click to edit all fields"
         >
-          {fieldValue || '--'}
+          {fieldValue || emptyPlaceholder}
         </p>
       );
     }
 
     return (
       <p className={getReadOnlyFieldClass(fieldName)}>
-        {fieldValue || '--'}
+        {fieldValue || emptyPlaceholder}
       </p>
     );
   };
@@ -1812,8 +1827,10 @@ export function DetailsTab({
                 <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
                   <span className="flex items-center">
                     PO Number
-                    {/* Hide confidence pill for Non-PO invoices and close-match invoices */}
-                    {!invoiceData.id?.startsWith('baseline-nonpo-') && !invoiceData.close_match_po && (
+                    {/* Hide confidence pill for Non-PO, close-match, and invoices that suppress PO validation (e.g. non-PO flow demo) */}
+                    {!invoiceData.id?.startsWith('baseline-nonpo-') &&
+                      !invoiceData.close_match_po &&
+                      !(invoiceData as any).suppress_validation_fields?.includes('po_numbers_cached') && (
                       <FieldConfidencePill
                         confidence={invoiceData.extraction_field_confidences?.po_numbers_cached}
                         isEditMode={isEditing}
@@ -1886,8 +1903,10 @@ export function DetailsTab({
                   </div>
                 ) : (
                   <>
-                    {/* For Non-PO invoices, show N/A */}
+                    {/* For Non-PO invoices, show N/A; same neutral display when PO field is suppressed for this invoice (e.g. non-PO flow demo) */}
                     {invoiceData.type === 'Non-PO' ? (
+                      <p className="text-sm font-medium text-gray-500">N/A</p>
+                    ) : (invoiceData as any).suppress_validation_fields?.includes('po_numbers_cached') && !hasPONumber ? (
                       <p className="text-sm font-medium text-gray-500">N/A</p>
                     ) : !hasPONumber && invoiceData.close_match_po ? (
                       <div className="relative">
