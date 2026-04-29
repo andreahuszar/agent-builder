@@ -826,7 +826,8 @@ function transformScenarioToInvoice(
     data_ingestion_date: invoiceDate.toISOString().split('T')[0],
     
     ledger: 'Accounts Payable',
-    cost_center: 'CC-9002 - Corporate Services',
+    cost_center: 'CC-9002',
+    cost_center_name: 'IT Services Department',
     gl_code: 'GL-5000',
     department: 'Product',
     payment_terms: '30',

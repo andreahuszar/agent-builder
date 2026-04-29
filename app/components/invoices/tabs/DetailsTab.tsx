@@ -40,7 +40,6 @@ import { EditableField } from '../editing/EditableField';
 import { ValidatedEditableField } from '../editing/ValidatedEditableField';
 import { ValidationIndicator, ValidationSummaryBadge } from '../ValidationIndicator';
 import { InvoiceValidator, ValidationResult } from '@/app/utils/validationService';
-import { COST_CENTER_OPTIONS, LEDGER_OPTIONS } from '@/lib/constants/accountingCodes';
 import * as Tooltip from '@radix-ui/react-tooltip';
 import { Badge } from '@/app/components/ui/badge';
 import { FieldErrorIndicator, useFieldErrors, FieldError } from '../FieldErrorIndicator';
@@ -59,7 +58,6 @@ import { BankDetailsVerificationPopover } from '../BankDetailsVerificationPopove
 import { FieldNormalizationPopover } from '../FieldNormalizationPopover';
 import { SubstitutionSuggestionPopover } from '../SubstitutionSuggestionPopover';
 import { VendorSwapPopover } from '../VendorSwapPopover';
-import { AccountingAutoCodingPopover } from '../AccountingAutoCodingPopover';
 import { FraudRiskBanner } from '../FraudRiskBanner';
 import { AutoCorrectionIndicator } from '../AutoCorrectionIndicator';
 import { AutoRejectBanner } from '../AutoRejectBanner';
@@ -73,6 +71,7 @@ import {
   ValidationCategory
 } from '../ValidationCard';
 import { calculateInvoiceExceptions } from '@/app/utils/exceptionCounter';
+import { CodingFieldsGrid } from './CodingFieldsGrid';
 
 interface DetailsTabProps {
   invoiceData: any;
@@ -250,7 +249,6 @@ export function DetailsTab({
   const [isSaving, setIsSaving] = useState(false);
   const [showFab, setShowFab] = useState(true);
   const [lastScrollY, setLastScrollY] = useState(0);
-  const [showAIReasoning, setShowAIReasoning] = useState(false);
   const [localFocusedField, setLocalFocusedField] = useState<string | null>(null);
 
   // Accordion collapse state — open when there are agent actions, closed when there are none
@@ -259,6 +257,8 @@ export function DetailsTab({
   );
   const [isInvoiceInfoExpanded, setIsInvoiceInfoExpanded] = useState(true); // Start expanded
   const [isAdditionalDetailsExpanded, setIsAdditionalDetailsExpanded] = useState(false);
+  /** Non-PO: Coding is a separate accordion below Additional Invoice Details */
+  const [isCodingAccordionExpanded, setIsCodingAccordionExpanded] = useState(true);
   const [isLineItemsExpanded, setIsLineItemsExpanded] = useState(true); // Start expanded
   const [isLineItemsFullscreen, setIsLineItemsFullscreen] = useState(false);
   const [hasActiveAgents, setHasActiveAgents] = useState(false);
@@ -434,7 +434,6 @@ export function DetailsTab({
   const [isPOSearchModalOpen, setIsPOSearchModalOpen] = useState(false);
   const [isCloseMatchPopoverOpen, setIsCloseMatchPopoverOpen] = useState(false);
   const [isVendorSwapPopoverOpen, setIsVendorSwapPopoverOpen] = useState(false);
-  const [isAutoCodingPopoverOpen, setIsAutoCodingPopoverOpen] = useState(false);
 
   // Bank details verification state
   const [isBankVerifyOpen, setIsBankVerifyOpen] = useState(false);
@@ -834,33 +833,40 @@ export function DetailsTab({
     return () => window.removeEventListener('invoice-scroll-to-agents', handler);
   }, [handleExceptionsPillClick]);
 
-  // Count errors in Additional Details section (payment and coding fields)
-  const additionalDetailsErrorCount = useMemo(() => {
-    const additionalDetailsFields = [
-      'payment_method',
-      'terms_text',
-      'due_date',
-      'payment_bank_details',
-      'ledger',
-      'cost_center'
-    ];
+  const paymentDetailsErrorFields = useMemo(
+    () => ['payment_method', 'terms_text', 'due_date', 'payment_bank_details'] as const,
+    []
+  );
+  const codingSectionErrorFields = useMemo(
+    () => ['cost_center', 'gl_code', 'accounting_notes', 'assigned_to_name', 'assigned_to_email'] as const,
+    []
+  );
 
-    let errorCount = 0;
+  const countFieldIssuesFor = useCallback(
+    (fields: readonly string[]) => {
+      let n = fieldErrors.filter(err => fields.includes(err.field)).length;
+      if (invoiceData.validation_warnings && Array.isArray(invoiceData.validation_warnings)) {
+        n += invoiceData.validation_warnings.filter((w: any) => fields.includes(w.field)).length;
+      }
+      return n;
+    },
+    [fieldErrors, invoiceData.validation_warnings]
+  );
 
-    // Count field errors
-    errorCount += fieldErrors.filter(err =>
-      additionalDetailsFields.includes(err.field)
-    ).length;
+  const paymentDetailsErrorCount = useMemo(
+    () => countFieldIssuesFor(paymentDetailsErrorFields),
+    [countFieldIssuesFor, paymentDetailsErrorFields]
+  );
 
-    // Count validation warnings for these fields (including risk warnings like bank details changes)
-    if (invoiceData.validation_warnings && Array.isArray(invoiceData.validation_warnings)) {
-      errorCount += invoiceData.validation_warnings.filter((w: any) =>
-        additionalDetailsFields.includes(w.field)
-      ).length;
-    }
+  const codingSectionErrorCount = useMemo(
+    () => countFieldIssuesFor(codingSectionErrorFields),
+    [countFieldIssuesFor, codingSectionErrorFields]
+  );
 
-    return errorCount;
-  }, [fieldErrors, invoiceData.validation_warnings]);
+  /** PO: combined badge on Additional Details. Non-PO: payment-only on that accordion */
+  const additionalDetailsHeaderErrorCount = isNonPO
+    ? paymentDetailsErrorCount
+    : paymentDetailsErrorCount + codingSectionErrorCount;
 
   const formatDate = (dateString: string) => {
     if (!dateString) return '';
@@ -1264,6 +1270,158 @@ export function DetailsTab({
     setPoNormalizationReverted(true);
     showToast('PO reverted to the original value from the document.', 'info');
   }, [invoiceData, onUpdate, showToast]);
+
+  const approverCodingSection =
+    invoiceData.type === 'Non-PO' ? (
+      <div
+        ref={(el) => {
+          fieldRefs.current['assigned_to_name'] = el;
+        }}
+        className="relative mt-6 pt-4 border-t border-gray-200"
+      >
+        <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
+          <span className="flex items-center">
+            Approver
+            <FieldConfidencePill
+              confidence={invoiceData.extraction_field_confidences?.assigned_to_name}
+              isEditMode={isEditing}
+              hasValue={!!invoiceData.assigned_to_name}
+            />
+          </span>
+          {invoiceData.suggested_approver && !invoiceData.assigned_to_name && !agentPendingFields['assigned_to_name'] && (
+            <button
+              type="button"
+              onClick={() => {
+                const newExpanded = expandedSuggestion === 'assigned_to_name' ? null : 'assigned_to_name';
+                setExpandedSuggestion(newExpanded);
+                if (onFieldFocus) {
+                  onFieldFocus(newExpanded);
+                }
+              }}
+              className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              Match Found
+            </button>
+          )}
+        </label>
+        {isEditing ? (
+          <ValidatedEditableField
+            value={agentPendingFields['assigned_to_name'] || editedData.assigned_to_name || ''}
+            onChange={(value) => handleFieldChange('assigned_to_name', value)}
+            type="select"
+            required={false}
+            fieldName="assigned_to_name"
+            placeholder="Select Approver"
+            options={[
+              { value: '', label: 'None' },
+              { value: 'Sarah Mitchell', label: 'Sarah Mitchell' },
+              { value: 'John Davis', label: 'John Davis' },
+              { value: 'Emily Roberts', label: 'Emily Roberts' },
+              { value: 'Michael Chen', label: 'Michael Chen' },
+              { value: 'Laura Martinez', label: 'Laura Martinez' },
+            ]}
+            onFocus={() => handleFieldFocus('assigned_to_name')}
+            onBlur={handleFieldBlur}
+          />
+        ) : agentPendingFields['assigned_to_name'] ? (
+          <div className="flex items-center">
+            <p className="text-sm font-medium text-gray-950">{agentPendingFields['assigned_to_name']}</p>
+            <PendingConfirmationIndicator />
+          </div>
+        ) : !invoiceData.assigned_to_name && !invoiceData.skip_approver_validation ? (
+          <div className="relative">
+            <input
+              type="text"
+              value=""
+              readOnly
+              className="w-full px-3 py-1.5 text-sm border-2 border-red-300 bg-red-50 rounded-md cursor-not-allowed"
+            />
+            <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
+              <AlertTriangle className="h-3 w-3" />
+              <span>Approver required</span>
+            </div>
+          </div>
+        ) : (
+          <div>
+            <p className="text-sm font-medium text-gray-950">
+              {invoiceData.assigned_to_name || '--'}
+              {(() => {
+                const autoCorrection = getAutoCorrection('assigned_to_name');
+                return autoCorrection ? (
+                  <AutoCorrectionIndicator
+                    fieldLabel="Approver"
+                    originalValue={autoCorrection.original_value || '(Not set)'}
+                    correctedValue={autoCorrection.corrected_value}
+                    reason={autoCorrection.reason}
+                    vendorName={invoiceData.vendor_name_snapshot}
+                    fieldName="assigned_to_name"
+                    onFieldFocus={onFieldFocus}
+                    agentName={autoCorrection.agent_name}
+                    timestamp={autoCorrection.timestamp}
+                    isExtraction={false}
+                  />
+                ) : null;
+              })()}
+            </p>
+            {invoiceData.assigned_to_email && (
+              <p className="text-xs text-gray-500 mt-0.5">
+                {invoiceData.assigned_to_email}
+                {(() => {
+                  const emailCorrection = getAutoCorrection('assigned_to_email');
+                  return emailCorrection ? (
+                    <AutoCorrectionIndicator
+                      fieldLabel="Approver Email"
+                      originalValue={emailCorrection.original_value || '(Not set)'}
+                      correctedValue={emailCorrection.corrected_value}
+                      reason={emailCorrection.reason}
+                      vendorName={invoiceData.vendor_name_snapshot}
+                      fieldName="assigned_to_email"
+                      onFieldFocus={onFieldFocus}
+                      agentName={emailCorrection.agent_name}
+                      timestamp={emailCorrection.timestamp}
+                      isExtraction={false}
+                    />
+                  ) : null;
+                })()}
+              </p>
+            )}
+          </div>
+        )}
+        {expandedSuggestion === 'assigned_to_name' && invoiceData.suggested_approver && (
+          <div ref={suggestionCardRef} className="absolute top-full left-0 mt-2 z-50 w-full min-w-[320px] max-w-md">
+            <AISuggestionCard
+              candidate={{
+                value: invoiceData.suggested_approver || '',
+                confidence: invoiceData.approver_routing_confidence || 0,
+                source: 'Smart Routing',
+                reason: invoiceData.approver_routing_reasoning,
+              }}
+              fieldLabel="Suggested Approver"
+              onAccept={() => {
+                onFieldAccept!('assigned_to_name', invoiceData.suggested_approver);
+                setExpandedSuggestion(null);
+                showToast('Approver suggestion accepted and saved for future invoices.', 'success');
+              }}
+              onReject={() => {
+                onFieldReject!('assigned_to_name');
+                setExpandedSuggestion(null);
+              }}
+              onSelectOther={() => {
+                setExpandedSuggestion(null);
+                setIsEditing(true);
+              }}
+              onClose={() => {
+                setExpandedSuggestion(null);
+                if (onFieldFocus) {
+                  onFieldFocus(null);
+                }
+              }}
+            />
+          </div>
+        )}
+      </div>
+    ) : null;
 
   return (
     <Tooltip.Provider>
@@ -2132,152 +2290,6 @@ export function DetailsTab({
                 )}
               </div>
               )}
-              {/* Approver - Only for Non-PO invoices */}
-              {invoiceData.type === 'Non-PO' && (
-                <div ref={(el) => fieldRefs.current['assigned_to_name'] = el} className="relative">
-                  <label className="flex items-center justify-between text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
-                    <span className="flex items-center">
-                      Approver
-                      <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.assigned_to_name} isEditMode={isEditing} hasValue={!!invoiceData.assigned_to_name} />
-                    </span>
-                    {invoiceData.suggested_approver && !invoiceData.assigned_to_name && !agentPendingFields['assigned_to_name'] && (
-                      <button
-                        onClick={() => {
-                          const newExpanded = expandedSuggestion === 'assigned_to_name' ? null : 'assigned_to_name';
-                          setExpandedSuggestion(newExpanded);
-                          if (onFieldFocus) {
-                            onFieldFocus(newExpanded);
-                          }
-                        }}
-                        className="flex items-center gap-1 text-xs text-purple-600 hover:text-purple-700 transition-colors"
-                      >
-                        <Sparkles className="h-3.5 w-3.5" />
-                        Match Found
-                      </button>
-                    )}
-                  </label>
-                  {isEditing ? (
-                    <ValidatedEditableField
-                      value={agentPendingFields['assigned_to_name'] || editedData.assigned_to_name || ''}
-                      onChange={(value) => handleFieldChange('assigned_to_name', value)}
-                      type="select"
-                      required={false}
-                      fieldName="assigned_to_name"
-                      placeholder="Select Approver"
-                      options={[
-                        { value: '', label: 'None' },
-                        { value: 'Sarah Mitchell', label: 'Sarah Mitchell' },
-                        { value: 'John Davis', label: 'John Davis' },
-                        { value: 'Emily Roberts', label: 'Emily Roberts' },
-                        { value: 'Michael Chen', label: 'Michael Chen' },
-                        { value: 'Laura Martinez', label: 'Laura Martinez' },
-                      ]}
-                      onFocus={() => handleFieldFocus('assigned_to_name')}
-                      onBlur={handleFieldBlur}
-                    />
-                  ) : agentPendingFields['assigned_to_name'] ? (
-                    <div className="flex items-center">
-                      <p className="text-sm font-medium text-gray-950">
-                        {agentPendingFields['assigned_to_name']}
-                      </p>
-                      <PendingConfirmationIndicator />
-                    </div>
-                  ) : !invoiceData.assigned_to_name && !invoiceData.skip_approver_validation ? (
-                    <div className="relative">
-                      {/* Red-bordered empty input field */}
-                      <input
-                        type="text"
-                        value=""
-                        readOnly
-                        className="w-full px-3 py-1.5 text-sm border-2 border-red-300 bg-red-50 rounded-md cursor-not-allowed"
-                      />
-
-                      {/* Validation message */}
-                      <div className="flex items-center gap-1 mt-1 text-xs text-red-600">
-                        <AlertTriangle className="h-3 w-3" />
-                        <span>Approver required</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="text-sm font-medium text-gray-950">
-                        {invoiceData.assigned_to_name || '--'}
-                        {(() => {
-                          const autoCorrection = getAutoCorrection('assigned_to_name');
-                          return autoCorrection ? (
-                            <AutoCorrectionIndicator
-                              fieldLabel="Approver"
-                              originalValue={autoCorrection.original_value || '(Not set)'}
-                              correctedValue={autoCorrection.corrected_value}
-                              reason={autoCorrection.reason}
-                              vendorName={invoiceData.vendor_name_snapshot}
-                              fieldName="assigned_to_name"
-                              onFieldFocus={onFieldFocus}
-                              agentName={autoCorrection.agent_name}
-                              timestamp={autoCorrection.timestamp}
-                              isExtraction={false}
-                            />
-                          ) : null;
-                        })()}
-                      </p>
-                      {invoiceData.assigned_to_email && (
-                        <p className="text-xs text-gray-500 mt-0.5">
-                          {invoiceData.assigned_to_email}
-                          {(() => {
-                            const emailCorrection = getAutoCorrection('assigned_to_email');
-                            return emailCorrection ? (
-                              <AutoCorrectionIndicator
-                                fieldLabel="Approver Email"
-                                originalValue={emailCorrection.original_value || '(Not set)'}
-                                correctedValue={emailCorrection.corrected_value}
-                                reason={emailCorrection.reason}
-                                vendorName={invoiceData.vendor_name_snapshot}
-                                fieldName="assigned_to_email"
-                                onFieldFocus={onFieldFocus}
-                                agentName={emailCorrection.agent_name}
-                                timestamp={emailCorrection.timestamp}
-                                isExtraction={false}
-                              />
-                            ) : null;
-                          })()}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                  {expandedSuggestion === 'assigned_to_name' && invoiceData.suggested_approver && (
-                    <div ref={suggestionCardRef} className="absolute top-full left-0 mt-2 z-50 w-full min-w-[320px] max-w-md">
-                      <AISuggestionCard
-                        candidate={{
-                          value: invoiceData.suggested_approver || '',
-                          confidence: invoiceData.approver_routing_confidence || 0,
-                          source: 'Smart Routing',
-                          reason: invoiceData.approver_routing_reasoning
-                        }}
-                        fieldLabel="Suggested Approver"
-                        onAccept={() => {
-                          onFieldAccept!('assigned_to_name', invoiceData.suggested_approver);
-                          setExpandedSuggestion(null);
-                          showToast('Approver suggestion accepted and saved for future invoices.', 'success');
-                        }}
-                        onReject={() => {
-                          onFieldReject!('assigned_to_name');
-                          setExpandedSuggestion(null);
-                        }}
-                        onSelectOther={() => {
-                          setExpandedSuggestion(null);
-                          setIsEditing(true);
-                        }}
-                        onClose={() => {
-                          setExpandedSuggestion(null);
-                          if (onFieldFocus) {
-                            onFieldFocus(null);
-                          }
-                        }}
-                      />
-                    </div>
-                  )}
-                </div>
-              )}
               {/* Currency - appears in second column after Customer ID */}
               <div ref={(el) => fieldRefs.current['currency'] = el}>
                 <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
@@ -2649,9 +2661,9 @@ export function DetailsTab({
               )}
               <ClipboardList className="h-4 w-4 text-purple-600" />
               <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">Additional Invoice Details</h3>
-              {additionalDetailsErrorCount > 0 && (
+              {additionalDetailsHeaderErrorCount > 0 && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
-                  {additionalDetailsErrorCount} error field{additionalDetailsErrorCount !== 1 ? 's' : ''}
+                  {additionalDetailsHeaderErrorCount} error field{additionalDetailsHeaderErrorCount !== 1 ? 's' : ''}
                 </span>
               )}
             </div>
@@ -2905,180 +2917,81 @@ export function DetailsTab({
               </div>
             </div>
 
-            {/* Coding Subsection */}
-            <div>
-              <h4 className="flex items-center gap-2 text-xs font-semibold text-gray-950 uppercase tracking-wide mb-4 pb-2 border-b border-gray-200">
-                <BookOpen className="h-4 w-4 text-gray-950" />
-                Coding
-              </h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-3 gap-4">
+            {!isNonPO && (
               <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
-                  <span className="flex items-center">
-                    Ledger Account
-                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.ledger} isEditMode={isEditing} />
-                  </span>
-                  <ValidationIndicator validations={[...errors, ...warnings]} field="ledger" isEditing={isEditing} />
-                </label>
-                {isEditing ? (
-                  <EditableField
-                    value={editedData.ledger || 'Accounts Payable'}
-                    onChange={(value) => handleFieldChange('ledger', value)}
-                    type="select"
-                    options={LEDGER_OPTIONS.map(opt => ({ value: opt.value, label: opt.label }))}
-                    onFocus={() => handleFieldFocus('ledger')}
-                    onBlur={handleFieldBlur}
-                  />
-                ) : (
-                  <p className="text-sm font-medium text-gray-950">
-                    {invoiceData.ledger || 'Accounts Payable'}
-                  </p>
-                )}
+                <h4 className="flex items-center gap-2 text-xs font-semibold text-gray-950 uppercase tracking-wide mb-4 pb-2 border-b border-gray-200">
+                  <BookOpen className="h-4 w-4 text-gray-950" />
+                  Coding
+                </h4>
+                <CodingFieldsGrid
+                  invoiceData={invoiceData}
+                  editedData={editedData}
+                  isEditing={isEditing}
+                  errors={errors}
+                  warnings={warnings}
+                  getFullSpan={getFullSpan}
+                  onFieldChange={handleFieldChange}
+                  onFieldFocus={handleFieldFocus}
+                  onFieldBlur={handleFieldBlur}
+                >
+                  {approverCodingSection}
+                </CodingFieldsGrid>
               </div>
-              <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
-                  <span className="flex items-center">
-                    Cost Center
-                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.cost_center} isEditMode={isEditing} />
-                  </span>
-                </label>
-                {isEditing ? (
-                  <EditableField
-                    value={editedData.cost_center || ''}
-                    onChange={(value) => handleFieldChange('cost_center', value)}
-                    type="select"
-                    options={[
-                      { value: '', label: 'None' },
-                      ...COST_CENTER_OPTIONS.map(opt => ({ value: opt.value, label: opt.label }))
-                    ]}
-                    onFocus={() => handleFieldFocus('cost_center')}
-                    onBlur={handleFieldBlur}
-                  />
-                ) : (
-                  <p className="text-sm font-medium text-gray-950">
-                    {invoiceData.cost_center ? 
-                      `${invoiceData.cost_center}${invoiceData.cost_center_name ? ` - ${invoiceData.cost_center_name}` : ''}` 
-                      : 'Not assigned'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
-                  <span className="flex items-center">
-                    GL Account
-                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.gl_code} isEditMode={isEditing} />
-                  </span>
-                </label>
-                {isEditing ? (
-                  <ValidatedEditableField
-                    value={editedData.gl_code || ''}
-                    onChange={(value) => handleFieldChange('gl_code', value)}
-                    type="text"
-                    required={false}
-                    fieldName="gl_code"
-                    placeholder="e.g., 6210"
-                    onFocus={() => handleFieldFocus('gl_code')}
-                    onBlur={handleFieldBlur}
-                  />
-                ) : (
-                  <p className="text-sm font-medium text-gray-950">
-                    {invoiceData.gl_code || 'Not assigned'}
-                  </p>
-                )}
-              </div>
-              <div>
-                <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">
-                  <span className="flex items-center">
-                    Department
-                    <FieldConfidencePill confidence={invoiceData.extraction_field_confidences?.department} isEditMode={isEditing} />
-                  </span>
-                </label>
-                {isEditing ? (
-                  <ValidatedEditableField
-                    value={editedData.department || ''}
-                    onChange={(value) => handleFieldChange('department', value)}
-                    type="text"
-                    required={false}
-                    fieldName="department"
-                    placeholder="e.g., Finance, Engineering"
-                    onFocus={() => handleFieldFocus('department')}
-                    onBlur={handleFieldBlur}
-                  />
-                ) : (
-                  invoiceData.department ? (
-                    <p className="text-sm font-medium text-gray-950">{invoiceData.department}</p>
-                  ) : (
-                    <p className="text-sm text-gray-500">Not assigned</p>
-                  )
-                )}
-              </div>
-              {invoiceData.accounting_notes && (
-                <div className={getFullSpan()}>
-                  <label className="flex items-center text-xs font-medium text-gray-700 mb-0 min-h-[16px]">Accounting Notes</label>
-                  {isEditing ? (
-                    <EditableField
-                      value={editedData.accounting_notes || ''}
-                      onChange={(value) => handleFieldChange('accounting_notes', value)}
-                      type="textarea"
-                      placeholder="Add accounting notes..."
-                    />
-                  ) : (
-                    <p className="text-sm font-medium text-gray-950">{invoiceData.accounting_notes}</p>
-                  )}
-                </div>
-              )}
-              {invoiceData.ai_classification_reasoning && !isEditing && (
-                <div className={getFullSpan()}>
-                  {/* Show thunderbolt link for auto-coded invoices */}
-                  {invoiceData.auto_coding_applied ? (
-                    <div className="flex items-center gap-2">
-                      <AccountingAutoCodingPopover
-                        ledger={invoiceData.ledger}
-                        costCenter={invoiceData.cost_center}
-                        costCenterName={invoiceData.cost_center_name}
-                        glCode={invoiceData.gl_code}
-                        department={invoiceData.department}
-                        confidence={invoiceData.ai_classification_confidence}
-                        reasoning={invoiceData.ai_classification_reasoning}
-                        similarInvoices={invoiceData.auto_coding_details?.similar_invoices}
-                        patternMatched={invoiceData.auto_coding_details?.pattern_matched}
-                        confidenceFactors={invoiceData.auto_coding_details?.confidence_factors}
-                        open={isAutoCodingPopoverOpen}
-                        onOpenChange={setIsAutoCodingPopoverOpen}
-                      >
-                        <button
-                          onClick={() => setIsAutoCodingPopoverOpen(true)}
-                          className="inline-flex items-center gap-1 text-xs font-medium text-purple-600 hover:text-purple-700 transition-colors"
-                        >
-                          <Zap className="h-3.5 w-3.5" fill="currentColor" />
-                          Auto-Coded
-                        </button>
-                      </AccountingAutoCodingPopover>
-                    </div>
-                  ) : (
-                    /* Show collapsible reasoning for non-auto-coded invoices */
-                    <>
-                      <button
-                        onClick={() => setShowAIReasoning(!showAIReasoning)}
-                        className="flex items-center gap-2 text-xs font-medium text-gray-600 hover:text-gray-800 transition-colors mb-2"
-                      >
-                        {showAIReasoning ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                        AI Classification Reasoning
-                      </button>
-                      {showAIReasoning && (
-                        <div className="bg-gray-50 border border-gray-200 rounded-lg p-3 transition-all">
-                          <p className="text-sm text-gray-950 leading-relaxed">
-                            {invoiceData.ai_classification_reasoning}
-                          </p>
-                        </div>
-                      )}
-                    </>
-                  )}
-                </div>
-              )}
-              </div>
-            </div>
+            )}
           </div>
+          )}
+
+          {isNonPO && (
+            <>
+              <div
+                className="relative px-4 py-3 border-b border-gray-200 bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors"
+                onClick={() => setIsCodingAccordionExpanded(!isCodingAccordionExpanded)}
+              >
+                <div className="flex items-center gap-2">
+                  {isCodingAccordionExpanded ? (
+                    <ChevronUp className="h-4 w-4 text-gray-500" />
+                  ) : (
+                    <ChevronDown className="h-4 w-4 text-gray-500" />
+                  )}
+                  <BookOpen className="h-4 w-4 text-purple-600" />
+                  <h3 className="text-xs font-semibold text-gray-950 uppercase tracking-wide">CODING</h3>
+                  {codingSectionErrorCount > 0 && (
+                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-700">
+                      {codingSectionErrorCount} error field{codingSectionErrorCount !== 1 ? 's' : ''}
+                    </span>
+                  )}
+                </div>
+                {!forceReadOnly && !isEditing && (
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setIsEditing(true);
+                    }}
+                    className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 text-xs font-medium rounded border transition-colors bg-white text-purple-900 border-purple-900 hover:bg-gray-50"
+                  >
+                    Edit
+                  </button>
+                )}
+              </div>
+              {isCodingAccordionExpanded && (
+                <div className="px-10 py-4 bg-white border-b border-gray-200">
+                  <CodingFieldsGrid
+                    invoiceData={invoiceData}
+                    editedData={editedData}
+                    isEditing={isEditing}
+                    errors={errors}
+                    warnings={warnings}
+                    getFullSpan={getFullSpan}
+                    onFieldChange={handleFieldChange}
+                    onFieldFocus={handleFieldFocus}
+                    onFieldBlur={handleFieldBlur}
+                  >
+                    {approverCodingSection}
+                  </CodingFieldsGrid>
+                </div>
+              )}
+            </>
           )}
         </div>
         )}

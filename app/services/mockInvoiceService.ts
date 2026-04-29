@@ -165,7 +165,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
     vendor_requires_po: false,
     vendor_is_verified: true,
     approval_status: 'pending',
-    assigned_to_name: 'James Wilson',
+    assigned_to_name: 'Sarah Chen',
+    assigned_to_email: 'sarah.chen@gspv.com',
     assigned_to_user_id: 'user-4',
     po_numbers_cached: [],
     gr_numbers: [],
@@ -176,7 +177,8 @@ export const generateBaselineInvoices = (): Invoice[] => {
     data_ingestion_date: baselinePODate.toISOString().split('T')[0],
     // Accounting codes from spreadsheet
     ledger: 'Accounts Payable',
-    cost_center: 'CC-9002 - Corporate Services',
+    cost_center: 'CC-9002',
+    cost_center_name: 'IT Services Department',
     gl_code: 'GL-5000',
     department: 'Product',
     payment_terms: '30', // Net 30

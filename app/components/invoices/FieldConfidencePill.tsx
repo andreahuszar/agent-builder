@@ -9,6 +9,10 @@ interface FieldConfidencePillProps {
   className?: string;
   isEditMode?: boolean;
   hasValue?: boolean; // Hide pill when field has a value
+  /** Use green pill (e.g. coding fields) instead of purple/orange/red scale */
+  variant?: 'default' | 'success';
+  /** Show pill in read-only when confidence ≥90% (normally hidden in read-only for high confidence) */
+  forceShowInReadOnly?: boolean;
 }
 
 /**
@@ -21,7 +25,9 @@ export function FieldConfidencePill({
   confidence,
   className = '',
   isEditMode = true,
-  hasValue = false
+  hasValue = false,
+  variant = 'default',
+  forceShowInReadOnly = false,
 }: FieldConfidencePillProps) {
   // Don't render if no confidence value (but 0 is valid!)
   if (confidence === undefined || confidence === null) {
@@ -37,11 +43,19 @@ export function FieldConfidencePill({
 
   // In read-only mode, only show orange/red pills (< 90%)
   // Purple pills (high confidence) are edit-mode only
-  if (!isEditMode && confidencePercent >= 90) {
+  if (!isEditMode && confidencePercent >= 90 && !forceShowInReadOnly) {
     return null;
   }
 
-  const colors = getConfidenceColors(confidence);
+  const colors =
+    variant === 'success'
+      ? {
+          pill: {
+            bg: 'bg-green-100',
+            text: 'text-green-900',
+          },
+        }
+      : getConfidenceColors(confidence);
 
   return (
     <Tooltip.Provider>

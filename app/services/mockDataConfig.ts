@@ -181,7 +181,7 @@ export const DEMO_COST_CENTERS: Record<string, DemoCostCenter[]> = {
   ],
   'General': [
     { code: 'CC-9001', name: 'General & Administrative' },
-    { code: 'CC-9002', name: 'Corporate Services' },
+    { code: 'CC-9002', name: 'IT Services Department' },
   ],
 };
 
