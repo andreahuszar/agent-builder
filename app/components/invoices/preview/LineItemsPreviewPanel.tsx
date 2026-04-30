@@ -1812,6 +1812,25 @@ export function LineItemsPreviewPanel({
 
   const slotListForMergedBundle = Array.isArray(displaySlots) ? displaySlots : slots;
 
+  /** True when this slot should show linked hover with another row (merged PO bundle: hover PO description or any bundle invoice row highlights all bundle rows). */
+  const isSlotHoveredForLinkedHighlight = useCallback(
+    (slot: TableSlot) => {
+      if (hoveredPosition === null) return false;
+      if (hoveredPosition === slot.position) return true;
+      const inv = slot.invoiceLine;
+      const po = slot.poLine;
+      if (!inv || !po || !isMergedBundleReconciled(inv, po)) return false;
+      const firstListIdx = mergedBundleFirstSlotIndex.get(po.id);
+      if (firstListIdx === undefined) return false;
+      const bundleCount = editableLines.filter((l) => l.po_line_id === po.id).length;
+      if (bundleCount <= 1) return false;
+      const bundleSlots = slotListForMergedBundle.slice(firstListIdx, firstListIdx + bundleCount);
+      const positionSet = new Set(bundleSlots.map((s) => s.position));
+      return positionSet.has(hoveredPosition) && positionSet.has(slot.position);
+    },
+    [hoveredPosition, mergedBundleFirstSlotIndex, slotListForMergedBundle, editableLines]
+  );
+
   // Handle line editing
   const handleLineChange = (index: number, field: keyof InvoiceLineItem, value: any) => {
     const updatedLines = [...editableLines];
@@ -2798,7 +2817,7 @@ export function LineItemsPreviewPanel({
                             key={line.id || line.line_no}
                             id={line.id || `line-${line.line_no}`}
                             className={`h-[48px] group ${getRowHighlightClass(line) || (hasAnyVariance(line, matchedPO) ? 'bg-red-50/30 hover:bg-red-50/40' : 'bg-white')}`}
-                            isHovered={hoveredPosition === slot.position}
+                            isHovered={isSlotHoveredForLinkedHighlight(slot)}
                             onMouseEnter={() => handleRowHover(slot.position)}
                             onMouseLeave={handleRowLeave}
                           >
@@ -2808,7 +2827,7 @@ export function LineItemsPreviewPanel({
                           <tr
                             key={line.id || line.line_no}
                             className={`h-[48px] group ${getRowHighlightClass(line)} ${
-                              hoveredPosition === slot.position 
+                              isSlotHoveredForLinkedHighlight(slot)
                                 ? 'bg-purple-50' 
                                 : hasAnyVariance(line, matchedPO)
                                   ? 'bg-red-50/30 hover:bg-red-50/40'
@@ -2974,7 +2993,7 @@ export function LineItemsPreviewPanel({
                         return (
                           <tr
                             key={`po-empty-${slot.position}`}
-                            className={`h-[48px] ${hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'}`}
+                            className={`h-[48px] ${isSlotHoveredForLinkedHighlight(slot) ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'}`}
                             onMouseEnter={() => handleRowHover(slot.position)}
                             onMouseLeave={handleRowLeave}
                           >
@@ -3006,13 +3025,6 @@ export function LineItemsPreviewPanel({
                       const bundleRowSpanProps = bundleSiblingCount > 1
                         ? { rowSpan: bundleSiblingCount }
                         : {};
-                      const isBundleHoverActive = Boolean(
-                        isBundleHeader &&
-                        firstIdx !== undefined &&
-                        hoveredPosition !== null &&
-                        hoveredPosition >= firstIdx &&
-                        hoveredPosition < firstIdx + bundleSiblingCount
-                      );
 
                       const isMultilineBundleRow = isBundleHeader && bundleSiblingCount > 1;
                       const bundlePoBlockHeightPx = bundleSiblingCount * 48;
@@ -3021,7 +3033,7 @@ export function LineItemsPreviewPanel({
                         <tr
                           key={`po-row-${slot.position}-${matchedPO.id}`}
                           className={`${isMultilineBundleRow ? '' : 'h-[48px]'} ${getPORowHighlightClass(matchedPO)} ${
-                            hoveredPosition === slot.position || isBundleHoverActive
+                            isSlotHoveredForLinkedHighlight(slot)
                               ? 'bg-purple-50'
                               : invLine && hasAnyVariance(invLine, matchedPO)
                                 ? 'bg-red-50/30 hover:bg-red-50/40'
@@ -3037,9 +3049,13 @@ export function LineItemsPreviewPanel({
                             <>
                               <td
                                 {...bundleRowSpanProps}
-                                className={`pl-3 pr-1 text-xs text-right text-gray-950 w-6 ${isMultilineBundleRow ? 'py-0 align-middle' : 'py-2 align-top'} ${getPORowBorderClass(matchedPO)}`}
+                                className={`pl-3 pr-1 text-xs text-right text-gray-950 w-6 ${isMultilineBundleRow ? 'py-0 align-top' : 'py-2 align-top'} ${getPORowBorderClass(matchedPO)}`}
                               >
-                                {matchedPO.line_no}
+                                {isMultilineBundleRow ? (
+                                  <div className="flex h-[48px] items-center justify-end">{matchedPO.line_no}</div>
+                                ) : (
+                                  matchedPO.line_no
+                                )}
                               </td>
                               <td
                                 {...bundleRowSpanProps}
@@ -3053,16 +3069,15 @@ export function LineItemsPreviewPanel({
                                       gridTemplateRows: `repeat(${bundleSiblingCount}, 48px)`,
                                     }}
                                   >
-                                    <div className="flex min-h-0 flex-col justify-center gap-0.5 overflow-hidden border-b border-gray-100 px-1">
-                                      <div className="shrink-0 inline-flex w-fit items-center rounded border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-900">
-                                        1 PO line to {bundleSiblingCount} invoice lines
-                                      </div>
-                                      <div className="truncate text-gray-950" title={matchedPO.description}>
+                                    <div className="flex h-[48px] min-h-0 items-center overflow-hidden border-b border-gray-100 px-1">
+                                      <div className="min-w-0 truncate text-gray-950" title={matchedPO.description}>
                                         {matchedPO.item_description || matchedPO.description}
                                       </div>
                                     </div>
-                                    <div className="flex min-h-0 items-center overflow-hidden border-b border-gray-100 px-1 truncate text-gray-950">
-                                      Multiple line match
+                                    <div className="flex h-[48px] min-h-0 items-center overflow-hidden border-b border-gray-100 px-1">
+                                      <div className="shrink-0 inline-flex w-fit items-center rounded border border-purple-200 bg-purple-50 px-2 py-0.5 text-[10px] font-semibold text-purple-900">
+                                        Multiple line match
+                                      </div>
                                     </div>
                                     {Array.from({ length: Math.max(0, bundleSiblingCount - 2) }).map((_, padIdx) => (
                                       <div
@@ -3085,33 +3100,57 @@ export function LineItemsPreviewPanel({
                               </td>
                               <td
                                 {...bundleRowSpanProps}
-                                className={`px-1 text-xs text-gray-950 w-16 ${isMultilineBundleRow ? 'py-0 align-middle' : 'py-2 align-top'}`}
+                                className={`px-1 text-xs text-gray-950 w-16 ${isMultilineBundleRow ? 'py-0 align-top' : 'py-2 align-top'}`}
                               >
-                                {matchedPO.sku || '-'}
+                                {isMultilineBundleRow ? (
+                                  <div className="flex h-[48px] items-center">{matchedPO.sku || '-'}</div>
+                                ) : (
+                                  matchedPO.sku || '-'
+                                )}
                               </td>
                               <td
                                 {...bundleRowSpanProps}
-                                className={`px-1 text-xs text-right text-gray-950 w-8 ${isMultilineBundleRow ? 'py-0 align-middle' : 'py-2 align-top'}`}
+                                className={`px-1 text-xs text-right text-gray-950 w-8 ${isMultilineBundleRow ? 'py-0 align-top' : 'py-2 align-top'}`}
                               >
-                                {matchedPO.qty_ordered}
+                                {isMultilineBundleRow ? (
+                                  <div className="flex h-[48px] items-center justify-end">{matchedPO.qty_ordered}</div>
+                                ) : (
+                                  matchedPO.qty_ordered
+                                )}
                               </td>
                               <td
                                 {...bundleRowSpanProps}
-                                className={`px-1 text-xs text-center text-gray-950 w-16 ${isMultilineBundleRow ? 'py-0 align-middle' : 'py-2 align-top'}`}
+                                className={`px-1 text-xs text-center text-gray-950 w-16 ${isMultilineBundleRow ? 'py-0 align-top' : 'py-2 align-top'}`}
                               >
-                                {matchedPO.uom}
+                                {isMultilineBundleRow ? (
+                                  <div className="flex h-[48px] items-center justify-center">{matchedPO.uom}</div>
+                                ) : (
+                                  matchedPO.uom
+                                )}
                               </td>
                               <td
                                 {...bundleRowSpanProps}
-                                className={`px-1 text-xs text-right text-gray-950 w-16 ${isMultilineBundleRow ? 'py-0 align-middle' : 'py-2 align-top'}`}
+                                className={`px-1 text-xs text-right text-gray-950 w-16 ${isMultilineBundleRow ? 'py-0 align-top' : 'py-2 align-top'}`}
                               >
-                                {formatCurrency(matchedPO.unit_price)}
+                                {isMultilineBundleRow ? (
+                                  <div className="flex h-[48px] items-center justify-end">
+                                    {formatCurrency(matchedPO.unit_price)}
+                                  </div>
+                                ) : (
+                                  formatCurrency(matchedPO.unit_price)
+                                )}
                               </td>
                               <td
                                 {...bundleRowSpanProps}
-                                className={`pl-1 pr-2 text-xs text-right font-medium text-gray-950 w-20 ${isMultilineBundleRow ? 'py-0 align-middle' : 'py-2 align-top'}`}
+                                className={`pl-1 pr-2 text-xs text-right font-medium text-gray-950 w-20 ${isMultilineBundleRow ? 'py-0 align-top' : 'py-2 align-top'}`}
                               >
-                                {formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)}
+                                {isMultilineBundleRow ? (
+                                  <div className="flex h-[48px] items-center justify-end">
+                                    {formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)}
+                                  </div>
+                                ) : (
+                                  formatCurrency(matchedPO.qty_ordered * matchedPO.unit_price)
+                                )}
                               </td>
                             </>
                           ) : (
@@ -3359,7 +3398,7 @@ export function LineItemsPreviewPanel({
                           return (
                             <tr
                               key={`variance-empty-${slot.position}`}
-                              className={`h-[48px] ${hoveredPosition === slot.position ? 'bg-gray-100' : 'bg-gray-50 hover:bg-gray-100'}`}
+                              className={`h-[48px] ${isSlotHoveredForLinkedHighlight(slot) ? 'bg-gray-100' : 'bg-gray-50 hover:bg-gray-100'}`}
                               onMouseEnter={() => handleRowHover(slot.position)}
                               onMouseLeave={handleRowLeave}
                             >
@@ -3374,7 +3413,7 @@ export function LineItemsPreviewPanel({
                           <tr
                             key={line.id || line.line_no}
                             className={`h-[48px] ${
-                              hoveredPosition === slot.position ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'
+                              isSlotHoveredForLinkedHighlight(slot) ? 'bg-purple-50' : 'bg-white hover:bg-purple-50'
                             }`}
                             onMouseEnter={() => handleRowHover(slot.position)}
                             onMouseLeave={handleRowLeave}
@@ -3872,7 +3911,7 @@ export function LineItemsPreviewPanel({
                           key={line.id || line.line_no}
                           id={line.id || `line-${line.line_no}`}
                           className={`group ${hasAnyVariance(line, matchedPO) ? 'bg-red-50/30 hover:bg-red-50/40' : 'bg-white'}`}
-                          isHovered={hoveredPosition === slot.position}
+                          isHovered={isSlotHoveredForLinkedHighlight(slot)}
                           onMouseEnter={() => handleRowHover(slot.position)}
                           onMouseLeave={handleRowLeave}
                         >
@@ -3882,7 +3921,7 @@ export function LineItemsPreviewPanel({
                         <tr
                           key={line.id || line.line_no}
                           className={`group ${
-                            hoveredPosition === slot.position 
+                            isSlotHoveredForLinkedHighlight(slot)
                               ? 'bg-purple-50' 
                               : hasAnyVariance(line, matchedPO)
                                 ? 'bg-red-50/30 hover:bg-red-50/40'

@@ -20,6 +20,8 @@ export interface Exception {
 
 export interface ExceptionCounts {
   total: number;
+  /** Errors + warnings; excludes info-only rows when any error/warning exists (e.g. banner pill vs "Requires approval"). Falls back to total when only informational issues exist. */
+  materialTotal: number;
   errors: number;
   warnings: number;
   info: number;
@@ -221,11 +223,18 @@ export function calculateInvoiceExceptions(
   }
 
   // Calculate counts by severity
+  const errors = exceptions.filter(e => e.severity === 'error').length;
+  const warnings = exceptions.filter(e => e.severity === 'warning').length;
+  const info = exceptions.filter(e => e.severity === 'info').length;
+  const total = exceptions.length;
+  const materialTotal = errors + warnings > 0 ? errors + warnings : total;
+
   const counts: ExceptionCounts = {
-    total: exceptions.length,
-    errors: exceptions.filter(e => e.severity === 'error').length,
-    warnings: exceptions.filter(e => e.severity === 'warning').length,
-    info: exceptions.filter(e => e.severity === 'info').length,
+    total,
+    materialTotal,
+    errors,
+    warnings,
+    info,
   };
 
   return {

@@ -969,7 +969,7 @@ export function InvoiceDetailClient({ invoiceId, initialInvoice, viewMode = 'rev
   );
 
   // Total exceptions count for the status bar; respects per-invoice override for demo data
-  const totalExceptionsCount = (invoice as any)?.exceptions_count_override ?? exceptionResult.counts.total;
+  const totalExceptionsCount = (invoice as any)?.exceptions_count_override ?? exceptionResult.counts.materialTotal;
 
   // Keep these for backward compatibility with save logic
   const missingFieldsCount = calculateMissingFieldsCount();

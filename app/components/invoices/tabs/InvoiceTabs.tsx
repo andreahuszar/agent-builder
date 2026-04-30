@@ -179,7 +179,7 @@ export function InvoiceTabs({
   );
 
   // Count ALL exceptions for badge; respects per-invoice override for demo data
-  const totalIssuesCount = (invoiceData as any)?.exceptions_count_override ?? exceptionResult.counts.total;
+  const totalIssuesCount = (invoiceData as any)?.exceptions_count_override ?? exceptionResult.counts.materialTotal;
 
   // Calculate missing/invalid fields count for Details tab
   // This MUST match the exact logic in InvoiceDetailClient calculateMissingFieldsCount

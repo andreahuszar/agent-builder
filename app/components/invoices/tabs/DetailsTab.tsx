@@ -230,7 +230,7 @@ export function DetailsTab({
   const totalExceptionsCount = useMemo(() => {
     if (invoiceData?.exceptions_count_override != null) return invoiceData.exceptions_count_override as number;
     const result = calculateInvoiceExceptions(invoiceData, matchResults, mergedPoComparisonData, approvalLimit);
-    return result.counts.total;
+    return result.counts.materialTotal;
   }, [invoiceData, matchResults, mergedPoComparisonData, approvalLimit]);
 
   // Handler for adding a new PO to the invoice
