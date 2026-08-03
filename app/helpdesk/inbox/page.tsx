@@ -1,5 +1,5 @@
-import { HelpdeskInboxClient } from './HelpdeskInboxClient';
+import { redirect } from 'next/navigation';
 
-export default function HelpdeskInboxPage() {
-  return <HelpdeskInboxClient />;
+export default function HelpdeskInboxRedirect() {
+  redirect('/settings');
 }

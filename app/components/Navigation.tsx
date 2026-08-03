@@ -18,7 +18,7 @@ interface NavigationProps {
   onModuleChange?: (moduleId: string) => void;
 }
 
-const Navigation = memo(({ activeModule = 'invoice-processing', onModuleChange }: NavigationProps) => {
+const Navigation = memo(({ activeModule = 'settings', onModuleChange }: NavigationProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const [clickedDisabledItem, setClickedDisabledItem] = useState<string | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -94,7 +94,7 @@ const Navigation = memo(({ activeModule = 'invoice-processing', onModuleChange }
         
         {/* Logo */}
         <div className="flex h-16 items-center px-4">
-          <Link className="flex items-center" href="/" aria-label="Xelix Home">
+          <Link className="flex items-center" href="/settings" aria-label="Xelix Home">
             <Image 
               src="/xelix_logo_small.svg" 
               alt="Xelix" 
@@ -217,7 +217,7 @@ const Navigation = memo(({ activeModule = 'invoice-processing', onModuleChange }
               <TooltipContent side="right" align="center" sideOffset={16}>
                 <div className="space-y-1">
                   <p className="text-xs text-gray-400">Shortcut</p>
-                  <p className="text-sm font-medium">{getKeyboardShortcut('7')}</p>
+                  <p className="text-sm font-medium">{getKeyboardShortcut('1')}</p>
                 </div>
               </TooltipContent>
             </Tooltip>

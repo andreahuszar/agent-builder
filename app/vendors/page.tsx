@@ -1,10 +1,5 @@
-import AppLayout from '../components/AppLayout';
-import VendorsClient from './VendorsClient';
+import { redirect } from 'next/navigation';
 
-export default function VendorsPage() {
-  return (
-    <AppLayout activeModule="vendors">
-      <VendorsClient />
-    </AppLayout>
-  );
+export default function VendorsRedirect() {
+  redirect('/settings');
 }

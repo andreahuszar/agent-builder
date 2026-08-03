@@ -5,6 +5,7 @@ import { Card } from "@/app/components/ui/card"
 import { Badge } from "@/app/components/ui/badge"
 import { CheckCircle2, Circle, AlertCircle, Plus, ChevronDown, ChevronRight } from "lucide-react"
 import { Button } from "@/app/components/ui/button"
+import { groupAgentsByStage, normalizeStageId } from "./stageUtils"
 
 type Agent = {
   id: string
@@ -45,17 +46,10 @@ export function WorkflowVisualizer({
 }: WorkflowVisualizerProps) {
   // State to track which stages are expanded (Invoice Import open by default)
   const [expandedStages, setExpandedStages] = useState<Set<string>>(
-    new Set(["ingestion"])
+    new Set(["data-capture"])
   )
 
-  const stages = [
-    { id: "ingestion", name: "Invoice Import", description: "Receive and validate invoices" },
-    { id: "data-capture", name: "Data Capture", description: "Extract line items and amounts" },
-    { id: "verification", name: "Verification", description: "Validate data accuracy" },
-    { id: "matching", name: "Matching", description: "Match to purchase orders" },
-    { id: "approval", name: "Approval", description: "Route for authorization" },
-    { id: "posting", name: "Posting", description: "Post to accounting systems" },
-  ]
+  const agentsByStage = groupAgentsByStage(agents)
 
   // Toggle stage expansion/collapse
   const toggleStage = (stageId: string) => {
@@ -71,7 +65,7 @@ export function WorkflowVisualizer({
   }
 
   const getStageStatus = (stageId: string) => {
-    const stageAgents = agents.filter((a) => a.stage === stageId)
+    const stageAgents = agents.filter((a) => normalizeStageId(a.stage) === stageId)
     if (stageAgents.length === 0) return "empty"
     if (stageAgents.some((a) => a.active)) return "active"
     return "inactive"
@@ -115,11 +109,11 @@ export function WorkflowVisualizer({
         </div>
 
         <div className="space-y-2">
-          {stages.map((stage, index) => {
+          {agentsByStage.map((stage) => {
             const status = getStageStatus(stage.id)
-            const stageAgents = agents.filter((a) => a.stage === stage.id)
-            const activeCount = stageAgents.filter((a) => a.active).length
-            const inactiveCount = stageAgents.length - activeCount
+            const stageAgents = stage.agents
+            const activeCount = stage.activeCount
+            const inactiveCount = stage.inactiveCount
 
             return (
               <div key={stage.id}>
@@ -161,8 +155,6 @@ export function WorkflowVisualizer({
                       {/* Expandable Content */}
                       {expandedStages.has(stage.id) && (
                         <>
-                          <p className="text-sm text-muted-foreground mb-4">{stage.description}</p>
-
                           {stageAgents.length > 0 && (
                             <div className="space-y-2 mb-4">
                               {stageAgents.map((agent) => {

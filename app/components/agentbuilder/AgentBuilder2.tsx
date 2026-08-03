@@ -16,6 +16,7 @@ import { simulateBaselineProcessingBatch, type BaselineStats } from './baselineS
 import { simulateAgentProcessingBatch, type AgentStats, type AgentConfig as SimAgentConfig } from './agentSimulator'
 import { calculateComparisonMetrics, createInvoiceComparisons, formatMetricsForDisplay, generateExecutiveSummary, type ComparisonMetrics, type InvoiceComparison } from './comparisonMetrics'
 import { isDemoAgent, buildDemoResults } from './demoFixtures'
+import { groupAgentsByStage, normalizeStageId } from "./stageUtils"
 
 interface AgentMetrics {
   evaluated: number
@@ -43,15 +44,6 @@ interface AgentBuilder2Props {
   agentMetrics?: Record<string, AgentMetrics>
 }
 
-const WORKFLOW_STAGES = [
-  { id: "ingestion", name: "Invoice Import" },
-  { id: "data-capture", name: "Data Capture" },
-  { id: "verification", name: "Verification" },
-  { id: "matching", name: "Matching" },
-  { id: "approval", name: "Approval" },
-  { id: "posting", name: "Posting" },
-]
-
 export function AgentBuilder2({
   agents,
   onCreateAgent,
@@ -68,7 +60,7 @@ export function AgentBuilder2({
   agentMetrics = {},
 }: AgentBuilder2Props) {
   const [chatOpen, setChatOpen] = useState(false)
-  const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
+  const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set(["data-capture"]))
   const [showDetails, setShowDetails] = useState(false)
   const [leftWidth, setLeftWidth] = useState(320) // 320px = w-80
   const [rightWidth, setRightWidth] = useState(400) // 400px default chat width
@@ -374,7 +366,7 @@ export function AgentBuilder2({
       const updatedAgent = {
         ...currentAgent,
         name: currentAgent.name === 'New Agent' || !currentAgent.name ? agentName : currentAgent.name,
-        stage: detectedStage || currentAgent.stage || '',
+        stage: normalizeStageId(detectedStage || currentAgent.stage || ''),
         lane: detectedLane || currentAgent.lane || '',
         prompt,
         skills,
@@ -395,7 +387,7 @@ export function AgentBuilder2({
       const newAgent: Agent = {
         id: newAgentId,
         name: agentName,
-        stage: detectedStage || stage,
+        stage: normalizeStageId(detectedStage || stage),
         lane: detectedLane,
         active: false,
         mode: 'auto-apply',
@@ -487,13 +479,30 @@ export function AgentBuilder2({
     }
   }, [isDraggingLeft, isDraggingRight])
 
-  // Group agents by stage
-  const agentsByStage = WORKFLOW_STAGES.map((stage) => ({
-    ...stage,
-    agents: agents.filter((agent) => agent.stage === stage.id),
-    activeCount: agents.filter((agent) => agent.stage === stage.id && agent.active).length,
-    inactiveCount: agents.filter((agent) => agent.stage === stage.id && !agent.active).length,
-  }))
+  // Group agents into sections by stage — new stages appear as agents are created
+  const agentsByStage = groupAgentsByStage(agents)
+
+  // Auto-expand newly appeared sections (and the current agent's section)
+  useEffect(() => {
+    setExpandedStages((prev) => {
+      const next = new Set(prev)
+      let changed = false
+      for (const stage of agentsByStage) {
+        if (!next.has(stage.id)) {
+          next.add(stage.id)
+          changed = true
+        }
+      }
+      if (currentAgent?.stage) {
+        const id = normalizeStageId(currentAgent.stage)
+        if (!next.has(id)) {
+          next.add(id)
+          changed = true
+        }
+      }
+      return changed ? next : prev
+    })
+  }, [agentsByStage.map((s) => s.id).join(","), currentAgent?.stage])
 
   const toggleStage = (stageId: string) => {
     setExpandedStages((prev) => {

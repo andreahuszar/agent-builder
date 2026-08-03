@@ -1,7 +1,5 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import ExecutiveDashboardClient from '@/app/components/executive-dashboard/ExecutiveDashboardClient';
-
-export default function ExecutiveDashboardPage() {
-  return <ExecutiveDashboardClient />;
+export default function ExecutiveDashboardRedirect() {
+  redirect('/settings?tab=dashboard');
 }

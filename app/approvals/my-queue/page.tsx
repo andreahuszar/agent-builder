@@ -1,12 +1,5 @@
-'use client';
+import { redirect } from 'next/navigation';
 
-import AppLayout from '@/app/components/AppLayout';
-import { ApproverQueueClient } from '@/app/components/approvals/ApproverQueueClient';
-
-export default function ApproverQueuePage() {
-  return (
-    <AppLayout activeModule="invoice-processing">
-      <ApproverQueueClient />
-    </AppLayout>
-  );
+export default function MyQueueRedirect() {
+  redirect('/settings');
 }

@@ -24,21 +24,30 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
   const [launchpadVisibility, setLaunchpadVisibility] = useState(false);
   const [exceptionNavigation, setExceptionNavigation] = useState(true);
 
-  // Initialize currentView from the current URL. Uses pathname from Next.js router
-  // (immune to pushState race conditions) and window.location.hash for hash pills.
-  // Skips pathname matching on '/' so the root SPA defaults to 'invoices' (Exceptions)
-  // unless a hash explicitly points to a different pill (e.g. /#dashboard).
+  // Initialize currentView from the current URL (query tab, hash, or pathname).
   const [currentView, setCurrentView] = useState<string>(() => {
     if (typeof window !== 'undefined') {
       const modulePills = MODULE_PILLS[activeModule] || [];
-      const hash = window.location.hash; // '#dashboard', '#all-invoices', etc.
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      const hash = window.location.hash; // '#dashboard', etc.
+
+      // ?newAgent=true → Agent Builder
+      if (params.get('newAgent') === 'true') {
+        return 'agent-builder-2';
+      }
+
+      // ?tab= matches a pill id
+      if (tabParam && modulePills.some((pill) => pill.id === tabParam)) {
+        return tabParam;
+      }
 
       // Hash match takes priority (most specific)
       if (hash) {
         for (const pill of modulePills) {
           if (pill.href.includes('#')) {
             const [, pillHash] = pill.href.split('#');
-            if (hash === `#${pillHash}`) return pill.id;
+            if (hash === `#${pillHash}` || hash.endsWith(`-${pillHash}`)) return pill.id;
           }
         }
       }
@@ -53,8 +62,7 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
       }
     }
     // Fallback defaults
-    if (activeModule === 'invoice-processing') return 'invoices';
-    if (activeModule === 'settings') return 'automation';
+    if (activeModule === 'settings') return 'dashboard';
     const fallbackPills = MODULE_PILLS[activeModule];
     return fallbackPills?.length ? fallbackPills[0].id : '';
   });
@@ -139,28 +147,30 @@ export default function AppLayout({ activeModule, children, customTopBar, hideNa
 
   // Check hash on mount and handle browser navigation (back/forward)
   useEffect(() => {
-    // Check initial hash on mount
-    const hash = window.location.hash.substring(1);
-    if (hash) {
-      const pills = MODULE_PILLS[currentModule];
-      if (pills && pills.some(pill => pill.id === hash)) {
-        setCurrentView(hash);
+    const resolveViewFromLocation = () => {
+      const pills = MODULE_PILLS[currentModule] || [];
+      const params = new URLSearchParams(window.location.search);
+      const tabParam = params.get('tab');
+      if (params.get('newAgent') === 'true') {
+        setCurrentView('agent-builder-2');
+        return;
       }
-    }
-
-    // Handle hash changes
-    const handleHashChange = () => {
+      if (tabParam && pills.some((pill) => pill.id === tabParam)) {
+        setCurrentView(tabParam);
+        return;
+      }
       const hash = window.location.hash.substring(1);
       if (hash) {
-        const pills = MODULE_PILLS[currentModule];
-        if (pills && pills.some(pill => pill.id === hash)) {
-          setCurrentView(hash);
-        }
+        const match = pills.find(
+          (pill) => pill.id === hash || hash.endsWith(`-${pill.id}`)
+        );
+        if (match) setCurrentView(match.id);
       }
     };
 
-    window.addEventListener('hashchange', handleHashChange);
-    return () => window.removeEventListener('hashchange', handleHashChange);
+    resolveViewFromLocation();
+    window.addEventListener('hashchange', resolveViewFromLocation);
+    return () => window.removeEventListener('hashchange', resolveViewFromLocation);
   }, [currentModule]);
 
   return (

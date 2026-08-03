@@ -1,4 +1,4 @@
-import { Receipt, ArrowLeftRight, FileCheck, Building, TrendingUp, Inbox, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { LucideIcon } from 'lucide-react';
 
 // UI Constants
@@ -19,49 +19,8 @@ export interface NavItem {
   isDisabled?: boolean;
 }
 
-// Main Navigation Items
-export const NAV_ITEMS: NavItem[] = [
-  {
-    id: 'invoice-processing',
-    label: 'Invoice Processing',
-    icon: Receipt,
-    href: '/',
-    isActive: true,
-  },
-  {
-    id: 'transactions',
-    label: 'Transactions',
-    icon: ArrowLeftRight,
-    href: '/transactions',
-    isDisabled: true,
-  },
-  {
-    id: 'statements',
-    label: 'Statements',
-    icon: FileCheck,
-    href: '/statements',
-    isDisabled: true,
-  },
-  {
-    id: 'vendors',
-    label: 'Vendors',
-    icon: Building,
-    href: '/vendors',
-  },
-  {
-    id: 'reports',
-    label: 'Reports',
-    icon: TrendingUp,
-    href: '/reports',
-    isDisabled: true,
-  },
-  {
-    id: 'helpdesk',
-    label: 'Helpdesk',
-    icon: Inbox,
-    href: '/helpdesk',
-  },
-];
+// Agent-demo prototype: sidebar modules removed — Settings only
+export const NAV_ITEMS: NavItem[] = [];
 
 // Settings Navigation Item (separate as it's in a different section)
 export const SETTINGS_NAV_ITEM: NavItem = {
@@ -80,65 +39,15 @@ export interface TabItem {
   href: string;
 }
 
-export const TAB_ITEMS: TabItem[] = [
-  {
-    id: 'dashboard',
-    label: 'Dashboard',
-    href: '/',
-  },
-  {
-    id: 'invoices',
-    label: 'Invoices',
-    href: '/invoices',
-  },
-  {
-    id: 'purchase-orders',
-    label: 'Purchase Orders',
-    href: '/purchase-orders',
-  },
-];
+export const TAB_ITEMS: TabItem[] = [];
 
-// Module-specific pill configurations
+// Module-specific pill configurations — agent-demo only exposes AP Automation tabs
 export const MODULE_PILLS: Record<string, TabItem[]> = {
-  'invoice-processing': [
-    { id: 'dashboard', label: 'Dashboard', href: '/#dashboard' },
-    { id: 'invoices', label: 'Invoices', href: '/invoices' },
-    { id: 'purchase-orders', label: 'Purchase Orders', href: '/purchase-orders' },
-    { id: 'goods-receipts', label: 'Goods Receipts', href: '/goods-receipts' },
-    { id: 'approvals', label: 'Approvals', href: '/approvals' },
-    { id: 'my-queue', label: 'My Queue', href: '/approvals/my-queue' },
-    { id: 'all-invoices', label: 'All Invoices', href: '/#all-invoices' },
-    { id: 'escalations', label: 'Escalations', href: '/escalations' },
-    { id: 'launchpad', label: 'Launchpad', href: '/launchpad' },
-  ],
-  'transactions': [
-    { id: 'all', label: 'All Transactions', href: '/transactions' },
-    { id: 'pending', label: 'Pending', href: '/transactions/pending' },
-    { id: 'completed', label: 'Completed', href: '/transactions/completed' },
-  ],
-  'statements': [
-    { id: 'monthly', label: 'Monthly Statements', href: '/statements/monthly' },
-    { id: 'quarterly', label: 'Quarterly', href: '/statements/quarterly' },
-    { id: 'annual', label: 'Annual', href: '/statements/annual' },
-  ],
-  'vendors': [
-    { id: 'vendors', label: 'Vendors', href: '/vendors' },
-  ],
-  'reports': [
-    { id: 'overview', label: 'Overview', href: '/reports' },
-    { id: 'analytics', label: 'Analytics', href: '/reports/analytics' },
-    { id: 'exports', label: 'Exports', href: '/reports/exports' },
-  ],
-  'helpdesk': [
-    { id: 'inbox', label: 'Inbox', href: '/helpdesk' },
-    { id: 'kanban', label: 'Kanban', href: '/helpdesk/kanban' },
-  ],
   'settings': [
-    { id: 'transactions', label: 'Transactions', href: '/settings#transactions' },
-    { id: 'statements', label: 'Statements', href: '/settings#statements' },
-    { id: 'vendors', label: 'Vendors', href: '/settings#vendors' },
-    { id: 'helpdesk', label: 'Helpdesk', href: '/settings#helpdesk' },
-    { id: 'accounts', label: 'Accounts', href: '/settings#accounts' },
-    { id: 'automation', label: 'AP Automation', href: '/settings#automation' },
+    { id: 'dashboard', label: 'Dashboard', href: '/settings#dashboard' },
+    { id: 'agent-builder-2', label: 'Agent Builder', href: '/settings#agent-builder-2' },
+    { id: 'back-testing', label: 'Back Testing', href: '/settings#back-testing' },
+    { id: 'documents', label: 'Documents', href: '/settings#documents' },
+    { id: 'general-settings', label: 'General Settings', href: '/settings#general-settings' },
   ],
 };

@@ -23,117 +23,11 @@
     ]
   },
   {
-    "name": "High value invoices",
-    "stage": "verification",
-    "lane": "Policy Checks",
-    "mode": "auto-apply",
-    "prompt": "ROLE: High Value Invoice Exception Agent - exclusively flags high value invoices for review\n\nAGENT DESCRIPTION:\nFlag high value invoices for review\n\nAGENT INSTRUCTIONS:\n\n1. If any invoice is above $100k, raise it as an exception for review\n\nINPUTS:\n- Extracted invoice data from OCR Agent stage\n- Invoice total amount\n- Currency information\n\nSTEPS:\n1. Retrieve invoice total amount from extracted data\n2. Convert to USD if invoice is in different currency (using current exchange rates)\n3. Compare invoice total against $100,000 threshold\n4. If invoice total exceeds $100,000, raise exception flag\n5. Create exception record with invoice details and reason\n6. Route invoice to exception review queue\n\nVALIDATIONS:\n- Invoice total must be a valid numeric value\n- Currency conversion must use accurate exchange rates\n- Exception flag must be raised for any invoice above $100,000 USD\n\nOUTPUT:\n- Exception status: Exception Raised / No Exception\n- Exception reason: \"Invoice value exceeds $100k threshold\"\n- Invoice total amount (in USD)\n- Routing to exception review queue\n\nERROR HANDLING:\n- If invoice total cannot be determined → Flag for manual review\n- If currency conversion fails → Use invoice currency and flag for manual conversion\n- If exception raised → Ensure invoice is routed to review queue and approver is notified",
-    "skills": [
-      "Verify Data",
-      "Flag Issues"
-    ]
-  },
-  {
-    "name": "Bulk commodities tolerance",
-    "stage": "matching",
-    "lane": "Tolerance Application",
-    "mode": "auto-apply",
-    "prompt": "ROLE: Bulk Commodities Matching Tolerance Agent - exclusively adjusts matching tolerance for perishable goods and foodstuffs\n\nAGENT INSTRUCTIONS:\n\n1. If a line item relates to perishable goods / food stuffs, increase the matching tolerance level to +/- 5%\n2. Please convert all units of measure to KG for the calculation\n\nINPUTS:\n- Invoice line items from OCR Agent stage\n- Purchase order line items\n- Line item descriptions\n- Quantities and units of measure\n- Unit prices\n\nSTEPS:\n1. Analyze each invoice line item description to identify if it relates to perishable goods or foodstuffs\n2. Identify keywords and categories that indicate perishable goods (e.g., fresh produce, dairy, meat, seafood, frozen foods, beverages, etc.)\n3. For line items identified as perishable goods/foodstuffs:\n   a. Convert all units of measure to KG (kilograms) for both invoice and PO line items\n   b. Apply conversion factors for common units (e.g., LBS to KG, OZ to KG, TON to KG, etc.)\n   c. Increase matching tolerance to +/- 5% for quantity and price comparisons\n4. For non-perishable line items, use standard matching tolerance (typically +/- 1-2%)\n5. Perform matching comparison with adjusted tolerances\n6. Flag any variances that exceed the applicable tolerance threshold\n\nVALIDATIONS:\n- Unit of measure conversion must be accurate (use standard conversion factors)\n- Perishable goods identification must be based on description keywords and categories\n- Tolerance adjustment must only apply to identified perishable goods/foodstuffs\n- All quantity comparisons must use KG as the base unit for perishable goods\n\nOUTPUT:\n- Matching results with adjusted tolerances for perishable goods\n- Unit conversions applied (original unit → KG)\n- Tolerance level applied per line item (+/- 5% for perishables, standard for others)\n- Variance calculations in KG\n- Match status: Matched / Variance Within Tolerance / Variance Exceeds Tolerance\n\nERROR HANDLING:\n- If unit of measure cannot be converted to KG → Flag for manual review\n- If perishable goods identification is ambiguous → Apply conservative tolerance (+/- 3%)\n- If conversion factor is unknown → Flag line item for manual conversion\n- If matching fails due to conversion errors → Route to manual matching queue",
-    "skills": [
-      "Find Purchase Orders",
-      "Intelligent Matching",
-      "Verify Data"
-    ]
-  },
-  {
-    "name": "Substitution Agent",
-    "stage": "matching",
-    "lane": "Tolerance Application",
-    "mode": "suggest",
-    "prompt": "ROLE: Substitution Agent - identifies likely product substitutions where part numbers or descriptions differ but other line item attributes match closely\n\nINPUTS:\n- Invoice line item descriptions, part numbers, unit of measure, unit price, quantity\n- Purchase order line items with equivalent fields\n\nSTEPS:\n1. For each invoice line item, attempt exact match on part number and description against PO lines\n2. If no exact match found, compare remaining attributes: unit of measure, unit price, quantity\n3. If non-description attributes match and descriptions are semantically similar, treat as a potential substitution\n4. Compute an overall confidence score for the substitution match\n5. Apply confidence threshold to determine action\n\nCONFIDENCE THRESHOLDS:\n- >= 90%: Flag as likely substitution and auto-suggest for review\n- < 90%: Flag for manual review — do not auto-assign\n\nVALIDATIONS:\n- Unit of measure must match exactly\n- Unit price must match within standard tolerance (+/- 2%)\n- Quantity must match exactly\n- Description similarity must be assessed semantically, not just character match\n\nOUTPUT:\n- Match status per line: \"substitution\" or \"review\"\n- Confidence score (0–100%)\n- Suggested PO line reference\n- Reason for review flag where applicable\n\nERROR HANDLING:\n- If no candidate PO line found → Mark as unmatched and escalate\n- If multiple candidates score similarly → Present top 3 for manual selection",
-    "skills": [
-      "Intelligent Matching",
-      "Verify Data",
-      "Flag Issues"
-    ]
-  },
-  {
-    "name": "Routing approval for IT spend",
-    "stage": "approval",
-    "lane": "Approver Routing",
-    "mode": "auto-apply",
-    "prompt": "ROLE: IT Spend Approval Routing Agent - exclusively routes non-PO invoices for software and IT services to designated approver\n\nAGENT INSTRUCTIONS:\n\nIf any non PO invoice relates to the procurement of software / IT services, route for approval to Thomas Eaton (thomas.eaton@xx.com)\n\nINPUTS:\n- Invoice data from previous stages\n- Purchase order information (to determine if invoice is PO-backed or non-PO)\n- Line item descriptions\n- Vendor information\n- Invoice category/classification\n\nSTEPS:\n1. Check if invoice is PO-backed (has associated purchase order)\n2. If invoice is non-PO (no purchase order), proceed to step 3; otherwise, skip routing\n3. Analyze invoice line items and descriptions to identify software/IT services:\n   - Software licenses, subscriptions, SaaS products\n   - IT services (consulting, support, maintenance)\n   - Cloud services, hosting, infrastructure\n   - Software development, implementation services\n   - IT hardware if bundled with services\n   - Technology consulting and advisory services\n4. Check vendor name and category for IT-related indicators\n5. If invoice relates to software/IT services:\n   a. Route invoice for approval to Thomas Eaton (thomas.eaton@xx.com)\n   b. Set approver assignment in workflow\n   c. Send notification to approver\n   d. Log routing decision and reason\n6. If invoice does not relate to software/IT services, continue with standard approval routing\n\nVALIDATIONS:\n- Invoice must be non-PO (no purchase order associated)\n- Invoice must relate to software or IT services\n- Approver email must be valid: thomas.eaton@xx.com\n- Routing must be logged in audit trail\n\nOUTPUT:\n- Approval routing status: Routed to IT Approver / Standard Routing\n- Assigned approver: Thomas Eaton (thomas.eaton@xx.com) for IT spend invoices\n- Routing reason: \"Non-PO invoice for software/IT services\"\n- Notification sent to approver\n\nERROR HANDLING:\n- If invoice classification is ambiguous → Route to Thomas Eaton for review (better safe than miss IT spend)\n- If approver email invalid → Flag for manual routing\n- If routing fails → Retry routing, escalate if persistent failure\n- If PO status unclear → Check PO lookup service, route to IT approver if non-PO",
-    "skills": [
-      "Route for Approval",
-      "Run Workflows",
-      "Find Vendor Information",
-      "Find Purchase Orders"
-    ]
-  },
-  {
-    "name": "GL Posting Agent",
-    "stage": "posting",
-    "lane": "ERP Payload Creation",
-    "mode": "auto-apply",
-    "prompt": "ROLE: Accounting Entry Creation Agent - exclusively creates and posts journal entries to ERP\n\nINPUTS:\n- Approved invoices\n- Chart of accounts\n- GL mapping rules\n- Cost center assignments\n\nSTEPS:\n1. Map invoice line items to GL accounts\n2. Split by cost center if multiple departments\n3. Calculate tax postings by jurisdiction\n4. Generate balanced journal entry (debit = credit)\n5. Post to ERP via API\n6. Obtain ERP document number\n7. Update invoice status to \"Posted\"\n\nVALIDATIONS:\n- Posting period must be open\n- GL accounts must be valid and active\n- Debit and credit must balance exactly\n- No duplicate postings for same invoice\n\nOUTPUT:\n- ERP posting document number\n- Journal entry details\n- Updated invoice status\n\nERROR HANDLING:\n- If posting period closed → Hold until next period\n- If GL account invalid → Route to accounting for correction\n- If posting fails → Retry 3 times, then escalate",
-    "skills": [
-      "Connect to ERP System",
-      "Map to General Ledger"
-    ]
-  },
-  {
     "name": "TechSupply Customer ID",
     "stage": "data-capture",
     "lane": "Header vs Line Split",
     "mode": "auto-apply",
     "prompt": "ROLE: Customer Reference Number Extraction Agent - exclusively extracts the customer reference number from invoice data for TechSupply Solutions\n\nINPUTS: Extracted invoice data from the Data Capture phase\n\nSTEPS:\n1. Search the extracted invoice data for the customer reference number pattern (2 letters + 6 numbers)\n2. Validate the extracted customer reference number to ensure it matches the expected format\n3. If the customer reference number is found, output it in a structured format (e.g., JSON)\n\nVALIDATIONS:\n- The customer reference number should be in the format of 2 letters followed by 6 numbers\n- The extracted number should be 8 characters long\n\nOUTPUT: Extracted customer reference number in a structured format (e.g., JSON)\n\nERROR HANDLING:\n- If the customer reference number is not found, flag the invoice for manual review\n- If the extracted number does not match the expected format, log an error and notify the administrator\n\nREFERENCED_DOCUMENTS: None",
-    "skills": [
-      "Verify Data",
-      "Find Vendor Information"
-    ]
-  },
-  {
-    "name": "Bank details checker",
-    "stage": "verification",
-    "lane": "Data Quality",
-    "mode": "suggest",
-    "prompt": "ROLE: Bank Details Validation Agent - verifies vendor banking information for accuracy and fraud prevention\n\nINPUTS:\n- Invoice payment details from Data Capture phase\n- Vendor master database with verified bank details\n- Historical payment records\n\nSTEPS:\n1. Extract bank account details from invoice (account number, sort code, IBAN, SWIFT/BIC)\n2. Compare against verified vendor banking information in master database\n3. Check for suspicious changes or mismatches\n4. Validate format and checksums for IBAN, account numbers\n5. Flag any discrepancies for manual review\n6. Suggest correction if minor formatting issue detected\n\nVALIDATIONS:\n- Bank details must match vendor master record\n- IBAN/SWIFT codes must pass checksum validation\n- Account numbers must match expected format for country\n- Flag if bank details changed recently (< 30 days)\n\nOUTPUT:\n- Validation status: \"verified\", \"mismatch\", or \"suspicious\"\n- List of discrepancies if any found\n- Suggested corrections for formatting issues\n\nERROR HANDLING:\n- If bank details mismatch → Flag for manual verification\n- If vendor not in master database → Request bank details verification\n- If suspicious changes detected → Escalate to fraud team",
-    "skills": [
-      "Verify Data",
-      "Find Vendor Information",
-      "Flag Issues"
-    ]
-  },
-  {
-    "name": "PO Matching Agent",
-    "stage": "matching",
-    "lane": "PO Match",
-    "mode": "auto-apply",
-    "prompt": "ROLE: PO Matching Agent - automatically matches invoices to existing Purchase Orders when no PO reference is provided\n\nINPUTS:\n- Invoice data from Data Capture phase (vendor, amount, line items, dates)\n- Purchase Order database with active and historical POs\n- Vendor master data\n\nSTEPS:\n1. Check if invoice contains a PO reference number\n2. If PO reference exists, pass to standard PO matching workflow\n3. If no PO reference, extract key invoice attributes: vendor name, invoice amount, line item descriptions, invoice date\n4. Query PO database for open POs matching the vendor\n5. Score each candidate PO against invoice attributes using weighted matching criteria\n6. Calculate overall confidence score (0-100%) for each potential match\n7. If confidence >= 90%: auto-suggest the match for approval\n8. If confidence < 90%: reject the invoice and flag for manual review with reason\n\nMATCHING CRITERIA (weighted):\n- Vendor name match: 30%\n- Amount match (within 5% tolerance): 25%\n- Line item description similarity: 25%\n- Date range (invoice date within PO validity period): 10%\n- Currency match: 10%\n\nCONFIDENCE THRESHOLDS:\n- >= 90%: Suggest match, route for approval\n- 70–89%: Flag for manual review with suggested match\n- < 70%: Reject invoice, no match found\n\nVALIDATIONS:\n- PO must be active and not fully consumed\n- Invoice amount must not exceed remaining PO value\n- Vendor must match PO vendor record\n\nOUTPUT:\n- Match status: \"matched\", \"rejected\", or \"review\"\n- Confidence score (0–100%)\n- Matched PO number (if found)\n- Reason for rejection or review flag\n\nERROR HANDLING:\n- If vendor not found in master data → Flag for manual review\n- If multiple POs match with similar confidence → Present top 3 for manual selection\n- If PO is expired → Reject and notify approver",
-    "skills": [
-      "Match Documents",
-      "Verify Data",
-      "Flag Issues"
-    ]
-  },
-  {
-    "name": "Semantic Match Agent",
-    "stage": "matching",
-    "lane": "Tolerance Application",
-    "mode": "auto-apply",
-    "prompt": "ROLE: Semantic Match Agent - identifies Purchase Order line items that are semantically equivalent to invoice line items, even when the exact wording differs\n\nINPUTS:\n- Invoice line item descriptions from Data Capture phase\n- Open PO line item descriptions from Purchase Order database\n- Vendor master data\n\nSTEPS:\n1. For each invoice line item, check for an exact text match against PO line descriptions\n2. If no exact match found, compute semantic similarity scores between the invoice line and all candidate PO lines\n3. Rank candidate PO lines by similarity score\n4. Apply confidence thresholds to determine action per line\n5. Output match status, confidence score, and suggested PO line reference for each invoice line\n\nSEMANTIC EQUIVALENCE EXAMPLES:\n- \"Grounds maintenance\" → \"Landscaping services\"\n- \"IT support\" → \"Information Technology Services\"\n- \"Courier\" → \"Delivery charges\"\n- \"Office supplies\" → \"Printer paper and stationery\"\n- \"Daily rate\" → \"Per diem charge\"\n- Abbreviations, synonyms, category vs specific item descriptions\n\nCONFIDENCE THRESHOLDS:\n- >= 95%: Auto-suggest match, route for approval\n- 90–94%: Suggest match, route for approval with confidence score displayed\n- < 90%: Flag for manual review — present best candidate(s) but require human confirmation\n- No candidate found: Treat line as unmatched, block invoice progression until resolved\n\nVALIDATIONS:\n- Matched PO line must be active and not fully consumed\n- Invoice line amount must not exceed remaining PO line value\n- Vendor must match PO vendor record\n\nOUTPUT:\n- Match status per line: \"exact\", \"semantic\", \"review\", or \"unmatched\"\n- Confidence score (0–100%) for each suggested match\n- Suggested PO line reference and description\n- Reason for review flag where applicable\n\nERROR HANDLING:\n- If multiple PO lines score similarly → Present top 3 candidates for manual selection\n- If no PO line scores above 50% → Mark as unmatched and escalate\n- If PO line is already fully consumed → Exclude from candidates and notify reviewer",
-    "skills": [
-      "Match Documents",
-      "Verify Data",
-      "Flag Issues"
-    ]
-  },
-  {
-    "name": "Company Code (Global) Agent",
-    "stage": "verification",
-    "lane": "Supplier Master Validation",
-    "mode": "auto-apply",
-    "prompt": "ROLE: Company Code (Global) Agent — assigns the correct company code to invoices based on the receiving AP mailbox and bill-to entity\n\nINPUTS:\n- Incoming invoice email metadata (receiving mailbox address)\n- Bill-to field extracted from invoice document\n- Company code master list\n\nSTEPS:\n1. Identify the AP mailbox that received the invoice email\n2. Apply mailbox-to-company-code mapping rules\n3. Check if the bill-to value on the invoice document differs from the mailbox-derived company code\n4. If bill-to differs, override the mailbox rule and use the bill-to value instead\n5. Assign the resolved company code to the invoice\n\nMAILBOX MAPPING RULES:\n- us_accountspayable@xelix → GSPV Inc\n- uk_accountspayable@xelix.com → GSPV Ltd\n\nOVERRIDE RULE:\n- If the \"bill to\" value on the invoice document differs from the mailbox-derived entity, override the mailbox rule and assign the bill-to value to the Company code field\n\nOUTPUT:\n- Assigned company code\n- Source of assignment: \"mailbox\" or \"bill-to override\"\n- Confidence score\n\nERROR HANDLING:\n- If mailbox not in mapping → Flag for manual review\n- If bill-to value is ambiguous or unrecognised → Flag for manual review",
     "skills": [
       "Verify Data",
       "Find Vendor Information"

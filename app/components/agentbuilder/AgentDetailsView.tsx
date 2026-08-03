@@ -41,24 +41,42 @@ const AVAILABLE_SKILLS = [
   "Run Workflows",
   "Send Messages",
   "Verify Data",
+  "Triage Tickets",
+  "Manage Helpdesk",
+  "Create Purchase Orders",
+  "Process Payments",
+  "Check Compliance",
 ]
 
-const STAGE_LANES: Record<string, string[]> = {
+/** Optional focus-area suggestions by domain — free text is always allowed */
+const STAGE_FOCUS_SUGGESTIONS: Record<string, string[]> = {
+  procurement: ["Requisition Intake", "Catalog Buying", "PO Creation", "PO Amendment"],
+  receiving: ["ASN Processing", "Goods Receipt", "Quantity Check", "Quality Check"],
   ingestion: ["Source Intake", "File Triage", "Duplicate Detection", "Supplier Routing"],
   "data-capture": ["OCR Extraction", "Field Normalisation", "Header vs Line Split", "Currency/Tax Parsing"],
   verification: ["Confidence Scoring", "Anomaly Checks", "Supplier Master Validation", "Policy Checks"],
   matching: ["PO Match", "GRN Match", "Contract Match", "Unit Conversion", "Tolerance Application"],
   approval: ["Approver Routing", "Reminder Nudges", "Exception Pack Creation", "Escalation"],
-  posting: ["Coding Suggestion", "ERP Payload Creation", "Posting Validation", "Reconciliation"]
+  posting: ["Coding Suggestion", "ERP Payload Creation", "Posting Validation", "Reconciliation"],
+  payments: ["Payment Proposal", "Early Payment Discount", "Remittance Advice", "Payment Hold"],
+  helpdesk: ["Ticket Triage", "Auto-Reply Rules", "SLA Routing", "Escalation Rules", "Inbox Classification"],
+  "vendor-management": ["Vendor Onboarding", "Bank Detail Verification", "Master Data Update", "Vendor Risk Check"],
+  compliance: ["Tax Validation", "Spend Policy", "Segregation of Duties", "Audit Trail"],
 }
 
 const stages = [
+  { id: "procurement", name: "Procurement" },
+  { id: "receiving", name: "Goods Receiving" },
   { id: "ingestion", name: "Invoice Import" },
   { id: "data-capture", name: "Data Capture" },
   { id: "verification", name: "Verification" },
   { id: "matching", name: "Matching" },
   { id: "approval", name: "Approval" },
   { id: "posting", name: "Posting" },
+  { id: "payments", name: "Payments" },
+  { id: "helpdesk", name: "Helpdesk" },
+  { id: "vendor-management", name: "Vendor Management" },
+  { id: "compliance", name: "Compliance" },
 ]
 
 type ConflictType = {
@@ -702,40 +720,34 @@ export function AgentDetailsView({
                 value={localStage || ""} 
                 onChange={(e) => {
                   setLocalStage(e.target.value)
-                  setLocalLane('') // Reset lane when stage changes
                 }}
                 className="w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3cpath%20d%3D%22M7%207l3-3%203%203m0%206l-3%203-3-3%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3c%2Fsvg%3E')] bg-[length:1.25rem] bg-[center_right_0.5rem] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
               >
                 <option value="">Select stage</option>
-                <option value="ingestion">Invoice Import</option>
-                <option value="data-capture">Data capture</option>
-                <option value="verification">Verification</option>
-                <option value="matching">Matching</option>
-                <option value="approval">Approval</option>
-                <option value="posting">Posting</option>
+                {stages.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
               </select>
             </div>
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">Lane</label>
-              <select 
+              <label className="block text-xs font-medium text-gray-700 mb-2">Focus area</label>
+              <input
+                type="text"
+                list={localStage ? `focus-suggestions-${localStage}` : undefined}
                 value={localLane}
                 onChange={(e) => setLocalLane(e.target.value)}
-                className="w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3cpath%20d%3D%22M7%207l3-3%203%203m0%206l-3%203-3-3%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3c%2Fsvg%3E')] bg-[length:1.25rem] bg-[center_right_0.5rem] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="">Select a lane</option>
-                {localStage && STAGE_LANES[localStage] ? (
-                  STAGE_LANES[localStage].map((laneOption) => (
-                    <option key={laneOption} value={laneOption}>
-                      {laneOption}
-                    </option>
-                  ))
-                ) : (
-                  <option disabled>No stage selected</option>
-                )}
-              </select>
-              {!localStage && (
-                <p className="text-xs text-gray-500 mt-1">Please select a stage first</p>
+                placeholder="Optional"
+
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+              {localStage && STAGE_FOCUS_SUGGESTIONS[localStage] && (
+                <datalist id={`focus-suggestions-${localStage}`}>
+                  {STAGE_FOCUS_SUGGESTIONS[localStage].map((suggestion) => (
+                    <option key={suggestion} value={suggestion} />
+                  ))}
+                </datalist>
               )}
+              <p className="text-xs text-gray-500 mt-1">Optional free text</p>
             </div>
           </div>
         </div>

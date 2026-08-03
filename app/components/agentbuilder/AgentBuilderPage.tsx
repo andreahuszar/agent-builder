@@ -17,6 +17,7 @@ import { Checkbox } from "@/app/components/ui/checkbox"
 import ExecutiveDashboardClient from "@/app/components/executive-dashboard/ExecutiveDashboardClient"
 import { clearInvoiceCache } from "@/app/services/agentInvoiceService"
 import { useToast } from "@/app/components/ui/Toast"
+import { groupAgentsByStage } from "./stageUtils"
 
 type Mode = "chat" | "observe" | "build2" | "executive-dashboard" | "documents"
 
@@ -755,17 +756,20 @@ INSTRUCTIONS:
     },
     ]
     
+    // Seed only Data Capture agents; user-created agents add their own sections
+    const seedAgents = defaultAgents.filter((a) => a.stage === "data-capture")
+
     // Client-side only - check localStorage and merge with defaults
     if (typeof window !== 'undefined') {
       try {
         // Version-based cache invalidation: bump this when default agent prompts change
-        const AGENTS_VERSION = 'v22'
+        const AGENTS_VERSION = 'v23-dynamic-sections'
         const storedVersion = localStorage.getItem('agents-version')
         if (storedVersion !== AGENTS_VERSION) {
           console.log('[AgentBuilderPage] Agent version mismatch, resetting to defaults')
           localStorage.removeItem('agents')
           localStorage.setItem('agents-version', AGENTS_VERSION)
-          return defaultAgents
+          return seedAgents
         }
 
         const stored = localStorage.getItem('agents')
@@ -776,45 +780,15 @@ INSTRUCTIONS:
             if (parsed.length > 100) {
               console.error('[AgentBuilderPage] CORRUPTION DETECTED:', parsed.length, 'agents. Resetting.')
               localStorage.removeItem('agents')
-              return defaultAgents
+              return seedAgents
             }
 
-            // Check if pre-built agents (IDs "9", "10", "11") exist in stored agents
+            // Ensure seed Data Capture agents exist; keep any user-created agents as-is
             const missingAgents = []
             
-            const hasTechSupplyAgent = parsed.some(a => a.id === "9")
-            if (!hasTechSupplyAgent) {
-              const techSupplyAgent = defaultAgents.find(a => a.id === "9")
-              if (techSupplyAgent) {
-                console.log('[AgentBuilderPage] Adding TechSupply agent to stored agents')
-                missingAgents.push(techSupplyAgent)
-              }
-            }
-            
-            const hasBankDetailsAgent = parsed.some(a => a.id === "10")
-            if (!hasBankDetailsAgent) {
-              const bankDetailsAgent = defaultAgents.find(a => a.id === "10")
-              if (bankDetailsAgent) {
-                console.log('[AgentBuilderPage] Adding Bank details checker agent to stored agents')
-                missingAgents.push(bankDetailsAgent)
-              }
-            }
-            
-            const hasFieldNormalisationAgent = parsed.some(a => a.id === "11")
-            if (!hasFieldNormalisationAgent) {
-              const fieldNormalisationAgent = defaultAgents.find(a => a.id === "11")
-              if (fieldNormalisationAgent) {
-                console.log('[AgentBuilderPage] Adding Field Normalisation agent to stored agents')
-                missingAgents.push(fieldNormalisationAgent)
-              }
-            }
-
-            const hasCompanyCodeAgent = parsed.some(a => a.id === "14")
-            if (!hasCompanyCodeAgent) {
-              const companyCodeAgent = defaultAgents.find(a => a.id === "14")
-              if (companyCodeAgent) {
-                console.log('[AgentBuilderPage] Adding Company Code (Global) agent to stored agents')
-                missingAgents.push(companyCodeAgent)
+            for (const seed of seedAgents) {
+              if (!parsed.some((a: { id: string }) => a.id === seed.id)) {
+                missingAgents.push(seed)
               }
             }
             
@@ -831,9 +805,9 @@ INSTRUCTIONS:
       }
     }
     
-    // Return default agents if localStorage is empty or on server
-    console.log('[AgentBuilderPage] Using default agents')
-    return defaultAgents
+    // Return seed agents if localStorage is empty or on server
+    console.log('[AgentBuilderPage] Using seed agents:', seedAgents.length)
+    return seedAgents
   }
 
   const [agents, setAgents] = useState<Agent[]>(getInitialAgents())
@@ -1063,7 +1037,7 @@ INSTRUCTIONS:
     }
     return false
   })
-  const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
+  const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set(["data-capture"]))
   const [testingAgent, setTestingAgent] = useState<Agent | null>(null)
   const [dateRange, setDateRange] = useState<"7days" | "30days" | "3months">("7days")
   
@@ -1200,21 +1174,7 @@ INSTRUCTIONS:
     }
   }, [agentMetrics])
 
-  const stages = [
-    { id: "ingestion", name: "Invoice Import" },
-    { id: "data-capture", name: "Data Capture" },
-    { id: "verification", name: "Verification" },
-    { id: "matching", name: "Matching" },
-    { id: "approval", name: "Approval" },
-    { id: "posting", name: "Posting" },
-  ]
-
-  const agentsByStage = stages.map((stage) => ({
-    ...stage,
-    agents: agents.filter((agent) => agent.stage === stage.id),
-    activeCount: agents.filter((agent) => agent.stage === stage.id && agent.active).length,
-    inactiveCount: agents.filter((agent) => agent.stage === stage.id && !agent.active).length,
-  }))
+  const agentsByStage = groupAgentsByStage(agents)
 
   const toggleStage = (stageId: string) => {
     setExpandedStages((prev) => {

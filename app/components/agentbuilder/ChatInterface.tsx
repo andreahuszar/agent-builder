@@ -63,15 +63,22 @@ const AVAILABLE_SKILLS = [
   "Send Messages",
   "Map to General Ledger",
   "Find Vendor Information",
+  "Triage Tickets",
+  "Manage Helpdesk",
+  "Create Purchase Orders",
+  "Process Payments",
+  "Check Compliance",
 ]
+
+const GREETING =
+  "Hi! Tell me what you'd like your agent to do, and I'll help you shape it."
 
 export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({ onPromptGenerated, onStageDetected, onLaneDetected, currentPrompt, agentId, currentAgent, onOpenTest, initialScriptedFlow }, ref) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
       role: "assistant",
-      content:
-        "Hi! I'm your invoice processing specialist. Tell me what your agent needs to do, and I'll ask a few clarifying questions to build the perfect configuration for you.",
+      content: GREETING,
       timestamp: new Date(),
     },
   ])
@@ -93,8 +100,7 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
       {
         id: "1",
         role: "assistant",
-        content:
-          "Hi! I'm your invoice processing specialist. Tell me what your agent needs to do, and I'll ask a few clarifying questions to build the perfect configuration for you.",
+        content: GREETING,
         timestamp: new Date(),
       },
     ])
@@ -120,7 +126,7 @@ export const ChatInterface = forwardRef<ChatInterfaceRef, ChatInterfaceProps>(({
           {
             id: "1",
             role: "assistant",
-            content: "Hi! I'm your invoice processing specialist. Tell me what your agent needs to do, and I'll ask a few clarifying questions to build the perfect configuration for you.",
+            content: GREETING,
             timestamp: new Date(),
           },
         ])
@@ -557,7 +563,7 @@ ${signature}`
         onStageDetected(stage)
       }
       
-      // If lane was detected, notify parent component to update Lane dropdown
+      // If a focus area was detected, notify parent
       if (lane && onLaneDetected) {
         console.log("[v0] Calling onLaneDetected with:", lane)
         onLaneDetected(lane)
@@ -933,14 +939,14 @@ function extractPromptAndSkills(response: string): { prompt: string; skills: str
     }
   }
   
-  // Extract DETECTED_STAGE if present
-  const stageMatch = response.match(/DETECTED_STAGE:\s*(ingestion|data-capture|verification|matching|approval|posting)/i)
+  // Extract DETECTED_STAGE if present (full P2P / AP domains)
+  const stageMatch = response.match(/DETECTED_STAGE:\s*(procurement|receiving|ingestion|data-capture|verification|matching|approval|posting|payments|helpdesk|vendor-management|compliance)/i)
   if (stageMatch) {
     stage = stageMatch[1].toLowerCase()
     console.log("[v0] Detected stage:", stage)
   }
   
-  // Extract DETECTED_LANE if present (match until end of line, not including newline)
+  // Extract DETECTED_LANE if present — free-text focus label (no fixed list)
   const laneMatch = response.match(/DETECTED_LANE:\s*([^\n\r]+)/i)
   if (laneMatch) {
     lane = laneMatch[1].trim()

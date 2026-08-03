@@ -36,8 +36,8 @@ export function useKeyboardNavigation({ onModuleChange }: UseKeyboardNavigationP
         } else {
           announceToScreenReader(`${item.label} is not available in prototype`, 'assertive');
         }
-      } else if (index === 6) {
-        // Settings (Cmd/Ctrl + 7)
+      } else if (index === NAV_ITEMS.length || index === 6) {
+        // Settings (first available key when nav is empty, or Cmd/Ctrl + 7)
         router.push(SETTINGS_NAV_ITEM.href);
         if (onModuleChange) {
           onModuleChange('settings');
@@ -49,7 +49,7 @@ export function useKeyboardNavigation({ onModuleChange }: UseKeyboardNavigationP
     // Home shortcut (Cmd/Ctrl + H)
     if (key === 'H') {
       event.preventDefault();
-      router.push('/');
+      router.push('/settings');
       announceToScreenReader('Navigated to Home');
     }
     

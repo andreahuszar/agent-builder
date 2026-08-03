@@ -1,9 +1,5 @@
-import MainApp from './components/MainApp';
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  try {
-    return <MainApp />;
-  } catch (error) {
-    throw error;
-  }
+  redirect('/settings');
 }
