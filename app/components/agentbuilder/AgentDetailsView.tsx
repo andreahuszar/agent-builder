@@ -28,26 +28,6 @@ interface AgentDetailsViewProps {
   agentMetrics?: AgentMetrics
 }
 
-const AVAILABLE_SKILLS = [
-  "Connect to ERP",
-  "Extract Text",
-  "Find Purchase Orders",
-  "Find Vendor Information",
-  "Flag Issues",
-  "Intelligent Matching",
-  "Map to General Ledger",
-  "Process Documents",
-  "Route for Approval",
-  "Run Workflows",
-  "Send Messages",
-  "Verify Data",
-  "Triage Tickets",
-  "Manage Helpdesk",
-  "Create Purchase Orders",
-  "Process Payments",
-  "Check Compliance",
-]
-
 /** Optional focus-area suggestions by domain — free text is always allowed */
 const STAGE_FOCUS_SUGGESTIONS: Record<string, string[]> = {
   procurement: ["Requisition Intake", "Catalog Buying", "PO Creation", "PO Amendment"],
@@ -698,60 +678,6 @@ export function AgentDetailsView({
           </div>
         )}
 
-        {/* Deployment Info */}
-        <div className="bg-white rounded-lg p-4 border border-gray-200">
-          <h2 className="text-sm font-semibold text-gray-950 mb-4">Deployment info</h2>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">Mode</label>
-              <select 
-                value={localMode} 
-                onChange={(e) => setLocalMode(e.target.value as 'observe' | 'suggest' | 'auto-apply')}
-                className="w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3cpath%20d%3D%22M7%207l3-3%203%203m0%206l-3%203-3-3%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3c%2Fsvg%3E')] bg-[length:1.25rem] bg-[center_right_0.5rem] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="observe">Observe</option>
-                <option value="suggest">Suggest</option>
-                <option value="auto-apply">Auto-apply</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">Stage</label>
-              <select 
-                value={localStage || ""} 
-                onChange={(e) => {
-                  setLocalStage(e.target.value)
-                }}
-                className="w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3cpath%20d%3D%22M7%207l3-3%203%203m0%206l-3%203-3-3%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3c%2Fsvg%3E')] bg-[length:1.25rem] bg-[center_right_0.5rem] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              >
-                <option value="">Select stage</option>
-                {stages.map((s) => (
-                  <option key={s.id} value={s.id}>{s.name}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-2">Focus area</label>
-              <input
-                type="text"
-                list={localStage ? `focus-suggestions-${localStage}` : undefined}
-                value={localLane}
-                onChange={(e) => setLocalLane(e.target.value)}
-                placeholder="Optional"
-
-                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-              />
-              {localStage && STAGE_FOCUS_SUGGESTIONS[localStage] && (
-                <datalist id={`focus-suggestions-${localStage}`}>
-                  {STAGE_FOCUS_SUGGESTIONS[localStage].map((suggestion) => (
-                    <option key={suggestion} value={suggestion} />
-                  ))}
-                </datalist>
-              )}
-              <p className="text-xs text-gray-500 mt-1">Optional free text</p>
-            </div>
-          </div>
-        </div>
-
         {/* Agent Details */}
         <div className="bg-white rounded-lg p-4 border border-gray-200">
           <div className="flex items-center justify-between mb-4">
@@ -895,38 +821,6 @@ export function AgentDetailsView({
                 </div>
               </div>
 
-              {/* Required Agent Skills */}
-              <div className="mb-6">
-                <div className="flex items-center justify-between mb-3">
-                  <h3 className="text-xs font-semibold text-gray-700 uppercase">Required agent skills</h3>
-                  <span className="text-xs text-gray-500">
-                    {agent.skills?.length || 0} of {AVAILABLE_SKILLS.length} selected
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  {AVAILABLE_SKILLS.map((skill) => {
-                    const isSelected = agent.skills?.includes(skill)
-                    return (
-                      <div
-                        key={skill}
-                        className={`inline-flex items-center gap-2 px-3 py-1.5 text-xs rounded-md border transition-colors ${
-                          isSelected
-                            ? 'bg-purple-50 border-purple-600 text-purple-700 font-medium'
-                            : 'bg-white border-gray-300 text-gray-700'
-                        }`}
-                      >
-                        {isSelected && (
-                          <span className="flex items-center justify-center w-4 h-4 rounded-full bg-green-500 text-white shrink-0">
-                            <Check className="w-3 h-3" strokeWidth={3} />
-                          </span>
-                        )}
-                        {skill}
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
               {/* Referenced Files */}
               {agent.documents && agent.documents.length > 0 && (
                 <div>
@@ -1021,6 +915,60 @@ export function AgentDetailsView({
             </div>
           )}
 
+        </div>
+
+        {/* Deployment Info */}
+        <div className="bg-white rounded-lg p-4 border border-gray-200">
+          <h2 className="text-sm font-semibold text-gray-950 mb-4">Deployment info</h2>
+          <div className="grid grid-cols-3 gap-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-2">Mode</label>
+              <select 
+                value={localMode} 
+                onChange={(e) => setLocalMode(e.target.value as 'observe' | 'suggest' | 'auto-apply')}
+                className="w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3cpath%20d%3D%22M7%207l3-3%203%203m0%206l-3%203-3-3%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3c%2Fsvg%3E')] bg-[length:1.25rem] bg-[center_right_0.5rem] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                <option value="observe">Observe</option>
+                <option value="suggest">Suggest</option>
+                <option value="auto-apply">Auto-apply</option>
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-2">Stage</label>
+              <select 
+                value={localStage || ""} 
+                onChange={(e) => {
+                  setLocalStage(e.target.value)
+                }}
+                className="w-full pl-3 pr-8 py-1.5 text-sm border border-gray-300 rounded-md bg-white appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2020%2020%22%20fill%3D%22none%22%3E%3cpath%20d%3D%22M7%207l3-3%203%203m0%206l-3%203-3-3%22%20stroke%3D%22%239ca3af%22%20stroke-width%3D%221.5%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%2F%3E%3c%2Fsvg%3E')] bg-[length:1.25rem] bg-[center_right_0.5rem] bg-no-repeat focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              >
+                <option value="">Select stage</option>
+                {stages.map((s) => (
+                  <option key={s.id} value={s.id}>{s.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-2">Focus area</label>
+              <input
+                type="text"
+                list={localStage ? `focus-suggestions-${localStage}` : undefined}
+                value={localLane}
+                onChange={(e) => setLocalLane(e.target.value)}
+                placeholder="Optional"
+
+                className="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-md bg-white focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+              />
+              {localStage && STAGE_FOCUS_SUGGESTIONS[localStage] && (
+                <datalist id={`focus-suggestions-${localStage}`}>
+                  {STAGE_FOCUS_SUGGESTIONS[localStage].map((suggestion) => (
+                    <option key={suggestion} value={suggestion} />
+                  ))}
+                </datalist>
+              )}
+              <p className="text-xs text-gray-500 mt-1">Optional free text</p>
+            </div>
+          </div>
         </div>
 
         {/* Performance Metrics */}

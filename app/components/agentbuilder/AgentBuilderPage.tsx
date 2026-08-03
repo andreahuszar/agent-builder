@@ -1037,7 +1037,7 @@ INSTRUCTIONS:
     }
     return false
   })
-  const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set(["data-capture"]))
+  const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
   const [testingAgent, setTestingAgent] = useState<Agent | null>(null)
   const [dateRange, setDateRange] = useState<"7days" | "30days" | "3months">("7days")
   

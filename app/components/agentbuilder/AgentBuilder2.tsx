@@ -60,7 +60,8 @@ export function AgentBuilder2({
   agentMetrics = {},
 }: AgentBuilder2Props) {
   const [chatOpen, setChatOpen] = useState(false)
-  const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set(["data-capture"]))
+  const [expandedStages, setExpandedStages] = useState<Set<string>>(new Set())
+  const knownStageIdsRef = useRef<Set<string> | null>(null)
   const [showDetails, setShowDetails] = useState(false)
   const [leftWidth, setLeftWidth] = useState(320) // 320px = w-80
   const [rightWidth, setRightWidth] = useState(400) // 400px default chat width
@@ -357,8 +358,8 @@ export function AgentBuilder2({
     document.body.removeChild(link)
   }
 
-  const handlePromptGenerated = (prompt: string, skills: string[], documents?: any[]) => {
-    console.log('[AgentBuilder2] handlePromptGenerated called', { currentAgent, prompt: prompt.substring(0, 50), skills })
+  const handlePromptGenerated = (prompt: string, _skills: string[], documents?: any[]) => {
+    console.log('[AgentBuilder2] handlePromptGenerated called', { currentAgent, prompt: prompt.substring(0, 50) })
     
     const agentName = extractAgentName(prompt)
     
@@ -369,7 +370,7 @@ export function AgentBuilder2({
         stage: normalizeStageId(detectedStage || currentAgent.stage || ''),
         lane: detectedLane || currentAgent.lane || '',
         prompt,
-        skills,
+        skills: [],
         documents: documents || currentAgent.documents,
       }
       console.log('[AgentBuilder2] Updating existing agent:', updatedAgent.name)
@@ -392,7 +393,7 @@ export function AgentBuilder2({
         active: false,
         mode: 'auto-apply',
         prompt,
-        skills,
+        skills: [],
         documents: documents || [],
       }
       
@@ -482,27 +483,28 @@ export function AgentBuilder2({
   // Group agents into sections by stage — new stages appear as agents are created
   const agentsByStage = groupAgentsByStage(agents)
 
-  // Auto-expand newly appeared sections (and the current agent's section)
+  // Auto-expand only newly appeared sections (keep seed stages collapsed on load)
   useEffect(() => {
+    const currentIds = agentsByStage.map((s) => s.id)
+
+    if (knownStageIdsRef.current === null) {
+      knownStageIdsRef.current = new Set(currentIds)
+      return
+    }
+
     setExpandedStages((prev) => {
       const next = new Set(prev)
       let changed = false
-      for (const stage of agentsByStage) {
-        if (!next.has(stage.id)) {
-          next.add(stage.id)
-          changed = true
-        }
-      }
-      if (currentAgent?.stage) {
-        const id = normalizeStageId(currentAgent.stage)
-        if (!next.has(id)) {
+      for (const id of currentIds) {
+        if (!knownStageIdsRef.current!.has(id)) {
+          knownStageIdsRef.current!.add(id)
           next.add(id)
           changed = true
         }
       }
       return changed ? next : prev
     })
-  }, [agentsByStage.map((s) => s.id).join(","), currentAgent?.stage])
+  }, [agentsByStage.map((s) => s.id).join(",")])
 
   const toggleStage = (stageId: string) => {
     setExpandedStages((prev) => {
@@ -690,7 +692,7 @@ export function AgentBuilder2({
                 Agent builder
               </h3>
               <p className="text-sm text-gray-600 max-w-md mx-auto mb-6">
-                Create custom rules and agents to enhance your workflow
+                An agent is a reusable set of rules that automates a repetitive AP task. Tell us what you want done and we’ll help you build it.
               </p>
               <button
                 onClick={() => handleCreateNewAgent()}

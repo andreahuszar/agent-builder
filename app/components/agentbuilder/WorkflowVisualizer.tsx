@@ -46,7 +46,7 @@ export function WorkflowVisualizer({
 }: WorkflowVisualizerProps) {
   // State to track which stages are expanded (Invoice Import open by default)
   const [expandedStages, setExpandedStages] = useState<Set<string>>(
-    new Set(["data-capture"])
+    new Set()
   )
 
   const agentsByStage = groupAgentsByStage(agents)

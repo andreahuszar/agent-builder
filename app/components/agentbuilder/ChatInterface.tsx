@@ -577,7 +577,7 @@ ${signature}`
                 ...msg,
                 content: fullResponse,
                 generatedPrompt: prompt || undefined, // Only set if prompt exists
-                suggestedSkills: skills.length > 0 ? skills : undefined,
+                suggestedSkills: undefined,
                 isSettingsRecommendation: isSettingsRecommendation || undefined,
                 settingsLink: settingsLink || undefined,
               }
@@ -735,23 +735,11 @@ ${signature}`
                   <div className="px-3 py-2 rounded-lg bg-muted">
                     <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.generatedPrompt}</p>
                   </div>
-                  {message.suggestedSkills && message.suggestedSkills.length > 0 && (
-                    <div className="px-3 py-2 rounded-lg bg-muted/50">
-                      <h4 className="text-xs font-medium text-muted-foreground mb-2">Suggested Skills:</h4>
-                      <div className="flex flex-wrap gap-2">
-                        {message.suggestedSkills.map((skill) => (
-                          <span key={skill} className="px-2 py-1 bg-background border border-border text-xs rounded-md">
-                            {skill}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  )}
                   {!message.applied && (
                     <Button
                       size="sm"
                       className="w-full gap-2"
-                      onClick={() => handleApplyPrompt(message.generatedPrompt!, message.suggestedSkills || [], message.id)}
+                      onClick={() => handleApplyPrompt(message.generatedPrompt!, [], message.id)}
                     >
                       <CheckCircle2 className="w-4 h-4" />
                       Apply to Agent
@@ -772,7 +760,7 @@ ${signature}`
                 <Button
                   size="sm"
                   className="w-full gap-2"
-                  onClick={() => handleApplyPrompt(message.content, message.suggestedSkills || [], message.id)}
+                  onClick={() => handleApplyPrompt(message.content, [], message.id)}
                 >
                   <CheckCircle2 className="w-4 h-4" />
                   Apply to Agent
